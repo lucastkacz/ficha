@@ -12,7 +12,7 @@ The tree, two or three levels deep, from the product's parts and the work that i
 
 ## How it's drawn
 
-How an agent gets a picture of a screen without the device: a render command, a simulator, a web mock kit. What the PR's pictures show, and in which languages.
+How an agent gets a picture of a screen without the device: a render command, a simulator, a web mock kit. What the PR's pictures show, and in which languages. Where the method's map and the kit's pieces are published for the user.
 
 ## Hands-free
 

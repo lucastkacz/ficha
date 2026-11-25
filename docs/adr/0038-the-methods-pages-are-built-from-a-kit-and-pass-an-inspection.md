@@ -24,4 +24,4 @@ On 2026-11-25 Lucas found the method's pages "conceptually good" but too dense: 
 - `PLIEGO.md`'s How it's drawn and Where it runs name the kit and place its inspection in the cloud, and the pliego's template asks each project where the inspection runs.
 - The pages published before the kit stay as they are; a page published again takes the kit then.
 - A change to a piece changes `pieces.html` with it, and is inspected on it and on the map; a change to a command or a word changes the map.
-- Standard practice: a component kit and an automated layout check. Our own: the pieces the method's pages need, the 40-word card, and the inspection's rules.
+- Standard practice: a component kit and an automated layout check. Our own: the pieces the method's pages need, the 40-word card, the inspection's rules, and its floor of 10 px for a drawing's labels as drawn. A word or an issue inside a line is a smaller tap, as WCAG 2.5.8's exception for inline targets allows.

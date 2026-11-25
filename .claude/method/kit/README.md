@@ -6,14 +6,14 @@ The pieces every page of the method is built from, drawn once and filled with ea
 |---|---|
 | `kit.css` | The look, a plan's paper in light and dark; the tabs, decks and cards; each piece, and the classes drawings share. |
 | `kit.js` | What the pieces do, and the user's answers, notes and approval, kept in the artifact's database. |
-| `pieces.html` | Every piece once, as a page uses it, published as [Piezas tipo](https://claude.ai/artifact/XBpjqRitWfAVa5Xrx4tXb1). |
+| `pieces.html` | Every piece once, as a page uses it, published where the pliego's How it's drawn says. |
 | `inspect.js` | The inspection. |
 
 ## A page
 
 1. Copy `pieces.html`'s head (the title, the fonts and the kit's stylesheet) and its last line (the kit's script). Name the page in its `<title>`.
 2. `header.k-top`, with a `p.k-kick` and the page's name in an `h1`. When the page asks anything, `data-db="<collection>"` on it, a collection per artifact.
-3. A `section.k-view` per tab, at most five, each with an `id`, its name in `data-tab`, and an icon in `data-icon`: `home`, `play`, `ask`, `list`, `check`, `tree`, `map`, `clock`, `layers`, `book` or `grid`. A page of one view has no tab bar.
+3. A `section.k-view` per tab, as many as [`../artifacts.md`](../artifacts.md) allows, each with an `id`, its name in `data-tab`, and an icon in `data-icon`: `home`, `play`, `ask`, `list`, `check`, `tree`, `map`, `clock`, `layers`, `book` or `grid`. A page of one view has no tab bar.
 4. In each view, a `div.k-deck` of `article.k-card`s, one idea per card. Several decks in one view, such as a debate's rounds or a decision's pieces, each name themselves in `data-name` and show one at a time, picked from a row of chips: the last, unless one has `data-open`.
 5. In each card, a title and the pieces below, copied from `pieces.html` and filled with the page's data. A word the page uses with a meaning goes in its `dl.k-terms`.
 
@@ -41,7 +41,7 @@ Done when every card holds one idea, in pieces.
 | Fold | `details.k-fold`, `lang="en"` for the agent's part | What only an agent reads |
 | Small | `code.k-cmd`, `span.k-badge` (`ok`, `warn`, `bad`), `a.k-go[href="#<view>"]`, `p.k-kick`, `p.k-lead`, `p.k-row` | A command, a state, a way to another tab |
 
-A drawing's `svg` has a `viewBox` and no size, and its labels inside, drawn at 10 px or more on a phone's card: a viewBox about as wide as the card in pixels keeps the `s` class at that. Its shapes and text take the classes `kit.css` gives drawings: `box`, `paper` and `ghost` for shapes; `blue`, `green`, `amber`, `red`, `orange` and `pink` for tints, with `solid` for the full color; `h`, `s` and `m` for a title, small and mono text, `c` and `e` to center or right-align it, `on` over a solid color; `ln`, `arr`, `arr flow` and `arr back` for lines; `pulse` and `float` to move; `hl` to mark. A drawing no class covers takes the page's own `<style>`, in the kit's tokens.
+A drawing's `svg` has a `viewBox` and no size, and its labels inside, drawn no smaller than `inspect.js` allows: a viewBox about as wide as a phone's card in pixels keeps the `s` class above it. Its shapes and text take the classes `kit.css` gives drawings: `box`, `paper` and `ghost` for shapes; `blue`, `green`, `amber`, `red`, `orange` and `pink` for tints, with `solid` for the full color; `h`, `s` and `m` for a title, small and mono text, `c` and `e` to center or right-align it, `on` over a solid color; `ln`, `arr`, `arr flow` and `arr back` for lines; `pulse` and `float` to move; `hl` to mark. A drawing no class covers takes the page's own `<style>`, in the kit's tokens.
 
 The kit's own words, such as Reproducir and Aprobar, are in Spanish. A page in another language sets `window.KIT_TEXT`, with the keys of `T` in `kit.js`, before the kit's script.
 
@@ -53,7 +53,7 @@ From the repo's folder, on the machine the pliego's Where it runs gives the insp
 node .claude/method/kit/inspect.js <page.html> [outDir]
 ```
 
-It opens the page as a phone and a laptop show it, light and dark, with the kit beside it and an artifact database in memory. It fails the page for what the constants at the top of `inspect.js` limit: the words of a card, a drawing and a movie's caption; a movie's steps; the tabs; and the size of text, of a drawing's labels as the screen draws them, and of what a finger taps. It fails it too for a card, a preview or a side that's cut; anything wider than the screen; text cut short; a question without its options, a preview for each, a recommendation and its reason; an issue shown by its number; a picture that doesn't load; or an error in the console. It answers a question, types a note and approves, and fails if any of them wasn't saved. Each failure says what to do. It leaves a picture of each card on a phone, of each tab on a laptop and in dark, and of each movie at its last step. Where the network doesn't reach Google Fonts, their failed loads don't count, and the pictures show the fallback fonts.
+It opens the page as a phone and a laptop show it, light and dark, with the kit beside it and an artifact database in memory. It fails the page for what the constants at the top of `inspect.js` limit: the words of a card, a drawing and a movie's caption; a movie's steps; the tabs; and the size of text, of a drawing's labels as the screen draws them, and of what a finger taps. It fails it too for a card, a preview or a side that's cut; anything wider than the screen; text cut short; a question without its options, a preview for each, a recommendation and its reason; an issue shown by its number; a picture that doesn't load; or an error in the console. It answers a question, types a note, a question's or else a piece's, and approves, and fails if any of them wasn't saved; and it fails a note or a question whose id is taken, a word with no meaning, an issue that doesn't say what it does, and a link to a tab that isn't there. A word or an issue inside a line of text is a tap under 28 px, as WCAG 2.5.8's exception for inline targets allows, so it isn't measured. Each failure says what to do. It leaves, in a folder it empties of the last run's pictures, a picture of each card on a phone, of each tab on a laptop and in dark, and of each movie at its last step. Where the network doesn't reach Google Fonts, their failed loads don't count, and the pictures show the fallback fonts.
 
 Done when it prints "All passed", and its pictures read right.
 
@@ -63,4 +63,4 @@ With the Artifact tool: the page as `file_path`, and in `files` the kit, `{"kit/
 
 ## Changing the kit
 
-A change to a piece changes `pieces.html` with it, and the change passes the inspection on `pieces.html` and on [`../map.html`](../map.html). Before its PR is ready, both are published again at their links, so the user sees the change while it waits to merge.
+A change to a piece changes `pieces.html` with it, and the change passes the inspection on `pieces.html` and on [`../map.html`](../map.html). Before its PR is ready, both are published again at the links the pliego's How it's drawn gives, so the user sees the change while it waits to merge.

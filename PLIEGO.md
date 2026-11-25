@@ -48,7 +48,7 @@ What the method's commands read about Ficha (`.claude/method/method.md`), approv
 - ✓ The widget and the README's pictures: a throwaway package each ("The widget's pictures", "The README's pictures").
 - ✓ A PR that changes what Lucas sees: each window or screen in English ("The PR's pictures"; ADR 0036).
 - ✓ A proposal, before any Swift: the web mock kit, whose mock decides the look and FichaCore the logic, and the Ficha Lab, in `mockups/` (its README).
-- ✓ An artifact: the method's page kit and its inspection (`.claude/method/kit/README.md`).
+- ✓ An artifact: the method's page kit and its inspection (`.claude/method/kit/README.md`). The kit's pieces are published as [Piezas tipo](https://claude.ai/artifact/XBpjqRitWfAVa5Xrx4tXb1), and the method's map as [Mapa del método](https://claude.ai/artifact/N2frymfBZC9onSxQGXJfNq).
 - ✓ An artifact's sources: the Claude project's shared folder, `/mnt/project-files/` in its sessions, a folder per artifact, such as `preparar/`.
 
 ## Hands-free

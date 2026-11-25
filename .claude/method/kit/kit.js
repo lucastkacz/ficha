@@ -65,6 +65,9 @@
     });
     (top || d.body).appendChild(tabs);
     d.body.classList.add('k-tabbed');
+    // On a phone the bar is fixed at the bottom; the views leave room for it, as tall as its names make it.
+    const bar = () => { if (getComputedStyle(tabs).position === 'fixed') d.documentElement.style.setProperty('--bar', tabs.offsetHeight + 'px'); };
+    if ('ResizeObserver' in window) new ResizeObserver(bar).observe(tabs); else bar();
   }
 
   /* ---------- Decks: cards you swipe ---------- */
@@ -397,16 +400,23 @@
       return `<button data-i="${i}"><span class="k-qn">${i + 1}</span><b>${esc(label)}</b><span class="k-tag${S.ans[q.dataset.q] ? ' mine' : ''}">${S.ans[q.dataset.q] ? T.yours : T.rec}</span></button>`;
     }).join('');
     apList.hidden = !qs.length;
-    const ap = S.approval;
-    apBtn.disabled = !!(ap && ap.approved) || readOnly;
-    apBtn.textContent = ap && ap.approved ? T.approved : T.approve;
-    apState.textContent = ap && ap.approved
-      ? T.approvedAt(new Date(ap.at).toLocaleString(T.locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }))
+    // Approved shows only once the database holds it; until then the button says it's saving.
+    const ap = S.approval, done = !!(ap && ap.approved), sending = done && !!(touched.aprobacion && touched.aprobacion.has('approved'));
+    apBtn.disabled = done || readOnly;
+    apBtn.textContent = sending ? T.saving : done ? T.approved : T.approve;
+    apState.textContent = done && !sending
+      ? T.approvedAt(new Date(ap.at).toLocaleString(T.locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }))
       : readOnly ? T.noSave : T.withChoices;
     if (d.activeElement !== apNote) apNote.value = S.apNote || '';
   }
 
-  const writing = {}, again = {}, timers = {};
+  const writing = {}, again = {}, timers = {}, tries = {}, failed = new Set();
+  // The status says saved, or up to date, only when nothing the user did is waiting or failed.
+  function settle(okText) {
+    if (failed.size) status(T.notSaved, 'err');
+    else if (Object.keys(touched).length) status(T.saving);
+    else status(okText, okText === T.ready ? '' : 'ok');
+  }
   function docFor(id) {
     if (id === 'aprobacion') return { approved: !!(S.approval && S.approval.approved), at: (S.approval && S.approval.at) || new Date().toISOString(), note: S.apNote || '' };
     if (qs.some((q) => q.dataset.q === id)) return { choice: S.ans[id] || null, note: S.notes[id] || '', at: new Date().toISOString() };
@@ -422,14 +432,23 @@
     try {
       await col.doc(id).set(docFor(id));
       if (ver[id] === v) delete touched[id];
-      status(T.saved, 'ok');
+      failed.delete(id); tries[id] = 0;
     } catch (e) {
       const code = e && e.code;
       writing[id] = false;
       if (code === 'not_granted' || code === 'revoked' || code === 'capability_disabled' || code === 'capability_removed') { goReadOnly(T.readOnly, 'err'); return; }
-      status(T.notSaved, 'err');
+      failed.add(id);
+      const t = touched[id];
+      if (id === 'aprobacion' && t && t.has('approved')) {
+        // An approval that didn't reach the database is taken back, so the user can press it again.
+        S.approval = null; t.delete('approved'); if (!t.size) delete touched[id];
+      } else if ((tries[id] = (tries[id] || 0) + 1) <= 3) {
+        // The rest tries again by itself, a little later each time.
+        clearTimeout(timers[id]); timers[id] = setTimeout(() => { timers[id] = null; saveDoc(id); }, 2000 * tries[id]);
+      }
     }
     writing[id] = false;
+    paintApprove(); settle(T.saved);
     if (again[id]) { again[id] = false; saveDoc(id); }
   }
   function later(id) { clearTimeout(timers[id]); timers[id] = setTimeout(() => { timers[id] = null; saveDoc(id); }, 800); }
@@ -467,7 +486,7 @@
         if (q && !t.has('choice')) { if (optOf(q, v.choice)) S.ans[doc.id] = v.choice; else delete S.ans[doc.id]; }
         if (!t.has('note')) S.notes[doc.id] = typeof v.note === 'string' ? v.note : '';
       });
-      status(snap.empty ? T.ready : T.upToDate, snap.empty ? '' : 'ok');
+      settle(snap.empty ? T.ready : T.upToDate);
       if (!synced) { synced = true; const ids = [...queued]; queued.clear(); ids.forEach(saveDoc); }
       paintAll();
     }, () => { clearTimeout(slow); goReadOnly(T.noSave, 'err'); });

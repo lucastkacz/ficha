@@ -92,7 +92,7 @@ How fast?'s range holds in the Lab's made-up life: Ficha's four decks, 56 cards,
 
 ## A debate's mock
 
-A `/debate` or a `/decision` that shows a screen builds its mock with this kit, as `.claude/method/artifacts.md` asks of its artifacts:
+A `/debate` or a `/decision` that shows a screen builds its mock with this kit, as an artifact of its own that a preview on its page links, as `.claude/method/artifacts.md` says:
 
 1. Start from `desktop/index.html` and keep its head: the title, the pinned scripts and the kit's links.
 2. Build the new screen in the page. Once a second mock needs a piece, it moves into `kit/ui.js`, through a PR.

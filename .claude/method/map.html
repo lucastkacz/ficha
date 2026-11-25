@@ -132,8 +132,8 @@
           <rect class="box" x="174" y="14" width="116" height="92" rx="8"/>
           <text class="h" x="186" y="40">Un issue</text>
           <rect class="bar" x="186" y="52" width="90" height="4"/><rect class="bar" x="186" y="62" width="70" height="4"/>
-          <rect class="blue" x="186" y="78" width="88" height="18" rx="9"/>
-          <text class="m c blue" x="230" y="91">Mac › Review</text>
+          <rect class="blue" x="178" y="78" width="104" height="18" rx="9"/>
+          <text class="m c blue" x="230" y="91">App › UI</text>
         </svg>
       </figure>
       <p>Un bug que frena todo pasa primero.</p>
@@ -249,11 +249,11 @@
       <p class="k-kick">Dónde va cada cosa</p>
       <h2>Áreas y nodos</h2>
       <ul class="k-tree">
-        <li style="--c:var(--blue)"><b>Mac</b>
-          <ul><li><b>Review</b></li><li><b>Cards</b><ul><li><b>Import</b></li></ul></li></ul>
+        <li style="--c:var(--blue)"><b>App</b>
+          <ul><li><b>UI</b><ul><li><b>Ajustes</b></li></ul></li><li><b>Sync</b></li></ul>
         </li>
-        <li style="--c:var(--pink)"><b>Environment</b>
-          <ul><li><b>Method</b></li></ul>
+        <li style="--c:var(--pink)"><b>Entorno</b>
+          <ul><li><b>Método</b></li></ul>
         </li>
       </ul>
       <p>Cada issue vive en un área. Un nodo es cualquier punto del árbol, y <code class="k-cmd">/construir</code> construye uno.</p>
@@ -314,13 +314,13 @@
   <dt data-term="pliego">Pliego</dt>
   <dd>El archivo que leen los comandos: qué es el proyecto, sus áreas, cómo se dibuja, maneja y prueba, dónde corre cada cosa, qué espera tu OK, su plano y sus palabras.</dd>
   <dt data-term="nodo">Nodo</dt>
-  <dd>Un punto del árbol de áreas, de cualquier tamaño: una hoja, como Mac › Review, o Mac entero.</dd>
+  <dd>Un punto del árbol de áreas, de cualquier tamaño: una hoja, como App › UI › Ajustes, o App entero.</dd>
   <dt data-term="orden">Orden de cambio</dt>
   <dd>Cuando el plano tiene que cambiar mientras se construye: el plano antes y después, y los issues que toca, para que lo apruebes.</dd>
   <dt data-term="obra">Conforme a obra</dt>
   <dd>Después del merge, la decisión, sus issues, el pliego y el plano cuentan lo que se construyó.</dd>
   <dt data-term="torcio">Se torció</dt>
-  <dd>Un check que falló más de una vez, un replanteo o una orden de cambio que frenó el trabajo, o vos corrigiendo el trabajo.</dd>
+  <dd>Un check que falló más de una vez, un replanteo o una orden de cambio que frenó el trabajo, vos corrigiendo el trabajo, un procedimiento que no pudo correr en su máquina, o un nodo que tardó mucho más que su tamaño.</dd>
   <dt data-term="prueba">Prueba</dt>
   <dd>Una tarea que resuelve algo abierto probándolo en la máquina que importa, antes de escribir el issue que depende de eso.</dd>
 </dl>

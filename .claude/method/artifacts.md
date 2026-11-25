@@ -8,7 +8,7 @@ What `/preparar`, `/debate`, `/decision`, `/recorrida` and a change order show t
 - **Shown, not told.** What doesn't fit in a line is drawn: a before and after, a diagram with its labels inside, a mock of the screen, a count.
 - **A movie only for a process**: steps that happen in an order, 4 to 8, each with its caption.
 - **Linked.** A word of the method or the glossary shows its meaning on a tap; an issue, its title, linked, and what it does. Each claim of fact links its source.
-- **Light.** A simulator or a voice only when the topic needs it.
+- **Light.** A simulator or a voice only when the topic needs it. A screen mock or a simulator is an artifact of its own, made as the pliego's How it's drawn says, which a preview links; the inspection measures the kit's pages.
 
 ## Each page's pieces
 
