@@ -12,6 +12,8 @@ Six commands take an idea, or a bug, from the user's words to the code and back 
 | `/entregar` | Everything as built, and a retro only if something went sideways |
 | `/recorrida` | Where the work stands, outside the flow above: what was done since the user last looked and why, and the next command, on one page |
 
+The user sees the seven at a glance in the method's map, [`map.html`](map.html), published where the pliego's How it's drawn says. A change to a command or a word changes the map in the same PR, which publishes it again there before it's ready.
+
 The project's own facts (its areas, commands, pictures, tests, machines, guards and plano) come from its pliego, never from these files: the same method serves a Swift app or a Python service, each with its pliego.
 
 ## Words
@@ -34,7 +36,7 @@ The user's words, from building works, kept in Spanish where the user sees them.
 ## What the user sees
 
 - Each step leaves something the user sees: an issue, an artifact, a branch and its PR.
-- An issue is never shown by its number alone: show its title, linked, and in an artifact, what it does on hover.
+- An issue is never shown by its number alone: show its title, linked, and in an artifact, what it does on a tap or under the mouse.
 - A message is a line or two, one topic, leading with the recommendation. What the user decides goes in an artifact ([`artifacts.md`](artifacts.md)), and the message points at it.
 - What the user reads is in their language, as the project's `CLAUDE.md` says: messages, artifacts, an issue's body above its folded part, and these commands' descriptions. What agents read is in English: the skills, an issue's folded part, code, commits and decision records. A PR is in the repo's language.
 

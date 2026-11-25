@@ -13,7 +13,7 @@ The user typed `/entregar` once a node's PR merged, or with the PR to deliver. L
 The PR is the one the user names, or this session's last merged one. Read it with its commits, its issues and every comment.
 
 - **Each issue it closed**: where what was built differs from what the issue asked, such as a criterion dropped or a choice made while building, a comment on the issue says what and why. What's left undone becomes an issue in its area, written as [`../../method/method.md`](../../method/method.md) says.
-- **The decision**: its artifact marks each piece built, linked to the PR.
+- **The decision**: its artifact marks each piece built, linked to the PR, published again as [`../../method/artifacts.md`](../../method/artifacts.md) says.
 - **The pliego and the plano**: they match the code as merged. What still differs goes in a PR of its own, through the three checks.
 
 Done when every issue the PR closed, and its decision, tell what was built.
