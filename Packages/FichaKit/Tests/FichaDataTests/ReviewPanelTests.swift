@@ -160,6 +160,50 @@ struct ReviewPanelTests {
         #expect(panel.mayHaveKeyboard)
     }
 
+    // What a review stores stays Anki's four ratings (ADR 0033).
+    @Test(
+        "Forgot, Got it and keys 2 and 4 record again, good, hard and easy through the panel, as before",
+        .bug(id: 489))
+    func theButtonsAndKeysRecordAnkisRatings() throws {
+        let cards = try ["serendipia", "ubuntu", "hygge", "resiliencia"].map { try approveCard($0, in: engine) }
+        var panel = try engine.openPanel(.reviewNow, with: cards.map { .new($0) }, settings: settings)
+
+        for rating in [AnswerButton.forgot.rating, .hard, AnswerButton.gotIt.rating, .easy] {
+            panel.flip()
+            panel.rate(rating)
+        }
+
+        #expect(panel.failure == nil)
+        #expect(
+            try engine.reviewLog().map(\.kind) == [.review(.again), .review(.hard), .review(.good), .review(.easy)])
+    }
+
+    @Test(
+        "the ⋯ menu offers to ask, flag and bury the card, as A, M and E do, and nothing while Lucas writes or once he's done",
+        .bug(id: 489))
+    func theMenuOffersTheCardsActions() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        var panel = try engine.openPanel(.reviewNow, with: [.new(serendipia)], settings: settings)
+
+        let onItsUpperSide = panel.cardActions
+        panel.flip()
+        let onBothSides = panel.cardActions
+        panel.startAsking()
+        let whileAsking = panel.cardActions
+        panel.cancelAsking()
+        panel.startFlagging()
+        let whileFlagging = panel.cardActions
+        panel.cancelFlagging()
+        panel.buryCard()
+
+        #expect(onItsUpperSide == [.ask, .flag, .bury])
+        #expect(onBothSides == [.ask, .flag, .bury])
+        #expect(whileAsking.isEmpty)
+        #expect(whileFlagging.isEmpty)
+        #expect(panel.content == .done)
+        #expect(panel.cardActions.isEmpty)
+    }
+
     // As Anki records the intervals its buttons showed, the review keeps the
     // ones the panel worked out as the card flipped, also when Lucas answers
     // after the time since the card's last review went past half a day more,

@@ -248,6 +248,12 @@ public struct ReviewPanelState: Sendable {
         return shownIntervals?.preview
     }
 
+    /// What the panel's ⋯ menu offers to do with the card Lucas is on (#489):
+    /// a stub, which its tests fail until the panel has it.
+    public var cardActions: [CardAction] {
+        []
+    }
+
     /// Whether "See more" has cards to bring, now that Lucas went through
     /// every card, or review now brought none.
     public var canSeeMore: Bool {
