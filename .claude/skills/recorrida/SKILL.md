@@ -10,7 +10,7 @@ The user typed `/recorrida`, alone or with a date, to pick the project up again:
 
 ## 1. Since when
 
-The date the user gave; else the date the last recorrida's page shows, found by the link step 5 keeps; else seven days ago.
+The date the user gave; else the date the last recorrida ran, from the file step 5 keeps; else seven days ago.
 
 Done when you have the date.
 
@@ -20,9 +20,10 @@ Since that date, with each time in the user's time zone:
 
 - **Each PR merged**: what it built, its area, the issues it closed, and what went sideways, from its body.
 - **Why**: each issue's `El problema`, and the decision records the PR wrote or follows, with the decision's artifact.
-- **What it left**: what `/entregar` wrote on the PR and its issues, the issues opened since, such as a retro's Tasks, and those closed without a PR, with why.
+- **What it left**: what `/entregar` wrote on the PR and its issues, and the issues it opened, such as a retro's Tasks.
+- **Without a PR**: the issues opened since the date, and those closed without a PR, with why.
 
-Done when each PR has its what, its why and what it left, a line each in the user's language.
+Done when each PR has its what, its why and what it left, and each issue without a PR its line, all in the user's language.
 
 ## 3. Where it stands
 
@@ -38,17 +39,17 @@ Done when every open issue and PR sits in its node, each step of the order has i
 
 The next step is the first of these that holds, with its command and why:
 
-1. **What waits for the user** and holds other work back: a merge only they make, a round or an approval waiting for their answer, a change order, a check by hand.
-2. **What's half done**: a PR merged since the date that closed issues, with no comment from `/entregar` starting `Delivered:`, on it or, for one merged before `/entregar` left that comment, on its issues after the merge: `/entregar`. A round the user answered: `/debate`. A debate with nothing left to ask, or a probe merged since the date: `/decision`. A node's PR still open.
-3. **The next node** in the order of the work whose issues are ready: `/construir` with it.
-4. **What waits to be sorted or shaped**: `/idea` for the issues with no type, `/debate` for an Idea; `/preparar` when the pliego no longer matches the project.
+1. **What waits for the user** and holds other work back, with what they do: a merge only they make, with its command; a round or an approval waiting for their answer, with its artifact's link; a change order; a check by hand.
+2. **What's half done**: a PR merged since the date that closed issues and has no `Delivered:` comment from `/entregar`: `/entregar`. One merged before the repo's first such comment counts as delivered when its decision's artifact marks it built, or it has no decision. A round the user answered: `/debate`. A debate with nothing left to ask, an approval given with no decision record yet, or a probe merged whose waiting piece has no issues yet: `/decision`. A node's PR still open: the session that builds it, with what it waits on.
+3. **The next node**: a bug that blocks everything, alone; else the next node in the order of the work whose issues are ready: `/construir` with it.
+4. **What waits to be sorted or shaped**: `/idea` for the issues with no type; `/debate` for an Idea, or `/decision` for one small enough to need none; `/preparar` when the pliego no longer matches the project.
 
 Under it, the rest that waits, in the same order, and the nodes that can go in parallel.
 
-Done when the next step has its command and its why.
+Done when the next step has its command, or what the user does, and its why.
 
 ## 5. Show it
 
-The page, as [`../../method/artifacts.md`](../../method/artifacts.md) shows a recorrida, with the date it ran. Its sources go in a folder named `recorrida`, with a file that holds its link, so the next recorrida updates the same page and reads its date. Then a line to the user, linking the page: what changed since the date, and the next step with its command.
+The page, as [`../../method/artifacts.md`](../../method/artifacts.md) shows a recorrida, with the date it ran. Its sources go in a folder named `recorrida`, with a file that holds its link and the date it ran, so the next recorrida updates the same page and starts from that date. Then a line to the user, linking the page: what changed since the date, and the next step with its command.
 
-Done when the page passes the checks of [`../../method/artifacts.md`](../../method/artifacts.md), the file holds its link, and the user has the line.
+Done when the page passes the checks of [`../../method/artifacts.md`](../../method/artifacts.md), the file holds its link and its date, and the user has the line.
