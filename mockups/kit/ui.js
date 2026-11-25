@@ -51,6 +51,37 @@
     const h = Math.floor(min / 60);
     return `in ${h} h${min % 60 ? ` ${min % 60} min` : ''}`;
   }
+  const monthFmt = fmt({ month: 'long' });
+  const weekdayFmt = fmt({ weekday: 'long' });
+  /** A day's third of its month, as a finish date says it: "early December", "mid-December". */
+  function third(t) {
+    const day = new Date(t).getDate();
+    const part = day <= 10 ? 'early' : day <= 20 ? 'mid' : 'late';
+    return { part, month: monthFmt.format(t), say: (month) => (part === 'mid' ? `mid-${month}` : `${part} ${month}`) };
+  }
+  /**
+   * A finish date as a range (ADR 0034), between the day it comes if every
+   * day has appearances and the day if five days a week do. Within the week
+   * it names both ends, "Wednesday or Thursday", "Wednesday to Saturday", or
+   * one day when they meet; then "mid-December", "early to mid-December" or
+   * "late November to early December".
+   */
+  function formatFinish(soonest, latest, now) {
+    const daysTo = (t) => Math.round((E.startOfDay(t) - E.startOfDay(now)) / E.DAY);
+    const day = (t) => (daysTo(t) <= 0 ? 'today' : daysTo(t) === 1 ? 'tomorrow' : weekdayFmt.format(t));
+    const from = daysTo(soonest);
+    const to = daysTo(latest);
+    if (to < 7) return to <= from ? day(latest) : `${day(soonest)} ${to - from === 1 ? 'or' : 'to'} ${day(latest)}`;
+    const a = third(soonest);
+    const b = third(latest);
+    if (a.month === b.month) return a.part === b.part ? a.say(a.month) : `${a.part} to ${b.say(b.month)}`;
+    return `${a.say(a.month)} to ${b.say(b.month)}`;
+  }
+  /** "all met by mid-December", "all met today", "all met today or tomorrow". */
+  const metBy = (f, now) => {
+    const when = formatFinish(f.soonestAt, f.latestAt, now);
+    return /^today\b/.test(when) ? `all met ${when}` : `all met by ${when}`;
+  };
 
   // ---------------------------------------------------------------------
   // The store and the clock.
@@ -113,6 +144,10 @@
     bury: (s) =>
       svg(html`<path d="M1.8 8S4 3.6 8 3.6 14.2 8 14.2 8 12 12.4 8 12.4 1.8 8 1.8 8z" /><circle cx="8" cy="8" r="2" /><path d="m2.6 2.6 10.8 10.8" />`, s),
     close: (s) => svg(html`<path d="m4 4 8 8M12 4l-8 8" />`, s),
+    // ellipsis.circle: the review panel's ⋯ menu.
+    more: (s) =>
+      svg(html`<circle cx="8" cy="8" r="6.3" /><circle cx="5.2" cy="8" r=".8" fill="currentColor" stroke="none" />
+        <circle cx="8" cy="8" r=".8" fill="currentColor" stroke="none" /><circle cx="10.8" cy="8" r=".8" fill="currentColor" stroke="none" />`, s),
     wifi: (s) =>
       svg(html`<path d="M2 6.2a8.6 8.6 0 0 1 12 0M4.1 8.4a5.6 5.6 0 0 1 7.8 0M6.2 10.6a2.6 2.6 0 0 1 3.6 0" /><circle cx="8" cy="12.6" r=".6" fill="currentColor" stroke="none" />`, s),
     battery: () =>
@@ -375,7 +410,7 @@
   // ---------------------------------------------------------------------
   // MenuContent: Ficha's menu in the menu bar.
   // ---------------------------------------------------------------------
-  function MenuContent({ app, state, onCapture, onReviewNow, onAddDeck, dismiss, extraRows }) {
+  function MenuContent({ app, state, onCapture, onReviewNow, onCards, onSettings, dismiss }) {
     const due = app.dueCount();
     const run = (fn) => () => {
       dismiss();
@@ -383,12 +418,12 @@
     };
     return html`
       <${MenuRow} title="Capture…" shortcut="⌃⌥⌘C" onClick=${run(onCapture)} />
-      <${MenuRow} title=${`Review now (${due} due)`} onClick=${run(onReviewNow)} />
+      <${MenuRow} title=${due ? `Review now (${due} due)` : 'Review now'} onClick=${run(onReviewNow)} />
       <${MenuSeparator} />
       <${MenuNote}>${app.learnedCount()} cards learned · ${state.inbox} in the inbox</${MenuNote}>
-      ${extraRows}
+      <${MenuRow} title="Cards…" disabled=${!onCards} onClick=${run(onCards)} />
       <${MenuRow} title="Diagnostics" disabled=${true} />
-      <${MenuRow} title="Settings…" shortcut="⌘ ," disabled=${true} />
+      <${MenuRow} title="Settings…" shortcut="⌘ ," disabled=${!onSettings} onClick=${run(onSettings)} />
       <${MenuSeparator} />
       <${MenuRow} title="Quit" shortcut="⌘ Q" disabled=${true} />`;
   }
@@ -396,33 +431,82 @@
   // ---------------------------------------------------------------------
   // ReviewPanelView.
   // ---------------------------------------------------------------------
-  const RATINGS = {
-    four: [
+  /**
+   * The panel's two faces. The new one, ADR 0033's: the card alone, and once
+   * it's flipped two buttons, Forgot for Again and Got it for Good, named New
+   * to me and Knew it on a new card's first flip. Today's, ADR 0025's: the
+   * deck and tags, the icons, and Anki's four buttons with their intervals.
+   * Both store Anki's four ratings, and both take keys 1 to 4, and Space.
+   */
+  const FACES = {
+    new: [
+      { g: 1, name: 'Forgot', first: 'New to me', key: '1' },
+      { g: 3, name: 'Got it', first: 'Knew it', key: 'space', prominent: true },
+    ],
+    today: [
       { g: 1, name: 'Again', key: '1' },
       { g: 2, name: 'Hard', key: '2' },
       { g: 3, name: 'Good', key: '3' },
       { g: 4, name: 'Easy', key: '4' },
     ],
-    // A simpler face for the same stored ratings: Forgot is Again, Got it is Good.
-    two: [
-      { g: 1, name: 'Forgot', key: '1' },
-      { g: 3, name: 'Got it', key: '2' },
-    ],
   };
   const isTyping = (el) => el && (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT');
+
+  /**
+   * "You've met them all", when this panel met a deck's last new card: the
+   * next deck in the queue starts, or, with none left, one of Ficha's decks
+   * is offered (#491, provisional).
+   */
+  function MetThemAll({ app, state, onOfferDeck }) {
+    const ids = state.panel.metAll;
+    const next = app.currentDeck();
+    const offer = !next && state.decks.find((d) => d.ficha && !d.added);
+    return html`<div className="met-all">
+      ${ids.map((id) => {
+        const d = app.deck(id);
+        return html`<div key=${id} className="met-title">${d.emoji} You've met them all: ${d.name}</div>`;
+      })}
+      ${next
+        ? html`<div className="muted">Next in the queue: ${next.emoji} ${next.name}. Its first card comes with the next new one.</div>`
+        : offer
+          ? html`<div className="met-offer"><span className="muted">Nothing waits in the queue. Another of Ficha's decks?</span>
+              <${Button} title=${`${offer.emoji} ${offer.name}…`} onClick=${() => onOfferDeck && onOfferDeck(offer.id)} /></div>`
+          : html`<div className="muted">Nothing waits in the queue.</div>`}
+    </div>`;
+  }
+
+  /** The ⋯ menu in the panel's corner: what had icons, with their keys. Once the cards are done, only Undo and Close. */
+  function MoreMenu({ app, panel, onAsk, onFlag, onClose }) {
+    const item = (title, k, fn, disabled) => html`<button type="button" role="menuitem" className="row" disabled=${disabled}
+      onClick=${() => (onClose(), fn())}><span className="title">${title}</span><span className="shortcut">${k}</span></button>`;
+    return html`<div className="more-cover" onPointerDown=${onClose} />
+      <div className="menu more-menu glass" role="menu">
+        ${!panel.done && html`${item('Ask…', 'A', onAsk)}
+          ${item('Flag…', 'M', onFlag)}
+          ${item('Bury', 'E', () => app.bury())}
+          <div className="sep" />`}
+        ${item('Undo', '⌘Z', () => app.undo(), !panel.undo.length)}
+        ${item('Close', 'esc', () => app.close())}
+      </div>`;
+  }
 
   /**
    * The review panel, centered 40 points under the menu bar. ⌘+, ⌘− and ⌘0
    * change the card's size: its text grows, and the panel widens above 100%,
    * while its buttons keep their size. A card taller than two thirds of the
-   * screen's free height scrolls, its buttons staying in view.
+   * screen's free height scrolls, its buttons staying in view. `face` is
+   * 'new' or 'today', as FACES has them.
    */
-  function ReviewPanelView({ app, state, ratings = 'four', dock = true }) {
+  function ReviewPanelView({ app, state, face = 'new', dock = true, onOfferDeck }) {
     const { w, h, menuBar } = useScreen();
     const [panel, leaving] = usePresence(state.panel);
     const [text, setText] = useState('');
+    const [more, setMore] = useState(false);
+    // The keys read whether the ⋯ menu is open, so Esc closes it first.
+    const moreOpen = useRef(false);
+    moreOpen.current = more;
     const field = useRef(null);
-    const buttons = RATINGS[ratings] || RATINGS.four;
+    const buttons = FACES[face] || FACES.new;
 
     // The keys, as the real panel takes them while it has the keyboard.
     useEffect(() => {
@@ -447,28 +531,28 @@
           return handled(), app.setCardSize(e.key === '=' ? '+' : e.key);
         }
         if (e.metaKey || e.ctrlKey || e.altKey) return;
+        if (e.key === 'Escape' && moreOpen.current) return handled(), setMore(false);
         if (e.key === 'Escape') return handled(), p.mode ? app.setMode(null) : app.close();
         if (p.kind === 'empty' || p.done) {
           if (e.key === 'Enter') handled(), app.close();
           return;
         }
         if (e.key === ' ') return handled(), p.flipped ? app.rate(3) : app.flip();
-        if (p.flipped) {
-          const b = buttons.find((b) => b.key === e.key);
-          if (b) return handled(), app.rate(b.g);
-        }
+        // Keys 1 to 4 record Anki's four ratings in either face (ADR 0033).
+        if (p.flipped && ['1', '2', '3', '4'].includes(e.key)) return handled(), app.rate(Number(e.key));
         const k = e.key.toLowerCase();
-        if (k === 'a') return handled(), setText(''), app.setMode('ask');
-        if (k === 'm') return handled(), setText(''), app.setMode('flag');
-        if (k === 'e') return handled(), app.bury();
+        if (k === 'a') return handled(), setMore(false), setText(''), app.setMode('ask');
+        if (k === 'm') return handled(), setMore(false), setText(''), app.setMode('flag');
+        if (k === 'e') return handled(), setMore(false), app.bury();
       };
       window.addEventListener('keydown', onKey, true);
       return () => window.removeEventListener('keydown', onKey, true);
-    }, [!!state.panel, ratings]);
+    }, [!!state.panel]);
 
     useEffect(() => {
       if (panel && panel.mode && field.current) field.current.focus();
     }, [panel && panel.mode]);
+    useEffect(() => setMore(false), [panel && panel.index, !!panel]);
 
     if (!panel) return null;
     const width = Math.max(400, 4 * state.cardSize);
@@ -485,6 +569,10 @@
     const close = html`<${IconButton} icon=${Icon.close} label="Close (esc)" onClick=${() => app.close()} />`;
     const undo = html`<${IconButton} icon=${Icon.undo} label="Undo (⌘Z)" disabled=${!panel.undo.length}
       onClick=${() => app.undo()} />`;
+    const ask = () => (setText(''), app.setMode('ask'));
+    const flag = () => (setText(''), app.setMode('flag'));
+    const moreButton = html`<${IconButton} icon=${Icon.more} label="More" onClick=${() => setMore(!more)} />`;
+    const moreMenu = more && html`<${MoreMenu} app=${app} panel=${panel} onAsk=${ask} onFlag=${flag} onClose=${() => setMore(false)} />`;
 
     if (panel.kind === 'empty') {
       return html`<div className=${cls} style=${style} role="dialog" aria-label="Review">
@@ -494,66 +582,80 @@
     if (panel.done) {
       return html`<div className=${cls} style=${style} role="dialog" aria-label="Review">
         <div className="header"><div className="lead"><span className="done-title">You went through every card.</span></div>
-          <div className="icons">${undo}${close}</div></div>
+          <div className="icons">${face === 'new' ? moreButton : html`${undo}${close}`}</div></div>
+        ${panel.metAll && panel.metAll.length ? html`<${MetThemAll} app=${app} state=${state} onOfferDeck=${onOfferDeck} />` : null}
         <div className="flip-row"><${Button} prominent title="Done" k="↩" onClick=${() => app.close()} /></div>
-        ${toast}</div>`;
+        ${moreMenu}${toast}</div>`;
     }
 
     const card = app.card(panel.queue[panel.index]);
     const deck = app.deck(card.deckId);
     const isNew = card.state === 'new';
-    const previews = panel.flipped ? E.preview(card, state.now, app.scheduler) : null;
     const writing = panel.mode;
     const submit = () => {
       app.saveToInbox(writing);
       setText('');
     };
+    const icons = face === 'new'
+      ? moreButton
+      : html`${!writing && html`${undo}
+            <${IconButton} icon=${Icon.ask} label="Ask… (a)" onClick=${ask} />
+            <${IconButton} icon=${Icon.flag} label="Flag… (m)" onClick=${flag} />
+            <${IconButton} icon=${Icon.bury} label="Bury (e)" onClick=${() => app.bury()} />`}
+          ${close}`;
+    let controls;
+    if (writing) {
+      controls = html`<form className="writing controls" onSubmit=${(e) => (e.preventDefault(), text.trim() && submit())}>
+        <textarea ref=${field} id="panel-writing" className="field" rows="2" value=${text}
+          placeholder=${writing === 'ask' ? 'What do you want to know?' : 'What needs fixing?'}
+          onInput=${(e) => setText(e.target.value)}
+          onKeyDown=${(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), text.trim() && submit())} />
+        <div className="actions">
+          <${Button} title="Cancel" k="esc" onClick=${() => app.setMode(null)} />
+          <${Button} prominent title=${writing === 'ask' ? 'Ask' : 'Flag'} k="↩" disabled=${!text.trim()}
+            onClick=${submit} />
+        </div>
+      </form>`;
+    } else if (!panel.flipped) {
+      controls = html`<div className="flip-row"><${Button} prominent title="Flip" k="space" onClick=${() => app.flip()} /></div>`;
+    } else if (face === 'new') {
+      controls = html`<div className="controls two">
+        <div className="ratings" style=${{ '--count': 2 }}>
+          ${buttons.map((b) => html`<${Button} key=${b.g} wide prominent=${b.prominent} title=${isNew ? b.first : b.name} k=${b.key}
+            onClick=${() => app.rate(b.g)} />`)}
+        </div>
+        <div className="alt-keys">Also <span className="kbd">2</span> Hard and <span className="kbd">4</span> Easy, as in Anki</div>
+      </div>`;
+    } else {
+      const previews = E.preview(card, state.now, app.scheduler);
+      controls = html`<div className="ratings controls" style=${{ '--count': buttons.length }}>
+        ${buttons.map(
+          (b) => html`<div className="rating" key=${b.g}>
+            <span className="ivl">${E.formatInterval(previews[b.g].wait)}</span>
+            <${Button} wide title=${b.name} k=${b.key} onClick=${() => app.rate(b.g)} />
+          </div>`,
+        )}</div>`;
+    }
     return html`<div className=${cls} style=${style} role="dialog" aria-label="Review"
       onPointerDown=${() => app.touch()}>
       <div className="sides">
       <div className="header">
         <div className="lead">
-          <div className="topline">
+          ${face === 'today' && html`<div className="topline">
             <${Capsule}>${deck.emoji} ${deck.name}</${Capsule}>
             ${card.tags.map((t) => html`<${Capsule} key=${t}>${t}</${Capsule}>`)}
             ${isNew && html`<${Capsule} tint>New</${Capsule}>`}
-          </div>
+          </div>`}
           <div className="upper">${card.front}</div>
         </div>
-        <div className="icons">
-          ${!writing && html`${undo}
-            <${IconButton} icon=${Icon.ask} label="Ask… (a)" onClick=${() => (setText(''), app.setMode('ask'))} />
-            <${IconButton} icon=${Icon.flag} label="Flag… (m)" onClick=${() => (setText(''), app.setMode('flag'))} />
-            <${IconButton} icon=${Icon.bury} label="Bury (e)" onClick=${() => app.bury()} />`}
-          ${close}
-        </div>
+        <div className="icons">${icons}</div>
       </div>
       ${panel.flipped &&
       html`<div className="lower"><${Divider} /><div className="text">${card.back}</div>
         ${card.source && html`<div className="source">${card.source}</div>`}</div>`}
       </div>
-      ${writing
-        ? html`<form className="writing controls" onSubmit=${(e) => (e.preventDefault(), text.trim() && submit())}>
-            <textarea ref=${field} id="panel-writing" className="field" rows="2" value=${text}
-              placeholder=${writing === 'ask' ? 'What do you want to know?' : 'What needs fixing?'}
-              onInput=${(e) => setText(e.target.value)}
-              onKeyDown=${(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), text.trim() && submit())} />
-            <div className="actions">
-              <${Button} title="Cancel" k="esc" onClick=${() => app.setMode(null)} />
-              <${Button} prominent title=${writing === 'ask' ? 'Ask' : 'Flag'} k="↩" disabled=${!text.trim()}
-                onClick=${submit} />
-            </div>
-          </form>`
-        : panel.flipped
-          ? html`<div className="ratings controls" style=${{ '--count': buttons.length }}>
-              ${buttons.map(
-                (b) => html`<div className="rating" key=${b.g}>
-                  <span className="ivl">${E.formatInterval(previews[b.g].wait)}</span>
-                  <${Button} wide title=${b.name} k=${b.key} onClick=${() => app.rate(b.g)} />
-                </div>`,
-              )}</div>`
-          : html`<div className="flip-row"><${Button} prominent title="Flip" k="space" onClick=${() => app.flip()} /></div>`}
-      ${toast}
+      ${controls}
+      ${moreMenu}${toast}
     </div>`;
   }
 
@@ -778,6 +880,8 @@
     MockControls,
     HudGroup,
     HudChoice,
-    RATINGS,
+    FACES,
+    formatFinish,
+    metBy,
   };
 })(window);

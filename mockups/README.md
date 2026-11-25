@@ -9,14 +9,14 @@ No step of `make check` builds or reads this folder: the pages run in a browser,
 1. **A mock decides the look and the feel; FichaCore decides the logic.** The mock's engine is a toy. A rule that comes out of a mock (a number, an order, a condition) goes into the decision's issue as an acceptance criterion, and is built in Swift with its tests.
 2. **A mock is cheap and disposable.** Variants are a switch in the mock's bar, not a new build. Nothing in a mock is kept because it took work.
 3. **Emulate as much as the web allows; what it can't show stays native.** The mock imitates screen sizes, the notch, the Dock, full-screen apps, meetings and videos, and the card size. It can't show whether the review panel takes the keyboard from the app you're typing in (the focus mode), Spaces, how macOS really detects meetings, videos and full screen, or exact pixels. Those still need a prototype on the Mac, as `docs/prototypes/` did.
-4. **Names come from the app.** A screen is named as its SwiftUI view is or will be, and its words come from `GLOSSARY.md`. A mock's UI is in English, Ficha's base language (ADR 0009); its cards are in Spanish, as Lucas's are, and made up, never his.
+4. **Names come from the app.** A screen is named as its SwiftUI view is or will be, and its words come from `GLOSSARY.md`. A mock's UI is in English, Ficha's only language (ADR 0036). Its decks are made up, never Lucas's: those that stand for Ficha's decks are in English, as Ficha's are (ADR 0035), and one that stands for a deck of the user's own is in Spanish, as Lucas's cards are.
 
 ## The mocks
 
 | Mock | Artifact | What it explores |
 |---|---|---|
-| `desktop/` | [Ficha Desktop Mock](https://claude.ai/artifact/D9dTXwJWK5gNsFp36y2XrU) | The review panel over a working day on a fast clock; a meeting, a video or a full-screen app that holds an appearance back; the menu, Capture, the card size, two rating buttons as a variant, and a proposed Add a Deck window with "How fast?". On a Mac's real screen sizes, in the browser's full screen. |
-| `lab/` | [Ficha Lab](https://claude.ai/artifact/9frTfAJnYsNJukGgK8E1jd) | Not a screen: four weeks of Ficha in a made-up working life, A against B. What a setting costs (appearances and minutes a weekday, meetings it waits out) and what it gives (cards met and graduated, how often a review is remembered), day by day. |
+| `desktop/` | [Ficha Desktop Mock](https://claude.ai/artifact/D9dTXwJWK5gNsFp36y2XrU) | Ficha as ADRs 0033 to 0035 decided it: the review panel's card alone with Forgot and Got it (#489), and today's four buttons as a variant; the Welcome page with Ficha's decks (#467, #458); the Cards window's decks in their queue, and How fast? as a deck comes in (#491); Settings in five tabs, each row marked with the tab it was in (#492). As before: the panel over a working day on a fast clock, a meeting, a video or a full-screen app that holds an appearance back, the menu, Capture and the card size, on a Mac's real screen sizes. It starts at the first launch, or twelve days in. |
+| `lab/` | [Ficha Lab](https://claude.ai/artifact/9frTfAJnYsNJukGgK8E1jd) | Not a screen: four or twelve weeks of Ficha in a made-up working life, A against B, Ficha as decided against Ficha before the decision to start with. What a setting costs (appearances and minutes a weekday, meetings it waits out) and what it gives (cards met, each deck's day all met, graduated, how often a review is remembered), day by day. |
 
 ## How it's built
 
@@ -27,7 +27,7 @@ No build step: React 18.3.1 from cdnjs and htm 3.1.1 from jsDelivr, pinned, so c
 | `kit/tokens.css` | Colors, type and shapes, named as macOS names them, in light and dark. |
 | `kit/ui.css` | The look of macOS 26 controls, Liquid Glass, the review panel, and the mock's own bar. |
 | `kit/ui.js` | React components named after their SwiftUI counterparts, the fake Mac, and `MockControls`. |
-| `kit/engine.js` | The toy engine: FSRS-6, the learning steps, the appearance rules, the clock, and the pace estimate. Plain JavaScript, so it also runs in Node. |
+| `kit/engine.js` | The toy engine: FSRS-6, the learning steps, the appearance rules, the clock, and the pace, the queue and the finish date. Plain JavaScript, so it also runs in Node. |
 | `kit/decks.js` | Sample decks, made up. |
 | `kit/lab.js` | The Lab's simulator: weeks of the toy engine in a made-up life (the Mac's hours, meetings, snoozed appearances, ratings as FSRS predicts), run several times and averaged. Plain JavaScript; the Lab page and `tools/simulate.js` share it. |
 
@@ -45,18 +45,31 @@ No build step: React 18.3.1 from cdnjs and htm 3.1.1 from jsDelivr, pinned, so c
 | `KeyLabel`, `Capsule` | `KeyLabel`, `CardTopLine`'s capsules |
 | `Segmented` | `Picker` with `.pickerStyle(.segmented)` |
 | `MenuContent` | `App/MenuContent.swift` |
-| `ReviewPanelView` | `App/ReviewPanelView.swift`, placed as `ReviewPanelWindow` places it: centered, 40 points under the menu bar |
+| `ReviewPanelView` | `App/ReviewPanelView.swift`, placed as `ReviewPanelWindow` places it: centered, 40 points under the menu bar; its `face` 'new' is #489's, 'today' the app's now |
 | `CaptureView` | `App/CaptureView.swift` |
+| `WelcomePage`, in `desktop/` | `App/WelcomePage.swift`, with #467's steps |
+| `CardsWindow` and `HowFast`, in `desktop/` | `App/CardsWindow.swift`'s decks, and #491's How fast? |
+| `SettingsWindow`, in `desktop/` | `App/SettingsTabViewController.swift` and `App/SettingsTabViews.swift`, in #492's five tabs |
 
 ### What the toy engine copies
 
 - FSRS-6 with fsrs-rs's default parameters and desired retention (`FichaFSRS`), and the learning and relearning steps of `Scheduler.standard` (`Scheduler.swift`, `StepRules.swift`); Anki's order for a review's ratings (Hard ≤ Good < Easy).
 - `ReviewSettings.defaults`: the active hours, the separation, the cards an appearance, the look-ahead, the auto-close, and the wait after a meeting ends or the Mac wakes.
-- FichaCore's `AppearancePlanner.swift` and `ReviewNow.swift`: Ficha appears when a card is due now, and the look-ahead only brings along the cards due within it; each appearance brings one new card at most; a deck's new cards a day count by the calendar day.
+- FichaCore's `AppearancePlanner.swift` and `ReviewNow.swift`: Ficha appears when a card is due now, and the look-ahead only brings along the cards due within it; each appearance brings one new card at most; new cards a day count by the calendar day, as `ReviewNow`'s `metToday` does.
 - `tools/check-engine.js` runs cases copied from FichaFSRS's and FichaCore's tests (`FSRSTests`, `SchedulerIntervalsTests`, `SchedulerStepsTests`, in `Packages/FichaKit/Tests`) against the toy engine. Run it, from the repo's folder, after any change to `kit/engine.js`, and after a change to those tests or to the scheduling they test: `node mockups/tools/check-engine.js`.
 - The review panel's keys, as `App/ReviewPanelView.swift` handles them, and how an interval reads, as `App/IntervalText.swift` writes it (`formatInterval`).
 - The card size (`CardSize`): ⌘+, ⌘− and ⌘0, in `CardSize`'s steps. The card's text grows, the review panel widens with it and its buttons keep their size, as `CardSize` sets them; the review panel grows up to `ReviewPanelWindow.maximumShareOfScreen` of the screen's free height, and a taller card scrolls between its top line and its buttons.
 - The suppressions a mock can act out, as `AppearancePlanner.swift` names them: a meeting, a video, an app in full screen.
+
+### What it acts out ahead of FichaCore
+
+What ADRs 0033 and 0034 decided and their issues build, so a mock shows Ficha as it will be. `tools/check-engine.js` can't check these until FichaCore has them and its tests do; once it does, the cases move there.
+
+- The pace, one for all decks: `PACES` in `kit/engine.js`, Chill, Steady and Faster at 1, 2 and 4 new cards a day, Steady to start, in one count for all decks (#490).
+- The queue: new cards come from the first deck with cards not met, then from the next; a deck goes last, or first when asked; a deck set aside leaves it (`ToyFicha`'s `pickCards`, `addDeck`, `putFirst`, `setAside`). `newCardsFrom: 'together'` splits them between every deck in turn instead, ADR 0034's "one pace split between them", which the Lab's "Ficha before" uses too; the app itself takes new cards in the order they came in (`ReviewNow`).
+- The finish date, as a range: `finishDays` gives each deck's days, the soonest if every day has appearances and the latest if five days a week do, `ToyFicha`'s `finishDates` places them on the calendar, and `formatFinish` in `kit/ui.js` says it as "Wednesday or Thursday" or "mid-December" (#490, #491).
+- 85% desired retention on a new install: `NEW_INSTALL_RETENTION`; `SCHEDULER` keeps FichaCore's 90%, which `tools/check-engine.js`'s cases use.
+- The review panel's two buttons: `FACES` in `kit/ui.js`. Keys 1 to 4 record Anki's four ratings in either face (#489).
 
 ### Sizes
 
@@ -64,19 +77,19 @@ No build step: React 18.3.1 from cdnjs and htm 3.1.1 from jsDelivr, pinned, so c
 - **Full screen** gives the mock the whole display and hides the bar (the Mock tab brings it back). On Lucas's own Mac, full screen with "Fit the window" is the closest to the real thing.
 - Windows resize from their lower right corner; the green button takes Writer to full screen, which holds Ficha back as a full-screen app does.
 
-What it makes up: the learner who rates the cards in a fast-forward and in the pace estimate (they remember as FSRS predicts), and the seconds a card takes.
+What it makes up: the learner who rates the cards in a fast-forward and in the Lab (they remember as FSRS predicts), and the seconds a card takes.
 
 ## Deciding with numbers
 
 The mocks show how Ficha feels in a minute; the Lab and the terminal tool show what a setting does over weeks, so a decision about a number (how many cards, how far apart, how fast a deck) starts from a measure instead of a guess.
 
 - **The Lab** (`lab/`), for Lucas: the person (their cards, when the Mac is on, meetings) is shared; Ficha's settings are A and B. Its results average several runs over the same weeks from a Monday, as `DEFAULTS` in `kit/lab.js` sets them. The days have their own stream of chance, planned up front, so A and B meet the same days and meetings and differ only by the setting.
-- **`node mockups/tools/simulate.js`**, for Claude: the same simulator from the terminal, Ficha's defaults against a few changes, or `node mockups/tools/simulate.js scenarios.json` with `{ "name": { ...changes to kit/lab.js's DEFAULTS } }`.
+- **`node mockups/tools/simulate.js`**, for Claude: the same simulator from the terminal, Ficha as decided against Chill, Faster, every deck in turn and Ficha before, or `node mockups/tools/simulate.js scenarios.json` with `{ "name": { ...changes to kit/lab.js's DEFAULTS } }`.
 - **`node mockups/tools/check-engine.js`**: what makes the two worth trusting ("What the toy engine copies").
 
 A number from the Lab is a lead, not a fact: like a rule from a mock, it goes into the decision's issue and is checked by FichaCore's tests. The made-up life is in "How the Lab works" on the page and in `DEFAULTS` in `kit/lab.js`.
 
-Known gap: the desktop mock's "How fast?" estimate (`simulatePace` and `metBy` in `kit/engine.js`) meets each day's new cards all at once, while Ficha brings one new card an appearance. With small decks they agree; with a large deck and many new cards a day, "How fast?" says much sooner than the Lab; `node mockups/tools/simulate.js` shows by how much.
+How fast?'s range holds in the Lab's made-up life: Ficha's four decks, 56 cards, are all met on day 33 at Steady, against a promise of day 28 to 39, and on day 16 at Faster, against 14 to 20. The Lab's "All cards met" shows both for any setting but "Ficha before", which promised no date.
 
 ## A debate's mock
 

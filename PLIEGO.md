@@ -73,7 +73,7 @@ What stays by hand waits in the one open "Hand checks" issue, as "Hand checks" i
 
 Cloud first (`.claude/method/method.md`), as ADR 0031 decides for Ficha.
 
-- **The session in the cloud**: Linux, with no Swift or Xcode, so it builds, tests and draws none of Ficha: FichaKit imports Apple's frameworks, and FichaCore links fsrs-rs as an XCFramework. It has Node and Playwright's Chromium, which draw the web mocks (`mockups/`). It writes, reviews and pushes. Its network reaches GitHub, through the session's own tools, and npm's registry; it searches GitHub with `gh api`'s REST routes, such as `search/issues`, since GraphQL, and so `gh search`, is refused. It comes with Lucas's Claude plan.
+- **The session in the cloud**: Linux, with no Swift or Xcode, so it builds, tests and draws none of Ficha: FichaKit imports Apple's frameworks, and FichaCore links fsrs-rs as an XCFramework. It has Node and Playwright's Chromium, which draw the web mocks (`mockups/`). It writes, reviews and pushes. Its network reaches GitHub and npm's registry: it reads and writes GitHub through the session's own tools, and searches it with `gh api`'s REST routes, such as `search/issues`, since GraphQL, and so `gh issue`, `gh pr` and `gh search`, is refused. It comes with Lucas's Claude plan.
 - **GitHub's Macs**: CI's `macos-26` runners, standard ones with 3 cores, free on a public repo ([GitHub's billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions)). A full `make check` takes about 24 minutes, `make test` alone about 8.
 - **Lucas's Mac**: 10 cores, and his accounts, his signing and his screen. A cloud session runs work on it only through Remote Control, after his OK on its card, in the `ficha` folder, and it costs the Mac on and its cores while it runs. ✓ The `ficha` folder is in Remote Control: Lucas added it in the Claude app on 2026-11-23.
 
@@ -190,7 +190,7 @@ Rules that don't break:
 - ✓ The standards: `CODING_STANDARDS.md`.
 - ✓ A PR merges itself after the three checks, with auto-merge; a `risk:high` PR waits for Lucas (`CLAUDE.md`, Shipping).
 - ✓ After a merge: `/entregar`, then `make clean-merged` from the main folder ("Cleaning up after a merge").
-- ✓ A mechanical chore goes to a `clerk`; building to `builder`s; the reviews to `reviewer`s (`.claude/agents/`).
+- ✓ A mechanical chore goes to a `clerk`, or in a cloud session to a `general-purpose` agent (`CLAUDE.md`, Shipping); building to `builder`s; the reviews to `reviewer`s (`.claude/agents/`).
 - ✓ Where each kind of work runs, and on which machine: Where it runs (ADR 0031).
 
 ## Open
@@ -201,5 +201,5 @@ Rules that don't break:
 - ○ A change to `.github/workflows/` from a cloud session, pushed from Lucas's Mac while the session's token has no `workflow` scope: the `/debate` that takes it up; Where it runs.
 - ○ Which of the guards' other paths a cloud session can push to: the next `/preparar`; Where it runs.
 - ○ The hands-free gaps, for `/construir`: the checks an agent runs (#473), the Debug menu by command (#474) and the window as text (#139), which Lucas chose to build first; then the driver for dragging and right-clicks (#293) and taps on the iPhone (#136).
-- ○ The Idea issue type: Lucas creates it in his account's settings; then a `clerk` gives the open issues their types and areas, and takes off the old triage labels (ADR 0030).
+- ○ The Idea issue type: Lucas creates it in his account's settings; then, as a chore handed out as `CLAUDE.md`'s Shipping says, the open issues get their types and areas, and lose the old triage labels (ADR 0030).
 - ○ `.out-of-scope/`: whether it stays, moves into the issues or goes.

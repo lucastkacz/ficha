@@ -410,6 +410,25 @@
   font-size: var(--text-callout);
 }
 
+/* The panel's new face (ADR 0033): two buttons, the line for keys 2 and 4,
+   the ⋯ menu, and "You've met them all". */
+.panel .two { display: flex; flex-direction: column; gap: 8px; }
+.panel .alt-keys { text-align: center; font-size: var(--text-caption); color: var(--tertiary-label); }
+.panel .alt-keys .kbd {
+  display: inline-block;
+  min-width: 13px;
+  padding: 0 3px;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 0.5px var(--tertiary-label);
+  color: var(--secondary-label);
+  font-variant-numeric: tabular-nums;
+}
+.panel .more-cover { position: absolute; inset: -2000px; z-index: 1; }
+.panel .more-menu { top: 46px; right: 14px; min-width: 190px; z-index: 2; background: var(--window-bg); backdrop-filter: none; -webkit-backdrop-filter: none; }
+.panel .met-all { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border-radius: 14px; background: var(--fill); }
+.panel .met-title { font-weight: 600; }
+.panel .met-offer { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+
 /* A toast on the desktop, under the menu bar. */
 .desk-toast {
   position: absolute;
