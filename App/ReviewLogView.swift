@@ -439,8 +439,9 @@ extension Way {
 
 extension ReviewLogEntry.Kind {
     /// What the user answered, as the chart's key names it, and VoiceOver
-    /// each of the chart's points: the rating as the review panel's buttons
-    /// name it, or "Imported", for a placement an import gave the card.
+    /// each of the chart's points: the rating by Anki's name for it
+    /// (`Rating.name`), or "Imported", for a placement an import gave the
+    /// card.
     fileprivate var name: String {
         switch self {
         case .placement:
@@ -456,7 +457,7 @@ extension ReviewLogEntry.Kind {
     }
 
     /// What the user answered, as the review log's list names it: the rating
-    /// as the review panel's buttons name it, or, for a placement an import
+    /// by Anki's name for it (`Rating.name`), or, for a placement an import
     /// gave the card, when the import said it was due.
     fileprivate var entryName: String {
         switch self {

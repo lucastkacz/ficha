@@ -319,9 +319,10 @@ private func content(of card: PanelCard, in appearance: NotifiedAppearance) -> U
 
 /// The card notifications' category, with its buttons, which answer the card
 /// in the background, without unlocking the iPhone: they rate it, a new card
-/// as a due one, with Anki's four ratings, in their order, as the Mac's
-/// review panel offers them, each named as the panel names it and identified
-/// by its raw value. It asks iOS to tell the app when Lucas swipes one away.
+/// as a due one, with Anki's four ratings, in their order, each by Anki's
+/// name for it and identified by its raw value. It asks iOS to tell the app
+/// when Lucas swipes one away. ADR 0033 gives them the Mac's review panel's
+/// two buttons once the iPhone starts.
 private func categories() -> Set<UNNotificationCategory> {
     let review = UNNotificationCategory(
         identifier: Identifiers.review,
@@ -334,7 +335,7 @@ private func categories() -> Set<UNNotificationCategory> {
 }
 
 /// The title of a card notification's button that rates the card `rating`:
-/// Anki's name for it, as on the Mac's review panel.
+/// Anki's name for it, as the Mac's review log shows it.
 private func title(of rating: Rating) -> String {
     switch rating {
     case .again:

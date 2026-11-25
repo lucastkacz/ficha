@@ -6,8 +6,7 @@ import Foundation
 // (`SyncedDecks.swift`), and taken by a deck without its own from the
 // nearest deck it sits inside (`Deck.shownColor`, `Deck.shownEmoji`). The
 // Cards window's deck menu sets them, Default's too, and the sidebar, the bar
-// above the card list, the review panel and the menu bar's Prioritize
-// submenu show them.
+// above the card list and the menu bar's Prioritize submenu show them.
 
 extension Engine {
     /// Gives the deck `deck`, by its whole name, or Default by

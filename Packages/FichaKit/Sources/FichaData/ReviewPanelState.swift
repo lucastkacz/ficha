@@ -1,30 +1,29 @@
 import FichaCore
 import Foundation
 
-/// An appearance or a review now while the review panel shows it: the cards
-/// it brought, which Lucas goes through one at a time, what the panel shows of
-/// the card he's on, the card alone (ADR 0033), what its ⋯ menu offers to do
-/// with it, whether the panel may have the keyboard, and how it closes. Each card comes one of its ways, front first
-/// or back first, and his answers move only that way. He flips and rates a
-/// new way, in its first review, a due way, or one he reviews ahead. He plays
-/// a side's sound
-/// only when he asks, one at a time, until he answers the card, writes about
-/// it or leaves it, or the panel closes. He can also flag any card
-/// with a note on what to fix, or bury it, and ask questions about it, each a
-/// follow-up in the inbox, without leaving it. When his rating of again makes
-/// a card forgotten often, the panel offers to flag it, with a note that says
-/// how many times he forgot it, and back first when it was that way. Each is
-/// saved as he does it, and ⌘Z undoes it, the last first, while the panel is
-/// open, and shows the card again as he left it. Once he went through every
-/// card, the panel stays open and offers more cards, if there are any, until
-/// he closes it. The
-/// panel goes into the appearance log as it closes. It runs on the engine's
-/// time, which Ficha Dev's debug menu moves forward, and times Lucas on a
-/// steady clock, which it doesn't.
+/// An appearance or a review now while the review panel shows it: the cards it
+/// brought, which Lucas goes through one at a time, what the panel shows of the
+/// card he's on, the card alone (ADR 0033), what its ⋯ menu offers, whether the
+/// panel may have the keyboard, and how it closes. Each card comes one of its
+/// ways, front first or back first, and his answers move only that way. He
+/// flips and rates a new way, in its first review, a due way, or one he reviews
+/// ahead. He plays a side's sound only when he asks, one at a time, until he
+/// answers the card, writes about it or leaves it, or the panel closes. He can
+/// also flag any card with a note on what to fix, or bury it, and ask questions
+/// about it, each a follow-up in the inbox, without leaving it. When his rating
+/// of again makes a card forgotten often, the panel offers to flag it, with a
+/// note that says how many times he forgot it, and back first when it was that
+/// way. Each is saved as he does it, and ⌘Z undoes it, the last first, while
+/// the panel is open, and shows the card again as he left it. Once he went
+/// through every card, the panel stays open and offers more cards, if there are
+/// any, until he closes it. The panel goes into the appearance log as it
+/// closes. It runs on the engine's time, which Ficha Dev's debug menu moves
+/// forward, and times Lucas on a steady clock, which it doesn't.
 public struct ReviewPanelState: Sendable {
     /// Who closes the panel.
     public enum Closing: Sendable {
-        /// Lucas: with Esc or the close button, or by quitting Ficha.
+        /// Lucas: with Esc, the ⋯ menu's Close, or the close button of a
+        /// panel with no card, or by quitting Ficha.
         case byLucas
         /// The panel itself: left untouched for a while, or as the Mac or its
         /// screens go to sleep.
@@ -42,11 +41,11 @@ public struct ReviewPanelState: Sendable {
         case nothingToReview
         /// A way of a card, its upper side alone, for Lucas to remember the
         /// other: a due way, one he reviews ahead, or a new way, in its first
-        /// review, marked as new.
+        /// review, which `isNew` says.
         case upperSide(Card, Way = .frontFirst, isNew: Bool = false, isAhead: Bool = false)
         /// A way of a card, its upper side and its lower side, for Lucas to
-        /// rate it: a due way, one he reviews ahead, or a new way, marked as
-        /// new.
+        /// rate it: a due way, one he reviews ahead, or a new way, whose
+        /// buttons the panel names for a first review (`AnswerButton`).
         case bothSides(Card, Way = .frontFirst, isNew: Bool = false, isAhead: Bool = false)
         /// The card Lucas is on, as it showed, its lower side included or
         /// not, while he writes a note on what to fix in it, also when the
@@ -179,7 +178,7 @@ public struct ReviewPanelState: Sendable {
     /// upper side alone or with its lower side, or as it showed while he
     /// writes a note to flag it or a question about it, or that there was
     /// nothing to review, or that he went through every card. A new way
-    /// shows its upper side until he flips it, as a review does, marked as
+    /// shows its upper side until he flips it, as a review does, and says it's
     /// new.
     public var content: Content {
         guard !cards.isEmpty else {
@@ -209,6 +208,17 @@ public struct ReviewPanelState: Sendable {
     /// once he went through every card.
     public var cardActions: [CardAction] {
         isOnACard ? CardAction.allCases : []
+    }
+
+    /// Whether the ⋯ menu offers Undo after what it does with the card: while
+    /// a card shows and once Lucas went through every card, but not while he
+    /// writes about one, when it holds Close alone. Undo is dimmed while
+    /// there's nothing to undo (`canUndo`).
+    public var menuOffersUndo: Bool {
+        switch content {
+        case .upperSide, .bothSides, .done: true
+        case .nothingToReview, .flagging, .asking: false
+        }
     }
 
     /// Whether "See more" has cards to bring, now that Lucas went through

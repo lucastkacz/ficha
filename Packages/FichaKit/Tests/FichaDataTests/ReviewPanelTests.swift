@@ -180,24 +180,30 @@ struct ReviewPanelTests {
     }
 
     @Test(
-        "the ⋯ menu and A, M and E ask, flag and bury the card, and the menu offers nothing while Lucas writes or once he's done",
+        "the ⋯ menu and A, M and E ask, flag and bury the card, and the menu holds Close alone while Lucas writes",
         .bug(id: 489))
     func theMenuAndItsKeysAskFlagAndBury() throws {
         let serendipia = try approveCard("serendipia", in: engine)
         var panel = try engine.openPanel(.reviewNow, with: [.new(serendipia)], settings: settings)
 
+        var offersUndo: [Bool] = []
         let onItsUpperSide = panel.cardActions
+        offersUndo.append(panel.menuOffersUndo)
         panel.flip()
         let onBothSides = panel.cardActions
+        offersUndo.append(panel.menuOffersUndo)
         panel.choose(.ask)
         let asking = panel.content
         let whileAsking = panel.cardActions
+        offersUndo.append(panel.menuOffersUndo)
         panel.cancelAsking()
         panel.choose(.flag)
         let flagging = panel.content
         let whileFlagging = panel.cardActions
+        offersUndo.append(panel.menuOffersUndo)
         panel.cancelFlagging()
         panel.choose(.bury)
+        offersUndo.append(panel.menuOffersUndo)
 
         #expect(onItsUpperSide == [.ask, .flag, .bury])
         #expect(onBothSides == [.ask, .flag, .bury])
@@ -208,6 +214,8 @@ struct ReviewPanelTests {
         #expect(try engine.cards().map(\.buriedAt) == [time.now])
         #expect(panel.content == .done)
         #expect(panel.cardActions.isEmpty)
+        // Undo on both sides, not while writing, and once done.
+        #expect(offersUndo == [true, true, false, false, true])
     }
 
     // As Anki records the intervals its buttons showed, the review keeps the
@@ -216,7 +224,8 @@ struct ReviewPanelTests {
     // card's last review went past half a day more, which rounds FSRS's days
     // up.
     @Test(
-        "a review keeps the intervals the scheduler worked out as the card flipped, for a new card and a graduated one")
+        "a review keeps the intervals the scheduler worked out as the card flipped, for a new card and a graduated one",
+        .bug(id: 489))
     func theReviewKeepsTheIntervalsOfTheFlip() throws {
         let serendipia = try approveCard("serendipia", in: engine)
         let ubuntu = try approveCard("ubuntu", in: engine)
@@ -252,7 +261,8 @@ struct ReviewPanelTests {
     }
 
     // As when the Cards window deleted the card while the panel showed it.
-    @Test("a card deleted before it's flipped shows its lower side, and answering it says it was deleted")
+    @Test(
+        "a card deleted before it's flipped shows its lower side, and answering it says it was deleted", .bug(id: 489))
     func answeringADeletedCardSaysWhy() throws {
         let serendipia = try approveCard("serendipia", in: engine)
         var panel = try engine.openPanel(.reviewNow, with: [.new(serendipia)], settings: settings)

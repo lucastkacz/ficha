@@ -972,7 +972,15 @@
 
     },
     "Also %@ Hard and %@ Easy, as in Anki" : {
-      "comment" : "Under the review panel's two buttons, Forgot and Got it: keys 2 and 4 still rate the card Hard and Easy, Anki's names for its second and fourth buttons, which the panel doesn't show."
+      "comment" : "Under the review panel's two buttons, Forgot and Got it: keys 2 and 4 still rate the card Hard and Easy, Anki's names for its second and fourth buttons, which the panel doesn't show.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Also %1$@ Hard and %2$@ Easy, as in Anki"
+          }
+        }
+      }
     },
     "Also review it back first: its back, then its front once you flip it." : {
       "comment" : "In the Cards window, under a card's Both ways checkbox."

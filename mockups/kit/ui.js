@@ -632,7 +632,7 @@
           ${buttons.map((b) => html`<${Button} key=${b.g} wide prominent=${b.prominent} title=${isNew ? b.first : b.name} k=${b.key}
             onClick=${() => app.rate(b.g)} />`)}
         </div>
-        <div className="alt-keys">Also <span className="kbd">2</span> Hard and <span className="kbd">4</span> Easy, as in Anki</div>
+        <div className="alt-keys">Also 2 Hard and 4 Easy, as in Anki</div>
       </div>`;
     } else {
       const previews = E.preview(card, state.now, app.scheduler);

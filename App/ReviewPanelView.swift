@@ -79,7 +79,7 @@ struct ReviewPanelView: View {
     /// How large a card's text and images show.
     @Environment(\.cardSize) private var cardSize
     /// Whether the note's field has the keyboard. Whatever shows the note
-    /// sets it, in the same action, as the flag button does.
+    /// sets it, in the same action, as M and the ⋯ menu's Flag… do.
     @FocusState private var noteIsFocused: Bool
     /// Where the cursor is in the note, or what's selected: at the end of the
     /// note the panel offers, which the field would otherwise select whole as
@@ -88,13 +88,13 @@ struct ReviewPanelView: View {
     /// selection in the last note may lie past the end of the new one.
     @State private var noteSelection: TextSelection?
     /// Whether the question's field has the keyboard. Whatever shows the
-    /// question sets it, in the same action, as the ask button does.
+    /// question sets it, in the same action, as A and the ⋯ menu's Ask… do.
     @FocusState private var questionIsFocused: Bool
-    /// Where the cursor is in the question, or what's selected, which the ask
-    /// button clears as the note's is.
+    /// Where the cursor is in the question, or what's selected, which A and
+    /// Ask… clear as M and Flag… clear the note's.
     @State private var questionSelection: TextSelection?
     /// Whether the panel reads right to left, which says whether a card's
-    /// upper side can sit beside the buttons.
+    /// upper side can sit beside the ⋯ menu.
     @Environment(\.layoutDirection) private var layoutDirection
 
     var body: some View {
@@ -244,7 +244,7 @@ struct ReviewPanelView: View {
                     .fixedSize(horizontal: false, vertical: true)
                 }
             } buttons: {
-                moreMenu(of: panel, offersUndo: true)
+                moreMenu(of: panel)
             }
             .background {
                 menuKeys(of: panel)
@@ -257,7 +257,7 @@ struct ReviewPanelView: View {
                 Text("You went through every card.")
                     .font(.headline)
             } buttons: {
-                moreMenu(of: panel, offersUndo: true)
+                moreMenu(of: panel)
             }
             .background {
                 menuKeys(of: panel)
@@ -331,7 +331,7 @@ struct ReviewPanelView: View {
         @ViewBuilder topLine: () -> TopLine
     ) -> some View {
         let line = topLine()
-        let room = moreMenu(of: panel, offersUndo: buttons == .forTheCard).hidden()
+        let room = moreMenu(of: panel).hidden()
         let upper = upperSide(of: card, way, in: panel)
         let lower = lowerSide(of: card, way, in: panel)
         let bothSides = VStack(alignment: .leading, spacing: 16) {
@@ -384,7 +384,7 @@ struct ReviewPanelView: View {
         }
         .overlay(alignment: .topTrailing) {
             iconButtons {
-                moreMenu(of: panel, offersUndo: buttons == .forTheCard)
+                moreMenu(of: panel)
             }
         }
         .background {
@@ -410,25 +410,25 @@ struct ReviewPanelView: View {
         }
     }
 
-    /// What a card's ⋯ menu holds, and whether the panel takes its keys.
+    /// Whether the panel takes the keys of a card's ⋯ menu, as its state says
+    /// what the menu holds.
     private enum TopButtons {
-        /// What Lucas can do with the card, then Undo and Close, each on its
-        /// key.
+        /// A, M, E, ⌘Z and Esc, and R, while the card shows.
         case forTheCard
-        /// Close alone, without Esc, which goes back to the card while he
-        /// writes a note to flag it or a question about it.
+        /// None, while Lucas writes a note to flag the card or a question
+        /// about it, where Esc goes back to the card.
         case whileWriting
     }
 
     /// The ⋯ menu at the panel's top trailing corner, for whoever doesn't
     /// remember a key (ADR 0033): what Lucas can do with the card he's on
-    /// (`CardAction`), then Undo, when `offersUndo`, and Close. While he
-    /// writes about the card, it holds Close alone, and once he went through
-    /// every card, Undo and Close. Its items show no keys, which the panel
-    /// keeps on hidden buttons instead (`menuKeys(of:)`), so that each key
-    /// belongs to one control, which takes it whether the menu is open or
-    /// not.
-    private func moreMenu(of panel: ReviewPanelModel, offersUndo: Bool) -> some View {
+    /// (`CardAction`), then Undo and Close. While he writes about the card,
+    /// it holds Close alone, and once he went through every card, Undo and
+    /// Close (`ReviewPanelState.menuOffersUndo`). Its items show no keys,
+    /// which the panel keeps on hidden buttons instead (`menuKeys(of:)`), so
+    /// that each key belongs to one control, which takes it whether the menu
+    /// is open or not.
+    private func moreMenu(of panel: ReviewPanelModel) -> some View {
         Menu {
             ForEach(panel.state.cardActions, id: \.self) { action in
                 Button {
@@ -440,7 +440,7 @@ struct ReviewPanelView: View {
             if !panel.state.cardActions.isEmpty {
                 Divider()
             }
-            if offersUndo {
+            if panel.state.menuOffersUndo {
                 Button("Undo") {
                     panel.state.undoLastCard()
                 }
