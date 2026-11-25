@@ -22,11 +22,11 @@ Done when you can name each question whose answer changes what gets built, and t
 
 Up to five questions, those the others depend on first, written as [`../../method/artifacts.md`](../../method/artifacts.md) says: each in the user's terms, with 2 to 4 options shown, not described, the one you recommend and why, and a note. A visual choice gets a mock of each option; a choice about behavior, a short movie or a simulation's numbers.
 
-The debate is one artifact: a tab per round, the earlier ones with their answers, and the idea's issue linked from its home.
+The debate is one artifact: its home, with the idea's issue linked; a tab of rounds, a deck each, the earlier ones with their answers; and its close, once it comes.
 
 Tell the user in one line, with the link, and end the turn.
 
-Done when the round's tab passes the checks of [`../../method/artifacts.md`](../../method/artifacts.md), and the user has its link.
+Done when the page, with the round's deck, passes the checks of [`../../method/artifacts.md`](../../method/artifacts.md), and the user has its link.
 
 ## 3. Read the answers
 

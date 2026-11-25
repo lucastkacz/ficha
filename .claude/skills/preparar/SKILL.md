@@ -38,7 +38,7 @@ Done when every section is filled, and each item is decided, provisional or open
 
 ## 3. Show it
 
-An artifact, as [`../../method/artifacts.md`](../../method/artifacts.md) says: the home with the pliego's items by status, the plano as a diagram, hands-free as three columns (drives, sees, tests), where it runs as three lanes (the session, rented machines, the user's computer) with each kind of work in its lane and its cost, the areas as a tree with a color per top area, a question for each provisional item that changes how the agents work, with your recommendation, the open items, and Aprobar. The question on where it runs says the fact it rests on, in the user's terms, such as: the repo is public, so its CI's standard runners cost nothing, and the tests can run there while your computer stays free.
+An artifact, as [`../../method/artifacts.md`](../../method/artifacts.md) says, in five tabs of the kit's pieces: the home, with the pliego's items by status and the open ones, as items; the plano as a drawing, and the areas as a tree with a color per top area; how the agents work, with hands-free as three lanes (drives, sees, tests) and where it runs as three lanes (the session, rented machines, the user's computer), each kind of work in its lane with its cost; a question for each provisional item that changes how the agents work, with your recommendation; and Aprobar. The question on where it runs says the fact it rests on, in the user's terms, such as: the repo is public, so its CI's standard runners cost nothing, and the tests can run there while your computer stays free.
 
 Tell the user in one line, with the link, and end the turn.
 

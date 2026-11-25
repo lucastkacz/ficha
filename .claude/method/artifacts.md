@@ -1,29 +1,30 @@
 # The user's artifacts
 
-What `/preparar`, `/debate`, `/decision`, `/recorrida` and a change order show the user is an artifact: a web page they look at and touch, not text to read. Before writing one, load the `artifact-design` skill, and `artifact-capabilities` for its database. Publish it with the Artifact tool, and update the same artifact, by its URL, round after round. Keep its sources where the pliego says, so a later session can rebuild it.
+What `/preparar`, `/debate`, `/decision`, `/recorrida` and a change order show the user is an artifact: a web page they look at and touch, on their phone first, built from the page kit, [`kit/`](kit/README.md). Before writing one, load the `artifact-design` skill for the Artifact tool's rules; the kit holds the look and the database's code. Publish it with the Artifact tool, and update the same artifact, by its URL, round after round. Keep its sources where the pliego says, so a later session can rebuild it.
 
 ## The page
 
-- **One screen.** On a laptop the page doesn't scroll: a page of several parts has a bar of numbered tabs on top (Inicio, a tab per round or piece, then the action), and panels scroll inside. Below 900 px wide it becomes one scrolling column. It works on a phone, light and dark.
-- **Shown, not told.** Each idea is a picture with a line or two beside it: a before and after, a diagram with its labels inside, a mock of the screen. A process is a short movie: the diagram builds step by step, a caption under it says what each step does, and Anterior, Reproducir and Siguiente drive it. It respects `prefers-reduced-motion`.
-- **Linked.** A word of the method or the glossary is a button that shows its meaning on hover or tap. An issue shows its title and what it does, never its number alone. Each claim of fact links its source.
-- **Light.** Add a simulator, a voice or a theme switch only when the topic needs it.
+- **Cards you swipe.** The page never scrolls. At most five tabs, each a deck of cards, one idea per card, in at most 40 words outside its drawings.
+- **Shown, not told.** What doesn't fit in a line is a picture: a before and after, a diagram with its labels inside, a mock of the screen, a count.
+- **A movie for a process, and only there**: steps that happen in an order, such as how a change reaches the user, build up in a diagram, 3 to 8 of them, each with its caption.
+- **Linked.** A word of the method or the glossary shows its meaning on tap or hover; an issue, its title, linked, and what it does. Each claim of fact links its source.
+- **Light.** A simulator, a voice or a theme switch only when the topic needs it.
 
 ## Questions
 
-A debate's round is up to five questions, one card each: the question in a line, then 2 to 4 options. Each option previews on the right as the user points at it: its picture, its mock, or its number from a simulation. One option is recommended, with the reason in a line. A free note follows, for what no option says.
+A debate's round is up to five questions, a card each: the question in a line, then 2 to 4 options of a line each, each with its preview: its picture, its mock, or its number from a simulation. One option is recommended, with the reason in a line, and a free note follows, for what no option says.
 
 ## A decision
 
-A home with the change in a table (today, and with the decision), and what stays open. A tab per piece: its before and after, what gets built as items marked ✓ decided, ◐ provisional or ○ open, the why in a line, and the agent's part folded, in English. A last tab, Aprobar: one button, and a note per piece.
+A home with the change, today and with the decision, and what stays open. A deck per piece, in one tab: its before and after, what gets built as items marked ✓ decided, ◐ provisional or ○ open, the why in a line, and the agent's part folded, in English. A last tab, Aprobar: one button, and a note per piece.
 
 ## A change order
 
-One screen: the plano before and after, side by side, with what changes marked in both; why, in a line; and the node's issues it touches, each with what changes for it. Then Aprobar, with a note.
+One tab: the plano before and after, with what changes marked in both; why, in a line; the node's issues it touches, each with what changes for it; and Aprobar, with a note.
 
 ## A recorrida
 
-One screen with no tabs, made to be skimmed. On top, the answer: since when, what changed in two lines, and the next step with its command and why. Under it, three columns, one for each of the command's steps 2 to 4, each showing what its step found, in its order: what was done, a PR each, newest first; where it stands, with the order of the work as a line of steps and the one it's on marked, and the open issues counted by area; and what comes after the next step. It asks nothing, so it has no database.
+One tab, made to be skimmed, asking nothing, so with no database. First the answer: since when, what changed in two lines, and the next step with its command and why. Then a card for each of the command's steps 2 to 4, in its order: what was done, a PR each, newest first; where it stands, the order of the work as a line of steps with the one it's on marked, and the open issues counted by area; and what comes after the next step.
 
 ## What the user answers
 
@@ -31,4 +32,8 @@ Answers, notes and the approval are kept in the artifact's database (capabilitie
 
 ## Before sending it
 
-Render it at a laptop's width and a phone's, light and dark, and look: nothing cut, nothing overlapping, every tab and control working, with no errors in the console. Then a line to the user with the link, and end the turn.
+1. Run the inspection on the page ([`kit/README.md`](kit/README.md), The inspection), and fix what it lists until it passes.
+2. Look at its pictures: each card on a phone, and each tab in dark. A drawing that reads wrong fails too.
+3. Publish it with the kit beside it ([`kit/README.md`](kit/README.md), Publishing), tell the user in a line with the link, and end the turn.
+
+Done when the inspection passes, its pictures read right, and the user has the link.

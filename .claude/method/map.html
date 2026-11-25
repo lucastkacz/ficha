@@ -1,0 +1,328 @@
+<title>Mapa del método</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@500;600&family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="kit/kit.css">
+<!-- The method at a glance, for the user: its seven commands and its words (method.md). A change to the commands
+     or the words changes this page in the same PR, published again at the same link. -->
+
+<header class="k-top">
+  <p class="k-kick">Cómo se construye</p>
+  <h1>Mapa del método</h1>
+</header>
+
+<section class="k-view" id="pelicula" data-tab="Película" data-icon="play">
+  <div class="k-deck">
+    <article class="k-card">
+      <h2>Los siete comandos</h2>
+      <figure class="k-movie" data-ms="3800">
+        <svg viewBox="0 0 360 322" role="img" aria-label="De la idea al código y de vuelta: preparar, idea, debate, decisión, construir, entregar y recorrida">
+          <!-- every station, faint, so the first frame already shows the whole map -->
+          <rect class="ghost" x="10" y="8" width="340" height="40" rx="9"/>
+          <rect class="ghost" x="10" y="72" width="100" height="80" rx="10"/><text class="ghost-t c" x="60" y="117">/idea</text>
+          <rect class="ghost" x="130" y="72" width="100" height="80" rx="10"/><text class="ghost-t c" x="180" y="117">/debate</text>
+          <rect class="ghost" x="250" y="72" width="100" height="80" rx="10"/><text class="ghost-t c" x="300" y="117">/decision</text>
+          <rect class="ghost" x="250" y="190" width="100" height="80" rx="10"/><text class="ghost-t c" x="300" y="235">/construir</text>
+          <rect class="ghost" x="130" y="190" width="100" height="80" rx="10"/><text class="ghost-t c" x="180" y="235">El PR</text>
+          <rect class="ghost" x="10" y="190" width="100" height="80" rx="10"/><text class="ghost-t c" x="60" y="235">/entregar</text>
+          <rect class="ghost" x="10" y="284" width="340" height="32" rx="9"/>
+
+          <g data-in="1">
+            <rect class="box pink" x="10" y="8" width="340" height="40" rx="9" data-on="1"/>
+            <text class="h" x="22" y="33">/preparar</text>
+            <text class="s" x="96" y="32">el pliego: qué es, sus áreas, su plano</text>
+            <path class="ln" d="M60 50v20M180 50v20M300 50v20" style="stroke-dasharray:3 3"/>
+          </g>
+          <g data-in="2">
+            <rect class="box" x="10" y="72" width="100" height="80" rx="10" data-on="2"/>
+            <text class="h c" x="60" y="94">/idea</text>
+            <path class="paper" d="M24 102h54a6 6 0 0 1 6 6v10a6 6 0 0 1-6 6H40l-8 7v-7h-8a6 6 0 0 1-6-6v-10a6 6 0 0 1 6-6z"/>
+            <rect class="bar" x="28" y="109" width="40" height="3"/><rect class="bar" x="28" y="115" width="28" height="3"/>
+            <rect class="blue" x="40" y="132" width="62" height="14" rx="4"/>
+            <text class="m c blue" x="71" y="142">issue</text>
+          </g>
+          <g data-in="3">
+            <path class="arr flow" d="M112 112h14"/>
+            <rect class="box" x="130" y="72" width="100" height="80" rx="10" data-on="3"/>
+            <text class="h c" x="180" y="94">/debate</text>
+            <rect class="paper" x="161" y="101" width="38" height="46" rx="6"/>
+            <rect class="box" x="166" y="110" width="28" height="8" rx="2"/>
+            <rect class="blue" x="166" y="121" width="28" height="8" rx="2"/>
+            <rect class="box" x="166" y="132" width="28" height="8" rx="2"/>
+            <circle class="solid blue pulse" cx="190" cy="125" r="2.5"/>
+          </g>
+          <g data-in="4">
+            <path class="arr flow" d="M232 112h14"/>
+            <rect class="box" x="250" y="72" width="100" height="80" rx="10" data-on="4"/>
+            <text class="h c" x="300" y="94">/decision</text>
+            <rect class="solid green" x="268" y="104" width="64" height="20" rx="10"/>
+            <text class="s c on" x="300" y="118">Aprobar</text>
+            <rect class="pulse" x="268" y="104" width="64" height="20" rx="10" style="fill:none;stroke:var(--green);stroke-width:2"/>
+            <text class="s c" x="300" y="143">registro e issues</text>
+          </g>
+          <g data-in="5">
+            <path class="arr flow" d="M300 154v32"/>
+            <rect class="box" x="250" y="190" width="100" height="80" rx="10" data-on="5"/>
+            <text class="h c" x="300" y="212">/construir</text>
+            <text class="s c" x="300" y="229">tests primero</text>
+            <path class="ln" d="M268 254h46" />
+            <circle class="solid amber" cx="268" cy="254" r="4"/><circle class="solid amber" cx="291" cy="254" r="4"/><circle class="solid amber" cx="314" cy="254" r="4"/>
+            <path class="arr flow" d="M248 230h-14"/>
+            <rect class="box" x="130" y="190" width="100" height="80" rx="10" data-on="5"/>
+            <text class="h c" x="180" y="212">El PR</text>
+            <text class="s c" x="180" y="229">las Macs de GitHub</text>
+            <circle class="solid green" cx="180" cy="252" r="10"/>
+            <text class="c on" x="180" y="257">✓</text>
+          </g>
+          <g data-in="6">
+            <path class="arr flow" d="M128 230h-14"/>
+            <rect class="box" x="10" y="190" width="100" height="80" rx="10" data-on="6"/>
+            <text class="h c" x="60" y="212">/entregar</text>
+            <text class="s c" x="60" y="229">conforme a obra</text>
+            <rect class="pink" x="35" y="242" width="50" height="16" rx="4"/>
+            <text class="m c pink" x="60" y="254">retro</text>
+            <path class="arr" d="M60 188v-34" style="stroke-dasharray:4 4"/>
+          </g>
+          <g data-in="7">
+            <rect class="box blue" x="10" y="284" width="340" height="32" rx="9" data-on="7"/>
+            <text class="h" x="22" y="305">/recorrida</text>
+            <text class="s" x="102" y="304">qué se hizo, dónde está todo, qué sigue</text>
+            <path class="ln" d="M60 272v10M180 272v10M300 272v10" style="stroke-dasharray:3 3"/>
+          </g>
+        </svg>
+        <ol>
+          <li data-label="/preparar">Una vez por proyecto, /preparar escribe el pliego: qué es, sus áreas, su plano y dónde corre cada cosa.</li>
+          <li data-label="/idea">Traés una idea o un bug con tus palabras, y /idea lo deja como issue en su área.</li>
+          <li data-label="/debate">/debate te arma preguntas con opciones dibujadas y una recomendada. Contestás desde el celular.</li>
+          <li data-label="/decision">/decision junta las respuestas en piezas. Aprobás, y quedan su registro y sus issues.</li>
+          <li data-label="/construir">/construir arma un nodo, con los tests primero, y abre el PR. Las Macs de GitHub lo prueban.</li>
+          <li data-label="/entregar">Mergeado el PR, /entregar deja todo conforme a obra, y una retro si algo se torció.</li>
+          <li data-label="/recorrida">Cuando volvés, /recorrida te dice qué se hizo, dónde está todo y qué comando sigue.</li>
+        </ol>
+      </figure>
+    </article>
+  </div>
+</section>
+
+<section class="k-view" id="comandos" data-tab="Comandos" data-icon="list">
+  <div class="k-deck">
+    <article class="k-card">
+      <p class="k-kick">1 · Una vez, al empezar</p>
+      <h2><code class="k-cmd">/preparar</code></h2>
+      <p class="k-lead">Lee el proyecto y escribe su <span class="k-term" data-term="pliego">pliego</span>: qué es, sus áreas, cómo se prueba y dónde corre cada cosa.</p>
+      <figure class="k-fig">
+        <svg viewBox="0 0 300 120" aria-hidden="true">
+          <rect class="box" x="60" y="6" width="180" height="108" rx="8"/>
+          <circle class="solid green" cx="80" cy="28" r="7"/><text class="s on c" x="80" y="32">✓</text><rect class="bar" x="94" y="26" width="110" height="4"/>
+          <circle class="solid green" cx="80" cy="52" r="7"/><text class="s on c" x="80" y="56">✓</text><rect class="bar" x="94" y="50" width="90" height="4"/>
+          <circle class="solid amber" cx="80" cy="76" r="7"/><text class="s on c" x="80" y="80">◐</text><rect class="bar" x="94" y="74" width="120" height="4"/>
+          <circle class="box" cx="80" cy="100" r="7"/><rect class="bar" x="94" y="98" width="70" height="4"/>
+        </svg>
+      </figure>
+      <p>Te deja una página para aprobar.</p>
+    </article>
+    <article class="k-card">
+      <p class="k-kick">2 · Cuando se te ocurre algo</p>
+      <h2><code class="k-cmd">/idea</code></h2>
+      <p class="k-lead">Toma tus palabras, una idea o un bug, y lo deja como issue en su área.</p>
+      <figure class="k-fig">
+        <svg viewBox="0 0 300 120" aria-hidden="true">
+          <path class="paper" d="M20 20h100a10 10 0 0 1 10 10v30a10 10 0 0 1-10 10H54l-14 12V70H20a10 10 0 0 1-10-10V30a10 10 0 0 1 10-10z"/>
+          <rect class="bar" x="24" y="34" width="84" height="4"/><rect class="bar" x="24" y="46" width="60" height="4"/>
+          <path class="arr flow" d="M140 50h28"/>
+          <rect class="box" x="174" y="14" width="116" height="92" rx="8"/>
+          <text class="h" x="186" y="40">Un issue</text>
+          <rect class="bar" x="186" y="52" width="90" height="4"/><rect class="bar" x="186" y="62" width="70" height="4"/>
+          <rect class="blue" x="186" y="78" width="88" height="18" rx="9"/>
+          <text class="m c blue" x="230" y="91">Mac › Review</text>
+        </svg>
+      </figure>
+      <p>Un bug que frena todo pasa primero.</p>
+    </article>
+    <article class="k-card">
+      <p class="k-kick">3 · Cuando una idea tiene preguntas</p>
+      <h2><code class="k-cmd">/debate</code></h2>
+      <p class="k-lead">Te arma preguntas con opciones dibujadas y una recomendada. Contestás, y sigue la próxima ronda.</p>
+      <figure class="k-fig">
+        <svg viewBox="0 0 300 120" aria-hidden="true">
+          <rect class="box" x="112" y="4" width="76" height="112" rx="12"/>
+          <rect class="paper" x="120" y="16" width="60" height="30" rx="4"/>
+          <rect class="box" x="120" y="54" width="60" height="14" rx="4"/>
+          <rect class="blue" x="120" y="72" width="60" height="14" rx="4"/>
+          <rect class="box" x="120" y="90" width="60" height="14" rx="4"/>
+          <text class="s green" x="196" y="83">recomendada</text>
+          <path class="ln" d="M194 79h-8"/>
+        </svg>
+      </figure>
+      <p>Hasta que cada pregunta tenga respuesta.</p>
+    </article>
+    <article class="k-card">
+      <p class="k-kick">4 · Cuando el debate está resuelto</p>
+      <h2><code class="k-cmd">/decision</code></h2>
+      <p class="k-lead">Junta las respuestas en piezas, cada una con su antes y después. Aprobás, y escribe su registro y sus issues.</p>
+      <figure class="k-fig">
+        <svg viewBox="0 0 300 120" aria-hidden="true">
+          <rect class="red" x="20" y="16" width="70" height="40" rx="6"/><text class="s c" x="55" y="40">antes</text>
+          <path class="arr" d="M94 36h20"/>
+          <rect class="green" x="118" y="16" width="70" height="40" rx="6"/><text class="s c" x="153" y="40">después</text>
+          <rect class="solid green" x="210" y="20" width="76" height="32" rx="16"/><text class="c on" x="248" y="41">Aprobar</text>
+          <rect class="blue" x="40" y="74" width="60" height="30" rx="5"/><text class="m c blue" x="70" y="93">registro</text>
+          <rect class="amber" x="120" y="74" width="50" height="30" rx="5"/><text class="m c amber" x="145" y="93">issue</text>
+          <rect class="amber" x="180" y="74" width="50" height="30" rx="5"/><text class="m c amber" x="205" y="93">issue</text>
+        </svg>
+      </figure>
+    </article>
+    <article class="k-card">
+      <p class="k-kick">5 · Cuando un nodo tiene issues listos</p>
+      <h2><code class="k-cmd">/construir</code></h2>
+      <p class="k-lead">Arma la rama de un <span class="k-term" data-term="nodo">nodo</span>, escribe primero los tests y abre el PR. Las Macs de GitHub lo prueban.</p>
+      <figure class="k-fig">
+        <svg viewBox="0 0 300 120" aria-hidden="true">
+          <path class="ln" d="M20 60h200"/>
+          <circle class="solid amber" cx="40" cy="60" r="7"/><circle class="solid amber" cx="90" cy="60" r="7"/><circle class="solid amber" cx="140" cy="60" r="7"/>
+          <text class="s c" x="40" y="88">tests</text><text class="s c" x="90" y="88">código</text><text class="s c" x="140" y="88">revisión</text>
+          <path class="arr flow" d="M150 60h52"/>
+          <rect class="box" x="206" y="40" width="80" height="40" rx="8"/><text class="h c" x="236" y="65">PR</text>
+          <circle class="solid green" cx="268" cy="60" r="9"/><text class="s c on" x="268" y="64">✓</text>
+        </svg>
+      </figure>
+      <p>Si el plano cambia, para y te muestra una <span class="k-term" data-term="orden">orden de cambio</span>.</p>
+    </article>
+    <article class="k-card">
+      <p class="k-kick">6 · Cuando el PR se mergeó</p>
+      <h2><code class="k-cmd">/entregar</code></h2>
+      <p class="k-lead">Deja la decisión, los issues, el pliego y el plano <span class="k-term" data-term="obra">conforme a obra</span>, y una retro si algo <span class="k-term" data-term="torcio">se torció</span>.</p>
+      <figure class="k-fig">
+        <svg viewBox="0 0 300 120" aria-hidden="true">
+          <rect class="box" x="30" y="14" width="100" height="92" rx="8"/><text class="s c" x="80" y="34">lo planeado</text>
+          <rect class="bar" x="44" y="48" width="72" height="4"/><rect class="bar" x="44" y="60" width="56" height="4"/><rect class="bar" x="44" y="72" width="66" height="4"/>
+          <path class="arr flow" d="M136 60h28"/>
+          <rect class="box green" x="170" y="14" width="100" height="92" rx="8"/><text class="s c" x="220" y="34">lo construido</text>
+          <rect class="solid green" x="184" y="48" width="72" height="4"/><rect class="solid green" x="184" y="60" width="56" height="4"/><rect class="solid green" x="184" y="72" width="66" height="4"/>
+        </svg>
+      </figure>
+    </article>
+    <article class="k-card">
+      <p class="k-kick">7 · Cuando volvés después de unos días</p>
+      <h2><code class="k-cmd">/recorrida</code></h2>
+      <p class="k-lead">Te cuenta qué se hizo desde la última vez y por qué, dónde está cada nodo y qué comando sigue.</p>
+      <figure class="k-fig">
+        <svg viewBox="0 0 300 120" aria-hidden="true">
+          <path class="ln" d="M30 50h240"/>
+          <circle class="solid green" cx="30" cy="50" r="9"/><circle class="solid green" cx="100" cy="50" r="9"/><circle class="solid blue" cx="170" cy="50" r="9"/><circle class="box" cx="240" cy="50" r="9"/>
+          <circle class="pulse" cx="170" cy="50" r="9" style="fill:none;stroke:var(--blue);stroke-width:2"/>
+          <rect class="blue" x="120" y="74" width="100" height="26" rx="6"/><text class="m c blue" x="170" y="91">/construir</text>
+        </svg>
+      </figure>
+    </article>
+  </div>
+</section>
+
+<section class="k-view" id="palabras" data-tab="Palabras" data-icon="book">
+  <div class="k-deck">
+    <article class="k-card">
+      <p class="k-kick">Palabras de obra</p>
+      <h2>Pliego y plano</h2>
+      <p class="k-lead">El pliego es lo que los comandos leen del proyecto. Adentro, el plano: las partes del código, quién usa a quién y las reglas que no se rompen.</p>
+      <figure class="k-fig">
+        <svg viewBox="0 0 300 130" aria-hidden="true">
+          <rect class="paper" x="40" y="6" width="220" height="118" rx="8"/>
+          <text class="m" x="54" y="26">PLIEGO.md</text>
+          <rect class="bar" x="54" y="36" width="80" height="4"/><rect class="bar" x="54" y="46" width="60" height="4"/>
+          <rect class="box blue" x="150" y="32" width="96" height="80" rx="6"/>
+          <rect class="box" x="166" y="42" width="64" height="16" rx="3"/>
+          <path class="arr" d="M198 60v10"/>
+          <rect class="box" x="166" y="72" width="64" height="16" rx="3"/>
+          <text class="s c" x="198" y="104">el plano</text>
+        </svg>
+      </figure>
+    </article>
+    <article class="k-card">
+      <p class="k-kick">Cómo está cada cosa</p>
+      <h2>Decidido, provisorio, abierto</h2>
+      <ul class="k-items">
+        <li data-s="done">Decidido: lo elegiste vos.</li>
+        <li data-s="prov">Provisorio: lo propuso Claude; vale hasta que un debate lo cambie.</li>
+        <li data-s="open">Abierto: se decide en el debate que lo necesite.</li>
+      </ul>
+    </article>
+    <article class="k-card">
+      <p class="k-kick">Dónde va cada cosa</p>
+      <h2>Áreas y nodos</h2>
+      <ul class="k-tree">
+        <li style="--c:var(--blue)"><b>Mac</b>
+          <ul><li><b>Review</b></li><li><b>Cards</b><ul><li><b>Import</b></li></ul></li></ul>
+        </li>
+        <li style="--c:var(--pink)"><b>Environment</b>
+          <ul><li><b>Method</b></li></ul>
+        </li>
+      </ul>
+      <p>Cada issue vive en un área. Un nodo es cualquier punto del árbol, y <code class="k-cmd">/construir</code> construye uno.</p>
+    </article>
+    <article class="k-card">
+      <p class="k-kick">La regla de todo plano</p>
+      <h2>Sin manos</h2>
+      <div class="k-lanes">
+        <section style="--c:var(--blue)"><h3>Maneja</h3><ul><li>la terminal</li><li>modo debug</li></ul></section>
+        <section style="--c:var(--green)"><h3>Ve</h3><ul><li>logs</li><li>capturas</li></ul></section>
+        <section style="--c:var(--amber)"><h3>Prueba</h3><ul><li>tests</li></ul></section>
+      </div>
+      <p>Un agente maneja, ve y prueba el producto. Vos decidís.</p>
+    </article>
+    <article class="k-card">
+      <p class="k-kick">Dónde corre cada cosa</p>
+      <h2>Nube primero</h2>
+      <div class="k-lanes">
+        <section style="--c:var(--blue)"><h3>La nube</h3><ul><li>escribe</li><li>revisa</li></ul></section>
+        <section style="--c:var(--green)"><h3>Alquiladas</h3><ul><li>compila</li><li>prueba</li></ul></section>
+        <section style="--c:var(--amber)"><h3>Tu compu</h3><ul><li>tus manos</li><li>tus cuentas</li></ul></section>
+      </div>
+      <p>Tu compu hace solo lo que la necesita, y con tu OK.</p>
+    </article>
+    <article class="k-card">
+      <p class="k-kick">Antes y mientras se construye</p>
+      <h2>Replanteo y orden de cambio</h2>
+      <figure class="k-ba">
+        <div data-side="El plano hoy">
+          <svg viewBox="0 0 300 110" aria-hidden="true">
+            <rect class="box blue" x="110" y="8" width="80" height="26" rx="5"/><text class="s c" x="150" y="25">App</text>
+            <path class="arr" d="M150 36v14"/>
+            <rect class="box green" x="110" y="52" width="80" height="26" rx="5"/><text class="s c" x="150" y="69">Datos</text>
+          </svg>
+        </div>
+        <div data-side="Con el cambio">
+          <svg viewBox="0 0 300 110" aria-hidden="true">
+            <rect class="box blue" x="110" y="8" width="80" height="26" rx="5"/><text class="s c" x="150" y="25">App</text>
+            <path class="arr" d="M150 36v14"/>
+            <rect class="box green" x="110" y="52" width="80" height="26" rx="5"/><text class="s c" x="150" y="69">Datos</text>
+            <path class="arr" d="M192 65h26"/>
+            <rect class="box amber hl" x="220" y="52" width="70" height="26" rx="5"/><text class="s c" x="255" y="69">Sync</text>
+          </svg>
+        </div>
+      </figure>
+      <p>Antes de construir, compara cada issue con el código de hoy. Si el plano cambia, para y te muestra esto.</p>
+    </article>
+    <article class="k-card">
+      <p class="k-kick">Después del merge</p>
+      <h2>Conforme a obra</h2>
+      <p class="k-lead">La decisión, sus issues, el pliego y el plano cuentan lo construido, no lo planeado.</p>
+      <p>Si algo <span class="k-term" data-term="torcio">se torció</span>, <code class="k-cmd">/entregar</code> deja una tarea. Una <span class="k-term" data-term="prueba">prueba</span> resuelve antes lo que nadie sabe.</p>
+    </article>
+  </div>
+</section>
+
+<dl class="k-terms">
+  <dt data-term="pliego">Pliego</dt>
+  <dd>El archivo que leen los comandos: qué es el proyecto, sus áreas, cómo se dibuja, maneja y prueba, dónde corre cada cosa, qué espera tu OK, su plano y sus palabras.</dd>
+  <dt data-term="nodo">Nodo</dt>
+  <dd>Un punto del árbol de áreas, de cualquier tamaño: una hoja, como Mac › Review, o Mac entero.</dd>
+  <dt data-term="orden">Orden de cambio</dt>
+  <dd>Cuando el plano tiene que cambiar mientras se construye: el plano antes y después, y los issues que toca, para que lo apruebes.</dd>
+  <dt data-term="obra">Conforme a obra</dt>
+  <dd>Después del merge, la decisión, sus issues, el pliego y el plano cuentan lo que se construyó.</dd>
+  <dt data-term="torcio">Se torció</dt>
+  <dd>Un check que falló más de una vez, un replanteo o una orden de cambio que frenó el trabajo, o vos corrigiendo el trabajo.</dd>
+  <dt data-term="prueba">Prueba</dt>
+  <dd>Una tarea que resuelve algo abierto probándolo en la máquina que importa, antes de escribir el issue que depende de eso.</dd>
+</dl>
+
+<script src="kit/kit.js"></script>

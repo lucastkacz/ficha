@@ -1,0 +1,266 @@
+// The inspection: opens a page made with the kit as a phone and a laptop show it, light and dark, checks
+// what .claude/method/artifacts.md asks of it, and leaves a picture of each card to look at.
+// node .claude/method/kit/inspect.js <page.html> [outDir], from the repo's folder, on the machine the pliego's
+// Where it runs gives the inspection of the method's pages (.claude/method/kit/README.md). outDir is
+// <tmp>/inspect/<page> when unset. Prints the pictures' folder, then each failure with what to do about it;
+// exits 1 when anything failed, 2 when it couldn't run, 0 when all passed.
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+
+const MAX_WORDS = 40; // per card, outside its drawings (artifacts.md)
+const MAX_FIG_WORDS = 60; // per mock in a drawing, outside its SVG
+const MAX_CAPTION_WORDS = 20; // per step of a movie
+const MAX_TABS = 5; // the tab bar at the bottom of a phone holds five
+const MIN_TEXT_PX = 11;
+const MIN_TAP_PX = 28;
+const SIZES = [
+  { name: 'phone', width: 390, height: 700, mobile: true },
+  { name: 'laptop', width: 1280, height: 760, mobile: false },
+];
+const README = '.claude/method/kit/README.md';
+
+const [pageArg, outArg] = process.argv.slice(2);
+if (!pageArg) {
+  console.error(`Usage: node .claude/method/kit/inspect.js <page.html> [outDir]: pass the page's source, which loads kit/kit.css and kit/kit.js (${README}).`);
+  process.exit(2);
+}
+const pageFile = path.resolve(pageArg);
+if (!fs.existsSync(pageFile)) {
+  console.error(`No ${pageFile}: pass the path of the page's source, the .html file you publish (${README}).`);
+  process.exit(2);
+}
+let chromium;
+try {
+  ({ chromium } = require('playwright'));
+} catch (e) {
+  console.error("Couldn't load Playwright, which the inspection renders with: run it on the machine the pliego's Where it runs gives the inspection of the method's pages, which has Node and Playwright's Chromium.");
+  process.exit(2);
+}
+
+const kitDir = __dirname;
+const source = fs.readFileSync(pageFile, 'utf8');
+const failures = [];
+const fail = (msg) => { if (!failures.includes(msg)) failures.push(msg); };
+if (!/href="kit\/kit\.css"/.test(source) || !/src="kit\/kit\.js"/.test(source)) {
+  fail(`The page doesn't load the kit: put <link rel="stylesheet" href="kit/kit.css"> at its top and <script src="kit/kit.js"></script> at its end, as pieces.html does (${README}).`);
+}
+// The page as the Artifact tool publishes it: wrapped in its skeleton, with the kit's files beside it.
+const page = source
+  .replace(/<link[^>]*href="kit\/kit\.css"[^>]*>/, () => `<style>${fs.readFileSync(path.join(kitDir, 'kit.css'), 'utf8')}</style>`)
+  .replace(/<script[^>]*src="kit\/kit\.js"[^>]*><\/script>/, () => `<script>${fs.readFileSync(path.join(kitDir, 'kit.js'), 'utf8')}</script>`);
+const base = 'file://' + path.dirname(pageFile) + '/';
+const html = `<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><base href="${base}"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui}img{max-width:100%}[hidden]{display:none!important}</style></head><body>${page}</body></html>`;
+const name = path.basename(pageFile, '.html');
+const outDir = path.resolve(outArg || path.join(os.tmpdir(), 'inspect', name));
+fs.mkdirSync(outDir, { recursive: true });
+const wrapped = path.join(outDir, '_page.html');
+fs.writeFileSync(wrapped, html);
+
+// The artifact's database, in memory, so the questions and Aprobar can be tried.
+const fakeDb = () => {
+  const docs = {}; const subs = [];
+  const snap = () => ({ empty: !Object.keys(docs).length, docs: Object.entries(docs).map(([id, v]) => ({ id, data: () => v })) });
+  window.__kitDocs = docs;
+  window.claude = {
+    use: async (n) => (n !== 'db' ? null : {
+      collection: () => ({
+        doc: (id) => ({ set: async (v) => { docs[id] = JSON.parse(JSON.stringify(v)); subs.forEach((f) => f(snap())); } }),
+        onSnapshot: (cb) => { subs.push(cb); setTimeout(() => cb(snap()), 0); return () => {}; },
+      }),
+    }),
+  };
+};
+
+// Runs in the page: what each tab, deck and card holds, and the checks that need no picture.
+function survey(lim) {
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const SKIP = 'svg,script,style,.k-fig,.k-pv,.k-ba,.k-movie,.k-terms,.k-qstate,.k-recb,.k-notebox,.k-ans,.k-apstate,.k-apbtn,.k-apnote,.k-legend,[hidden],[aria-hidden="true"]';
+  const count = (s) => s.trim().split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
+  function words(root, skip) {
+    let n = 0; const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT); let t;
+    while ((t = w.nextNode())) {
+      const p = t.parentElement; if (!p || (skip && p.closest(skip))) continue;
+      const det = p.closest('details'); if (det && !det.open && !p.closest('summary')) continue;
+      n += count(t.textContent);
+    }
+    return n;
+  }
+  const title = (c) => (c.querySelector('h2,h3') || {}).textContent?.trim() || '';
+  const views = $$('.k-view').map((v) => ({
+    id: v.id, tab: v.dataset.tab || v.id,
+    decks: $$(':scope > .k-deck', v).map((dk) => ({ name: dk.dataset.name || '', cards: dk._cards ? dk._cards.length : 0 })),
+    stray: $$('.k-card', v).filter((c) => !c.closest('.k-deck')).length,
+  }));
+  const problems = [];
+  const where = (c) => { const v = c.closest('.k-view'); const dk = c.closest('.k-deck'); const cs = dk && dk._cards ? dk._cards : []; return `tab "${v ? v.dataset.tab || v.id : '?'}"${dk && dk.dataset.name ? `, deck "${dk.dataset.name}"` : ''}, card ${cs.indexOf(c) + 1}${title(c) ? ` "${title(c)}"` : ''}`; };
+  $$('.k-card').forEach((c) => {
+    const n = words(c, SKIP);
+    if (n > lim.words) problems.push(`${where(c)}: ${n} words, over ${lim.words}. Cut it to a line per idea, and show the rest as a drawing, a before and after or a movie, or fold it (artifacts.md, The page).`);
+    $$('.k-fig,.k-pv > [data-o],.k-ba [data-side],.k-sides > [data-side]', c).forEach((f) => {
+      const m = words(f, 'svg,script,style');
+      if (m > lim.fig) problems.push(`${where(c)}: a drawing holds ${m} words of text, over ${lim.fig}. Draw it with labels inside an SVG, or say less (artifacts.md, The page).`);
+    });
+  });
+  $$('.k-movie').forEach((m) => {
+    const c = m.closest('.k-card'); const caps = $$(':scope > ol > li', m);
+    if (caps.length < 3 || caps.length > 8) problems.push(`${where(c)}: a movie of ${caps.length} steps. Give it 3 to 8, one <li> each (README, The movie).`);
+    caps.forEach((li, i) => { const n = count(li.textContent); if (n > lim.caption) problems.push(`${where(c)}: the movie's step ${i + 1} says ${n} words, over ${lim.caption}. Say one thing per step.`); });
+    $$('[data-in],[data-out],[data-only],[data-skip],[data-on]', m).forEach((e) => {
+      const nums = ['in', 'out', 'only', 'skip', 'on'].flatMap((k) => (e.dataset[k] || '').split(/\s+/).filter(Boolean).map(Number));
+      const bad = nums.filter((x) => !(x >= 1 && x <= caps.length + 1));
+      if (bad.length) problems.push(`${where(c)}: a part of the movie names step ${bad[0]}, and it has ${caps.length}. Number its data-in, data-out, data-only, data-skip and data-on from 1 to ${caps.length}.`);
+    });
+  });
+  const ids = {};
+  $$('.k-q').forEach((q) => {
+    const id = q.dataset.q; const opts = $$('.k-opts > li', q).map((li) => li.querySelector('[data-o]')?.dataset.o || li.dataset.o);
+    if (!id) problems.push(`${where(q)}: a question with no data-q. Give it a short id; its answer is saved under it.`);
+    else if (ids[id]) problems.push(`${where(q)}: the id "${id}" is another question's too. Give each question its own data-q.`);
+    ids[id] = true;
+    if (opts.length < 2 || opts.length > 4) problems.push(`${where(q)}: ${opts.length} options. Give it 2 to 4 (artifacts.md, Questions).`);
+    if (!opts.includes(q.dataset.rec)) problems.push(`${where(q)}: data-rec="${q.dataset.rec || ''}" names none of its options. Name the one you recommend.`);
+    if (!q.querySelector('.k-why')) problems.push(`${where(q)}: no reason for the recommended option. Add <p class="k-why"> with it, in a line.`);
+    const pv = $$('.k-pv > [data-o]', q).map((p) => p.dataset.o);
+    opts.filter((o) => !pv.includes(o)).forEach((o) => problems.push(`${where(q)}: option ${o} has no preview. Add <div data-o="${o}"> to its .k-pv: its picture, its mock or its number (artifacts.md, Questions).`));
+  });
+  if (($$('.k-q,.k-note,.k-approve').length) && !document.querySelector('[data-db]')) problems.push('The page asks something but has no data-db: put data-db="<collection>" on its .k-top, one collection per artifact (artifacts.md, What the user answers).');
+  // An issue shows its title, never its number alone (method.md, What the user sees).
+  const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT); let t;
+  while ((t = w.nextNode())) {
+    const p = t.parentElement; if (!p || p.closest('script,style,.k-fold')) continue;
+    const m = t.textContent.match(/(^|[\s(\[,;:])#\d+\b/);
+    if (m) problems.push(`The page shows "${m[0].trim()}" by its number: show the issue's title, linked, with what it does in data-tip (method.md, What the user sees).`);
+  }
+  $$('img').forEach((i) => { if (!i.complete || !i.naturalWidth) problems.push(`The picture ${i.getAttribute('src')} doesn't load: keep it beside the page, at the path the page names, and publish it in the Artifact tool's files.`); });
+  if (!document.title.trim()) problems.push('The page has no <title>: name it in two to four words, as the Artifact tool asks.');
+  return { views, problems, ready: document.body.classList.contains('k-ready') };
+}
+
+// Runs in the page, with one view and one deck showing: what's cut, too small or too wide.
+function layout(lim) {
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const out = [];
+  const v = document.querySelector('.k-view.on');
+  if (!v) return out;
+  const title = (c) => (c.querySelector('h2,h3') || {}).textContent?.trim() || '';
+  const dk = $$(':scope > .k-deck', v).find((x) => !x.hidden);
+  if (dk) (dk._cards || []).forEach((c, i) => {
+    const name = `card ${i + 1}${title(c) ? ` "${title(c)}"` : ''}`;
+    if (c.scrollHeight - c.clientHeight > 4) out.push(`${name} is cut: it needs ${c.scrollHeight - c.clientHeight} px more than the screen gives it. Say less, make its drawing smaller, or split it into two cards (artifacts.md, The page).`);
+    const cr = c.getBoundingClientRect();
+    $$('svg', c).forEach((g) => { const r = g.getBoundingClientRect(); if (r.width && (r.bottom > cr.bottom + 2 || r.right > cr.right + 2)) out.push(`${name}: a drawing runs out of the card. Put it in a .k-fig, .k-movie or .k-pv, which size it to fit, or give it a viewBox and no fixed size.`); });
+    if (c.scrollWidth - c.clientWidth > 1) out.push(`${name} is wider than the screen by ${c.scrollWidth - c.clientWidth} px. Give the wide part min-width:0, or let it wrap.`);
+  });
+  if (document.documentElement.scrollWidth > innerWidth + 1) out.push(`the page scrolls sideways by ${document.documentElement.scrollWidth - innerWidth} px. Find what's wider than the screen and let it wrap.`);
+  const tw = document.createTreeWalker(v, NodeFilter.SHOW_TEXT); let t;
+  const small = new Set();
+  while ((t = tw.nextNode())) {
+    const p = t.parentElement;
+    if (!t.textContent.trim() || !p || p.closest('svg,script,style,.k-terms') || !p.getClientRects().length) continue;
+    const fs = parseFloat(getComputedStyle(p).fontSize);
+    if (fs < lim.text) small.add(`text "${t.textContent.trim().slice(0, 30)}" at ${fs} px: make it at least ${lim.text} px.`);
+  }
+  out.push(...small);
+  const taps = $$('button,[role=button]:not(.k-term),summary,a.k-go,textarea,input', v).concat($$('.k-tabs button'));
+  taps.forEach((b) => {
+    if (b.closest('.k-dots,.k-mdots,[hidden]')) return;
+    const r = b.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    if (Math.min(r.width, r.height) < lim.tap) out.push(`"${(b.textContent || b.getAttribute('aria-label') || b.tagName).trim().slice(0, 30)}" is ${Math.round(r.width)}×${Math.round(r.height)} px: make what a finger taps at least ${lim.tap} px.`);
+  });
+  return out;
+}
+
+(async () => {
+  const browser = await chromium.launch();
+  const lim = { words: MAX_WORDS, fig: MAX_FIG_WORDS, caption: MAX_CAPTION_WORDS, text: MIN_TEXT_PX, tap: MIN_TAP_PX };
+  const shots = [];
+  let tried = false;
+  try {
+    for (const dark of [false, true]) {
+      for (const size of SIZES) {
+        const label = `${size.name}${dark ? ', dark' : ''}`;
+        const ctx = await browser.newContext({ viewport: { width: size.width, height: size.height }, isMobile: size.mobile, hasTouch: size.mobile, colorScheme: dark ? 'dark' : 'light', reducedMotion: 'reduce', deviceScaleFactor: 1 });
+        await ctx.addInitScript(fakeDb);
+        const pg = await ctx.newPage();
+        const errors = [];
+        pg.on('console', (m) => { if (m.type() === 'error' && !/fonts\.(googleapis|gstatic)\.com|ERR_|net::/.test(m.text() + (m.location().url || ''))) errors.push(m.text()); });
+        pg.on('pageerror', (e) => errors.push(e.message));
+        await pg.goto('file://' + wrapped, { waitUntil: 'load', timeout: 30000 }).catch(() => {});
+        await pg.evaluate(() => document.fonts && document.fonts.ready).catch(() => {});
+        await pg.waitForTimeout(250);
+        const s = await pg.evaluate(survey, lim);
+        if (!s.ready) fail(`${label}: the kit didn't start, so nothing else can be checked. Look at the console errors below.`);
+        if (!dark && size.mobile) {
+          s.problems.forEach(fail);
+          if (s.views.length > MAX_TABS) fail(`The page has ${s.views.length} tabs, over ${MAX_TABS}: a phone's tab bar holds ${MAX_TABS}. Join tabs, or put a round or a piece each in a deck of its own inside one tab (README, Views and decks).`);
+          s.views.forEach((v) => {
+            if (v.stray) fail(`tab "${v.tab}": ${v.stray} card(s) outside a .k-deck. Put every card in a deck.`);
+            if (!v.decks.length || v.decks.every((dk) => !dk.cards)) fail(`tab "${v.tab}" has no cards. Give it a .k-deck with at least one .k-card.`);
+          });
+        }
+        for (const v of s.views) {
+          for (let di = 0; di < Math.max(1, v.decks.length); di++) {
+            await pg.evaluate(([id, i]) => { location.hash = id; window.Kit && window.Kit.show(id); const el = document.getElementById(id); if (el && el._pick) el._pick(i); }, [v.id, di]);
+            await pg.waitForTimeout(200);
+            const where = `${label}, tab "${v.tab}"${v.decks[di] && v.decks[di].name ? `, deck "${v.decks[di].name}"` : ''}`;
+            (await pg.evaluate(layout, lim)).forEach((p) => fail(`${where}: ${p}`));
+            const stem = `${size.name}${dark ? '-dark' : ''}-${v.id}${v.decks.length > 1 ? '-' + (di + 1) : ''}`;
+            const n = v.decks[di] ? v.decks[di].cards : 0;
+            const perCard = size.mobile && !dark ? n : 1;
+            for (let ci = 0; ci < perCard; ci++) {
+              await pg.evaluate(([id, i, c]) => { const el = document.getElementById(id); const dk = [...el.querySelectorAll(':scope > .k-deck')][i]; if (dk && dk._go) dk._go(c); }, [v.id, di, ci]);
+              await pg.waitForTimeout(150);
+              const file = path.join(outDir, `${stem}${perCard > 1 ? '-' + (ci + 1) : ''}.png`);
+              await pg.screenshot({ path: file });
+              shots.push(file);
+            }
+          }
+        }
+        // The movies at their last step, where every part of the drawing is on.
+        if (!dark) {
+          const movies = await pg.evaluate(() => [...document.querySelectorAll('.k-movie')].map((m, i) => ({ i, view: m.closest('.k-view')?.id })));
+          for (const m of movies) {
+            await pg.evaluate(([id, i]) => { window.Kit.show(id); const mv = document.querySelectorAll('.k-movie')[i]; const card = mv.closest('.k-card'); window.Kit.goTo(card); const n = mv.querySelectorAll(':scope > ol > li').length; mv._step && mv._step(n); }, [m.view, m.i]);
+            await pg.waitForTimeout(250);
+            (await pg.evaluate(layout, lim)).forEach((p) => fail(`${label}, a movie at its last step: ${p}`));
+            const file = path.join(outDir, `${size.name}-movie-${m.i + 1}-last.png`);
+            await pg.screenshot({ path: file });
+            shots.push(file);
+          }
+        }
+        // Answering a question and approving, once, saved in the database in memory.
+        if (!dark && size.mobile && !tried) {
+          tried = true;
+          const r = await pg.evaluate(async () => {
+            const q = document.querySelector('.k-q'); const ap = document.querySelector('.k-apbtn');
+            const res = [];
+            if (q) {
+              window.Kit.goTo(q);
+              const b = [...q.querySelectorAll('.k-opt')].find((x) => x.dataset.o !== q.dataset.rec);
+              if (b) { b.click(); await new Promise((f) => setTimeout(f, 50)); const doc = window.__kitDocs[q.dataset.q]; if (!doc || doc.choice !== b.dataset.o) res.push(`choosing option ${b.dataset.o} of "${q.dataset.q}" didn't save it`); }
+            }
+            if (ap) { ap.click(); await new Promise((f) => setTimeout(f, 50)); const doc = window.__kitDocs.aprobacion; if (!doc || !doc.approved) res.push("Aprobar didn't save the approval"); }
+            return res;
+          });
+          r.forEach((p) => fail(`${label}: ${p}. Check the page's data-db, and the markup of its questions against pieces.html.`));
+        }
+        errors.forEach((e) => fail(`${label}: the console says "${e.slice(0, 200)}". Fix it; a page reaches the user with no console errors.`));
+        await ctx.close();
+      }
+    }
+  } finally {
+    await browser.close();
+  }
+  console.log(`Pictures: ${shots.length}, in ${outDir}. Look at each phone card, and at each tab in dark: the checks can't tell a drawing that reads wrong.`);
+  if (failures.length) {
+    console.log(`\n${failures.length} failed:`);
+    failures.forEach((f) => console.log('- ' + f));
+    process.exit(1);
+  }
+  console.log('All passed: at most 40 words a card, nothing cut or too wide, text and taps big enough, no console errors, on a phone and a laptop, light and dark.');
+})().catch((e) => {
+  console.error(`The inspection stopped: ${e.message}. Run it again; if it stops at the same place, the page's script is the likely cause.`);
+  process.exit(2);
+});

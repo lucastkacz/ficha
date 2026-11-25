@@ -12,6 +12,8 @@ Six commands take an idea, or a bug, from the user's words to the code and back 
 | `/entregar` | Everything as built, and a retro only if something went sideways |
 | `/recorrida` | Where the work stands, outside the flow above: what was done since the user last looked and why, and the next command, on one page |
 
+The user sees the seven at a glance in the method's map, [`map.html`](map.html), published as [Mapa del método](https://claude.ai/artifact/N2frymfBZC9onSxQGXJfNq). A change to a command or a word changes the map in the same PR, which publishes it again at that link once it merges.
+
 The project's own facts (its areas, commands, pictures, tests, machines, guards and plano) come from its pliego, never from these files: the same method serves a Swift app or a Python service, each with its pliego.
 
 ## Words

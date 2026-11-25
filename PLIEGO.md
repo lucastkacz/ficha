@@ -36,7 +36,7 @@ What the method's commands read about Ficha (`.claude/method/method.md`), approv
   - `Launch › Beta`: TestFlight's testers.
   - `Launch › Research`: the market research (`docs/research/`).
 - `Environment` (pink): how agents build Ficha.
-  - `Environment › Method`: the skills, this pliego, `CLAUDE.md`, the documents agents read, and `mockups/`, the web mocks and the Lab.
+  - `Environment › Method`: the skills, this pliego, `CLAUDE.md`, the documents agents read, the method's page kit and its map, and `mockups/`, the web mocks and the Lab.
   - `Environment › Guards`: CI, the `Makefile`, the hooks, the permissions, the subagents' types.
   - `Environment › Hands-free`: the tools that drive, see and test Ficha, and the hand checks.
   - `Environment › Publishing`: `make upload`, TestFlight, the tags, iCloud's schema.
@@ -48,6 +48,7 @@ What the method's commands read about Ficha (`.claude/method/method.md`), approv
 - ✓ The widget and the README's pictures: a throwaway package each ("The widget's pictures", "The README's pictures").
 - ✓ A PR that changes what Lucas sees: each window or screen in English ("The PR's pictures"; ADR 0036).
 - ✓ A proposal, before any Swift: the web mock kit, whose mock decides the look and FichaCore the logic, and the Ficha Lab, in `mockups/` (its README).
+- ✓ An artifact: the method's page kit and its inspection (`.claude/method/kit/README.md`).
 - ✓ An artifact's sources: the Claude project's shared folder, `/mnt/project-files/` in its sessions, a folder per artifact, such as `preparar/`.
 
 ## Hands-free
@@ -86,7 +87,7 @@ Each kind of work, as a cloud session does it by `CLAUDE.md`'s Shipping:
 - ✓ The tests while building, in two rounds per node (ADR 0031): from the cloud, GitHub's Macs; on Lucas's Mac, `make test`.
   - ◐ From the cloud, each push to the node's draft PR runs a round, CI's `tests` job, `make test` alone, which the session reads as `CLAUDE.md`'s Shipping says; marking the PR ready runs the full `check`.
 - ✓ The three checks' tests and CI: from the cloud, the last round on the draft PR, then CI's `check` once it's ready; on Lucas's Mac, `make check`, then CI.
-- ✓ The web mocks' pictures, with `mockups/tools/shoot.js`: the cloud.
+- ✓ The web mocks' pictures, with `mockups/tools/shoot.js`, and the inspection of the method's pages, with `.claude/method/kit/inspect.js`: the cloud.
 - ○ The pictures of Ficha: GitHub's Macs, if the probe shows they draw Ficha's windows (#480); until then, Lucas's Mac, through Remote Control.
 - ✓ The hand checks an agent can run (#473): Lucas's Mac, through Remote Control.
 - ○ An agent's runs of Ficha, with `ficha`, `make render`'s clicks or the simulator: Lucas's Mac, through Remote Control, as the hand checks; GitHub's Macs, if the probe shows they can (#480).
@@ -158,7 +159,7 @@ The rest:
 - ✓ Ficha's decks: a file each, in the app's resources, with each image's license, which come in through the same import as any file; #458 brings them (ADR 0035).
 - ✓ `scripts/`: the render tools and the import-preview tool, which reach FichaKit by path (the render tool compiles `App/`'s files too); the hook tests; the watchdog for hung runs, with its tests; the build of fsrs-rs's XCFramework; the wrapper `make` runs `xcodebuild` through; what unregisters an app's other copies from LaunchServices; the reader of Ficha Dev's last crash, with its tests; the runner of its `ficha` on a scratch folder; the cleanup after a merge, with its tests; the list of what changed the cards' data since the last upload, with its tests; and the check that the clock and the review log's IDs come from their sources.
 - ✓ `docs/`: `development.md`, how to build, draw, test and publish; `agents/`, what agents read about the issues and the domain; `adr/`; `content-guide.md`, how a refine session drafts Lucas's cards; `app-review-notes.md`, what App Review is told; `instructions-for-an-ai.md`; `research/`; `prototypes/`; and `images/`, the README's pictures.
-- ✓ `.claude/`: the permissions, the hooks, the rules, the method's seven skills and what they share (`method/`), the `/refine` skill and the subagents' types.
+- ✓ `.claude/`: the permissions, the hooks, the rules, the method's seven skills and what they share (`method/`), with its page kit (`method/kit/`) and its map, the `/refine` skill and the subagents' types.
 - ✓ `.github/`: CI, the workflow that publishes `site/` on GitHub Pages, Dependabot and the issue forms.
 - ✓ `mockups/`: the web mock kit, the desktop mock and the Ficha Lab, with their tools in Node (its README).
 - ✓ `site/`: the privacy policy, the one page GitHub Pages publishes, which Settings' About tab links to.
