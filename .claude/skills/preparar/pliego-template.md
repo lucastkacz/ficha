@@ -30,7 +30,7 @@ Cloud first (`.claude/method/method.md`): the project's machines, each with what
 - **Rented machines**: the CI's runners by system, what they cost the project, such as nothing for a public repo's standard runners, or a price per minute by system past a private repo's included amount, and how long a run takes.
 - **The user's computer**: how a session reaches it.
 
-Then each kind of work and its machine: writing issues, debates and decisions, the reviews, building, the tests while building, the tests and CI of the three checks, the pictures, running the product, publishing. What stays on the user's computer, each with why no other machine can do it yet.
+Then each kind of work and its machine: writing issues, debates and decisions, the reviews, the recorridas, building, the tests while building, the tests and CI of the three checks, the pictures, running the product, publishing. What stays on the user's computer, each with why no other machine can do it yet.
 
 ## What waits for the user's OK
 
@@ -50,7 +50,7 @@ The glossary's file.
 
 ## How we work
 
-The language of each reader, the default branch, the branch and worktree rules, the standards' file, how a PR merges, and what happens after a merge.
+The language of each reader, the default branch, the branch and worktree rules, the standards' file, how a PR merges, what happens after a merge, and where the order of the work lives, such as a roadmap issue.
 
 ## Open
 

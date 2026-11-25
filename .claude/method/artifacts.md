@@ -1,10 +1,10 @@
 # The user's artifacts
 
-What `/preparar`, `/debate`, `/decision` and a change order show the user is an artifact: a web page they look at and touch, not text to read. Before writing one, load the `artifact-design` skill, and `artifact-capabilities` for its database. Publish it with the Artifact tool, and update the same artifact, by its URL, round after round. Keep its sources where the pliego says, so a later session can rebuild it.
+What `/preparar`, `/debate`, `/decision`, `/recorrida` and a change order show the user is an artifact: a web page they look at and touch, not text to read. Before writing one, load the `artifact-design` skill, and `artifact-capabilities` for its database. Publish it with the Artifact tool, and update the same artifact, by its URL, round after round. Keep its sources where the pliego says, so a later session can rebuild it.
 
 ## The page
 
-- **One screen.** On a laptop the page doesn't scroll: a bar of numbered tabs on top (Inicio, a tab per round or piece, then the action), and panels that scroll inside. Below 900 px wide it becomes one scrolling column. It works on a phone, light and dark.
+- **One screen.** On a laptop the page doesn't scroll: a page of several parts has a bar of numbered tabs on top (Inicio, a tab per round or piece, then the action), and panels scroll inside. Below 900 px wide it becomes one scrolling column. It works on a phone, light and dark.
 - **Shown, not told.** Each idea is a picture with a line or two beside it: a before and after, a diagram with its labels inside, a mock of the screen. A process is a short movie: the diagram builds step by step, a caption under it says what each step does, and Anterior, Reproducir and Siguiente drive it. It respects `prefers-reduced-motion`.
 - **Linked.** A word of the method or the glossary is a button that shows its meaning on hover or tap. An issue shows its title and what it does, never its number alone. Each claim of fact links its source.
 - **Light.** Add a simulator, a voice or a theme switch only when the topic needs it.
@@ -20,6 +20,10 @@ A home with the change in a table (today, and with the decision), and what stays
 ## A change order
 
 One screen: the plano before and after, side by side, with what changes marked in both; why, in a line; and the node's issues it touches, each with what changes for it. Then Aprobar, with a note.
+
+## A recorrida
+
+One screen with no tabs, made to be skimmed. On top, the answer: since when, what changed in two lines, and the next step with its command and why. Under it, three columns, one for each of the command's steps 2 to 4, each showing what its step found, in its order: what was done, a PR each, newest first; where it stands, with the order of the work as a line of steps and the one it's on marked, and the open issues counted by area; and what comes after the next step. It asks nothing, so it has no database.
 
 ## What the user answers
 
