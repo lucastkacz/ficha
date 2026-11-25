@@ -23,7 +23,7 @@ One screen: the plano before and after, side by side, with what changes marked i
 
 ## A recorrida
 
-One screen with no tabs, made to be skimmed. On top, the answer: since when, what changed in two lines, and the next step with its command and why. Under it, three columns: what was done, a PR each, newest first, with its area, its why and its issues; where it stands, the order of the work as a line of steps with the one it's on marked, then the open issues by area, ready and with no type; and what comes after the next step: what waits for the user, what can go in parallel, and what waits to be sorted. It asks nothing, so it has no database.
+One screen with no tabs, made to be skimmed. On top, the answer: since when, what changed in two lines, and the next step with its command and why. Under it, three columns, one for each of the command's steps 2 to 4: what was done, a PR each, newest first, with its area, its why, its issues and what it left; where it stands, the order of the work as a line of steps with the one it's on marked, then the open issues by area, counted ready, Ideas and with no type, the artifacts in flight, the open PRs and the pliego's open items; and what comes after the next step, in the order the command weighs it: what waits for the user, what's half done, the next nodes and those that can go in parallel, and what waits to be sorted or shaped. It asks nothing, so it has no database.
 
 ## What the user answers
 

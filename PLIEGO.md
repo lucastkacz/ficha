@@ -79,7 +79,7 @@ Cloud first (`.claude/method/method.md`), as ADR 0031 decides for Ficha.
 
 Each kind of work, as a cloud session does it by `CLAUDE.md`'s Shipping:
 
-- ✓ Issues, debates, decisions and the reviews: the cloud.
+- ✓ Issues, debates, decisions, the reviews and the recorridas: the cloud.
 - ✓ Building a node: the cloud, unless Lucas starts the session on his Mac.
   - ○ A change to `.github/workflows/`: GitHub refuses a cloud session's push there, since its token has no `workflow` scope, so it's pushed from Lucas's Mac through Remote Control ("A workflow change from the cloud").
   - ○ The other paths `.claude/hooks/merge-gate.sh` lists: no cloud session has tried a push to them yet; the next `/preparar` does.
@@ -190,7 +190,7 @@ Rules that don't break:
 - ✓ The standards: `CODING_STANDARDS.md`.
 - ✓ A PR merges itself after the three checks, with auto-merge; a `risk:high` PR waits for Lucas (`CLAUDE.md`, Shipping).
 - ✓ After a merge: `/entregar`, then `make clean-merged` from the main folder ("Cleaning up after a merge").
-- ✓ The order of the work: the issue "Roadmap: the Mac app in the new direction, then the iPhone" (#160), node by node, which each decision reorders.
+- ✓ The order of the work: the issue "Roadmap: the Mac app in the new direction, then the iPhone" (#160), node by node.
 - ✓ A mechanical chore goes to a `clerk`, or in a cloud session to a `general-purpose` agent (`CLAUDE.md`, Shipping); building to `builder`s; the reviews to `reviewer`s (`.claude/agents/`).
 - ✓ Where each kind of work runs, and on which machine: Where it runs (ADR 0031).
 

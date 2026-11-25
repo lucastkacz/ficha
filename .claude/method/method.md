@@ -29,7 +29,7 @@ The user's words, from building works, kept in Spanish where the user sees them.
 - **As built** (conforme a obra): after the merge, the decision, its issues, the pliego and the plano tell what was built, not what was planned.
 - **Probe** (prueba): a Task that settles an open item before the issue that depends on it is written, by trying it on the machine it's about, such as whether a rented machine can draw the pictures, once the decision says what the piece does with each answer. Its PR says what it found, and `/decision`, typed again, settles the pliego's open item and writes the waiting piece's issues with it.
 - **Sideways** (se torció): a check that failed more than once, a replanteo or a change order that stopped the work, the user correcting the work, a procedure written for agents that couldn't run on its machine, whose own issue stands as its retro's Task, or a node that took far longer than its size. `/construir`'s PR says what went sideways, and `/entregar` looks back at it.
-- **Recorrida**: a walk through the work as it stands, as a site's director walks the site before work resumes: what was done since the last one and why, where each node stands, and what comes next. It changes nothing but its own page.
+- **Recorrida**: a walk through the work as it stands, as a site's director walks the site before work resumes: what was done since the last one and why, where each node stands, and what comes next. It changes nothing of the project: it writes only its own page.
 
 ## What the user sees
 
