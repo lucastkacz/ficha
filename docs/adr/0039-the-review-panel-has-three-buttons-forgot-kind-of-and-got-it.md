@@ -1,5 +1,7 @@
 # The review panel has three buttons: Forgot, Kind of and Got it
 
+> Changed in part by [ADR 0041](0041-ficha-is-small-decks-shown-as-cards-without-ankis-packages-tags-or-capture.md), whose Easy stays one of the four ratings a review stores, though Anki's packages no longer bring it, and whose import of Anki's progress and export go (2026-11-26).
+
 Since ADR 0033 the review panel shows two buttons once a card is flipped, Forgot and Got it, with a small line under them, "Also 2 Hard and 4 Easy, as in Anki", since keys 2 and 4 still recorded hard and easy for whoever comes from Anki. On 2026-11-25 Lucas tried the panel #508 built, found that the line still copied Anki, and asked for three buttons instead: Forgot, a yellow Kind of in the middle, and Got it, simple, and less confusing than Anki's four. His idea, #517, needed no debate, and he approved the decision on 2026-11-26 in the artifact "Tres botones en el panel". It changes ADR 0033 in part: its two buttons, keys 2 and 4 kept without buttons and the line under them, a new card's names on its first flip, and the iPhone's two actions; ADR 0032 in part, whose Ficha outside shows the card with two buttons; and ADR 0025 in part, whose keys 1 to 4 rated a card, since 4 no longer does in the panel.
 
 - **Three buttons, once the card is flipped.** Forgot records Again, on 1; Kind of, in the middle, records Hard, on 2; Got it records Good, on Space and 3, and stays the prominent one Space presses. No line under them.

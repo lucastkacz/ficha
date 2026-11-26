@@ -1,5 +1,7 @@
 # Tags sit inside tags by their names, as in Anki, and what's set on a tag holds for the tags inside it
 
+> Obsolete since [ADR 0041](0041-ficha-is-small-decks-shown-as-cards-without-ankis-packages-tags-or-capture.md): tags leave the app's face, and a card has its deck alone; decks keep the nesting rules ADR 0024 took from this record (2026-11-26).
+
 A subject as broad as economía needs finer ones, such as economía › Argentina and economía › mundial (#346, grilled with #344 on 2026-10-29). Anki writes a tag inside another as `economía::Argentina`, shows its tags as a tree, and its search for a tag, like its study of a deck, takes in what sits inside. Ficha does the same: a tag's name carries the tags it sits inside, `economía::Argentina`, which the app shows in a tree, or as "economía › Argentina" where a tag stands alone, and a parent exists through the tags inside it. Setting a tag aside, making it a priority tag or choosing it to sync holds for every tag inside it, also those made later, and so do its color and emoji for a tag that has none of its own. The user makes a tag inside another by writing its whole name on a card, by renaming it, or by dragging it onto the other in the Cards window's sidebar, which moves the tags inside it along. Renaming or moving a tag onto a name that exists merges the two, and the tag already there keeps what it has of its own.
 
 ## Considered options

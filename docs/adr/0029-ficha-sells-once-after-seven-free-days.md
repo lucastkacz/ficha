@@ -2,6 +2,8 @@
 
 > Changed in part by [ADR 0035](0035-ficha-comes-with-a-few-small-decks-picked-at-welcome.md), which brings a few decks of Ficha's own with the app; the price and the trial stay (2026-11-24).
 
+> Changed in part by [ADR 0041](0041-ficha-is-small-decks-shown-as-cards-without-ankis-packages-tags-or-capture.md), whose cards neither come in nor go out, so the paywall leaves no Export; what it leaves in its place is open, for #459 (2026-11-26).
+
 Ficha sells on the App Store for the Mac and the iPhone together (#160). Lucas wants to recover the Apple membership and, if possible, one month of Claude, about $300, not to live on it, and the market research (#452) found it worth that as a small bet and no more. On 2026-11-06, grilling #252, #459 and #458, he chose one payment of $4.99, which covers both apps and takes about 71 sales at Apple's 15% cut. It comes after seven days with all of Ficha for free, counted from the user's first card and not from the download, since someone who downloads it and waits five days shouldn't lose them. Once they're over, a hard paywall leaves only Buy, Restore Purchases and Export until the user pays. He first called a two-week trial the most profitable and gave no source, and the research doesn't show that of any trial, since its only trial figures are for subscriptions. So the trial's shape and length are his call, not evidence.
 
 ## Considered options

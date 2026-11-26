@@ -1,5 +1,7 @@
 # Anyone brings their cards in by hand or from a file, never through an AI in the app
 
+> Changed in part by [ADR 0041](0041-ficha-is-small-decks-shown-as-cards-without-ankis-packages-tags-or-capture.md), whose users' cards no longer come from a capture or a file they import, since Capture and the Import and Export sheets go: anyone makes cards in the Cards window, and Lucas's come through `ficha add` (2026-11-26).
+
 Ficha was Lucas's app, and his cards come from captures he refines with Claude through the `ficha` CLI (ADR 0001). Once it sells on the App Store (#160), anyone needs a way in of their own, and the app still holds no AI. So anyone creates cards in the Cards window, from scratch or from a capture, or imports a file. The file is plain text with one card per line, like the one Anki imports and exports as "Notes in Plain Text": an AI writes it from instructions the app copies, a spreadsheet saves it, and Anki reads what Ficha exports. Refining with Claude stays Lucas's own way of making cards, outside the app.
 
 ## Considered options

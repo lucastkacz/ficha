@@ -1,5 +1,7 @@
 # Ficha comes with three decks of its own, in Spanish for now
 
+> Changed in part by [ADR 0041](0041-ficha-is-small-decks-shown-as-cards-without-ankis-packages-tags-or-capture.md), whose decks come in through the engine's own import of their files, unseen, the only import left (provisional) (2026-11-26).
+
 ADR 0035 has Ficha come with four to six small decks of its own, in English, which ones still provisional: the types of clouds, the fourteen eight-thousanders, famous paintings and beautiful words were examples. On 2026-11-26 Lucas asked for three: forty pretty words, fifty paintings, and the flowers of Buenos Aires, those a florist there sells. In the proposal "Los mazos de Ficha" he chose those three alone, every painting Argentine, the picture on a card's front, and the decks in Spanish for now, since they're the ones he'll share with his friends for the beta; their English versions come later, and he brings them himself. He approved it as a decision the same day, in the artifact "Los mazos de Ficha: decisión". It changes ADR 0035 in part, how many decks, which ones and their language, and ADR 0032 in part, whose "in English alone" now holds for the app and not, for now, for Ficha's decks.
 
 - **Three decks.** Palabras lindas, forty Spanish words (which ones, provisional), each with what it means and where it comes from; Arte argentino, fifty Argentine paintings; Flores de Buenos Aires, thirty flowers and greens a Buenos Aires florist sells. Their names are provisional, and Lucas approves each card before it ships, as ADR 0035 asks.

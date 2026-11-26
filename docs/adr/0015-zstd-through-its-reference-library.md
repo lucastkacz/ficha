@@ -1,5 +1,7 @@
 # zstd through its reference library, and protobuf by hand
 
+> Obsolete since [ADR 0041](0041-ficha-is-small-decks-shown-as-cards-without-ankis-packages-tags-or-capture.md): with Anki's packages gone, Ficha reads no zstd or protobuf, and zstd leaves the dependencies (2026-11-26).
+
 Current Anki exports a deck, by default, as a package whose collection, media list and media files are each compressed with zstd, and whose `meta` and media list are protobuf messages (ADR 0013). Apple's Compression framework has no zstd, so Ficha links zstd's reference library, the C code Facebook publishes in `facebook/zstd`, which Anki itself uses through Rust's `zstd` crate. That repository ships its own `Package.swift`, which exposes the library to SwiftPM as the module `libzstd`, so Ficha depends on it directly, with no wrapper in between, and calls zstd's streaming API from Swift. Protobuf gets no library: Ficha reads the few fields it needs, a package's version, its media files' names, a note type's kind and stock kind, and a template's two formats, with a reader of its own of about a hundred lines, which follows protobuf's documented wire format and skips the fields it doesn't know.
 
 ## Considered options
