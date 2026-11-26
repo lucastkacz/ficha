@@ -52,14 +52,14 @@ public struct Engine: Sendable {
     /// that an older version of Ficha left, it saves a copy before an update
     /// in the Backups folder, where it first moves those that versions before
     /// backups left next to the database. A database that a newer version
-    /// migrated is refused, and left as it was. The review log's entries
-    /// it writes get their IDs from `ids`, random ones except in tests. Days
-    /// start at midnight by `calendar`: the Mac's, except in tests. The files
-    /// the `ficha` CLI puts on cards come from `downloads` alone, the
-    /// Downloads folder, when it's given, and from anywhere when it isn't. An
-    /// import draws its SVGs with a drawer `newSVGDrawer` makes, in the app
-    /// its XPC service, and without one, as in the CLI and on the iPhone,
-    /// which don't import, it draws none.
+    /// migrated is refused, and left as it was. The review log's entries it
+    /// writes get their IDs from `ids`, random ones except in tests. Days start
+    /// at midnight by `calendar`: the Mac's, except in tests. The files the
+    /// `ficha` CLI puts on cards come from `downloads` alone, the Downloads
+    /// folder, when it's given, and from anywhere when it isn't. An import
+    /// draws its SVGs with a drawer `newSVGDrawer` makes, in the app its XPC
+    /// service, and without one, as in the CLI and on the iPhone, which don't
+    /// import, it draws none.
     public init(
         location: DatabaseLocation,
         time: any TimeSource,

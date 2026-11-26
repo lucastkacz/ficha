@@ -69,7 +69,7 @@ public enum FileChange: Sendable, Equatable {
     case put(FileForSide)
 }
 
-/// A file a draft puts on a side of a card.
+/// A file a draft, or `Engine.attach(_:to:of:)`, puts on a side of a card.
 public enum FileForSide: Sendable, Equatable {
     /// The file at this URL on the Mac, which comes in as one dropped on the
     /// Cards window's form does: an image shrunk, a sound converted.
