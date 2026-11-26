@@ -1811,8 +1811,10 @@ enum Schema {
             // New cards come from one deck at a time, the first in a queue of
             // the decks at the top of the tree (ADR 0034). A deck takes its
             // place when its first card came in, so that a deck that comes in
-            // goes last, unless the user moves it: then it keeps the place it
-            // moved to, a time the queue sorts by, or NULL while it has none.
+            // goes last, until a move gives it another: the deck the user
+            // moved, one it passed, or one it parted from a deck that came in
+            // at once. Then it keeps that place, a time the queue sorts by;
+            // until then the column is NULL.
             // It's a field of the deck's record, `queuePlace`, as
             // `SyncedField` names it, whose latest change wins, as its other
             // fields: their triggers, from "v31 decks", made again with it.

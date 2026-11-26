@@ -206,10 +206,10 @@ struct PaceAndQueueTests {
 
     // Arte, Biología and Música come in at once, as an import's decks do,
     // and Historia a minute later. Historia moves last, where it is, while
-    // Música is set aside: back, Música goes between Biología and Historia
-    // again.
-    @Test("a move leaves alone the places of the decks it doesn't pass, those that came in at once too", .bug(id: 490))
-    func aMoveLeavesTheDecksItDoesNotPassAlone() throws {
+    // Música is set aside, so the move passes no deck: back, Música goes
+    // between Biología and Historia again.
+    @Test("a move that passes no deck changes no place, not even of decks that came in at once", .bug(id: 490))
+    func aMoveThatPassesNoDeckChangesNoPlace() throws {
         for deck in ["Arte", "Biología", "Música"] {
             try approveInDeck("Una de \(deck)", deck: deck, in: engine)
         }

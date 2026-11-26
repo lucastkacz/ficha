@@ -26,7 +26,8 @@ extension Engine {
     /// the other decks that have new cards, as `queue(_:)` lists them, from
     /// the next appearance, review now or "See more" on: a deck at the top
     /// of the tree, or else the one at the top it sits inside, which it
-    /// comes with. The decks it passes take each other's places, as
+    /// comes with. The decks it passes take each other's places, and those
+    /// it parts from a deck that came in at once take new ones, as
     /// `CardsInReviews.places(putting:at:now:)` shares them out. Each keeps
     /// its place while it's set aside, and the places wait to be sent to the
     /// user's other devices. A deck that isn't there is made, as

@@ -390,8 +390,8 @@ struct PriorityDecksTests {
 
     // The Mac's preferences are the app's, whichever database it opens, so a
     // priority deck kept there would show in another database too. In each,
-    // Lenguaje comes in a minute before Filosofía, so it goes first in the
-    // queue.
+    // Lenguaje comes in a minute before Filosofía, so only Filosofía's
+    // priority puts it first in the queue.
     @Test(
         "priority decks survive reopening the database, and another database has none, so nothing goes in the Mac's preferences"
     )
