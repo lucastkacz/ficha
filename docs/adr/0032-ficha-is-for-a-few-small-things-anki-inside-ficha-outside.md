@@ -1,5 +1,7 @@
 # Ficha is for a few small things: Anki inside, Ficha outside
 
+> Changed in part by [ADR 0039](0039-the-review-panel-has-three-buttons-forgot-kind-of-and-got-it.md), whose review panel shows the card with three buttons, Forgot, Kind of and Got it, in place of two (2026-11-26).
+
 Since ADR 0024 and ADR 0025, Ficha had turned toward Anki, so that someone switching from it found what they know, and in #450 Lucas proposed selling it as Anki's frictionless complement, not its replacement. Ten issues asked for Anki's features one by one, from its Custom Study to its statistics. On 2026-11-13 and 2026-11-14, talking it over, he named what Ficha is for: small things, such as new words, the types of clouds or the twenty highest mountains, and never thousands of cards a day, which is what Anki is for; his mistake, he said, had been to copy Anki. The market research (#452) found that 8 of 11 launches like Ficha's were asked "why not Anki?", and read "complement" as no headline, but as a line of honesty. In two rounds of debate on 2026-11-24, in the artifact "Hacia dónde va Ficha", he settled what follows, and approved it as a decision. It changes ADR 0024 in part, whose Ficha copies Anki wherever it can: Ficha copies Anki's model, not its face. It is the why that ADRs 0033 to 0036 rest on.
 
 - **Ficha is its own app, for a few small things the user wants to remember.** They come to the user while they work. For volume, Anki: Ficha says so once, honestly, on its App Store page.
