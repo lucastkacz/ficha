@@ -21,15 +21,15 @@ public struct CardDraft: Sendable, Equatable {
     public let backImage: FileChange
     public let frontSound: FileChange
     public let backSound: FileChange
-    /// Whether it goes both ways (ADR 0016), or nil when the refine session
-    /// left it out: a new card then goes one way, and a fixed card keeps its
-    /// own. An approved expansion's card keeps its own whatever this says.
+    /// Whether it goes both ways (ADR 0016), or nil when the draft leaves it
+    /// out: a new card then goes one way, and a fixed card keeps its own. An
+    /// approved expansion's card keeps its own whatever this says.
     public let bothWays: Bool?
     /// The deck it lives in, by its whole name, as `makeDeck(named:)` takes
     /// it, which is made if it isn't there, or Default, by
-    /// `Deck.defaultName`; or nil when the refine session left it out: a new
-    /// card then lives in Default, and a fixed card, or an expansion's, stays
-    /// in its own.
+    /// `Deck.defaultName`; or nil when the draft leaves it out: a new card
+    /// then lives in Default, and a fixed card, or an expansion's, stays in
+    /// its own.
     public let deck: String?
 
     public init(
@@ -59,7 +59,7 @@ public struct CardDraft: Sendable, Equatable {
     }
 }
 
-/// What a refine session does with a side's image or its sound.
+/// What a draft does with a side's image or its sound.
 public enum FileChange: Sendable, Equatable {
     /// Keeps the one the card has, or puts none on a new card.
     case keep
@@ -69,7 +69,7 @@ public enum FileChange: Sendable, Equatable {
     case put(FileForSide)
 }
 
-/// A file a refine session puts on a side of a card.
+/// A file a draft puts on a side of a card.
 public enum FileForSide: Sendable, Equatable {
     /// The file at this URL on the Mac, which comes in as one dropped on the
     /// Cards window's form does: an image shrunk, a sound converted.
@@ -79,11 +79,11 @@ public enum FileForSide: Sendable, Equatable {
     /// A sound Ficha holds already, by its name.
     case sound(SoundName)
 
-    /// The file `text` gives, as a refine session writes it for the `ficha`
-    /// CLI: an image or a sound Ficha holds, by the name `ficha cards`
-    /// prints, or else the path of a file on the Mac, from the home folder
-    /// when it starts with `~`, and from the folder the command runs in when
-    /// it doesn't start with `/` either. Blank text gives none.
+    /// The file `text` gives, as an agent writes it for the `ficha` CLI: an
+    /// image or a sound Ficha holds, by the name `ficha cards` prints, or else
+    /// the path of a file on the Mac, from the home folder when it starts with
+    /// `~`, and from the folder the command runs in when it doesn't start with
+    /// `/` either. Blank text gives none.
     public init?(_ text: String) {
         if text.allSatisfy(\.isWhitespace) {
             return nil
@@ -538,7 +538,7 @@ private func checkFile(at url: URL, with engine: Engine) throws(EngineError) {
         throw .noSuchFile(path)
     }
     guard FileManager.default.isReadableFile(atPath: path) else {
-        logger.error("A file a refine session gave for a side of a card can't be read")
+        logger.error("A file given for a side of a card can't be read")
         throw .unreadableFileForSide(url.lastPathComponent)
     }
 }
@@ -549,7 +549,7 @@ private func contents(of url: URL, with engine: Engine) throws(EngineError) -> D
     do {
         return try Data(contentsOf: url)
     } catch {
-        logger.error("Couldn't read a file a refine session gave: \(String(describing: error))")
+        logger.error("Couldn't read a file given for a side of a card: \(String(describing: error))")
         throw .unreadableFileForSide(url.lastPathComponent)
     }
 }

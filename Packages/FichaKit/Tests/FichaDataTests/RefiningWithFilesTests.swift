@@ -491,10 +491,10 @@ final class RefiningWithFilesTests {
     }
 }
 
-/// A card for a test to approve, fix or expand from a refine session: it
-/// always has a front and a back, and no tags or source unless the test gives
-/// them, and changes no side's image or sound, nor Both ways, unless the test
-/// says so. Its type is named as a refine session names it.
+/// A card for a test to add, approve, fix or expand, as the `ficha` CLI reads
+/// it: it always has a front and a back, and no tags or source unless the
+/// test gives them, and changes no side's image or sound, nor Both ways,
+/// unless the test says so. Its type is named as the CLI reads it.
 func draft(
     _ type: CardType?,
     front: String,
