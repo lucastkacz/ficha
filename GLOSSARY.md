@@ -128,7 +128,7 @@ One pass over one card: the user sees its front, or back first its back, flips i
 _Avoid_: answer, attempt, study
 
 **Rating**:
-How well the user says they knew a card in a review, kept as one of Anki's four: again, hard, good or easy. Hard means they remembered it, with effort; only again means they didn't. The review panel shows two buttons, Forgot for again and Got it for good, and keys 2 and 4 give hard and easy.
+How well the user says they knew a card in a review, kept as one of Anki's four: again, hard, good or easy. Hard means they remembered it, with effort; only again means they didn't. The review panel shows three buttons, Forgot for again, Kind of for hard and Got it for good; easy comes only from Anki.
 _Avoid_: grade, score, ease
 
 **Review log**:
