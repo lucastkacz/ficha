@@ -130,14 +130,13 @@ extension CardsInReviews {
     /// (ADR 0034): `deck` and the decks it passes take each other's places,
     /// the earliest for the first, `deck`'s being `now` when it has no card
     /// in Lucas's reviews. Those that would then go out of order, at one
-    /// place, by name, part a second apart, so that decks that came in
-    /// together part: later where the deck after them leaves room, else
-    /// earlier where the deck before them does, else later with the decks
-    /// after them too, as far as such ties reach. The other decks keep
-    /// their places, and so does a deck listed first for its priority cards
-    /// alone, whose new cards still come first, as do those of a priority
-    /// deck `deck` holds. Only the places that change, by deck, `deck`'s too
-    /// when it had none.
+    /// place, by name, go a second apart, so that decks that came in at once
+    /// part: later where the deck after them leaves room, else earlier where
+    /// the deck before them does, else later with the decks after them too,
+    /// as far as such ties reach. The other decks keep their places, and so
+    /// does a deck listed first for its priority cards alone, whose new cards
+    /// still come first, as do those of a priority deck `deck` holds. Only
+    /// the places that change, by deck, `deck`'s too when it had none.
     public func places(putting deck: String, at position: QueuePosition, now: Date) -> [String: Date] {
         let held = Dictionary(uniqueKeysWithValues: queue.map { ($0.deck, $0.place) })
         let placeOf = { (name: String) in held[name] ?? now }
@@ -168,19 +167,17 @@ extension CardsInReviews {
         func goesAfterTheOneBefore(_ index: Int) -> Bool {
             (parted[index - 1], order[index - 1]) < (parted[index], order[index])
         }
-        // Ties part among the decks the move passes: a second later, as far
-        // as the deck after them allows,
+        // Ties among the decks the move passes go a second apart, later,
         for index in max(first, 1)...last where !goesAfterTheOneBefore(index) {
             parted[index] = parted[index - 1] + 1
         }
         if last + 1 < order.count, !goesAfterTheOneBefore(last + 1) {
-            // or else a second earlier, as far as the deck before them
-            // allows,
+            // or, when that runs into the deck after them, earlier,
             for index in stride(from: last, through: first, by: -1) where !goesAfterTheOneBefore(index + 1) {
                 parted[index] = order[index] < order[index + 1] ? parted[index + 1] : parted[index + 1] - 1
             }
-            // or else a second later, those after them too, as far as such
-            // ties reach.
+            // or, when that runs into the deck before them too, later, with
+            // the decks after them, as far as such ties reach.
             if first > 0, !goesAfterTheOneBefore(first) {
                 parted = swapped
                 var index = max(first, 1)

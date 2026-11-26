@@ -239,18 +239,21 @@ struct PaceAndQueueTests {
         #expect(try queuedDecks() == ["Biología", "Arte", "Historia", "Música"])
     }
 
-    // Arte, Biología, Historia and Música come in at once. Biología moves
-    // after Historia, with Arte before them and Música after, both at their
-    // place, so Música goes later too.
-    @Test("a move with decks at one place on either side parts the decks after it too", .bug(id: 490))
-    func aMoveWithDecksAtOnePlaceOnEitherSidePartsTheDecksAfterIt() throws {
-        for deck in ["Arte", "Biología", "Historia", "Música"] {
+    // Arte, Biología, Historia, Música and Zoología come in at once, and
+    // Zoología is set aside. Biología moves after Historia, with Arte before
+    // them and Música after them at the same place as them, so Biología and
+    // Música go later: back, Zoología goes ahead of them.
+    @Test("a move with decks at one place on either side of those it passes parts those after them too", .bug(id: 490))
+    func aMoveWithDecksAtOnePlaceOnEitherSidePartsTheDecksAfterThem() throws {
+        for deck in ["Arte", "Biología", "Historia", "Música", "Zoología"] {
             try approveInDeck("Una de \(deck)", deck: deck, in: engine)
         }
 
+        try engine.setAside(deck: "Zoología")
         try engine.moveInQueue(deck: "Biología", to: .at(2))
+        try engine.stopSettingAside(deck: "Zoología")
 
-        #expect(try queuedDecks() == ["Arte", "Historia", "Biología", "Música"])
+        #expect(try queuedDecks() == ["Arte", "Historia", "Zoología", "Biología", "Música"])
     }
 
     // Historia comes in first, with 2 cards; then Arte, with 1 in
