@@ -1,4 +1,5 @@
 import FichaCore
+import Foundation
 internal import GRDB
 
 // Which cards are in Lucas's reviews, as their standing says: the only ones
