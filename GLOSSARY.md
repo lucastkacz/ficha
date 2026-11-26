@@ -46,7 +46,7 @@ The deck a card lives in when it has no other: a card the user didn't put in a d
 _Avoid_: no deck, unsorted, inbox
 
 **Ficha's decks**:
-The few small decks Ficha comes with, in English, which the user picks at the Welcome page or later. Once added, a deck is the user's like any other, and an update of the app doesn't touch it.
+The three small decks Ficha comes with, in Spanish for now, which the user picks at the Welcome page or later. Once added, a deck is the user's like any other, and an update of the app doesn't touch it.
 _Avoid_: sample cards, starter deck, preset
 
 **Tag**:
