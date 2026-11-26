@@ -53,7 +53,7 @@ What the method's commands read about Ficha (`.claude/method/method.md`), approv
 ## Hands-free
 
 - **Drives it**
-  - ✓ `ficha`, the CLI: cards, decks, tags, types, captures and approvals until ADR 0041's node takes them out, `ficha add` once it's built (ADR 0043), fixes, the pace and the queue. Agents run Ficha Dev's through `scripts/ficha-dev.sh` on a scratch folder ("Agents' runs of Ficha Dev's `ficha`").
+  - ✓ `ficha`, the CLI: cards, added straight into their decks with `ficha add` (ADR 0043), decks, tags, types, captures and approvals until ADR 0041's node takes them out, fixes, the pace and the queue. Agents run Ficha Dev's through `scripts/ficha-dev.sh` on a scratch folder ("Agents' runs of Ficha Dev's `ficha`").
   - ✓ `make render`'s clicks, keys and typing in a window; `make preview-import` for an import; `xcrun simctl` for the simulator.
   - ○ Ficha Dev's Debug menu (the sample cards, its clock, an appearance now, the second device) takes clicks only: #474 brings it to the command line.
   - ○ Dragging, right-clicks, double-clicks, menus and popovers: `make render` can't; #293's driver would, on Lucas's screen.

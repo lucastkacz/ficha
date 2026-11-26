@@ -118,24 +118,23 @@ struct UnburyCommand: EngineCommand {
 struct CardsCommand: EngineCommand {
     static let configuration = CommandConfiguration(
         commandName: "cards",
-        abstract: "List your cards, in the order you approved them, and whether each goes both ways.",
+        abstract: "List your cards, in the order they came in, and whether each goes both ways.",
         discussion: """
             Every card says in "bothWays" whether it goes both ways, coming back first too, its back on top, once \
-            you've met it; `ficha approve` and `ficha fix` set it. Every card names in "deck" the deck it lives \
-            in, by its whole name, as "Idiomas::Inglés", or "" for Default, where a card lives when it has no \
-            other deck; `ficha approve`, `ficha fix`, `ficha approve-expansion` and `ficha change-deck` set it. A \
-            flagged card has your note on what to fix in "flag", a buried one says when you buried it in \
-            "buriedAt", and one set aside lists in "setAsideBy" the set-aside decks it's set aside by, the \
-            outermost first: its own deck, or decks it sits inside, as the Cards window and `ficha deck set-aside` \
-            set them aside. A card's "type" is word, concept, quote or question, or a type \
-            of your own, by its name. A card leaves out "type", "source" or "captureID" when it has no type, no \
-            source, or didn't come from a capture. A card with an image or a sound on its front or back \
-            names it in "frontImage", "backImage", "frontSound" or "backSound", left out when that side has none; a \
-            side with only an image or a sound has an empty text. `ficha attach` puts one on a side and `ficha \
-            detach` takes one off, and `ficha approve`, `ficha approve-expansion` and `ficha fix` take them too. A \
-            card whose front or back changed since it came in says when it last did in "editedAt": an edit, a fix, \
-            an approved expansion, a side's image or sound put on or taken off, or an import; a change to its tags, \
-            type or source alone doesn't count.
+            you've met it; `ficha add`, `ficha approve` and `ficha fix` set it. Every card names in "deck" the deck it \
+            lives in, by its whole name, as "Idiomas::Inglés", or "" for Default, where a card lives when it has no \
+            other deck; `ficha add`, `ficha approve`, `ficha fix`, `ficha approve-expansion` and `ficha change-deck` \
+            set it. A flagged card has your note on what to fix in "flag", a buried one says when you buried it in \
+            "buriedAt", and one set aside lists in "setAsideBy" the set-aside decks it's set aside by, the outermost \
+            first: its own deck, or decks it sits inside, as the Cards window and `ficha deck set-aside` set them \
+            aside. A card's "type" is word, concept, quote or question, or a type of your own, by its name. A card \
+            leaves out "type", "source" or "captureID" when it has no type, no source, or didn't come from a capture. \
+            A card with an image or a sound on its front or back names it in "frontImage", "backImage", "frontSound" \
+            or "backSound", left out when that side has none; a side with only an image or a sound has an empty text. \
+            `ficha attach` puts one on a side and `ficha detach` takes one off, and `ficha add`, `ficha approve`, \
+            `ficha approve-expansion` and `ficha fix` take them too. A card whose front or back changed since it came \
+            in says when it last did in "editedAt": an edit, a fix, an approved expansion, a side's image or sound put \
+            on or taken off, or an import; a change to its tags, type or source alone doesn't count.
             """
     )
 

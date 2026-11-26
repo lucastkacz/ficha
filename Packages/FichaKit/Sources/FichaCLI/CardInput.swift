@@ -3,10 +3,10 @@ import FichaCore
 import FichaData
 import Foundation
 
-/// The fields of each card `ficha approve`, `ficha approve-expansion` and
-/// `ficha fix` read, as their
-/// help and their errors list them. The types are listed the British way,
-/// with no comma before "or", like the rest of the text.
+/// The fields of each card `ficha add`, `ficha approve`, `ficha
+/// approve-expansion` and `ficha fix` read, as their help and their errors
+/// list them. The types are listed the British way, with no comma before
+/// "or", like the rest of the text.
 let cardFields = """
     type (\(CardType.builtIn.map(\.writtenName).formatted(.list(type: .or).locale(Locale(identifier: "en_GB")))), \
     the name of a type of your own, which Ficha makes when you have none by that name, or null when there's \
@@ -17,13 +17,25 @@ let cardFields = """
     """
 
 /// What a card's frontImage, backImage, frontSound and backSound hold, as the
-/// help of `ficha approve`, `ficha approve-expansion` and `ficha fix` says
-/// it.
+/// help of `ficha add`, `ficha approve`, `ficha approve-expansion` and `ficha
+/// fix` says it.
 let fileFields = """
     frontImage, backImage, frontSound and backSound put an image or a sound on a side: the path of a file on your \
     Mac, such as "~/Downloads/coloratura.mp3", or the name of one Ficha holds, as `ficha cards` prints it. Ficha \
     shrinks an image, and converts a sound, a video's too, as it comes in. The CLI's sandbox lets it read files from \
     your Downloads folder alone.
+    """
+
+/// What a new card's files, Both ways and deck are when the card gives them
+/// or leaves them out, as the help of `ficha add` and `ficha approve` says
+/// it.
+let newCardFields = """
+    \(fileFields) Left out or null, a side has none.
+
+    bothWays true makes a card go both ways: once you've met it, it comes back first too, its back on top. Left \
+    out or false, it goes one way.
+
+    deck puts a card in that deck, and left out, in Default, where a card lives when it has no other.
     """
 
 /// What `ficha approve-expansion` and `ficha fix` do with a side's image or
@@ -35,8 +47,8 @@ let filesKept = """
 
 /// What a command reads as JSON on standard input, where Claude can pass any
 /// text in a quoted heredoc without escaping it, in the words its errors use:
-/// a list of cards, which `ficha approve` reads, or one card, which `ficha
-/// approve-expansion` and `ficha fix` read.
+/// a list of cards, which `ficha add` and `ficha approve` read, or one card,
+/// which `ficha approve-expansion` and `ficha fix` read.
 struct CardsInput {
     /// The command that reads it.
     let command: String
@@ -51,18 +63,21 @@ struct CardsInput {
     /// Whether it's a list, so a place in it starts with a card's position.
     let isList: Bool
 
+    /// The list of cards `ficha add` reads.
+    static let addedCards = listOfCards(for: "add")
     /// The list of cards `ficha approve` reads.
-    static let list = CardsInput(
-        command: "approve", what: "the cards", whole: "the list", json: "a JSON list",
-        rule: "They must be a JSON list where each card has \(cardFields)", isList: true)
-    /// The list of cards `ficha add` reads. A stub, until #534's code.
-    static let addedCards = CardsInput(
-        command: "add", what: "the cards", whole: "the list", json: "a JSON list",
-        rule: "They must be a JSON list where each card has \(cardFields)", isList: true)
+    static let approvedCards = listOfCards(for: "approve")
     /// The card `ficha fix` reads.
     static let fixedCard = oneCard(for: "fix")
     /// The card `ficha approve-expansion` reads.
     static let expandedCard = oneCard(for: "approve-expansion")
+
+    /// A list of cards, as `command` reads it.
+    private static func listOfCards(for command: String) -> CardsInput {
+        CardsInput(
+            command: command, what: "the cards", whole: "the list", json: "a JSON list",
+            rule: "They must be a JSON list where each card has \(cardFields)", isList: true)
+    }
 
     /// One card, as `command` reads it.
     private static func oneCard(for command: String) -> CardsInput {
@@ -80,13 +95,13 @@ struct CardsInput {
     }
 }
 
-/// The cards in `input`, a JSON list, which the engine checks as it saves
-/// them.
-func cards(in input: Data) throws -> [CardDraft] {
+/// The cards in `input`, a JSON list read as `cardsInput` says, which the
+/// engine checks as it saves them.
+func cards(in input: Data, as cardsInput: CardsInput) throws -> [CardDraft] {
     do {
         return try JSONDecoder().decode([CardInput].self, from: input).map(\.draft)
     } catch let error as DecodingError {
-        throw CardsInputError.unreadable(error, .list)
+        throw CardsInputError.unreadable(error, cardsInput)
     }
 }
 
@@ -105,13 +120,13 @@ func standardInput() throws -> Data {
     try FileHandle.standardInput.readToEnd() ?? Data()
 }
 
-/// A card as `ficha approve`, `ficha approve-expansion` and `ficha fix` read
-/// it. Every field must be there, `type` and `source` too, as null when
-/// there's none, so a misspelled field fails instead of passing for a missing
-/// one, but a side's image and sound, which a card leaves out to keep its
-/// own, `bothWays`, which a card leaves out to go one way or keep its own,
-/// and `deck`, which a card leaves out to live in Default or stay in its own.
-/// Other fields, such as those `ficha cards` prints, are ignored.
+/// A card as `ficha add`, `ficha approve`, `ficha approve-expansion` and
+/// `ficha fix` read it. Every field must be there, `type` and `source` too,
+/// as null when there's none, so a misspelled field fails instead of passing
+/// for a missing one, but a side's image and sound, which a card leaves out
+/// to keep its own, `bothWays`, which a card leaves out to go one way or keep
+/// its own, and `deck`, which a card leaves out to live in Default or stay in
+/// its own. Other fields, such as those `ficha cards` prints, are ignored.
 private struct CardInput: Decodable {
     /// The type's name, as `CardDraft` takes it.
     let type: String?
@@ -174,13 +189,13 @@ private struct CardInput: Decodable {
     }
 }
 
-/// What can be wrong with the cards `ficha approve`, `ficha approve-expansion`
-/// or `ficha fix` reads, before the engine checks them.
+/// What can be wrong with the cards `ficha add`, `ficha approve`, `ficha
+/// approve-expansion` or `ficha fix` reads, before the engine checks them.
 /// Each message says where, so whoever wrote the JSON can fix it.
 enum CardsInputError: LocalizedError {
     /// The input isn't the JSON the command reads, with every field.
     case unreadable(DecodingError, CardsInput)
-    /// The input is a list with no card in it. A stub, until #534's code.
+    /// The input is a list with no card in it, which would change nothing.
     case noCards(CardsInput)
 
     var errorDescription: String? {
@@ -190,7 +205,8 @@ enum CardsInputError: LocalizedError {
             Couldn't read \(input.what): \(explanation(of: error, in: input)). \(input.rule); see \
             `ficha \(input.command) --help`.
             """
-        case .noCards: nil
+        case .noCards(let input):
+            "There are no cards in \(input.whole): pass one or more; see `ficha \(input.command) --help`."
         }
     }
 }

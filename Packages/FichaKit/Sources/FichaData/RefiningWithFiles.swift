@@ -133,29 +133,44 @@ extension Engine {
     @discardableResult
     public func approve(_ captureID: Int64, into drafts: [CardDraft]) async throws(EngineError) -> [Card] {
         var held = FilesComingIn()
-        var files: [DraftFiles] = []
-        for draft in drafts {
-            files.append(try await held.bringIn(draft, with: self))
-        }
+        let files = try await held.bringIn(drafts, with: self)
         return try keeping(held.files) { () throws(EngineError) in
-            try approve(captureID) { db in
-                try drafts.indices.map { position in
-                    let content = try drafts[position].content(
-                        in: db, with: files[position].applied(to: nil),
-                        orIfBlank: .blankSideOnNewCard(position: position))
-                    return ApprovedCard(
-                        content: content, deck: drafts[position].deck ?? Deck.defaultName,
-                        bothWays: drafts[position].bothWays ?? false)
-                }
-            }
+            try approve(captureID) { db in try newCards(drafts, with: files, in: db) }
         }
     }
 
-    /// Adds the cards `drafts` straight into their decks, with no capture, as
-    /// `approve(_:into:)` makes them from one (ADR 0043). A stub, until
-    /// #534's code.
+    /// Adds the cards `drafts` straight into their decks, with no capture
+    /// (ADR 0043), made as `approve(_:into:)` makes them from one: saves them
+    /// as new cards, in the order given, each in the deck its draft names,
+    /// made if it isn't there, or in Default when it names none, going both
+    /// ways when its draft says so, with the images and sounds they put on
+    /// their sides, and returns them. A user type a draft names that the user
+    /// doesn't have comes in with its cards. When a draft's front repeats a
+    /// card's, by the duplicate rule, or the front of a draft before it in
+    /// the list, it adds none of them, and the result says which card it
+    /// repeats; the files that came in for them go again.
     public func add(_ drafts: [CardDraft]) async throws(EngineError) -> AddResult {
-        .added([])
+        var held = FilesComingIn()
+        let files = try await held.bringIn(drafts, with: self)
+        let createdAt = time.now
+        let result = try keeping(held.files) { () throws(EngineError) in
+            try write { db -> AddResult in
+                if let duplicate = try firstDuplicate(among: drafts, in: db) {
+                    return duplicate
+                }
+                let cardIDs = try newCards(drafts, with: files, in: db).map { card in
+                    try insertCard(
+                        card.content, deck: card.deck, bothWays: card.bothWays, capturedAs: nil, at: createdAt,
+                        in: db)
+                }
+                return .added(try cardIDs.map { try existingCard($0, in: db) })
+            }
+        }
+        if case .duplicate = result {
+            removeFilesNoCardUses(
+                images: Set(held.files.images.map(\.name)), sounds: Set(held.files.sounds.map(\.name)))
+        }
+        return result
     }
 
     /// Fixes a flagged card with `draft`, as `fix(_:with:)` does with a
@@ -290,6 +305,39 @@ extension CardDraft {
     }
 }
 
+/// The cards `drafts` make, in the write `db` that saves them, with the
+/// images and sounds `files` holds for each, in the same order: each in the
+/// deck its draft names, or in Default when it names none, and going both
+/// ways when its draft says so, and one way otherwise. A draft that leaves a
+/// side with neither text, an image nor a sound is refused by its position.
+private func newCards(_ drafts: [CardDraft], with files: [DraftFiles], in db: Database) throws -> [ApprovedCard] {
+    try drafts.indices.map { position in
+        let content = try drafts[position].content(
+            in: db, with: files[position].applied(to: nil), orIfBlank: .blankSideOnNewCard(position: position))
+        return ApprovedCard(
+            content: content, deck: drafts[position].deck ?? Deck.defaultName,
+            bothWays: drafts[position].bothWays ?? false)
+    }
+}
+
+/// The first of `drafts` whose front repeats a card's in `db`, by the
+/// duplicate rule, or the front of a draft before it, as `Engine.add(_:)`
+/// finds it, or nil when none does. A front without text repeats none.
+private func firstDuplicate(among drafts: [CardDraft], in db: Database) throws -> AddResult? {
+    let fronts = try FrontsInUse(in: db)
+    var positions: [String: Int] = [:]
+    for (position, draft) in drafts.enumerated() where !CardContent.isBlank(draft.front) {
+        if let cardID = fronts.cardID(repeatedBy: draft.front) {
+            return .duplicate(position: position, of: .card(try existingCard(cardID, in: db)))
+        }
+        if let earlier = positions[duplicateKey(draft.front)] {
+            return .duplicate(position: position, of: .cardInList(position: earlier))
+        }
+        positions[duplicateKey(draft.front)] = position
+    }
+    return nil
+}
+
 /// The image and the sound on each side of a card, or none.
 private struct SideFiles: Equatable {
     var frontImage: ImageName?
@@ -357,6 +405,17 @@ private struct FilesComingIn {
     /// The files held, ready to keep.
     var files: HeldFiles {
         HeldFiles(images: images, sounds: sounds)
+    }
+
+    /// Brings in the files each of `drafts` puts on its sides, holding those
+    /// that came in from the Mac, and returns what each does with them, in
+    /// the same order.
+    mutating func bringIn(_ drafts: [CardDraft], with engine: Engine) async throws(EngineError) -> [DraftFiles] {
+        var files: [DraftFiles] = []
+        for draft in drafts {
+            files.append(try await bringIn(draft, with: engine))
+        }
+        return files
     }
 
     /// Brings in the files `draft` puts on its sides, holding those that

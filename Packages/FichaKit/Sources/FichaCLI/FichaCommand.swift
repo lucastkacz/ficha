@@ -3,20 +3,22 @@ import FichaCore
 import FichaData
 import Foundation
 
-/// The `ficha` command: how Claude reads and writes Lucas's cards in a refine
-/// session he starts (ADR 0001), and how Lucas captures from a terminal. Like
-/// the app, it goes through the engine, and it prints JSON for Claude.
+/// The `ficha` command: how an agent, such as Claude, reads and writes the
+/// user's cards in a session they start, and adds new ones straight into
+/// their decks (ADR 0001, ADR 0043), and how the user captures from a
+/// terminal. Like the app, it goes through the engine, and it prints JSON for
+/// the agent.
 public struct FichaCommand: ParsableCommand {
     public static let configuration = CommandConfiguration(
         commandName: "ficha",
-        abstract: "Capture and refine your cards from the terminal.",
+        abstract: "Add, capture and refine your cards from the terminal.",
         discussion: "Every command prints its result as JSON.",
         subcommands: [
-            CaptureCommand.self, InboxCommand.self, ApproveCommand.self, ApproveExpansionCommand.self,
+            AddCommand.self, CaptureCommand.self, InboxCommand.self, ApproveCommand.self, ApproveExpansionCommand.self,
             DiscardCommand.self, FixCommand.self, AttachCommand.self, DetachCommand.self, BuryCommand.self,
             UnburyCommand.self, CardsCommand.self, ChangeDeckCommand.self, DecksCommand.self, DeckCommand.self,
-            TagsCommand.self, TagCommand.self, TypesCommand.self, TypeCommand.self, PaceCommand.self,
-            QueueCommand.self, RestoreCommand.self,
+            TagsCommand.self, TagCommand.self, TypesCommand.self, TypeCommand.self, PaceCommand.self, QueueCommand.self,
+            RestoreCommand.self,
         ]
     )
 
