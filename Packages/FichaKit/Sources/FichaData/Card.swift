@@ -3,10 +3,10 @@ import Foundation
 internal import GRDB
 
 /// One small thing Lucas wants to remember, with a front and a back, as the
-/// engine saved it when he approved it or the user created it. Each side
-/// holds text, an image, a sound, or any of them together. The `ficha` CLI
-/// prints it as JSON, without the type, images, sounds, source, edited time,
-/// capture, flag, burial or set-aside decks it doesn't have.
+/// engine saved it when he approved it, an agent added it or the user created
+/// it. Each side holds text, an image, a sound, or any of them together. The
+/// `ficha` CLI prints it as JSON, without the type, images, sounds, source,
+/// edited time, capture, flag, burial or set-aside decks it doesn't have.
 public struct Card: Sendable, Equatable, Encodable {
     public let id: Int64
     /// Its type, or nil when it has none, as when its user type was deleted,
@@ -32,14 +32,15 @@ public struct Card: Sendable, Equatable, Encodable {
     public let deck: String
     public let tags: [String]
     public let source: String?
-    /// When it came in: when the user approved it in a refine session, or created it.
+    /// When it came in: when it was approved from a capture or added with
+    /// `ficha add`, or the user created it.
     public let createdAt: Date
     /// When its front or back last changed, a side's image or sound included,
     /// or nil when neither changed since it came in, or since before Ficha
     /// kept it.
     public let editedAt: Date?
     /// The capture it was refined from, or nil when it came in another way,
-    /// such as the Cards window's form or an import.
+    /// such as `ficha add`, the Cards window's form or an import.
     public let captureID: Int64?
     /// Lucas's flag, while the card waits to be fixed, buried or not. Where
     /// the card stands is read from `standing`, never from this.
@@ -223,7 +224,7 @@ func cards(in rows: [Row], in db: Database) throws -> [Card] {
     return try rows.map { try Card(row: $0, setAsideDecks: setAside, userTypes: userTypes) }
 }
 
-/// Every card, in the order Lucas approved them.
+/// Every card, in the order they came in.
 func allCards(in db: Database) throws -> [Card] {
     try cards(in: Row.fetchAll(db, sql: "SELECT * FROM card ORDER BY id"), in: db)
 }

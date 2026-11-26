@@ -7,8 +7,8 @@ import Testing
 // read them.
 @testable import FichaData
 
-/// Tests on the images and sounds a refine session puts on cards through the
-/// `ficha` CLI: approving and fixing cards with a file for a side, given by
+/// Tests on the images and sounds an agent puts on cards through the `ficha`
+/// CLI: approving, adding and fixing cards with a file for a side, given by
 /// its path or by the name Ficha holds it by, and putting one on, or taking
 /// one off, a side of any card.
 final class RefiningWithFilesTests {
@@ -387,6 +387,74 @@ final class RefiningWithFilesTests {
         #expect(try engine.keptImages().isEmpty)
     }
 
+    // " Hornero " repeats hornero by the duplicate rule, and NIDO the nido
+    // before it in the list; barro's back is left blank.
+    @Test(
+        "an add refused for a duplicate front or a blank side adds no card, and keeps none of the files it brought in",
+        .bug(id: 534))
+    func aRefusedAddKeepsNoneOfItsFiles() async throws {
+        let engine = try Engine(location: .inMemory, time: time)
+        let hornero = try engine.create(card(.word, front: "hornero", back: "Un pájaro."))
+        let photo = try file("nido.png", holding: picture(width: 800, height: 600, red: 0.8))
+        let song = try file("canto.wav", holding: tone(seconds: 1, hertz: 440))
+        let nido = draft(
+            .word, front: "nido", back: "Lo hace el hornero.", frontImage: .put(.file(photo)),
+            backSound: .put(.file(song)))
+
+        let repeatsACard = try await engine.add([nido, draft(.word, front: " Hornero ", back: "Otro pájaro.")])
+        let repeatsTheList = try await engine.add([nido, draft(nil, front: "NIDO", back: "Otro nido.")])
+        let imagesAfterDuplicates = try engine.keptImages()
+        let soundsAfterDuplicates = try engine.keptSounds()
+        await #expect(throws: EngineError.blankSideOnNewCard(position: 1)) {
+            try await engine.add([nido, draft(.word, front: "barro", back: " ")])
+        }
+
+        #expect(repeatsACard == .duplicate(position: 1, of: .card(hornero)))
+        #expect(repeatsTheList == .duplicate(position: 1, of: .cardInList(position: 0)))
+        #expect(imagesAfterDuplicates.isEmpty && soundsAfterDuplicates.isEmpty)
+        #expect(try engine.cards() == [hornero])
+        #expect(try engine.keptImages().isEmpty)
+        #expect(try engine.keptSounds().isEmpty)
+    }
+
+    // hornero has the photo and the song, which the refused adds bring in
+    // again from their files, or name by the names Ficha holds them by.
+    @Test(
+        "an add refused for a duplicate front leaves the files a card has, brought in again or named", .bug(id: 534))
+    func aRefusedAddLeavesACardsFiles() async throws {
+        let engine = try Engine(location: .inMemory, time: time)
+        let photo = try file("hornero.png", holding: picture(width: 800, height: 600, red: 0.8))
+        let song = try file("canto.wav", holding: tone(seconds: 1, hertz: 440))
+        let capture = try engine.newCapture("hornero")
+        let approved = try await engine.approve(
+            capture.id,
+            into: [
+                draft(
+                    .word, front: "hornero", back: "Un pájaro.", frontImage: .put(.file(photo)),
+                    backSound: .put(.file(song)))
+            ])
+        let hornero = try #require(approved.first)
+        let image = try #require(hornero.frontImage)
+        let sound = try #require(hornero.backSound)
+
+        let fromFiles = try await engine.add([
+            draft(
+                .word, front: "Hornero", back: "Otro pájaro.", frontImage: .put(.file(photo)),
+                backSound: .put(.file(song)))
+        ])
+        let byName = try await engine.add([
+            draft(
+                .word, front: "hornero ", back: "Otro pájaro.", frontImage: .put(.image(image)),
+                backSound: .put(.sound(sound)))
+        ])
+
+        #expect(fromFiles == .duplicate(position: 0, of: .card(hornero)))
+        #expect(byName == .duplicate(position: 0, of: .card(hornero)))
+        #expect(try engine.cards() == [hornero])
+        #expect(try engine.keptImages() == [image])
+        #expect(try engine.keptSounds() == [sound])
+    }
+
     @Test(
         "a side's file, as a refine session writes it, is a name Ficha holds when it reads as one, and a path otherwise"
     )
@@ -423,10 +491,10 @@ final class RefiningWithFilesTests {
     }
 }
 
-/// A card for a test to approve, fix or expand from a refine session: it
-/// always has a front and a back, and no tags or source unless the test gives
-/// them, and changes no side's image or sound, nor Both ways, unless the test
-/// says so. Its type is named as a refine session names it.
+/// A card for a test to add, approve, fix or expand, as the `ficha` CLI reads
+/// it: it always has a front and a back, and no tags or source unless the
+/// test gives them, and changes no side's image or sound, nor Both ways,
+/// unless the test says so. Its type is named as the CLI reads it.
 func draft(
     _ type: CardType?,
     front: String,

@@ -372,4 +372,36 @@ final class SyncedFilesTests {
         #expect(try mac.engine.sound(song) == iPhone.engine.sound(song))
         #expect(try mac.cardsAsSeen() == iPhone.cardsAsSeen())
     }
+
+    // hornero's photo went up to iCloud, then the Mac deleted the card, and
+    // the deletion waits to go: no card uses the photo, but iCloud holds it.
+    // A list refused for repeating nido brings the photo in again from its
+    // file.
+    @Test(
+        "an add refused for a duplicate front, while sync is on, leaves a file no card uses that iCloud holds",
+        .bug(id: 534))
+    func aRefusedAddLeavesAFileICloudHolds() async throws {
+        let photo = URL.temporaryDirectory.appending(path: "FichaSyncedFilesTests-\(UUID().uuidString).png")
+        try picture(width: 800, height: 600, red: 0.8).write(to: photo)
+        defer { try? FileManager.default.removeItem(at: photo) }
+        let withPhoto = draft(.word, front: "hornero", back: "Un pájaro.", frontImage: .put(.file(photo)))
+        guard case .added(let added) = try await mac.engine.add([withPhoto]) else {
+            Issue.record("hornero wasn't added.")
+            return
+        }
+        let hornero = try #require(added.first)
+        let image = try #require(hornero.frontImage)
+        let nido = try mac.engine.create(card(nil, front: "nido", back: "Lo hace el hornero."))
+        try await mac.syncNow()
+        try mac.engine.delete([hornero.id])
+        try #require(try mac.engine.keptImages() == [image])
+
+        let refused = try await mac.engine.add([
+            draft(.word, front: "Nido", back: "Otro nido.", frontImage: .put(.file(photo)))
+        ])
+
+        #expect(refused == .duplicate(position: 0, of: .card(nido)))
+        #expect(try mac.engine.cards() == [nido])
+        #expect(try mac.engine.keptImages() == [image])
+    }
 }

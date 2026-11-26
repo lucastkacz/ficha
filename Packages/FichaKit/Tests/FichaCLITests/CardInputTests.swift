@@ -30,7 +30,7 @@ struct CardInputTests {
             ]
             """.utf8)
 
-        let drafts = try cards(in: input)
+        let drafts = try cards(in: input, as: .approvedCards)
         let approved = try await engine.approve(capture.id, into: drafts)
 
         #expect(drafts.map(\.type) == ["Fármaco", "quote", nil])
@@ -55,7 +55,7 @@ struct CardInputTests {
             ]
             """.utf8)
 
-        let approved = try await engine.approve(capture.id, into: cards(in: input))
+        let approved = try await engine.approve(capture.id, into: cards(in: input, as: .approvedCards))
 
         #expect(approved.map(\.deck) == ["Medicina::Farmacología", Deck.defaultName, Deck.defaultName])
         #expect(try engine.decks().map(\.name) == [Deck.defaultName, "Medicina", "Medicina::Farmacología"])
@@ -101,7 +101,7 @@ struct CardInputTests {
             [{"type": "word", "front": "AINE", "back": "Antiinflamatorio.", "tags": [], "source": null, "deck": null}]
             """.utf8)
 
-        #expect(throws: CardsInputError.self) { try cards(in: input) }
+        #expect(throws: CardsInputError.self) { try cards(in: input, as: .approvedCards) }
     }
 
     /// Saves a capture of `text` in `engine`'s inbox, which repeats nothing,

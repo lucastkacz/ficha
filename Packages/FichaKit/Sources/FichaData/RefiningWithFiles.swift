@@ -2,15 +2,16 @@ import FichaCore
 import Foundation
 internal import GRDB
 
-/// A card a refine session drafted, as Lucas approved it and the `ficha` CLI
-/// reads it: what it holds, what becomes of each side's image and sound, the
-/// deck it lives in, and whether it goes both ways. The engine checks it as
-/// `CardContent` does once its files are in.
+/// A card an agent drafted, as the `ficha` CLI reads it for `ficha add`,
+/// `ficha approve`, `ficha approve-expansion` or `ficha fix`: what it holds,
+/// what becomes of each side's image and sound, the deck it lives in, and
+/// whether it goes both ways. The engine checks it as `CardContent` does once
+/// its files are in.
 public struct CardDraft: Sendable, Equatable {
-    /// Its type, as the refine session names it: one of the four Ficha comes
-    /// with, by its raw value, or a user type, by its name, which the engine
-    /// finds, ignoring case and accents, or makes, with no emoji, as an
-    /// import does; or nil when it has none.
+    /// Its type, as the draft names it: one of the four Ficha comes with, by
+    /// its raw value, or a user type, by its name, which the engine finds,
+    /// ignoring case and accents, or makes, with no emoji, as an import does;
+    /// or nil when it has none.
     public let type: String?
     public let front: String
     public let back: String
@@ -20,15 +21,15 @@ public struct CardDraft: Sendable, Equatable {
     public let backImage: FileChange
     public let frontSound: FileChange
     public let backSound: FileChange
-    /// Whether it goes both ways (ADR 0016), or nil when the refine session
-    /// left it out: a new card then goes one way, and a fixed card keeps its
-    /// own. An approved expansion's card keeps its own whatever this says.
+    /// Whether it goes both ways (ADR 0016), or nil when the draft leaves it
+    /// out: a new card then goes one way, and a fixed card keeps its own. An
+    /// approved expansion's card keeps its own whatever this says.
     public let bothWays: Bool?
     /// The deck it lives in, by its whole name, as `makeDeck(named:)` takes
     /// it, which is made if it isn't there, or Default, by
-    /// `Deck.defaultName`; or nil when the refine session left it out: a new
-    /// card then lives in Default, and a fixed card, or an expansion's, stays
-    /// in its own.
+    /// `Deck.defaultName`; or nil when the draft leaves it out: a new card
+    /// then lives in Default, and a fixed card, or an expansion's, stays in
+    /// its own.
     public let deck: String?
 
     public init(
@@ -58,7 +59,7 @@ public struct CardDraft: Sendable, Equatable {
     }
 }
 
-/// What a refine session does with a side's image or its sound.
+/// What a draft does with a side's image or its sound.
 public enum FileChange: Sendable, Equatable {
     /// Keeps the one the card has, or puts none on a new card.
     case keep
@@ -68,7 +69,7 @@ public enum FileChange: Sendable, Equatable {
     case put(FileForSide)
 }
 
-/// A file a refine session puts on a side of a card.
+/// A file a draft, or `Engine.attach(_:to:of:)`, puts on a side of a card.
 public enum FileForSide: Sendable, Equatable {
     /// The file at this URL on the Mac, which comes in as one dropped on the
     /// Cards window's form does: an image shrunk, a sound converted.
@@ -78,11 +79,11 @@ public enum FileForSide: Sendable, Equatable {
     /// A sound Ficha holds already, by its name.
     case sound(SoundName)
 
-    /// The file `text` gives, as a refine session writes it for the `ficha`
-    /// CLI: an image or a sound Ficha holds, by the name `ficha cards`
-    /// prints, or else the path of a file on the Mac, from the home folder
-    /// when it starts with `~`, and from the folder the command runs in when
-    /// it doesn't start with `/` either. Blank text gives none.
+    /// The file `text` gives, as an agent writes it for the `ficha` CLI: an
+    /// image or a sound Ficha holds, by the name `ficha cards` prints, or else
+    /// the path of a file on the Mac, from the home folder when it starts with
+    /// `~`, and from the folder the command runs in when it doesn't start with
+    /// `/` either. Blank text gives none.
     public init?(_ text: String) {
         if text.allSatisfy(\.isWhitespace) {
             return nil
@@ -102,6 +103,25 @@ public enum FileKind: String, Sendable, CaseIterable {
     case sound
 }
 
+/// What adding cards through `ficha add` did: added them all, or found one
+/// whose front repeats another card's and added none.
+public enum AddResult: Sendable, Equatable {
+    /// The cards, as they were saved, in the order given.
+    case added([Card])
+    /// The card at this position in the list, from 0, repeats the front of
+    /// the card `of` names, by the duplicate rule, so no card of the list was
+    /// added.
+    case duplicate(position: Int, of: RepeatedFront)
+}
+
+/// The card whose front a card being added repeats.
+public enum RepeatedFront: Sendable, Equatable {
+    /// A card the user has.
+    case card(Card)
+    /// The card at this position, from 0, before it in the same list.
+    case cardInList(position: Int)
+}
+
 extension Engine {
     /// Approves a capture into the cards `drafts`, as
     /// `approve(_:into:deck:)` does, each in the deck its draft names, made
@@ -114,22 +134,44 @@ extension Engine {
     @discardableResult
     public func approve(_ captureID: Int64, into drafts: [CardDraft]) async throws(EngineError) -> [Card] {
         var held = FilesComingIn()
-        var files: [DraftFiles] = []
-        for draft in drafts {
-            files.append(try await held.bringIn(draft, with: self))
-        }
+        let files = try await held.bringIn(drafts, with: self)
         return try keeping(held.files) { () throws(EngineError) in
-            try approve(captureID) { db in
-                try drafts.indices.map { position in
-                    let content = try drafts[position].content(
-                        in: db, with: files[position].applied(to: nil),
-                        orIfBlank: .blankSideOnNewCard(position: position))
-                    return ApprovedCard(
-                        content: content, deck: drafts[position].deck ?? Deck.defaultName,
-                        bothWays: drafts[position].bothWays ?? false)
+            try approve(captureID) { db in try newCards(drafts, with: files, in: db) }
+        }
+    }
+
+    /// Adds the cards `drafts` straight into their decks, with no capture
+    /// (ADR 0043), made as `approve(_:into:)` makes them from one: saves them
+    /// as new cards, in the order given, each in the deck its draft names,
+    /// made if it isn't there, or in Default when it names none, going both
+    /// ways when its draft says so, with the images and sounds they put on
+    /// their sides, and returns them. A user type a draft names that the user
+    /// doesn't have comes in with its cards. When a draft's front repeats a
+    /// card's, by the duplicate rule, or the front of a draft before it in
+    /// the list, it adds none of them, and the result says which card it
+    /// repeats; the files that came in for them go again.
+    public func add(_ drafts: [CardDraft]) async throws(EngineError) -> AddResult {
+        var held = FilesComingIn()
+        let files = try await held.bringIn(drafts, with: self)
+        let createdAt = time.now
+        let result = try keeping(held.files) { () throws(EngineError) in
+            try write { db -> AddResult in
+                if let duplicate = try firstDuplicate(among: drafts, in: db) {
+                    return duplicate
                 }
+                let cardIDs = try newCards(drafts, with: files, in: db).map { card in
+                    try insertCard(
+                        card.content, deck: card.deck, bothWays: card.bothWays, capturedAs: nil, at: createdAt,
+                        in: db)
+                }
+                return .added(try cardIDs.map { try existingCard($0, in: db) })
             }
         }
+        if case .duplicate = result {
+            removeFilesNoCardUses(
+                images: Set(held.files.images.map(\.name)), sounds: Set(held.files.sounds.map(\.name)))
+        }
+        return result
     }
 
     /// Fixes a flagged card with `draft`, as `fix(_:with:)` does with a
@@ -264,6 +306,39 @@ extension CardDraft {
     }
 }
 
+/// The cards `drafts` make, in the write `db` that saves them, with the
+/// images and sounds `files` holds for each, in the same order: each in the
+/// deck its draft names, or in Default when it names none, and going both
+/// ways when its draft says so, and one way otherwise. A draft that leaves a
+/// side with neither text, an image nor a sound is refused by its position.
+private func newCards(_ drafts: [CardDraft], with files: [DraftFiles], in db: Database) throws -> [ApprovedCard] {
+    try drafts.indices.map { position in
+        let content = try drafts[position].content(
+            in: db, with: files[position].applied(to: nil), orIfBlank: .blankSideOnNewCard(position: position))
+        return ApprovedCard(
+            content: content, deck: drafts[position].deck ?? Deck.defaultName,
+            bothWays: drafts[position].bothWays ?? false)
+    }
+}
+
+/// The first of `drafts` whose front repeats a card's in `db`, by the
+/// duplicate rule, or the front of a draft before it, as `Engine.add(_:)`
+/// finds it, or nil when none does. A front without text repeats none.
+private func firstDuplicate(among drafts: [CardDraft], in db: Database) throws -> AddResult? {
+    let fronts = try FrontsInUse(in: db)
+    var positions: [String: Int] = [:]
+    for (position, draft) in drafts.enumerated() where !CardContent.isBlank(draft.front) {
+        if let cardID = fronts.cardID(repeatedBy: draft.front) {
+            return .duplicate(position: position, of: .card(try existingCard(cardID, in: db)))
+        }
+        if let earlier = positions[duplicateKey(draft.front)] {
+            return .duplicate(position: position, of: .cardInList(position: earlier))
+        }
+        positions[duplicateKey(draft.front)] = position
+    }
+    return nil
+}
+
 /// The image and the sound on each side of a card, or none.
 private struct SideFiles: Equatable {
     var frontImage: ImageName?
@@ -322,8 +397,8 @@ private struct DraftFiles {
     }
 }
 
-/// The images and sounds that came in for refine sessions' changes, held until
-/// the cards that have them are saved.
+/// The images and sounds that came in for the `ficha` CLI's changes, held
+/// until the cards that have them are saved.
 private struct FilesComingIn {
     private var images: [CardImage] = []
     private var sounds: [CardSound] = []
@@ -331,6 +406,17 @@ private struct FilesComingIn {
     /// The files held, ready to keep.
     var files: HeldFiles {
         HeldFiles(images: images, sounds: sounds)
+    }
+
+    /// Brings in the files each of `drafts` puts on its sides, holding those
+    /// that came in from the Mac, and returns what each does with them, in
+    /// the same order.
+    mutating func bringIn(_ drafts: [CardDraft], with engine: Engine) async throws(EngineError) -> [DraftFiles] {
+        var files: [DraftFiles] = []
+        for draft in drafts {
+            files.append(try await bringIn(draft, with: engine))
+        }
+        return files
     }
 
     /// Brings in the files `draft` puts on its sides, holding those that
@@ -452,7 +538,7 @@ private func checkFile(at url: URL, with engine: Engine) throws(EngineError) {
         throw .noSuchFile(path)
     }
     guard FileManager.default.isReadableFile(atPath: path) else {
-        logger.error("A file a refine session gave for a side of a card can't be read")
+        logger.error("A file given for a side of a card can't be read")
         throw .unreadableFileForSide(url.lastPathComponent)
     }
 }
@@ -463,7 +549,7 @@ private func contents(of url: URL, with engine: Engine) throws(EngineError) -> D
     do {
         return try Data(contentsOf: url)
     } catch {
-        logger.error("Couldn't read a file a refine session gave: \(String(describing: error))")
+        logger.error("Couldn't read a file given for a side of a card: \(String(describing: error))")
         throw .unreadableFileForSide(url.lastPathComponent)
     }
 }

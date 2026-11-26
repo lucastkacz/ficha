@@ -39,9 +39,9 @@ public struct Engine: Sendable {
     /// Where the sounds on cards are kept: the Sounds folder beside the
     /// database, or memory with it.
     let sounds: FileStore<SoundName>
-    /// The Downloads folder, when a refine session's files may come from
-    /// there alone, as in the `ficha` CLI's sandbox (ADR 0018), or nil when
-    /// they may come from anywhere.
+    /// The Downloads folder, when the files the `ficha` CLI puts on cards may
+    /// come from there alone, as in its sandbox (ADR 0018), or nil when they
+    /// may come from anywhere.
     let refineFilesOnlyIn: URL?
     /// A new SVG drawer for each import's SVGs, or nil when its imports draw
     /// none.
@@ -52,14 +52,14 @@ public struct Engine: Sendable {
     /// that an older version of Ficha left, it saves a copy before an update
     /// in the Backups folder, where it first moves those that versions before
     /// backups left next to the database. A database that a newer version
-    /// migrated is refused, and left as it was. The review log's entries
-    /// it writes get their IDs from `ids`, random ones except in tests. Days
-    /// start at midnight by `calendar`: the Mac's, except in tests. A refine
-    /// session's files come
-    /// from `downloads` alone, the Downloads folder, when it's given, and from
-    /// anywhere when it isn't. An import draws its SVGs with a drawer
-    /// `newSVGDrawer` makes, in the app its XPC service, and without one, as
-    /// in the CLI and on the iPhone, which don't import, it draws none.
+    /// migrated is refused, and left as it was. The review log's entries it
+    /// writes get their IDs from `ids`, random ones except in tests. Days start
+    /// at midnight by `calendar`: the Mac's, except in tests. The files the
+    /// `ficha` CLI puts on cards come from `downloads` alone, the Downloads
+    /// folder, when it's given, and from anywhere when it isn't. An import
+    /// draws its SVGs with a drawer `newSVGDrawer` makes, in the app its XPC
+    /// service, and without one, as in the CLI and on the iPhone, which don't
+    /// import, it draws none.
     public init(
         location: DatabaseLocation,
         time: any TimeSource,
@@ -252,7 +252,7 @@ public struct Engine: Sendable {
         }
     }
 
-    /// Every card, in the order Lucas approved them.
+    /// Every card, in the order they came in.
     public func cards() throws(EngineError) -> [Card] {
         try read(allCards(in:))
     }
@@ -429,9 +429,10 @@ func captureInInbox(_ captureID: Int64, in db: Database) throws -> Capture {
     return try Capture(row: row)
 }
 
-/// A card a capture is approved into, as `Engine.approve(_:into:)` saves it:
-/// what it holds, the deck it goes to, by its whole name, made if it isn't
-/// there, or Default, and whether it goes both ways.
+/// A card a capture is approved into, as `Engine.approve(_:into:)` saves it,
+/// or one `Engine.add(_:)` adds with no capture: what it holds, the deck it
+/// goes to, by its whole name, made if it isn't there, or Default, and
+/// whether it goes both ways.
 struct ApprovedCard {
     let content: CardContent
     let deck: String

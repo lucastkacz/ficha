@@ -22,9 +22,9 @@ public enum EngineError: Error, Equatable {
     /// A capture was approved into no cards. One that becomes no cards is
     /// discarded instead.
     case noCards
-    /// A card a refine session drafted, the one at this position, from 0,
-    /// among the cards a capture is approved into, has a side, its front or
-    /// its back, with neither text, an image nor a sound.
+    /// A new card, the one at this position, from 0, among the cards a
+    /// capture is approved into or a list `ficha add` adds, has a side, its
+    /// front or its back, with neither text, an image nor a sound.
     case blankSideOnNewCard(position: Int)
     /// A refine session's change would leave the card with this id with a
     /// side, its front or its back, with neither text, an image nor a sound,
