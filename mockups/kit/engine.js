@@ -3,9 +3,9 @@
  *
  * Plain JavaScript, no React, so it runs in a page and in Node alike.
  * It imitates FichaCore closely enough for a mock to feel right, in what
- * mockups/README.md's "What the toy engine copies" lists, and acts out what
- * ADR 0034 decided ahead of FichaCore, which #490 builds: the pace, the
- * queue of decks, the finish date and 85% on a new install. It is a toy:
+ * mockups/README.md's "What the toy engine copies" lists: since #490, the
+ * pace, the queue of decks, the finish date and 85% on a new install too.
+ * It is a toy:
  * FichaCore, with its tests, decides the real logic. A rule that comes out
  * of a mock goes into the decision's issue and is built in Swift with its
  * tests (mockups/README.md).
@@ -79,7 +79,7 @@
     retention: 0.9,
     longestIntervalDays: 36500,
   };
-  /** ADR 0034: the desired retention a new install starts at, ahead of FichaCore (#490). */
+  /** ADR 0034: the desired retention a new install starts at, as FichaCore's `Scheduler.newInstall`. */
   const NEW_INSTALL_RETENTION = 0.85;
 
   /**
@@ -213,7 +213,7 @@
     // Where new cards come from: 'queue', one deck at a time (ADR 0034), or
     // 'together', every deck in turn: the day's new cards split between the
     // decks, ADR 0034's "one pace split between them". The app itself takes
-    // new cards in the order they came in (ReviewNow).
+    // them as 'queue' does (ReviewNow.pickCards).
     newCardsFrom: 'queue',
     // New cards a day count by the calendar day, as ReviewNow's metToday does.
     dayStartsAtHour: 0,
@@ -221,8 +221,8 @@
 
   /**
    * ADR 0034: one pace for all decks, the new cards a day the user meets.
-   * Steady to start. The numbers are provisional: #490 measures them again
-   * in the Lab.
+   * Steady to start. The numbers are provisional: the Lab measured each
+   * pace's appearances and minutes a weekday (#490).
    */
   const PACES = [
     { id: 'chill', name: 'Chill', perDay: 1 },
@@ -237,7 +237,7 @@
    * ADR 0034's finish date, in days from today, for each deck of a queue:
    * `left` is each deck's new cards still to meet, in the queue's order, and
    * `today` the new cards today may still bring. `soonest` is if every day
-   * has appearances, `latest` if five days a week do.
+   * has appearances, `latest` if five days in seven do.
    */
   function finishDays({ left, perDay, today = 0 }) {
     let total = 0;

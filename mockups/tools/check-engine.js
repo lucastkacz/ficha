@@ -1,4 +1,4 @@
-// Checks the mock's toy engine against FichaCore's own tests, so what the
+// Checks the mock's toy engine against FichaKit's own tests, so what the
 // mock and the lab show is what the app would do.
 //   node mockups/tools/check-engine.js    (from the repo's folder)
 // Each case cites the Swift test it copies, in Packages/FichaKit/Tests.
@@ -146,6 +146,16 @@ const noSteps = { ...SCHEDULER, learningSteps: [] };
   app.setAside('arte', false);
   check('a deck set aside leaves the queue and comes back to its place', setAside === 'lenguaje,historia,musica' && queue() === 'lenguaje,arte,historia,musica', [setAside, queue()]);
 }
+// PaceAndQueueTests.aDecksFinishDateCountsWhatTodayStillBrings: Arte's 2
+// new ways left once La Gioconda is met today, with 1 still to come today at
+// Steady, 3 at Faster, and none once active hours are over.
+{
+  const days = (f) => f.map((d) => `${d.soonest}-${d.latest}`).join();
+  const steady = finishDays({ left: [2], perDay: 2, today: 1 });
+  const faster = finishDays({ left: [2], perDay: 4, today: 3 });
+  const late = finishDays({ left: [2], perDay: 4, today: 0 });
+  check('the new cards met today count, and a late hour brings none', days(steady) === '1-2' && days(faster) === '0-0' && days(late) === '1-2', [days(steady), days(faster), days(late)]);
+}
 // PaceAndQueueTests.aDecksFinishDate: Arte's 3 new cards and then
 // Historia's 4, with today's 2 still to come at Steady, or 4 at Faster.
 {
@@ -157,6 +167,6 @@ const noSteps = { ...SCHEDULER, learningSteps: [] };
 }
 
 console.log(failed
-  ? `\n${failed} failed: mockups/kit/engine.js no longer matches FichaCore's tests. Change engine.js until they pass, or the case above if the Swift test it copies changed (mockups/README.md).`
-  : '\nAll match FichaCore.');
+  ? `\n${failed} failed: mockups/kit/engine.js no longer matches FichaKit's tests. Change engine.js until they pass, or the case above if the Swift test it copies changed (mockups/README.md).`
+  : '\nAll match FichaKit.');
 process.exit(failed ? 1 : 0);
