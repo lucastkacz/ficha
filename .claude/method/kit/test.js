@@ -367,9 +367,11 @@ async function inspection() {
 function docs() {
   const readme = read('README.md');
   const part = (readme.split(/^## Changing the kit$/m)[1] || '').split(/^## /m)[0];
-  // The run itself: a paragraph that names the kit's test and says it runs before the reviews, and its command.
-  const run = part.includes('node .claude/method/kit/test.js') && part.split(/\n\s*\n/).some((p) => /the kit's test|test\.js/.test(p) && /\bbefore\b[^.]*\breview/i.test(p));
-  check('the README\'s Changing the kit runs this test before a change\'s reviews', run ? null : `${README}, Changing the kit, doesn't say that a change to the kit passes its test before the change's reviews: say it there, in a paragraph that names the kit's test and says it runs before the reviews, with the command, \`node .claude/method/kit/test.js\`, in that section.`);
+  // The run itself, in the words this case looks for, since no reading of prose can tell every wording apart: a
+  // sentence that starts "Before the change's reviews" and names the kit's test, and the command in the section.
+  const sentences = part.split(/[.:;!?](?:\s|$)/);
+  const run = part.includes('node .claude/method/kit/test.js') && sentences.some((x) => /^\s*Before the change's reviews\b/.test(x) && /the kit's test/i.test(x));
+  check('the README\'s Changing the kit runs this test before a change\'s reviews', run ? null : `${README}, Changing the kit, doesn't run the kit's test before the change's reviews: say it there, in a sentence that starts "Before the change's reviews" and names the kit's test, with its command, \`node .claude/method/kit/test.js\`, in that section.`);
   // The kit serves any project: no file of it names the one it lives in, as its pliego's title gives it.
   const name = 'no file of the kit names the project, as its pliego\'s title gives it';
   const pliego = path.resolve(kitDir, '..', '..', '..', 'PLIEGO.md');
