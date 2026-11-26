@@ -1,6 +1,4 @@
-// The kit's own test: the user's answers, notes and approval kept through a database that's slow, absent or
-// failing, against pieces.html; and pages built from pieces.html with one defect each, which the inspection
-// must fail, naming the defect. A change to the kit passes it before its reviews (README.md, Changing the kit).
+// The kit's own test: what it tries, and when to run it, is in .claude/method/kit/README.md, Changing the kit.
 // node .claude/method/kit/test.js, from the repo's folder, on the machine the pliego's Where it runs gives the
 // inspection of the method's pages. Prints a line per case; exits 1 when any failed, 2 when it couldn't run.
 const fs = require('fs');
@@ -29,7 +27,8 @@ const check = (name, problem) => {
 
 // Runs in the page before the kit. mode.absent: 'none', no window.claude; 'null', no db; 'refused', use('db')
 // throws. mode.slow: the first snapshot waits for __db.answer(). mode.docs: what the database holds at first.
-// __db.hold holds each write until __db.release(); __db.fail(n, code) makes the next n writes throw.
+// __db.hold holds each write until __db.release(); __db.fail(n, code) makes the next n writes throw;
+// __db.lose() fails the snapshots' listener.
 function fakeDb(mode) {
   if (mode.absent === 'none') return;
   const copy = (v) => JSON.parse(JSON.stringify(v));
@@ -40,7 +39,7 @@ function fakeDb(mode) {
   db.answer = () => { db.answered = true; emit(); };
   db.release = () => { while (held.length) held.shift()(); };
   db.fail = (n, code) => { db.failing = n; db.code = code || null; };
-  db.lose = () => subs.forEach(([, err]) => err && err(new Error('the database went away')));
+  db.lose = () => subs.forEach(([, err]) => err && err(new Error('the snapshots failed')));
   async function set(id, v) {
     db.writes.push({ id, v: copy(v) });
     if (db.hold) await new Promise((f) => held.push(f));
@@ -64,6 +63,7 @@ function fakeDb(mode) {
 
 // The page as the Artifact tool serves it: wrapped in its skeleton, with kit/ beside it.
 const ORIGIN = 'https://kit.test/';
+const START = new Date('2026-01-05T10:00:00Z');
 const wrap = (src) => `<!doctype html><html><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"></head><body>${src}</body></html>`;
 async function openPieces(browser, mode = {}) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 700 }, isMobile: true, hasTouch: true, reducedMotion: 'reduce' });
@@ -80,9 +80,11 @@ async function openPieces(browser, mode = {}) {
   const errors = [];
   pg.on('console', (m) => { if (m.type() === 'error' && !/fonts\.(googleapis|gstatic)\.com/.test(m.text() + ' ' + (m.location().url || ''))) errors.push(m.text()); });
   pg.on('pageerror', (e) => errors.push(e.message));
-  await pg.clock.install();
+  // Time stands still: the kit's timers, its debounce, retries and waits, fire only as a case moves the clock.
+  await pg.clock.install({ time: START });
+  await pg.clock.pauseAt(START);
   await pg.goto(ORIGIN + 'pieces.html');
-  await pg.waitForFunction(() => document.body.classList.contains('k-ready'));
+  if (!(await pg.evaluate(() => document.body.classList.contains('k-ready')))) throw new Error(`the kit didn't start on pieces.html${errors.length ? `: the console says "${errors[0].slice(0, 200)}"` : ''}`);
   // What a case does and reads, in the page, as a user's taps and what the screen says.
   await pg.evaluate(() => {
     const q = (id) => document.querySelector(`.k-q[data-q="${id}"]`);
@@ -102,14 +104,20 @@ async function openPieces(browser, mode = {}) {
       },
     };
   });
+  // The database's first snapshot, unless the case holds it back.
+  if (!mode.slow && !mode.absent) {
+    await pg.clock.runFor(1);
+    if (!(await pg.evaluate(() => window.__db.answered))) throw new Error("the database in memory didn't send its first snapshot");
+  }
   // The kit's own words, which the screen shows.
   return { ctx, pg, errors, T: await pg.evaluate(() => window.Kit.text) };
 }
 
 const KIT = 'look at the saving part of kit.js, from "Questions, notes and the approval" on';
-// Each case returns what broke, with where to look, or nothing.
+const at = '2026-01-01T00:00:00Z';
+// Each case returns what broke, what it should have done and where to look, or nothing.
 const SAVING = [
-  ['a choice, a note and Aprobar made before the database answers wait, and are saved once it does', { slow: true, docs: { ritmo: { choice: 'a', note: '', at: '2026-01-01T00:00:00Z' } } }, async (pg, run, T) => {
+  ['a choice, a note and Aprobar made before the database answers wait, and are saved once it does', { slow: true, docs: { ritmo: { choice: 'a', note: '', at } } }, async (pg, run, T) => {
     await run((t) => { t.choose('ritmo', 'c'); t.type('nota-ritmo', 'antes'); t.leave('nota-ritmo'); t.approve(); });
     await pg.clock.runFor(10000);
     let s = await run((t) => t.screen());
@@ -121,38 +129,51 @@ const SAVING = [
     await pg.clock.runFor(100);
     const docs = await pg.evaluate(() => window.__db.docs);
     s = await run((t) => t.screen());
-    if (docs.ritmo?.choice !== 'c') return `the choice made before the answer is "${docs.ritmo?.choice}" in the database, which held "a": the user's choice wins over the first snapshot. Then ${KIT}.`;
-    if (docs['nota-ritmo']?.note !== 'antes') return `the note typed before the answer was saved as "${docs['nota-ritmo']?.note}". Then ${KIT}.`;
-    if (!docs.aprobacion?.approved || s.button !== T.approved) return `the approval made before the answer wasn't saved, or Aprobar says "${s.button}". Then ${KIT}.`;
-    if (s.status !== T.saved) return `once everything saved, the status says "${s.status}". Then ${KIT}.`;
+    if (docs.ritmo?.choice !== 'c') return `the choice made before the answer is "${docs.ritmo?.choice}" in the database, which held "a": it's "c", since the user's choice wins over the first snapshot. Then ${KIT}.`;
+    if (docs['nota-ritmo']?.note !== 'antes') return `the note typed before the answer was saved as "${docs['nota-ritmo']?.note}": it's "antes". Then ${KIT}.`;
+    if (!docs.aprobacion?.approved || s.button !== T.approved) return `the approval made before the answer is ${JSON.stringify(docs.aprobacion)} in the database, and Aprobar says "${s.button}": it's saved, and Aprobar says "${T.approved}". Then ${KIT}.`;
+    if (s.status !== T.saved) return `once everything saved, the status says "${s.status}": it says "${T.saved}". Then ${KIT}.`;
   }],
-  ['a note typed while another answer saves stays, and is saved', { docs: { ritmo: { choice: 'b', note: 'vieja', at: '2026-01-01T00:00:00Z' } } }, async (pg, run, T) => {
+  ['a note typed while another answer saves stays, and is saved', { docs: { ritmo: { choice: 'b', note: 'vieja', at } } }, async (pg, run, T) => {
     await run((t) => { t.type('ritmo', 'nueva'); t.choose('mazos', 'b'); });
     await pg.clock.runFor(100);
-    let s = await run((t) => t.screen());
-    if (s.notes.ritmo !== 'nueva') return `the snapshot of another answer's save put back "${s.notes.ritmo}" over the note being typed: a snapshot leaves alone what touched holds. Then ${KIT}.`;
+    const s = await run((t) => t.screen());
+    if (s.notes.ritmo !== 'nueva') return `the snapshot of another answer's save put back "${s.notes.ritmo}" over the note being typed: the note stays "nueva", since a snapshot leaves alone what touched holds. Then ${KIT}.`;
     await run((t) => t.leave('ritmo'));
     await pg.clock.runFor(100);
     const docs = await pg.evaluate(() => window.__db.docs);
     if (docs.ritmo?.note !== 'nueva' || docs.ritmo?.choice !== 'b') return `the note was saved as ${JSON.stringify(docs.ritmo)}: it's "nueva", with the choice the database held, "b". Then ${KIT}.`;
   }],
-  ['a note typed while its own last save is on its way is saved after it', {}, async (pg, run, T) => {
+  ['a note left again while its last save is on its way is saved after it', {}, async (pg, run, T) => {
     await pg.evaluate(() => { window.__db.hold = true; });
     await run((t) => { t.type('nota-ritmo', 'uno'); t.leave('nota-ritmo'); t.type('nota-ritmo', 'uno dos'); t.leave('nota-ritmo'); });
     await pg.evaluate(() => { window.__db.hold = false; window.__db.release(); });
     await pg.clock.runFor(100);
     const docs = await pg.evaluate(() => window.__db.docs), s = await run((t) => t.screen());
-    if (docs['nota-ritmo']?.note !== 'uno dos') return `the database holds "${docs['nota-ritmo']?.note}": the save that came back first put back an older note, or the second save never went. Then ${KIT}.`;
-    if (s.notes['nota-ritmo'] !== 'uno dos' || s.status !== T.saved) return `the screen shows "${s.notes['nota-ritmo']}" and the status "${s.status}". Then ${KIT}.`;
+    if (docs['nota-ritmo']?.note !== 'uno dos') return `the database holds "${docs['nota-ritmo']?.note}": it holds "uno dos", since a save asked for while another is on its way goes once that one is back. Then ${KIT}.`;
+    if (s.notes['nota-ritmo'] !== 'uno dos' || s.status !== T.saved) return `the screen shows "${s.notes['nota-ritmo']}" and the status "${s.status}": "uno dos", and "${T.saved}". Then ${KIT}.`;
   }],
-  ...[['none', 'no window.claude'], ['null', 'no database'], ['refused', 'a database it may not use'], ['lost', 'a database that stops answering']].map(([absent, what]) => [
-    `a view with ${what} says it doesn't save, and leaves Aprobar off`, absent === 'lost' ? {} : { absent }, async (pg, run, T) => {
-      if (absent === 'lost') await pg.evaluate(() => window.__db.lose());
+  ['a note typed on while its save is on its way stays when another answer saves, and is saved', {}, async (pg, run, T) => {
+    await pg.evaluate(() => { window.__db.hold = true; });
+    await run((t) => { t.type('nota-ritmo', 'uno'); t.leave('nota-ritmo'); t.type('nota-ritmo', 'uno dos'); });
+    await pg.evaluate(() => { window.__db.hold = false; window.__db.release(); });
+    await pg.clock.runFor(100);
+    await run((t) => t.choose('mazos', 'b'));
+    await pg.clock.runFor(100);
+    const s = await run((t) => t.screen());
+    if (s.notes['nota-ritmo'] !== 'uno dos') return `the snapshot of another answer's save put back "${s.notes['nota-ritmo']}": the note stays "uno dos", since a field the user changed while its save was on its way stays the page's. Then ${KIT}.`;
+    await pg.clock.runFor(1000);
+    const docs = await pg.evaluate(() => window.__db.docs);
+    if (docs['nota-ritmo']?.note !== 'uno dos') return `a second after the user stopped typing, the database holds "${docs['nota-ritmo']?.note}": it holds "uno dos". Then ${KIT}.`;
+  }],
+  ...[['none', 'no window.claude'], ['null', 'no database'], ['refused', 'a database it may not use'], ['failing', 'a database whose snapshots fail']].map(([absent, what]) => [
+    `a view with ${what} says it doesn't save, and leaves Aprobar off`, absent === 'failing' ? {} : { absent }, async (pg, run, T) => {
+      if (absent === 'failing') await pg.evaluate(() => window.__db.lose());
       await run((t) => { t.choose('mazos', 'b'); t.type('nota-ritmo', 'x'); t.leave('nota-ritmo'); t.approve(); });
       await pg.clock.runFor(3000);
       const s = await run((t) => t.screen()), writes = await pg.evaluate(() => (window.__db ? window.__db.writes.length : 0));
       if (s.apState !== T.noSave || !s.buttonOff) return `Aprobar is ${s.buttonOff ? 'off' : 'on'} and says "${s.apState}": a view that can't save keeps it off, and says "${T.noSave}". Then ${KIT}.`;
-      if (s.pressed.mazos !== 'a' || writes) return `a tap in a view that can't save chose "${s.pressed.mazos}", or wrote ${writes} time(s): it changes nothing. Then ${KIT}.`;
+      if (s.pressed.mazos !== 'a' || writes) return `a tap in a view that can't save chose "${s.pressed.mazos}" and wrote ${writes} time(s): it changes nothing, so the recommended "a" stays, with no write. Then ${KIT}.`;
     }]),
   ['a view that loses the right to save goes read-only, and takes back the approval it hadn\'t saved', {}, async (pg, run, T) => {
     await pg.evaluate(() => { window.__db.hold = true; window.__db.fail(1, 'revoked'); });
@@ -161,7 +182,7 @@ const SAVING = [
     await pg.clock.runFor(100);
     const s = await run((t) => t.screen()), docs = await pg.evaluate(() => window.__db.docs);
     if (s.status !== T.readOnly) return `the status says "${s.status}": a revoked database says "${T.readOnly}". Then ${KIT}.`;
-    if (s.button !== T.approve || !s.buttonOff || docs.aprobacion) return `Aprobar says "${s.button}" and is ${s.buttonOff ? 'off' : 'on'}: an approval the database never held is taken back, and a read-only view keeps Aprobar off. Then ${KIT}.`;
+    if (s.button !== T.approve || !s.buttonOff || docs.aprobacion) return `Aprobar says "${s.button}" and is ${s.buttonOff ? 'off' : 'on'}: it says "${T.approve}", since an approval the database never held is taken back, and it's off, since the view is read-only. Then ${KIT}.`;
   }],
   ['a choice that doesn\'t save says so, holds Aprobar back, and is tried again by itself', {}, async (pg, run, T) => {
     await pg.evaluate(() => window.__db.fail(1));
@@ -169,54 +190,56 @@ const SAVING = [
     await pg.clock.runFor(100);
     let s = await run((t) => t.screen());
     if (s.status !== T.notSaved || !s.statusErr) return `after a failed save the status says "${s.status}": it says "${T.notSaved}", in red. Then ${KIT}.`;
-    if (!s.buttonOff || s.apState !== T.unsaved) return `while an answer isn't saved, Aprobar is ${s.buttonOff ? 'off' : 'on'} and says "${s.apState}": it waits, and says "${T.unsaved}". Then ${KIT}.`;
-    await pg.clock.runFor(2100);
+    if (!s.buttonOff || s.apState !== T.unsaved) return `while an answer isn't saved, Aprobar is ${s.buttonOff ? 'off' : 'on'} and says "${s.apState}": it waits, off, and says "${T.unsaved}". Then ${KIT}.`;
+    await pg.clock.runFor(2000);
     const docs = await pg.evaluate(() => window.__db.docs);
     s = await run((t) => t.screen());
-    if (docs.mazos?.choice !== 'b') return `2 s later the choice still isn't in the database: a failed save is tried again by itself. Then ${KIT}.`;
-    if (s.status !== T.saved || s.buttonOff || s.apState !== T.withChoices) return `once the retry saved, the status says "${s.status}" and Aprobar is ${s.buttonOff ? 'off' : 'on'}. Then ${KIT}.`;
+    if (docs.mazos?.choice !== 'b') return `2 s later the database holds ${JSON.stringify(docs.mazos)}: it holds the choice "b", since a failed save is tried again by itself. Then ${KIT}.`;
+    if (s.status !== T.saved || s.buttonOff || s.apState !== T.withChoices) return `once the retry saved, the status says "${s.status}" and Aprobar is ${s.buttonOff ? 'off' : 'on'}: "${T.saved}", and Aprobar on, saying "${T.withChoices}". Then ${KIT}.`;
   }],
-  ['a save that keeps failing stops after three more tries, and the next tap saves it', {}, async (pg, run, T) => {
+  ['a save that keeps failing is tried three more times, 2, 4 and 6 s apart, and the next tap saves it', {}, async (pg, run, T) => {
     await pg.evaluate(() => window.__db.fail(99));
     await run((t) => t.choose('mazos', 'b'));
-    await pg.clock.runFor(30000);
-    const writes = await pg.evaluate(() => window.__db.writes.length);
+    const sent = [];
+    for (const ms of [1900, 200, 3800, 200, 5800, 200, 30000]) { await pg.clock.runFor(ms); sent.push(await pg.evaluate(() => window.__db.writes.length)); }
+    if (sent.join() !== '1,2,2,3,3,4,4') return `the writes sent, counted at 1.9, 2.1, 5.9, 6.1, 11.9, 12.1 and 42.1 s, were ${sent.join(', ')}: they're 1, 2, 2, 3, 3, 4, 4, the first save and three more tries, 2, 4 and 6 s apart. Then ${KIT}.`;
     let s = await run((t) => t.screen());
-    if (writes !== 4) return `a save that always fails was sent ${writes} time(s) in 30 s: once, and three more tries, 2, 4 and 6 s apart. Then ${KIT}.`;
-    if (s.status !== T.notSaved || !s.buttonOff) return `after the last try the status says "${s.status}" and Aprobar is ${s.buttonOff ? 'off' : 'on'}. Then ${KIT}.`;
+    if (s.status !== T.notSaved || !s.buttonOff) return `after the last try the status says "${s.status}" and Aprobar is ${s.buttonOff ? 'off' : 'on'}: it says "${T.notSaved}", and Aprobar stays off. Then ${KIT}.`;
     await pg.evaluate(() => window.__db.fail(0));
     await run((t) => t.choose('mazos', 'b'));
     await pg.clock.runFor(100);
     s = await run((t) => t.screen());
-    if ((await pg.evaluate(() => window.__db.docs.mazos?.choice)) !== 'b' || s.status !== T.saved || s.buttonOff) return `the user's tap after the tries didn't save, or the status says "${s.status}". Then ${KIT}.`;
+    const choice = await pg.evaluate(() => window.__db.docs.mazos?.choice);
+    if (choice !== 'b' || s.status !== T.saved || s.buttonOff) return `after the user's next tap, the database holds "${choice}", the status says "${s.status}" and Aprobar is ${s.buttonOff ? 'off' : 'on'}: "b", "${T.saved}", and Aprobar on. Then ${KIT}.`;
   }],
   ['an approval that doesn\'t save is taken back, and pressing Aprobar again saves it', {}, async (pg, run, T) => {
     await pg.evaluate(() => window.__db.fail(1));
     await run((t) => t.approve());
     await pg.clock.runFor(10000);
     let s = await run((t) => t.screen());
-    if (s.button !== T.approve || s.buttonOff) return `after a failed approval Aprobar says "${s.button}" and is ${s.buttonOff ? 'off' : 'on'}: it's taken back, so the user can press it again. Then ${KIT}.`;
+    if (s.button !== T.approve || s.buttonOff) return `after a failed approval Aprobar says "${s.button}" and is ${s.buttonOff ? 'off' : 'on'}: it's taken back, saying "${T.approve}", and on, so the user can press it again. Then ${KIT}.`;
     if (await pg.evaluate(() => window.__db.docs.aprobacion)) return `the approval reached the database by itself after it failed: it waits for the user's press. Then ${KIT}.`;
-    if (s.status !== T.notSaved) return `after a failed approval the status says "${s.status}". Then ${KIT}.`;
+    if (s.status !== T.notSaved) return `after a failed approval the status says "${s.status}": it says "${T.notSaved}". Then ${KIT}.`;
     await run((t) => t.approve());
     await pg.clock.runFor(100);
     s = await run((t) => t.screen());
-    if (!(await pg.evaluate(() => window.__db.docs.aprobacion?.approved)) || s.button !== T.approved || s.status !== T.saved) return `the second press didn't save the approval: Aprobar says "${s.button}", the status "${s.status}". Then ${KIT}.`;
+    const ap = await pg.evaluate(() => window.__db.docs.aprobacion);
+    if (!ap?.approved || s.button !== T.approved || s.status !== T.saved) return `after the second press the database holds ${JSON.stringify(ap)}, Aprobar says "${s.button}" and the status "${s.status}": the approval, "${T.approved}" and "${T.saved}". Then ${KIT}.`;
   }],
-  ['an approval that saved is never taken back, by a note that fails or a database that goes away', {}, async (pg, run, T) => {
+  ['an approval that saved is never taken back, by a note that fails or snapshots that fail', {}, async (pg, run, T) => {
     await pg.evaluate(() => { window.__db.hold = true; });
     await run((t) => { t.type('aprobacion', 'uno'); t.approve(); t.type('aprobacion', 'uno dos'); });
     await pg.evaluate(() => { window.__db.hold = false; window.__db.release(); });
     await pg.clock.runFor(100);
-    if (!(await pg.evaluate(() => window.__db.docs.aprobacion?.approved))) return `the approval, sent while its note was typed, didn't reach the database. Then ${KIT}.`;
+    if (!(await pg.evaluate(() => window.__db.docs.aprobacion?.approved))) return `the approval, sent while its note was typed, isn't in the database: it is, once its save is back. Then ${KIT}.`;
     await pg.evaluate(() => window.__db.fail(99));
     await run((t) => t.leave('aprobacion'));
     await pg.clock.runFor(100);
     let s = await run((t) => t.screen());
-    if (s.button !== T.approved) return `the approval saved, then the note's save failed, and Aprobar says "${s.button}": a field the database holds leaves the pending set. Then ${KIT}.`;
+    if (s.button !== T.approved) return `the approval saved, then the note's save failed, and Aprobar says "${s.button}": it says "${T.approved}", since a field the database holds leaves the pending set. Then ${KIT}.`;
     await pg.evaluate(() => window.__db.lose());
     s = await run((t) => t.screen());
-    if (s.button !== T.approved) return `the approval saved, then the database went away, and Aprobar says "${s.button}". Then ${KIT}.`;
+    if (s.button !== T.approved) return `the approval saved, then the database's snapshots failed, and Aprobar says "${s.button}": it says "${T.approved}". Then ${KIT}.`;
   }],
 ];
 
@@ -308,12 +331,14 @@ function docs() {
   const readme = read('README.md');
   const part = (readme.split(/^## Changing the kit$/m)[1] || '').split(/^## /m)[0];
   check('the README\'s Changing the kit runs this test before a change\'s reviews', /test\.js/.test(part) && /review/.test(part) ? null : `${README}, Changing the kit, doesn't say that a change to the kit passes test.js before its reviews: say it there.`);
-  // The kit serves any project: none of its files names the one it lives in, as its pliego's title does.
+  // The kit serves any project: no file of it names the one it lives in, as its pliego's title gives it.
+  const name = 'no file of the kit names the project, as its pliego\'s title gives it';
   const pliego = path.resolve(kitDir, '..', '..', '..', 'PLIEGO.md');
-  const project = fs.existsSync(pliego) && (fs.readFileSync(pliego, 'utf8').match(/^# Pliego of (.+)$/m) || [])[1];
-  if (!project) { check('the kit names no fact of the project it lives in', null); return; }
-  const named = fs.readdirSync(kitDir).filter((f) => new RegExp(`\\b${project.trim()}\\b`).test(read(f)));
-  check('the kit names no fact of the project it lives in', named.length ? `${named.join(', ')} name(s) "${project.trim()}", the project's name in its pliego: the kit and its examples serve any project, so give them a generic example (.claude/method/method.md).` : null);
+  const project = fs.existsSync(pliego) ? ((fs.readFileSync(pliego, 'utf8').match(/^# Pliego of (.+)$/m) || [])[1] || '').trim() : '';
+  if (!project) { console.log(`skip ${name}: no PLIEGO.md titled "# Pliego of <project>" at the repo's root. Where the project's CLAUDE.md names another pliego, search the kit's files for the project's name with git grep.`); return; }
+  const word = new RegExp(`(^|[^\\p{L}\\p{N}])${project.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}\\p{N}])`, 'u');
+  const named = fs.readdirSync(kitDir).filter((f) => word.test(read(f)));
+  check(name, named.length ? `${named.join(', ')} name(s) "${project}", the project's name in its pliego: the kit and its examples serve any project, so give them a generic example (.claude/method/method.md).` : null);
 }
 
 (async () => {
@@ -336,6 +361,6 @@ function docs() {
     : `\nAll ${passed} passed.`);
   process.exit(failed ? 1 : 0);
 })().catch((e) => {
-  console.error(`The test stopped: ${e.message.split('\n')[0]}. Run it again; if it stops at the same place, look at test.js.`);
+  console.error(`The test stopped: ${e.message.split('\n')[0]}. Find why from this message, in test.js or in what it runs, and fix it, even if a run again passes: a stop has a reason.`);
   process.exit(2);
 });

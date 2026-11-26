@@ -64,13 +64,15 @@ With the Artifact tool: the page as `file_path`, and in `files` the kit, `{"kit/
 
 ## Changing the kit
 
-A change to a piece changes `pieces.html` with it. Before the change's reviews, it passes the inspection on `pieces.html` and on [`../map.html`](../map.html), and the kit's test, where the inspection runs:
+A change to a piece changes `pieces.html` with it. A saving rule or an inspection check the change adds gets a case in `test.js`, with generic examples, and a failure whose words the change rewrites changes its case's.
+
+Before the change's reviews, it passes the inspection on `pieces.html` and on [`../map.html`](../map.html), and the kit's test, from the repo's folder, on the machine the pliego's Where it runs gives the inspection of the method's pages:
 
 ```
 node .claude/method/kit/test.js
 ```
 
-It tries the answers, notes and approval against `pieces.html`, with a database that's slow, absent or failing, and runs the inspection on copies of `pieces.html` with one defect each, which it must fail, naming the defect. A saving rule or an inspection check the change adds gets its case there, with generic examples, as the kit's; a failure whose words the change rewrites changes its case's.
+It tries the answers, notes and approval against `pieces.html`, with a database that's slow, absent or failing, and runs the inspection on copies of `pieces.html` with one defect each, which it must fail, naming the defect.
 
 Before its PR is ready, both pages are published again at the links the pliego's How it's drawn gives, so the user sees the change while it waits to merge.
 
