@@ -129,13 +129,16 @@ extension CardsInReviews {
     /// `ReviewSettings.queue(of:now:calendar:)` lists them, as of `now`
     /// (ADR 0034): `deck` and the decks it passes take each other's places,
     /// the earliest for the first, `deck`'s being `now` when it has no card
-    /// in Lucas's reviews, each a second at least after the one before, so
-    /// that decks that came in together part. A deck listed first for its
-    /// priority cards alone keeps its place, and its new cards still come
-    /// first, as do those of a priority deck `deck` holds. Only the places
-    /// that change, by deck.
+    /// in Lucas's reviews. One that would then go ahead of the deck before
+    /// it, at the same place, by name, goes a second after it instead, and
+    /// so on as far as such ties reach, so that decks that came in together
+    /// part. The other decks keep their places, and so does a deck listed
+    /// first for its priority cards alone, whose new cards still come first,
+    /// as do those of a priority deck `deck` holds. Only the places that
+    /// change, by deck, `deck`'s too when it had none.
     public func places(putting deck: String, at position: QueuePosition, now: Date) -> [String: Date] {
         let held = Dictionary(uniqueKeysWithValues: queue.map { ($0.deck, $0.place) })
+        let placeOf = { (name: String) in held[name] ?? now }
         var order = decksWithNewWays().map(\.deck).filter { $0 != deck }
         switch position {
         case .first:
@@ -147,14 +150,30 @@ extension CardsInReviews {
         }
         let withOtherNewWays = Set(splitByPriority(newWays).others.compactMap { topDecks[$0.cardID] })
         order = order.filter { $0 == deck || withOtherNewWays.contains($0) }
-        var places: [String: Date] = [:]
-        var previous: Date?
-        for (name, place) in zip(order, order.map { held[$0] ?? now }.sorted()) {
-            let parted = previous.map { max(place, $0 + 1) } ?? place
-            if parted != held[name] {
-                places[name] = parted
+        // The same decks in the order their places put them now; the move
+        // passes those between the first and the last that it changes.
+        let before = order.sorted { (placeOf($0), $0) < (placeOf($1), $1) }
+        guard let first = order.indices.first(where: { order[$0] != before[$0] }),
+            let last = order.indices.last(where: { order[$0] != before[$0] })
+        else {
+            return held[deck] == nil ? [deck: now] : [:]
+        }
+        var parted = order.map(placeOf)
+        for index in first...last {
+            parted[index] = placeOf(before[index])
+        }
+        var index = max(first, 1)
+        while index < order.count {
+            if (parted[index], order[index]) <= (parted[index - 1], order[index - 1]) {
+                parted[index] = parted[index - 1] + 1
+            } else if index > last {
+                break
             }
-            previous = parted
+            index += 1
+        }
+        var places: [String: Date] = [:]
+        for (name, place) in zip(order, parted) where place != held[name] {
+            places[name] = place
         }
         return places
     }

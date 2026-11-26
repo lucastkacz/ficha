@@ -204,6 +204,25 @@ struct PaceAndQueueTests {
         #expect(try queuedDecks() == ["Arte", "Música", "Historia"])
     }
 
+    // Arte, Biología and Música come in at once, as an import's decks do,
+    // and Historia a minute later. Historia moves last, where it is, while
+    // Música is set aside: back, Música goes between Biología and Historia
+    // again.
+    @Test("a move leaves alone the places of the decks it doesn't pass, those that came in at once too", .bug(id: 490))
+    func aMoveLeavesTheDecksItDoesNotPassAlone() throws {
+        for deck in ["Arte", "Biología", "Música"] {
+            try approveInDeck("Una de \(deck)", deck: deck, in: engine)
+        }
+        time.advance(by: minutes(1))
+        try approveInDeck("Coliseo", deck: "Historia", in: engine)
+
+        try engine.setAside(deck: "Música")
+        try engine.moveInQueue(deck: "Historia", to: .last)
+        try engine.stopSettingAside(deck: "Música")
+
+        #expect(try queuedDecks() == ["Arte", "Biología", "Música", "Historia"])
+    }
+
     // Historia comes in first, with 2 cards; then Arte, with 1 in
     // Arte::Barroco, a priority deck, and 2 in Arte::Renacimiento; then
     // Música, a priority deck at the top, each a minute after the one

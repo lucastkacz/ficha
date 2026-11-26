@@ -389,7 +389,7 @@ struct PriorityDecksTests {
     }
 
     // The Mac's preferences are the app's, whichever database it opens, so a
-    // priority deck kept there would show in another database too. There,
+    // priority deck kept there would show in another database too. In each,
     // Lenguaje comes in a minute before Filosofía, so it goes first in the
     // queue.
     @Test(
@@ -401,6 +401,7 @@ struct PriorityDecksTests {
         defer { try? FileManager.default.removeItem(at: folder) }
         let engine = try Engine(location: .folder(folder), time: time, calendar: calendar)
         try approveInDeck("ubuntu", deck: "Lenguaje", in: engine)
+        time.advance(by: minutes(1))
         let eudaimonia = try approveInDeck("eudaimonía", deck: "Filosofía", in: engine)
         try engine.togglePriority(ofDeck: "Filosofía")
 
