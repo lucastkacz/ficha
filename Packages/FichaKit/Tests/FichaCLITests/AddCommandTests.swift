@@ -16,17 +16,22 @@ import UniformTypeIdentifiers
 /// memory that takes files from a Downloads folder of the test's own, as the
 /// CLI's sandbox does (ADR 0018), and the JSON it prints.
 final class AddCommandTests {
-    let time = ManualTimeSource(now: Date(timeIntervalSince1970: 1_760_000_000))
+    let time: ManualTimeSource
     /// A folder of the test's own, which holds its Downloads folder.
-    let folder = URL.temporaryDirectory.appending(
-        path: "FichaAddCommandTests-\(UUID().uuidString)", directoryHint: .isDirectory)
+    let folder: URL
     /// The Downloads folder, the one the engine takes files from.
     let downloads: URL
     let engine: Engine
 
     init() throws {
-        downloads = folder.appending(path: "Downloads", directoryHint: .isDirectory)
+        let time = ManualTimeSource(now: Date(timeIntervalSince1970: 1_760_000_000))
+        let folder = URL.temporaryDirectory.appending(
+            path: "FichaAddCommandTests-\(UUID().uuidString)", directoryHint: .isDirectory)
+        let downloads = folder.appending(path: "Downloads", directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: downloads, withIntermediateDirectories: true)
+        self.time = time
+        self.folder = folder
+        self.downloads = downloads
         engine = try Engine(location: .inMemory, time: time, refineFilesOnlyIn: downloads)
     }
 
@@ -64,7 +69,7 @@ final class AddCommandTests {
         #expect(cards.map(\.source) == [nil, "Aves argentinas"])
         #expect(cards.allSatisfy { $0.captureID == nil && $0.createdAt == time.now && $0.standing == .inReviews })
         #expect(try engine.reviewLog().isEmpty)
-        #expect(printed == (try json(cards)))
+        #expect(try printed == json(cards))
         #expect(try engine.inbox().captures == [capture])
     }
 
@@ -88,7 +93,7 @@ final class AddCommandTests {
         let card = try #require(try engine.cards().first)
         #expect(card.frontImage != nil && card.backSound != nil)
         #expect(card.backImage == nil && card.frontSound == nil)
-        #expect(printed == (try json([card])))
+        #expect(try printed == json([card]))
     }
 
     // " serendipia " repeats Serendipia by the duplicate rule, and the
