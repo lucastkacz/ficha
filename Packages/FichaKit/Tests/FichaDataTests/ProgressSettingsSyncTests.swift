@@ -53,8 +53,8 @@ final class ProgressSettingsSyncTests {
         try mac.engine.saveProgressSettings(onMac.with(forgottenOftenAfter: 4), changedFrom: onMac)
         onMac.forgottenOftenAfter = 4
         var onIPhone = try iPhone.engine.progressSettings()
-        try iPhone.engine.saveProgressSettings(onIPhone.with(newCardsPerDay: 2), changedFrom: onIPhone)
-        onIPhone.newCardsPerDay = 2
+        try iPhone.engine.saveProgressSettings(onIPhone.with(newCardsPerDay: 3), changedFrom: onIPhone)
+        onIPhone.newCardsPerDay = 3
         time.advance(by: minutes(1))
         try iPhone.engine.saveProgressSettings(onIPhone.with(forgottenOftenAfter: 12), changedFrom: onIPhone)
         try mac.engine.saveProgressSettings(onMac.with(newCardsPerDay: 9), changedFrom: onMac)
@@ -62,7 +62,7 @@ final class ProgressSettingsSyncTests {
         try await iPhone.syncNow()
         try await mac.syncNow()
 
-        let latest = ProgressSettings(scheduler: .standard, newCardsPerDay: 9, forgottenOftenAfter: 12)
+        let latest = ProgressSettings(scheduler: .newInstall, newCardsPerDay: 9, forgottenOftenAfter: 12)
         #expect(try mac.engine.progressSettings() == latest)
         #expect(try iPhone.engine.progressSettings() == latest)
     }
@@ -81,11 +81,11 @@ final class ProgressSettingsSyncTests {
         try await mac.syncNow()
 
         time.advance(by: minutes(1))
-        try mac.engine.saveProgressSettings(shownOnMac.with(newCardsPerDay: 2), changedFrom: shownOnMac)
+        try mac.engine.saveProgressSettings(shownOnMac.with(newCardsPerDay: 3), changedFrom: shownOnMac)
         try await mac.syncNow()
         try await iPhone.syncNow()
 
-        let latest = ProgressSettings(scheduler: .standard, newCardsPerDay: 2, forgottenOftenAfter: 12)
+        let latest = ProgressSettings(scheduler: .newInstall, newCardsPerDay: 3, forgottenOftenAfter: 12)
         #expect(try mac.engine.progressSettings() == latest)
         #expect(try iPhone.engine.progressSettings() == latest)
     }
