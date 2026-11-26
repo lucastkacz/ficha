@@ -10,7 +10,7 @@ The user typed `/construir` with a node, such as `Mac › UI › Settings`, or a
 
 ## 1. The node's issues
 
-The open issues of type Feature, Bug or Task whose area is the node or below it, leaving out those assigned to the user and those an open PR already closes, found as the project's instructions say: tell the user which PR holds each. Read each with every comment. A bug named alone, because it blocks everything, is a node of its own.
+The open issues of type Feature, Bug or Task whose area is the node or below it, leaving out those assigned to the user and those an open PR already closes, found as the project's instructions say: tell the user which PR holds each, and who opened it when someone other than the user did. Read each with every comment. A bug named alone, because it blocks everything, is a node of its own.
 
 Done when you have the list. With nothing ready, tell the user what the node holds, such as Ideas waiting for `/debate` or issues an open PR holds, and stop.
 
@@ -25,7 +25,7 @@ Done when each issue has its files and tests, every criterion its proof, and not
 
 ## 3. Build
 
-Open the node's branch from the default branch, as [`../../method/method.md`](../../method/method.md) names it, or as the project's instructions say. Each run of the tests goes where the pliego says; where that's CI on a draft PR, the first push opens the node's PR as a draft. Before the node's first push, look again as step 1 does: when an open PR now closes one of the node's issues, stop, and tell the user which PR holds which issue. Then the node in two rounds:
+Open the node's branch from the default branch, as [`../../method/method.md`](../../method/method.md) names it, or as the project's instructions say. Each run of the tests goes where the pliego says; where that's CI on a draft PR, the first push opens the node's PR as a draft. Before the node's first push, look again as step 1 does: when an open PR now closes one of the node's issues, stop, and tell the user which PR holds which issue, as step 1 does. Then the node in two rounds:
 
 1. **The tests first**: for each issue in turn, a test that fails for its reason, the bug reproduced or an `Accept (test)` criterion unmet, marked with its issue as the project's standards say, in a commit that names the issue. What a test needs that doesn't exist yet gets a stub that compiles and fails it, so one missing part doesn't hide the other tests. Run them all at once, and see each fail for its own issue's reason.
 2. **The code**: for each issue in turn, each building on the last, in a commit that names the issue; a change order the user approved updates the plano in it. Then run the project's tests until all pass, each fix in a commit of its own that names its issue. Each commit of this round, a fix's too, also updates the lines elsewhere that describe what it changed: the project's standards say which changes those are and how to find the lines.
