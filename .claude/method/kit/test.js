@@ -314,7 +314,8 @@ const DEFECTS = [
 const INSPECT_MS = 180000; // an inspection takes about 15 s, and a few run at once
 function inspect(file, out) {
   return new Promise((resolve) => {
-    // SIGKILL, since Playwright's own handler takes a SIGTERM and closes the browser without ending the process.
+    // SIGKILL: on a SIGTERM, Playwright's own handler closes the browser, and the inspection may go on waiting, or
+    // end by itself, even with 0, which would read as a result.
     execFile(process.execPath, [path.join(kitDir, 'inspect.js'), file, out], { maxBuffer: 1 << 24, timeout: INSPECT_MS, killSignal: 'SIGKILL' }, (err, stdout, stderr) => {
       if (err && err.killed) { resolve({ code: 2, failures: [], stderr: `it ran over ${INSPECT_MS / 1000} s and was stopped: a piece or a timer may loop, or the inspection waits for something that never comes. Look at inspect.js and kit.js.` }); return; }
       const code = err ? (typeof err.code === 'number' ? err.code : 2) : 0;
@@ -366,9 +367,9 @@ async function inspection() {
 function docs() {
   const readme = read('README.md');
   const part = (readme.split(/^## Changing the kit$/m)[1] || '').split(/^## /m)[0];
-  // The run itself: its command, and a paragraph that puts the kit's test before the reviews.
-  const run = part.includes('node .claude/method/kit/test.js') && part.split(/\n\s*\n/).some((p) => /review/.test(p) && /the kit's test/.test(p) && p.indexOf('review') < p.indexOf("the kit's test"));
-  check('the README\'s Changing the kit runs this test before a change\'s reviews', run ? null : `${README}, Changing the kit, doesn't say that a change to the kit passes the kit's test, \`node .claude/method/kit/test.js\`, before its reviews: say it there, in one paragraph, with the command.`);
+  // The run itself: a paragraph that names the kit's test and says it runs before the reviews, and its command.
+  const run = part.includes('node .claude/method/kit/test.js') && part.split(/\n\s*\n/).some((p) => /the kit's test|test\.js/.test(p) && /\bbefore\b[^.]*\breview/i.test(p));
+  check('the README\'s Changing the kit runs this test before a change\'s reviews', run ? null : `${README}, Changing the kit, doesn't say that a change to the kit passes its test before the change's reviews: say it there, in a paragraph that names the kit's test and says it runs before the reviews, with the command, \`node .claude/method/kit/test.js\`, in that section.`);
   // The kit serves any project: no file of it names the one it lives in, as its pliego's title gives it.
   const name = 'no file of the kit names the project, as its pliego\'s title gives it';
   const pliego = path.resolve(kitDir, '..', '..', '..', 'PLIEGO.md');
