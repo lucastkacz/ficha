@@ -6,8 +6,8 @@ import Testing
 /// Tests on priority decks, whose cards, and those of every deck inside them,
 /// come first when cards show up, while the others still come when there's
 /// room (ADR 0011, ADR 0024), with the default settings: 5 cards per
-/// appearance and 5 new cards a day. They start at 9 in the morning in Buenos
-/// Aires, when active hours start.
+/// appearance and Steady's 2 new cards a day. They start at 9 in the morning
+/// in Buenos Aires, when active hours start.
 struct PriorityDecksTests {
     let calendar: Calendar
     let time: ManualTimeSource
@@ -56,9 +56,9 @@ struct PriorityDecksTests {
         #expect(try engine.reviewNow(settings) == expected)
     }
 
-    @Test("once Lucas has met 5 new cards today, no new card comes, priority or not")
+    @Test("once Lucas has met 2 new cards today, no new card comes, priority or not")
     func noNewCardComesPastTheDailyLimit() throws {
-        for front in ["uno", "dos", "tres", "cuatro", "cinco"] {
+        for front in ["uno", "dos"] {
             try meetCard(front, deck: "Filosofía")
         }
         try approveInDeck("ataraxia", in: engine)
@@ -123,12 +123,16 @@ struct PriorityDecksTests {
         let bothWays = try engine.setBothWays(true, of: [ubuntu.id, eudaimonia.id])
         try engine.togglePriority(ofDeck: "Filosofía")
         time.move(to: try morning(of: 15, in: calendar))
+        // At Faster, 4 new cards a day, so that petricor, the day's third,
+        // still comes.
+        var faster = settings
+        faster.newCardsPerDay = Pace.faster.newCardsPerDay
 
-        let newOne = try engine.reviewNow(settings)
+        let newOne = try engine.reviewNow(faster)
         try engine.meet(bothWays[1], way: .backFirst)
         try engine.meet(bothWays[0], way: .backFirst)
         time.advance(by: hours(1))
-        let dueOnes = try engine.reviewNow(settings)
+        let dueOnes = try engine.reviewNow(faster)
 
         #expect(newOne == [.review(bothWays[1]), .review(bothWays[0]), .new(bothWays[1], .backFirst)])
         #expect(

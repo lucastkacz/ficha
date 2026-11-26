@@ -101,24 +101,20 @@ struct ReviewNowTests {
         #expect(try engine.reviewNow(settings) == met.map { PanelCard.review($0) })
     }
 
-    @Test("new cards stop at 5 a day, and start again when the day does, by the Mac's calendar")
-    func newCardsStopAtFiveADay() throws {
-        let cards = try ["ubuntu", "petricor", "serendipia", "Schadenfreude", "navaja de Ockham", "costo hundido"].map {
-            try approveCard($0, in: engine)
-        }
+    @Test("new cards stop at Steady's 2 a day, and start again when the day does, by the Mac's calendar")
+    func newCardsStopAtTheDaysLimit() throws {
+        let cards = try ["ubuntu", "petricor", "serendipia"].map { try approveCard($0, in: engine) }
         // At 23:10 in Buenos Aires, so that none is due again before midnight
         // there, which is 3 in the morning in UTC.
         time.advance(by: hours(14) + minutes(10))
-        for card in cards.prefix(4) {
-            try engine.meet(card)
-        }
-        #expect(try engine.reviewNow(settings) == [.new(cards[4])])
-        try engine.meet(cards[4])
+        try engine.meet(cards[0])
+        #expect(try engine.reviewNow(settings) == [.new(cards[1])])
+        try engine.meet(cards[1])
         #expect(try engine.reviewNow(settings).isEmpty)
 
         time.move(to: calendar.startOfDay(for: try morning(of: 15, in: calendar)))
 
-        #expect(try engine.reviewNow(settings) == [.new(cards[5])])
+        #expect(try engine.reviewNow(settings) == [.new(cards[2])])
     }
 
     @Test(
@@ -191,9 +187,12 @@ struct ReviewNowTests {
             ])
     }
 
-    /// The new way review now brings, after the due ones, if any.
+    /// The new way review now brings, after the due ones, if any, at Faster,
+    /// 4 new cards a day, so that a day brings several.
     private func newWayNow() throws -> PanelCard? {
-        try engine.reviewNow(settings).first { panelCard in
+        var faster = settings
+        faster.newCardsPerDay = Pace.faster.newCardsPerDay
+        return try engine.reviewNow(faster).first { panelCard in
             if case .new = panelCard { true } else { false }
         }
     }

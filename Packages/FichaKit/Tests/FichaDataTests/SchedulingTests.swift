@@ -5,7 +5,7 @@ import Testing
 
 /// Tests on how Lucas's answers space his cards, as FSRS spaces them with
 /// Anki's learning steps (#404), with the default settings: learning steps
-/// of 1 hour and 4 hours, one relearning step of 1 hour, and 90% desired
+/// of 1 hour and 4 hours, one relearning step of 1 hour, and 85% desired
 /// retention. The scheduler's own rules have their tests in FichaCore; these
 /// check what the engine records and reads.
 struct SchedulingTests {
