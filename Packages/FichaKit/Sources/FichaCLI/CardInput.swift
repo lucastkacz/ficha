@@ -55,6 +55,10 @@ struct CardsInput {
     static let list = CardsInput(
         command: "approve", what: "the cards", whole: "the list", json: "a JSON list",
         rule: "They must be a JSON list where each card has \(cardFields)", isList: true)
+    /// The list of cards `ficha add` reads. A stub, until #534's code.
+    static let addedCards = CardsInput(
+        command: "add", what: "the cards", whole: "the list", json: "a JSON list",
+        rule: "They must be a JSON list where each card has \(cardFields)", isList: true)
     /// The card `ficha fix` reads.
     static let fixedCard = oneCard(for: "fix")
     /// The card `ficha approve-expansion` reads.
@@ -176,6 +180,8 @@ private struct CardInput: Decodable {
 enum CardsInputError: LocalizedError {
     /// The input isn't the JSON the command reads, with every field.
     case unreadable(DecodingError, CardsInput)
+    /// The input is a list with no card in it. A stub, until #534's code.
+    case noCards(CardsInput)
 
     var errorDescription: String? {
         switch self {
@@ -184,6 +190,7 @@ enum CardsInputError: LocalizedError {
             Couldn't read \(input.what): \(explanation(of: error, in: input)). \(input.rule); see \
             `ficha \(input.command) --help`.
             """
+        case .noCards: nil
         }
     }
 }
