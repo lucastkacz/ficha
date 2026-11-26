@@ -118,8 +118,8 @@ struct PaceAndQueueTests {
 
     // Nothing is met yet today, so today still brings 2 new cards: Arte's 3
     // are met tomorrow, the 15th, if every day has appearances, or by the
-    // 16th if five days a week do; Historia's 4, after them, by the 17th, or
-    // the 19th.
+    // 16th if five days in seven do; Historia's 4, after them, by the 17th,
+    // or the 19th.
     @Test(
         "a deck's finish date is a range from the pace and the new cards of the decks ahead of it in the queue, and moves later as days go by without appearances",
         .bug(id: 490))
@@ -206,9 +206,10 @@ struct PaceAndQueueTests {
     // Arte::Barroco, a priority deck, and 2 in Arte::Renacimiento; then
     // Música, a priority deck at the top, each a minute after the one
     // before. The priority cards come first, Arte's ahead, then Historia's,
-    // and then Arte's others, 2 a day.
+    // and then Arte's others, 2 a day. Arte passes Historia alone, so once
+    // Música is a priority deck no more, it goes last, where it came in.
     @Test(
-        "a priority deck at the top goes first in the queue, a deck with one inside it where its other new cards come, and a move counts places as the queue lists them",
+        "a priority deck at the top goes first in the queue, a deck with one inside it where its other new cards come, and a move counts places as the queue lists them, leaving a priority deck's place alone",
         .bug(id: 490))
     func priorityDecksInTheQueue() throws {
         for front in ["Coliseo", "Partenón"] {
@@ -226,6 +227,8 @@ struct PaceAndQueueTests {
 
         let queue = try engine.queue(settings)
         try engine.moveInQueue(deck: "Arte", to: .at(1))
+        let moved = try queuedDecks()
+        try engine.setPriority(false, ofDeck: "Música")
 
         #expect(
             try queue == [
@@ -233,7 +236,8 @@ struct PaceAndQueueTests {
                 QueuedDeck(deck: "Historia", newCards: 2, finish: finish(15, 16)),
                 QueuedDeck(deck: "Arte", newCards: 3, finish: finish(16, 17)),
             ])
-        #expect(try queuedDecks() == ["Música", "Arte", "Historia"])
+        #expect(moved == ["Música", "Arte", "Historia"])
+        #expect(try queuedDecks() == ["Arte", "Historia", "Música"])
     }
 
     /// The decks in the queue now, first to last, by name.

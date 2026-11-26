@@ -126,12 +126,13 @@ extension CardsInReviews {
     /// The places that put `deck`, a deck at the top of the tree, at
     /// `position` among the other decks that have new ways, as
     /// `ReviewSettings.queue(of:now:calendar:)` lists them, as of `now`
-    /// (ADR 0034): those decks and `deck` share out the places they hold,
-    /// the earliest to the first in their new order, `deck`'s being `now`
-    /// when it has no card in Lucas's reviews, each a second at least after
-    /// the one before, so that decks that came in together part. Only the
-    /// places that change, by deck. A priority deck's new cards still come
-    /// first, wherever it goes.
+    /// (ADR 0034): `deck` and the decks it passes take each other's places,
+    /// the earliest for the first, `deck`'s being `now` when it has no card
+    /// in Lucas's reviews, each a second at least after the one before, so
+    /// that decks that came in together part. A deck listed first for its
+    /// priority cards alone keeps its place, and its new cards still come
+    /// first, as do those of a priority deck `deck` holds. Only the places
+    /// that change, by deck.
     public func places(putting deck: String, at position: QueuePosition, now: Date) -> [String: Date] {
         let held = Dictionary(uniqueKeysWithValues: queue.map { ($0.deck, $0.place) })
         var order = decksWithNewWays().map(\.deck).filter { $0 != deck }
@@ -143,6 +144,8 @@ extension CardsInReviews {
         case .at(let index):
             order.insert(deck, at: min(max(index, 0), order.count))
         }
+        let withOtherNewWays = Set(splitByPriority(newWays).others.compactMap { topDecks[$0.cardID] })
+        order = order.filter { $0 == deck || withOtherNewWays.contains($0) }
         var places: [String: Date] = [:]
         var previous: Date?
         for (name, place) in zip(order, order.map { held[$0] ?? now }.sorted()) {
