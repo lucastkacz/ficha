@@ -1,5 +1,7 @@
 # Lucas makes his own cards, with no refine sessions
 
+> Changed in part by [ADR 0043](0043-any-agent-makes-cards-through-ficha-add.md), which brings `ficha add` back, so any agent makes cards through the CLI (2026-11-26).
+
 ADR 0041 took Capture and the inbox out of Ficha and kept one door for Lucas's own cards: `ficha add`, so that Claude kept making them in a refine session, the `/refine` skill's (provisional). It also asked for two refine sessions before the builds that hide tags and the inbox: one to turn Lucas's tags into decks, one to empty his inbox. On 2026-11-26, reading the issues ADR 0041 made, Lucas said refining was something much more complex, thought for Anki, that he no longer needs it and makes his own cards apart from it, and asked to delete it. It changes ADR 0041 in part, whose `ficha add` and refine sessions kept Claude making Lucas's cards; ADR 0001 in part, whose Claude refines cards through the CLI; ADR 0007 in part, whose `/refine` skill was ours; and ADR 0012 in part, whose refining with Claude stayed Lucas's own way of making cards.
 
 - **No refine sessions.** The `/refine` skill goes, with the content guide it followed. Lucas makes his cards apart from the sessions that build Ficha, as anyone does, in the Cards window (provisional).
