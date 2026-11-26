@@ -18,7 +18,7 @@ What `/preparar`, `/debate`, `/decision`, `/recorrida` and a change order show t
 | A debate | Home, rounds, close | The idea's issue; a deck of questions per round; the close as items |
 | A decision | Home, pieces, Aprobar | A change; a deck per piece: its before and after, items, the why, a fold for the agent; Aprobar, with a note per piece |
 | A change order | One | The plano's before and after; the node's issues it touches, as a change; Aprobar, with a note |
-| A recorrida | One, with no database: a deck for the answer and one for each of its steps 2 to 4 | The answer: since when, what changed, the next step and its command, and the week, each PR by its name on its day. Step 2: a card per PR merged, with what the step gathers for it, its what drawn when the user sees it; and a card for the issues without a PR. Step 3: steps, bars by area and trees by node. Step 4: the next step, a card of what the PRs left the user, and the rest |
+| A recorrida | One, with no database: a deck for the answer, open first, and one for each of its steps 2 to 4 | The answer: since when, what changed, the next step and its command; and the days since, as a drawing, each PR by a short name on its day. Step 2: a card per PR merged, with what the step gathers for it: what it built, drawn, as a before and after when it changed what the user sees; how it went, as badges; what it left the user, counted, which step 4's card lists; and a card for the issues without a PR. Step 3: steps, bars by area and trees by node. Step 4: the next step, a card of what the PRs left the user, and the rest |
 
 ## Questions
 
