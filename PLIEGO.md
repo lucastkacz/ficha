@@ -88,7 +88,7 @@ Each kind of work, as a cloud session does it by `CLAUDE.md`'s Shipping:
 - ✓ The tests while building, in two rounds per node (ADR 0031): from the cloud, GitHub's Macs; on Lucas's Mac, `make test`.
   - ◐ From the cloud, each push to the node's draft PR runs a round, CI's `tests` job, `make test` alone, which the session reads as `CLAUDE.md`'s Shipping says; marking the PR ready runs the full `check`.
 - ✓ The three checks' tests and CI: from the cloud, the last round on the draft PR, then CI's `check` once it's ready; on Lucas's Mac, `make check`, then CI.
-- ✓ The web mocks' pictures, with `mockups/tools/shoot.js`, and the inspection of the method's pages, with `.claude/method/kit/inspect.js`: the cloud.
+- ✓ The web mocks' pictures, with `mockups/tools/shoot.js`, the inspection of the method's pages, with `.claude/method/kit/inspect.js`, and the kit's test, `.claude/method/kit/test.js`, which a change to the kit passes: the cloud.
 - ✓ Fetching the images of Ficha's decks from Wikimedia Commons: the cloud, in Lucas's environment `ficha`, which reaches `commons.wikimedia.org` and `upload.wikimedia.org`; the built-in one refuses both (ADR 0040).
 - ○ The pictures of Ficha: GitHub's Macs, if the probe shows they draw Ficha's windows (#480); until then, Lucas's Mac, through Remote Control.
 - ✓ The hand checks an agent can run (#473): Lucas's Mac, through Remote Control.
