@@ -389,7 +389,9 @@ struct PriorityDecksTests {
     }
 
     // The Mac's preferences are the app's, whichever database it opens, so a
-    // priority deck kept there would show in another database too.
+    // priority deck kept there would show in another database too. There,
+    // Lenguaje comes in a minute before Filosofía, so it goes first in the
+    // queue.
     @Test(
         "priority decks survive reopening the database, and another database has none, so nothing goes in the Mac's preferences"
     )
@@ -405,6 +407,7 @@ struct PriorityDecksTests {
         let reopened = try Engine(location: .folder(folder), time: time, calendar: calendar)
         let another = try Engine(location: .inMemory, time: time, calendar: calendar)
         let anotherUbuntu = try approveInDeck("ubuntu", deck: "Lenguaje", in: another)
+        time.advance(by: minutes(1))
         try approveInDeck("eudaimonía", deck: "Filosofía", in: another)
 
         #expect(try reopened.prioritizeMenu().priorityDeckNames == ["Filosofía"])
