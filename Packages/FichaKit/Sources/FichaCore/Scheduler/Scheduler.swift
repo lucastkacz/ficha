@@ -34,6 +34,9 @@ public struct Scheduler: Sendable, Equatable {
         checkedLearningSteps: [.hours(1), .hours(4)], relearningSteps: [.hours(1)], desiredRetention: 0.9,
         longestIntervalInDays: 36_500, parameters: [])
 
+    /// The settings a new install starts with.
+    public static let newInstall = standard
+
     /// The intervals a learning or relearning step can have: from 10 minutes
     /// to less than a day.
     public static let stepIntervals: Range<Duration> = Duration.minutes(10)..<Duration.days(1)

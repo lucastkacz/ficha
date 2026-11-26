@@ -29,8 +29,9 @@ public struct CardsInReviews: Sendable, Equatable {
     /// its first review or a placement (ADR 0016): the card's standing is
     /// both ways'.
     public init(
-        _ cards: [(id: Int64, standing: CardStanding, deck: String, bothWays: Bool)],
+        _ cards: [(id: Int64, standing: CardStanding, deck: String, bothWays: Bool, createdAt: Date)],
         priorityDecks: Set<String>,
+        queuePlaces: [String: Date] = [:],
         log: [ReviewLogEntry]
     ) {
         let inReviews = cards.filter { $0.standing == .inReviews }

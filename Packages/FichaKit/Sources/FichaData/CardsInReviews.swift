@@ -23,7 +23,8 @@ struct CardsThatShowUp {
     /// order it was written.
     fileprivate init(_ cards: [Card], priorityDecks: Set<String>, log: [ReviewLogEntry]) {
         inReviews = CardsInReviews(
-            cards.map { ($0.id, $0.standing, $0.deck, $0.bothWays) }, priorityDecks: priorityDecks, log: log)
+            cards.map { ($0.id, $0.standing, $0.deck, $0.bothWays, $0.createdAt) }, priorityDecks: priorityDecks,
+            log: log)
         self.cards = Dictionary(uniqueKeysWithValues: cards.map { ($0.id, $0) })
     }
 

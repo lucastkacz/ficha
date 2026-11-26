@@ -45,6 +45,7 @@ struct DeckCommand: ParsableCommand {
         subcommands: [
             MakeDeckCommand.self, RenameDeckCommand.self, DeleteDeckCommand.self, SetDeckAsideCommand.self,
             PrioritizeDeckCommand.self, DeckColorCommand.self, DeckEmojiCommand.self, ChooseDeckToSyncCommand.self,
+            QueueDeckCommand.self,
         ]
     )
 }
