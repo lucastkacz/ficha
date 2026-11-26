@@ -124,7 +124,7 @@ public struct CardsInReviews: Sendable, Equatable {
     /// from, one deck at a time (ADR 0034).
     func fromTheFirstDeck(_ ways: [CardWay]) -> [CardWay] {
         let ranks = Dictionary(uniqueKeysWithValues: queue.enumerated().map { ($0.element.deck, $0.offset) })
-        let rank = { (way: CardWay) in topDecks[way.cardID].flatMap { ranks[$0] } ?? .max }
+        let rank = { (way: CardWay) in topDecks[way.cardID].flatMap { ranks[$0] } ?? Int.max }
         guard let first = ways.map(rank).min() else {
             return []
         }

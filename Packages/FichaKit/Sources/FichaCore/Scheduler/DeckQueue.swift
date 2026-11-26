@@ -64,7 +64,7 @@ extension ReviewSettings {
         func byDeck(_ ways: [CardWay]) -> [(way: CardWay, deck: String)] {
             ways.enumerated()
                 .map { (way: $0.element, deck: cards.topDecks[$0.element.cardID] ?? "", order: $0.offset) }
-                .sorted { (ranks[$0.deck] ?? .max, $0.order) < (ranks[$1.deck] ?? .max, $1.order) }
+                .sorted { (ranks[$0.deck] ?? Int.max, $0.order) < (ranks[$1.deck] ?? Int.max, $1.order) }
                 .map { (way: $0.way, deck: $0.deck) }
         }
         var decks: [String] = []
