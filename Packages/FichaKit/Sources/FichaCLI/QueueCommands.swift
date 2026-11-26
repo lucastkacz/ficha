@@ -52,8 +52,10 @@ struct QueueCommand: EngineCommand {
             New cards come from the first deck alone, at the pace, until you've met them all; then from the next. \
             Each deck is a deck at the top of the tree, with the decks inside it, that still has new cards: \
             newCards counts them, each way a card goes as one. Its finish is a range of days: soonest if you have \
-            appearances every day, latest if five days a week. A priority deck's cards come first; a set-aside \
-            deck is out of the queue.
+            appearances every day, latest if on five days in seven. It counts Ficha's own active hours, 9 to 22, \
+            since the CLI can't read the app's. A priority deck's cards come first, so a deck at the top that is \
+            one comes first, and one that holds one where its other new cards come; a set-aside deck is out of \
+            the queue.
             """
     )
 
@@ -68,15 +70,17 @@ struct QueueDeckCommand: EngineCommand {
         commandName: "queue",
         abstract: "Move a deck in the queue new cards come from, and print the queue.",
         discussion: """
-            Name a deck at the top of the tree: a deck inside another comes with it. The deck keeps its place \
-            while it's set aside, and syncs it to your other devices.
+            A deck inside another moves the deck at the top of the tree it sits in, which every deck inside it \
+            comes with. The decks it passes take each other's places. A priority deck's new cards still come \
+            first, wherever it goes. Each deck keeps its place while it's set aside, and syncs it to your other \
+            devices.
             """
     )
 
     @Argument(help: "The deck's whole name, as `ficha decks` prints it, or \"\" for Default.")
     var deck: String
 
-    @ArgumentParser.Flag(help: "Put it first in the queue.")
+    @ArgumentParser.Flag(help: "Put it first in the queue, after any priority deck.")
     var first = false
 
     @ArgumentParser.Flag(help: "Put it last in the queue.")
@@ -114,7 +118,8 @@ private struct PrintedQueue {
     /// Each deck in the queue, first to last.
     let decks: [PrintedQueuedDeck]
 
-    /// The queue `engine` holds now, by its settings.
+    /// The queue `engine` holds now, by the settings that sync, and Ficha's
+    /// own for the rest, such as active hours, which only the app reads.
     init(of engine: Engine) throws {
         var settings = ReviewSettings.defaults
         settings.progress = try engine.progressSettings()

@@ -45,6 +45,18 @@ final class QueueSyncTests {
         #expect(try iPhone.engine.queue(settings).map(\.deck) == ["Arte", "Historia"])
     }
 
+    // Historia and Arte come in on the Mac at once, Historia first, as an
+    // import's decks do.
+    @Test("decks that came in at once go in the same order on every device", .bug(id: 490))
+    func decksThatCameInAtOnceGoAlike() async throws {
+        try approveInDeck("Coliseo", deck: "Historia", in: mac.engine)
+        try approveInDeck("La Gioconda", deck: "Arte", in: mac.engine)
+        try await syncBoth()
+
+        #expect(try mac.engine.queue(settings).map(\.deck) == ["Arte", "Historia"])
+        #expect(try iPhone.engine.queue(settings).map(\.deck) == ["Arte", "Historia"])
+    }
+
     /// Syncs the Mac and then the iPhone, three times over, so each has what
     /// the other sent.
     private func syncBoth() async throws {

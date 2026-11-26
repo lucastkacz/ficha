@@ -33,8 +33,9 @@ struct PaceAndQueueTests {
         #expect(progress == settings.progress)
     }
 
-    // Lenguaje's ubuntu was met the day before. Arte's three cards come in,
-    // and Historia's one a minute later, so Arte goes ahead of it.
+    // Lenguaje's ubuntu was met the day before. Two of Arte's cards come in,
+    // Historia's one a minute later, and Arte's third a minute after that:
+    // Arte came in first, so all its cards go ahead of Historia's.
     @Test(
         "at Steady, new cards come from the first deck in the queue alone, 2 a day, until it has none left, and then from the next, while the cards already met keep coming from every deck",
         .bug(id: 490))
@@ -43,11 +44,11 @@ struct PaceAndQueueTests {
         let ubuntu = try approveInDeck("ubuntu", deck: "Lenguaje", in: engine)
         try engine.meet(ubuntu)
         time.move(to: try morning(of: 14, in: calendar))
-        let arte = try ["La Gioconda", "Las Meninas", "El Grito"].map {
-            try approveInDeck($0, deck: "Arte", in: engine)
-        }
+        var arte = try ["La Gioconda", "Las Meninas"].map { try approveInDeck($0, deck: "Arte", in: engine) }
         time.advance(by: minutes(1))
         let coliseo = try approveInDeck("Coliseo", deck: "Historia", in: engine)
+        time.advance(by: minutes(1))
+        arte.append(try approveInDeck("El Grito", deck: "Arte", in: engine))
 
         let firstDay = try meetEachNewCard()
         time.move(to: try morning(of: 15, in: calendar))
@@ -156,6 +157,83 @@ struct PaceAndQueueTests {
                 QueuedDeck(deck: "Arte", newCards: 3, finish: finish(18, 19)),
                 QueuedDeck(deck: "Historia", newCards: 4, finish: finish(20, 22)),
             ])
+    }
+
+    // La Gioconda goes both ways, so its back-first way, still to come,
+    // counts beside it: Arte has 3 new ways, of which today brings 2 at
+    // Steady, and the last tomorrow, the 15th; at Faster, all 3 today. Met
+    // front first, it leaves its back-first way and Las Meninas, and today
+    // still brings 1 at Steady, 3 at Faster. At 22:00, when active hours
+    // end, today brings none.
+    @Test(
+        "a deck's finish date counts a card's back-first way still to come and the new cards met today, and today brings none once active hours are over",
+        .bug(id: 490))
+    func aDecksFinishDateCountsWhatTodayStillBrings() throws {
+        let gioconda = try approveInDeck("La Gioconda", deck: "Arte", in: engine)
+        try approveInDeck("Las Meninas", deck: "Arte", in: engine)
+        let bothWays = try #require(try engine.setBothWays(true, of: [gioconda.id]).first)
+        var faster = settings
+        faster.newCardsPerDay = Pace.faster.newCardsPerDay
+
+        let beforeMeetingIt = try engine.queue(settings)
+        let beforeMeetingItAtFaster = try engine.queue(faster)
+        try engine.meet(bothWays)
+        let afterMeetingIt = try engine.queue(settings)
+        let afterMeetingItAtFaster = try engine.queue(faster)
+        time.advance(by: hours(13))
+
+        #expect(try beforeMeetingIt == [QueuedDeck(deck: "Arte", newCards: 3, finish: finish(15, 16))])
+        #expect(try beforeMeetingItAtFaster == [QueuedDeck(deck: "Arte", newCards: 3, finish: finish(14, 14))])
+        #expect(try afterMeetingIt == [QueuedDeck(deck: "Arte", newCards: 2, finish: finish(15, 16))])
+        #expect(try afterMeetingItAtFaster == [QueuedDeck(deck: "Arte", newCards: 2, finish: finish(14, 14))])
+        #expect(try engine.queue(faster) == [QueuedDeck(deck: "Arte", newCards: 2, finish: finish(15, 16))])
+    }
+
+    // Música, Historia and Arte come in at once, as an import's decks do.
+    @Test("decks that came in at once go in the queue by name, and a move parts them", .bug(id: 490))
+    func decksThatCameInAtOnceGoByName() throws {
+        for deck in ["Música", "Historia", "Arte"] {
+            try approveInDeck("Una de \(deck)", deck: deck, in: engine)
+        }
+        let atOnce = try queuedDecks()
+        try engine.moveInQueue(deck: "Música", to: .at(1))
+
+        #expect(atOnce == ["Arte", "Historia", "Música"])
+        #expect(try queuedDecks() == ["Arte", "Música", "Historia"])
+    }
+
+    // Historia comes in first, with 2 cards; then Arte, with 1 in
+    // Arte::Barroco, a priority deck, and 2 in Arte::Renacimiento; then
+    // Música, a priority deck at the top, each a minute after the one
+    // before. The priority cards come first, Arte's ahead, then Historia's,
+    // and then Arte's others, 2 a day.
+    @Test(
+        "a priority deck at the top goes first in the queue, a deck with one inside it where its other new cards come, and a move counts places as the queue lists them",
+        .bug(id: 490))
+    func priorityDecksInTheQueue() throws {
+        for front in ["Coliseo", "Partenón"] {
+            try approveInDeck(front, deck: "Historia", in: engine)
+        }
+        time.advance(by: minutes(1))
+        try approveInDeck("Las Meninas", deck: "Arte::Barroco", in: engine)
+        for front in ["La Gioconda", "El nacimiento de Venus"] {
+            try approveInDeck(front, deck: "Arte::Renacimiento", in: engine)
+        }
+        time.advance(by: minutes(1))
+        try approveInDeck("Bach", deck: "Música", in: engine)
+        try engine.setPriority(true, ofDeck: "Arte::Barroco")
+        try engine.setPriority(true, ofDeck: "Música")
+
+        let queue = try engine.queue(settings)
+        try engine.moveInQueue(deck: "Arte", to: .at(1))
+
+        #expect(
+            try queue == [
+                QueuedDeck(deck: "Música", newCards: 1, finish: finish(14, 14)),
+                QueuedDeck(deck: "Historia", newCards: 2, finish: finish(15, 16)),
+                QueuedDeck(deck: "Arte", newCards: 3, finish: finish(16, 17)),
+            ])
+        #expect(try queuedDecks() == ["Música", "Arte", "Historia"])
     }
 
     /// The decks in the queue now, first to last, by name.

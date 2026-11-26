@@ -44,8 +44,8 @@ public struct CardsInReviews: Sendable, Equatable {
     /// with the decks inside it, at its place (ADR 0034): the one in
     /// `queuePlaces`, kept when the user moved it, or else when its first
     /// card came in, so that a deck that comes in goes last. Decks at the
-    /// same place go in the order their first cards were approved, and then
-    /// by name. The place of a deck inside another counts for nothing.
+    /// same place, such as two an import brought, go by name, as on every
+    /// device. The place of a deck inside another counts for nothing.
     public init(
         _ cards: [(id: Int64, standing: CardStanding, deck: String, bothWays: Bool, createdAt: Date)],
         priorityDecks: Set<String>,
@@ -64,24 +64,19 @@ public struct CardsInReviews: Sendable, Equatable {
         priorityIDs = Set(
             inReviews.filter { !priorityDecks.isDisjoint(with: TagPath.lineage(of: $0.deck)) }.map(\.id))
         backFirstWaysToCome = Set(inReviews.filter { $0.bothWays && !metFrontFirst.contains($0.id) }.map(\.id))
-        topDecks = Dictionary(uniqueKeysWithValues: inReviews.map { ($0.id, TagPath.top(of: $0.deck)) })
-        // Each deck at the top's first card to come in, and the order of its
-        // first card approved, out of every card, so that its place stays
-        // as its cards are buried, flagged or set aside.
+        topDecks = Dictionary(
+            inReviews.map { ($0.id, TagPath.top(of: $0.deck)) }, uniquingKeysWith: { first, _ in first })
+        // Each deck at the top's first card to come in, out of every card,
+        // so that its place stays as its cards are buried, flagged or set
+        // aside.
         var firstCameIn: [String: Date] = [:]
-        var firstApproved: [String: Int] = [:]
-        for (order, card) in cards.enumerated() {
+        for card in cards {
             let top = TagPath.top(of: card.deck)
             firstCameIn[top] = min(firstCameIn[top] ?? card.createdAt, card.createdAt)
-            firstApproved[top] = firstApproved[top] ?? order
         }
         queue = Set(topDecks.values)
-            .map { deck in
-                let place = queuePlaces[deck] ?? firstCameIn[deck] ?? .distantFuture
-                return (deck: PlacedDeck(deck: deck, place: place), order: firstApproved[deck] ?? 0)
-            }
-            .sorted { ($0.deck.place, $0.order, $0.deck.deck) < ($1.deck.place, $1.order, $1.deck.deck) }
-            .map(\.deck)
+            .map { PlacedDeck(deck: $0, place: queuePlaces[$0] ?? firstCameIn[$0] ?? .distantFuture) }
+            .sorted { ($0.place, $0.deck) < ($1.place, $1.deck) }
         self.log = log
     }
 

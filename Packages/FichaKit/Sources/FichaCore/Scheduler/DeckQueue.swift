@@ -6,7 +6,8 @@ import Foundation
 public struct FinishDate: Sendable, Hashable, Codable {
     /// The day, if the user has appearances every day.
     public let soonest: Date
-    /// The day, if the user has appearances five days a week.
+    /// The day, if the user has appearances on five days in seven: as many
+    /// days from today as the soonest's, times seven fifths.
     public let latest: Date
 
     public init(soonest: Date, latest: Date) {
@@ -40,54 +41,36 @@ public enum QueuePosition: Sendable, Hashable {
     case first
     /// After every other deck.
     case last
-    /// At this index among the other decks of the queue, from 0, the first.
+    /// At this index among the other decks of the queue, as
+    /// `ReviewSettings.queue(of:now:calendar:)` lists them, from 0, the
+    /// first.
     case at(Int)
 }
 
 extension ReviewSettings {
     /// The queue new cards come from at `now`, out of `cards` (ADR 0034):
     /// each deck at the top of the tree that has new ways, in the order its
-    /// first new way comes, a priority card's first, as `pickCards` brings
-    /// them, one deck at a time. A card that goes both ways counts its
-    /// back-first way, still to come, beside its front-first one.
+    /// last new way comes, as `pickCards` brings them, one deck at a time,
+    /// a priority card's first, so a deck the user made a priority comes
+    /// first, and a deck with one inside it where its other new ways come.
+    /// A card that goes both ways counts its back-first way, still to come,
+    /// beside its front-first one.
     /// Each deck's finish date counts, from the start of `now`'s day, by
     /// `calendar`, the days `newCardsPerDay` takes to bring its last new way
     /// and those ahead of it, but for those today may still bring: none once
-    /// active hours are over, and none past the day's limit. Soonest if every
-    /// day has appearances, latest if five days a week do; so days without
-    /// appearances move it later. With no new cards a day, it has none.
+    /// `activeHours` are over, and none past the day's limit. Soonest if
+    /// every day has appearances, latest if five days in seven do; so days
+    /// without appearances move it later. With no new cards a day, it has
+    /// none.
     public func queue(of cards: CardsInReviews, now: Date, calendar: Calendar) -> [QueuedDeck] {
-        let new = cards.splitByPriority(cards.newWays)
-        let ranks = Dictionary(uniqueKeysWithValues: cards.queue.enumerated().map { ($0.element.deck, $0.offset) })
-        // `ways` in the order of their decks in the queue, each deck's in
-        // the order they had.
-        func byDeck(_ ways: [CardWay]) -> [(way: CardWay, deck: String)] {
-            ways.enumerated()
-                .map { (way: $0.element, deck: cards.topDecks[$0.element.cardID] ?? "", order: $0.offset) }
-                .sorted { (ranks[$0.deck] ?? Int.max, $0.order) < (ranks[$1.deck] ?? Int.max, $1.order) }
-                .map { (way: $0.way, deck: $0.deck) }
-        }
-        var decks: [String] = []
-        var newCards: [String: Int] = [:]
-        var lastSlot: [String: Int] = [:]
-        var slot = 0
-        for (way, deck) in byDeck(new.priority) + byDeck(new.others) {
-            let count = way.way == .frontFirst && cards.backFirstWaysToCome.contains(way.cardID) ? 2 : 1
-            slot += count
-            if newCards[deck] == nil {
-                decks.append(deck)
-            }
-            newCards[deck, default: 0] += count
-            lastSlot[deck] = slot
-        }
         let metToday = cards.firstReviews(onTheDayOf: now, calendar: calendar).count
         let leftToday =
             calendar.component(.hour, from: now) < activeHours.upperBound ? max(0, newCardsPerDay - metToday) : 0
         let today = calendar.startOfDay(for: now)
-        return decks.map { deck in
+        return cards.decksWithNewWays().map { deck in
             QueuedDeck(
-                deck: deck, newCards: newCards[deck] ?? 0,
-                finish: finishDate(after: lastSlot[deck] ?? 0, leftToday: leftToday, from: today, calendar: calendar))
+                deck: deck.deck, newCards: deck.newWays,
+                finish: finishDate(after: deck.through, leftToday: leftToday, from: today, calendar: calendar))
         }
     }
 
@@ -110,24 +93,65 @@ extension ReviewSettings {
 }
 
 extension CardsInReviews {
-    /// The place that puts `deck`, a deck at the top of the tree, at
-    /// `position` in the queue among the other decks that have new ways, as
-    /// of `now` (ADR 0034): a second before the first, a second after the
-    /// last, or halfway between the two it goes between. With no other deck,
-    /// it's `now`.
-    public func place(putting deck: String, at position: QueuePosition, now: Date) -> Date {
-        let withNewWays = Set(newWays.compactMap { topDecks[$0.cardID] })
-        let others = queue.filter { $0.deck != deck && withNewWays.contains($0.deck) }.map(\.place)
-        guard let first = others.first, let last = others.last else {
-            return now
+    /// The decks at the top of the tree that have new ways, in the order
+    /// their last new ways come, as `pickCards` brings them: a priority
+    /// card's first, and then one deck at a time, by the queue (ADR 0034).
+    /// Each with its new ways, a card's back-first way still to come counting
+    /// beside its front-first one, as the new cards a day count them, and how
+    /// many new ways come up to its last, its own and those ahead of it.
+    func decksWithNewWays() -> [(deck: String, newWays: Int, through: Int)] {
+        let new = splitByPriority(newWays)
+        let ranks = Dictionary(uniqueKeysWithValues: queue.enumerated().map { ($0.element.deck, $0.offset) })
+        // `ways` in the order of their decks in the queue, each deck's in
+        // the order they had.
+        func byDeck(_ ways: [CardWay]) -> [(way: CardWay, deck: String)] {
+            ways.enumerated()
+                .map { (way: $0.element, deck: topDecks[$0.element.cardID] ?? "", order: $0.offset) }
+                .sorted { (ranks[$0.deck] ?? Int.max, $0.order) < (ranks[$1.deck] ?? Int.max, $1.order) }
+                .map { (way: $0.way, deck: $0.deck) }
         }
+        var counts: [String: Int] = [:]
+        var through: [String: Int] = [:]
+        var total = 0
+        for (way, deck) in byDeck(new.priority) + byDeck(new.others) {
+            let count = way.way == .frontFirst && backFirstWaysToCome.contains(way.cardID) ? 2 : 1
+            total += count
+            counts[deck, default: 0] += count
+            through[deck] = total
+        }
+        return through.sorted { $0.value < $1.value }
+            .map { (deck: $0.key, newWays: counts[$0.key] ?? 0, through: $0.value) }
+    }
+
+    /// The places that put `deck`, a deck at the top of the tree, at
+    /// `position` among the other decks that have new ways, as
+    /// `ReviewSettings.queue(of:now:calendar:)` lists them, as of `now`
+    /// (ADR 0034): those decks and `deck` share out the places they hold,
+    /// the earliest to the first in their new order, `deck`'s being `now`
+    /// when it has no card in Lucas's reviews, each a second at least after
+    /// the one before, so that decks that came in together part. Only the
+    /// places that change, by deck. A priority deck's new cards still come
+    /// first, wherever it goes.
+    public func places(putting deck: String, at position: QueuePosition, now: Date) -> [String: Date] {
+        let held = Dictionary(uniqueKeysWithValues: queue.map { ($0.deck, $0.place) })
+        var order = decksWithNewWays().map(\.deck).filter { $0 != deck }
         switch position {
-        case .at(let index) where index > 0 && index < others.count:
-            return others[index - 1] + others[index].timeIntervalSince(others[index - 1]) / 2
-        case .first, .at(...0):
-            return first - 1
-        case .last, .at:
-            return last + 1
+        case .first:
+            order.insert(deck, at: 0)
+        case .last:
+            order.append(deck)
+        case .at(let index):
+            order.insert(deck, at: min(max(index, 0), order.count))
         }
+        var places: [String: Date] = [:]
+        var previous: Date?
+        for (name, place) in zip(order, order.map { held[$0] ?? now }.sorted()) {
+            let parted = previous.map { max(place, $0 + 1) } ?? place
+            if parted != held[name] {
+                places[name] = parted
+            }
+            previous = parted
+        }
+        return places
     }
 }
