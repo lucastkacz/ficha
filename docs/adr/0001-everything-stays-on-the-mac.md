@@ -1,6 +1,6 @@
 # Everything stays on the Mac, and Claude refines cards only through the CLI
 
-> Changed in part by [ADR 0042](0042-lucas-makes-his-cards-apart-with-no-refine-sessions.md), which takes the refine sessions out: Claude reads or writes Lucas's cards through the CLI only in a session where he asks (2026-11-26).
+> Changed in part by [ADR 0042](0042-lucas-makes-his-own-cards-with-no-refine-sessions.md), which takes the refine sessions out: Claude reads or writes Lucas's cards through the CLI only in a session where he asks (2026-11-26).
 
 Ficha holds what Lucas is learning, and he wants it private and under his control. The app makes no network calls and has no accounts or telemetry, and cards live in one SQLite file in Application Support, never in the repo. There's no AI inside the app: Claude improves cards only in a session Lucas starts, through the `ficha` command-line tool, and saves only what Lucas approves.
 
