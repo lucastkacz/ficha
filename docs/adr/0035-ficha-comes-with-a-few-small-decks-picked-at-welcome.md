@@ -1,5 +1,7 @@
 # Ficha comes with a few small decks, picked at the Welcome page
 
+> Changed in part by [ADR 0040](0040-ficha-comes-with-three-decks-of-its-own-in-spanish-for-now.md), which brings three decks, Palabras lindas, Arte argentino and Flores de Buenos Aires, in Spanish for now, with the picture on a card's front (2026-11-26).
+
 ADR 0029 has Ficha come with no decks, not even for the beta: a newcomer who doesn't come from Anki opens it empty, and on 2026-11-06 Lucas said the app is only the app. On 2026-11-13 and 2026-11-14 the examples he gave of what Ficha is for were decks: new words, the types of clouds, the twenty highest mountains, famous paintings (ADR 0032). The seven free days count from the first card (ADR 0029), and Ficha makes no network connection of its own (ADR 0017), so a deck it offers has to come inside the app. In the debate of 2026-11-24 Lucas chose to bring a few inside, for now, and approved it as a decision; later he'd like a web page where people share decks. It changes ADR 0029 in part.
 
 - **Four to six small decks of Ficha's own.** 14 to 50 cards each, in English, inside the app.

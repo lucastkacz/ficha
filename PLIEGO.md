@@ -6,7 +6,7 @@ What the method's commands read about Ficha (`.claude/method/method.md`), approv
 
 - ✓ A macOS menu-bar app, for anyone, Lucas first, that shows its user a tiny flashcard every so often and spaces each card with FSRS, as Anki does. The cards stay on the user's devices and in their own iCloud (`README.md`, ADR 0017, ADR 0025).
 - ✓ It sells once on the App Store, the Mac and the iPhone together, after seven free days (ADR 0029, #160). The iPhone app is Ficha Dev with the sample cards for now (#97).
-- ✓ For a few small things the user wants to remember, which come to them while they work; for volume, Anki, which Ficha names once, honestly. Anki inside: its decks and tags, FSRS, the four ratings each review stores, its packages. Ficha outside: the card alone with two buttons, Forgot and Got it; a pace with its finish date, new cards coming from one deck at a time, at 85%; a few small decks of Ficha's own, picked at the Welcome page; English alone (ADR 0032 to ADR 0036, decided on 2026-11-24 in the artifact "Hacia dónde va Ficha").
+- ✓ For a few small things the user wants to remember, which come to them while they work; for volume, Anki, which Ficha names once, honestly. Anki inside: its decks and tags, FSRS, the four ratings each review stores, its packages. Ficha outside: the card alone with three buttons, Forgot, Kind of and Got it; a pace with its finish date, new cards coming from one deck at a time, at 85%; three small decks of Ficha's own, in Spanish for now, picked at the Welcome page; the app's UI in English alone (ADR 0032 to ADR 0036, decided on 2026-11-24 in the artifact "Hacia dónde va Ficha"; ADR 0039, the three buttons, on 2026-11-26 in "Tres botones en el panel"; ADR 0040, the three decks, on 2026-11-26 in "Los mazos de Ficha: decisión").
 
 ## Areas
 
@@ -89,6 +89,7 @@ Each kind of work, as a cloud session does it by `CLAUDE.md`'s Shipping:
   - ◐ From the cloud, each push to the node's draft PR runs a round, CI's `tests` job, `make test` alone, which the session reads as `CLAUDE.md`'s Shipping says; marking the PR ready runs the full `check`.
 - ✓ The three checks' tests and CI: from the cloud, the last round on the draft PR, then CI's `check` once it's ready; on Lucas's Mac, `make check`, then CI.
 - ✓ The web mocks' pictures, with `mockups/tools/shoot.js`, the inspection of the method's pages, with `.claude/method/kit/inspect.js`, and the kit's test, `.claude/method/kit/test.js`, which a change to the kit passes: the cloud.
+- ✓ Fetching the images of Ficha's decks from Wikimedia Commons: the cloud, in Lucas's environment `ficha`, which reaches `commons.wikimedia.org` and `upload.wikimedia.org`; the built-in one refuses both (ADR 0040).
 - ○ The pictures of Ficha: GitHub's Macs, if the probe shows they draw Ficha's windows (#480); until then, Lucas's Mac, through Remote Control.
 - ✓ The hand checks an agent can run (#473): Lucas's Mac, through Remote Control.
 - ○ An agent's runs of Ficha, with `ficha`, `make render`'s clicks or the simulator: Lucas's Mac, through Remote Control, as the hand checks; GitHub's Macs, if the probe shows they can (#480).
@@ -157,7 +158,7 @@ The libraries, in `Packages/FichaKit/`, a Swift package for macOS and iOS:
 
 The rest:
 
-- ✓ Ficha's decks: a file each, in the app's resources, with each image's license, which come in through the same import as any file; #458 brings them (ADR 0035).
+- ✓ Ficha's decks: a file each, in the app's resources, with each image's license, which come in through the same import as any file; #458 brings them (ADR 0035, ADR 0040).
 - ✓ `scripts/`: the render tools and the import-preview tool, which reach FichaKit by path (the render tool compiles `App/`'s files too); the hook tests; the watchdog for hung runs, with its tests; the build of fsrs-rs's XCFramework; the wrapper `make` runs `xcodebuild` through; what unregisters an app's other copies from LaunchServices; the reader of Ficha Dev's last crash, with its tests; the runner of its `ficha` on a scratch folder; the cleanup after a merge, with its tests; the list of what changed the cards' data since the last upload, with its tests; and the check that the clock and the review log's IDs come from their sources.
 - ✓ `docs/`: `development.md`, how to build, draw, test and publish; `agents/`, what agents read about the issues and the domain; `adr/`; `content-guide.md`, how a refine session drafts Lucas's cards; `app-review-notes.md`, what App Review is told; `instructions-for-an-ai.md`; `research/`; `prototypes/`; and `images/`, the README's pictures.
 - ✓ `.claude/`: the permissions, the hooks, the rules, the method's seven skills and what they share (`method/`), with its page kit (`method/kit/`) and its map, the `/refine` skill and the subagents' types.
@@ -186,7 +187,7 @@ Rules that don't break:
 
 ## How we work
 
-- ✓ Lucas reads Spanish; the repo and GitHub are in English, except the commands' descriptions and an issue's body above its folded part, which are in Spanish; the apps are in English alone, their texts through String Catalogs as `CODING_STANDARDS.md`'s UI says (ADR 0036).
+- ✓ Lucas reads Spanish; the repo and GitHub are in English, except the commands' descriptions and an issue's body above its folded part, which are in Spanish; the apps' UI is in English alone, its texts through String Catalogs as `CODING_STANDARDS.md`'s UI says (ADR 0036).
 - ✓ Decisions: `docs/adr/`, one per decision, never rewritten: a later one says which it replaces, changes in part or makes obsolete, and, for records from ADR 0032 on, the older one gets a line under its title that says so, "Replaced by", "Changed in part by" or "Obsolete since", with the link.
 - ✓ The default branch is `main`. On Lucas's Mac, a node's branch is named after its path, such as `mac-cards-import`, in a worktree of its own (`CLAUDE.md`, Shipping); in the cloud, Where it runs.
 - ✓ The standards: `CODING_STANDARDS.md`.

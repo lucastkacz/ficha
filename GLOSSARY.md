@@ -46,7 +46,7 @@ The deck a card lives in when it has no other: a card the user didn't put in a d
 _Avoid_: no deck, unsorted, inbox
 
 **Ficha's decks**:
-The few small decks Ficha comes with, in English, which the user picks at the Welcome page or later. Once added, a deck is the user's like any other, and an update of the app doesn't touch it.
+The three small decks Ficha comes with, in Spanish for now, which the user picks at the Welcome page or later. Once added, a deck is the user's like any other, and an update of the app doesn't touch it.
 _Avoid_: sample cards, starter deck, preset
 
 **Tag**:
@@ -128,7 +128,7 @@ One pass over one card: the user sees its front, or back first its back, flips i
 _Avoid_: answer, attempt, study
 
 **Rating**:
-How well the user says they knew a card in a review, kept as one of Anki's four: again, hard, good or easy. Hard means they remembered it, with effort; only again means they didn't. The review panel shows two buttons, Forgot for again and Got it for good, and keys 2 and 4 give hard and easy.
+How well the user says they knew a card in a review, kept as one of Anki's four: again, hard, good or easy. Hard means they remembered it, with effort; only again means they didn't. The review panel shows three buttons, Forgot for again, Kind of for hard and Got it for good; easy comes only from Anki.
 _Avoid_: grade, score, ease
 
 **Review log**:

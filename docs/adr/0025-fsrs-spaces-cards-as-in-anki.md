@@ -2,6 +2,8 @@
 
 > Changed in part by [ADR 0033](0033-the-review-panel-shows-the-card-alone-with-two-buttons.md), whose panel shows two buttons and puts Anki's settings in Advanced, and by [ADR 0034](0034-one-pace-with-its-finish-date-new-cards-from-one-deck-at-a-time.md), whose desired retention starts at 85%, and whose finish date ends "Ficha still shows no other statistics" (2026-11-24).
 
+> Changed in part by [ADR 0039](0039-the-review-panel-has-three-buttons-forgot-kind-of-and-got-it.md), whose review panel's key 4 rates nothing (2026-11-26).
+
 ADR 0002 spaced cards with a fixed ladder: every card on a step waited the same, so Lucas always knew why a card showed up. Since then Ficha has turned toward Anki, so that someone switching from it finds what they know (ADR 0024), and on 2026-10-31, grilling #396, Lucas decided the scheduler goes the same way: each card waits by how well the user knows it, as Anki does. So Ficha schedules with FSRS, Anki's modern scheduler, and Anki's four buttons. A new card goes through short learning steps, a forgotten one through relearning steps, and once it graduates FSRS gives it an interval in days, aiming at a desired retention of 90%. Why a card shows up is answered as in Anki: each button shows the interval it would set, the Cards window shows a card's interval where it showed its step, and a card's detail shows its stability, difficulty and retrievability. This supersedes ADR 0002, but for its review log as the source of truth, and ADR 0023, but for its rule that Ficha shows no other statistics. It changes ADRs 0013, 0016 and 0017.
 
 ## Considered options
