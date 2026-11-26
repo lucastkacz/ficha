@@ -134,12 +134,13 @@ extension CardsInReviews {
     /// part: later, and earlier where the deck after them leaves no room,
     /// unless the deck before them leaves none either: then later, with the
     /// decks after them too, as far as such ties reach. The other decks keep
-    /// their places, and so does a deck the move doesn't count: one set
-    /// aside, or one listed first for its priority cards alone, whose new
-    /// cards still come first, as do those of a priority deck `deck` holds.
-    /// So a deck the move passes or parts can land on the other side of one
-    /// it doesn't count. Only the places that change, by deck, `deck`'s too
-    /// when it had none.
+    /// their places, and so does a deck the move doesn't count: one with no
+    /// new card in Lucas's reviews, such as one set aside or whose new cards
+    /// are buried or flagged, or one listed first for its priority cards
+    /// alone, whose new cards still come first, as do those of a priority
+    /// deck `deck` holds. So a deck the move passes or parts can land on the
+    /// other side of one it doesn't count. Only the places that change, by
+    /// deck, `deck`'s too when it had none.
     public func places(putting deck: String, at position: QueuePosition, now: Date) -> [String: Date] {
         let held = Dictionary(uniqueKeysWithValues: queue.map { ($0.deck, $0.place) })
         let placeOf = { (name: String) in held[name] ?? now }
@@ -170,7 +171,8 @@ extension CardsInReviews {
         func goesAfterTheOneBefore(_ index: Int) -> Bool {
             (parted[index - 1], order[index - 1]) < (parted[index], order[index])
         }
-        // Ties among the decks the move passes go a second apart, later,
+        // Ties among the decks the move passes, and with the deck before
+        // them, go a second apart, later,
         for index in max(first, 1)...last where !goesAfterTheOneBefore(index) {
             parted[index] = parted[index - 1] + 1
         }
