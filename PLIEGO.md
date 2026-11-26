@@ -6,7 +6,7 @@ What the method's commands read about Ficha (`.claude/method/method.md`), approv
 
 - ✓ A macOS menu-bar app, for anyone, Lucas first, that shows its user a tiny flashcard every so often and spaces each card with FSRS, as Anki does. The cards stay on the user's devices and in their own iCloud (`README.md`, ADR 0017, ADR 0025).
 - ✓ It sells once on the App Store, the Mac and the iPhone together, after seven free days (ADR 0029, #160). The iPhone app is Ficha Dev with the sample cards for now (#97).
-- ✓ For a few small things the user wants to remember, which come to them while they work; for volume, Anki, which Ficha names once, honestly. Anki inside: its decks and tags, FSRS, the four ratings each review stores, its packages. Ficha outside: the card alone with two buttons, Forgot and Got it; a pace with its finish date, new cards coming from one deck at a time, at 85%; a few small decks of Ficha's own, picked at the Welcome page; English alone (ADR 0032 to ADR 0036, decided on 2026-11-24 in the artifact "Hacia dónde va Ficha").
+- ✓ For a few small things the user wants to remember, which come to them while they work; for volume, Anki, which Ficha names once, honestly. Anki inside: its decks and tags, FSRS, the four ratings each review stores, its packages. Ficha outside: the card alone with three buttons, Forgot, Kind of and Got it; a pace with its finish date, new cards coming from one deck at a time, at 85%; a few small decks of Ficha's own, picked at the Welcome page; English alone (ADR 0032 to ADR 0036, decided on 2026-11-24 in the artifact "Hacia dónde va Ficha"; ADR 0039, the three buttons, on 2026-11-26 in "Tres botones en el panel").
 
 ## Areas
 
