@@ -369,9 +369,12 @@ function docs() {
   const part = (readme.split(/^## Changing the kit$/m)[1] || '').split(/^## /m)[0];
   // The run itself, in the words this case looks for, since no reading of prose can tell every wording apart: a
   // sentence that starts "Before the change's reviews" and names the kit's test, and the command in the section.
-  const sentences = part.split(/[.:;!?](?:\s|$)/);
-  const run = part.includes('node .claude/method/kit/test.js') && sentences.some((x) => /^\s*Before the change's reviews\b/.test(x) && /the kit's test/i.test(x));
-  check('the README\'s Changing the kit runs this test before a change\'s reviews', run ? null : `${README}, Changing the kit, doesn't run the kit's test before the change's reviews: say it there, in a sentence that starts "Before the change's reviews" and names the kit's test, with its command, \`node .claude/method/kit/test.js\`, in that section.`);
+  const said = part.split(/[.!?](?:\s|$)/).some((x) => /^\s*Before the change's reviews\b/.test(x) && /the kit's test/i.test(x));
+  const cmd = part.includes('node .claude/method/kit/test.js');
+  check('the README\'s Changing the kit runs this test before a change\'s reviews', said && cmd ? null : [
+    said ? '' : ` has no sentence that starts "Before the change's reviews" and names the kit's test: say it there, in those words`,
+    cmd ? '' : ` doesn't give the test's command: put \`node .claude/method/kit/test.js\` in it`,
+  ].filter(Boolean).map((x) => `${README}, Changing the kit,${x}.`).join(' '));
   // The kit serves any project: no file of it names the one it lives in, as its pliego's title gives it.
   const name = 'no file of the kit names the project, as its pliego\'s title gives it';
   const pliego = path.resolve(kitDir, '..', '..', '..', 'PLIEGO.md');
