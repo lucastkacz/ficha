@@ -1,6 +1,6 @@
 # Ficha
 
-An app that shows its user small cards to remember, every so often, on the Mac, from the menu bar, and on the iPhone, and spaces each one out by how well they know it. Anyone can use it, Lucas too, who builds it and makes his own cards in it as anyone does. Terms are in English, as the code and the app name them.
+An app that shows its user small cards to remember, every so often, on the Mac, from the menu bar, and on the iPhone, and spaces each one out by how well they know it. Anyone can use it, Lucas too, who builds it. Terms are in English, as the code and the app name them.
 
 ## Language
 
