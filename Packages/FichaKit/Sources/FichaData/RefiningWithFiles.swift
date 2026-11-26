@@ -149,7 +149,6 @@ extension Engine {
     /// card's, by the duplicate rule, or the front of a draft before it in
     /// the list, it adds none of them, and the result says which card it
     /// repeats; the files that came in for them go again.
-    @discardableResult
     public func add(_ drafts: [CardDraft]) async throws(EngineError) -> AddResult {
         var held = FilesComingIn()
         let files = try await held.bringIn(drafts, with: self)

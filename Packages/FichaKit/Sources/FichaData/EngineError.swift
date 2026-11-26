@@ -23,8 +23,9 @@ public enum EngineError: Error, Equatable {
     /// discarded instead.
     case noCards
     /// A card a refine session drafted, the one at this position, from 0,
-    /// among the cards a capture is approved into, has a side, its front or
-    /// its back, with neither text, an image nor a sound.
+    /// among the cards a capture is approved into or a list of cards added,
+    /// has a side, its front or its back, with neither text, an image nor a
+    /// sound.
     case blankSideOnNewCard(position: Int)
     /// A refine session's change would leave the card with this id with a
     /// side, its front or its back, with neither text, an image nor a sound,

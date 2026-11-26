@@ -224,7 +224,7 @@ func cards(in rows: [Row], in db: Database) throws -> [Card] {
     return try rows.map { try Card(row: $0, setAsideDecks: setAside, userTypes: userTypes) }
 }
 
-/// Every card, in the order Lucas approved them.
+/// Every card, in the order they came in.
 func allCards(in db: Database) throws -> [Card] {
     try cards(in: Row.fetchAll(db, sql: "SELECT * FROM card ORDER BY id"), in: db)
 }

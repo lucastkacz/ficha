@@ -252,7 +252,7 @@ public struct Engine: Sendable {
         }
     }
 
-    /// Every card, in the order Lucas approved them.
+    /// Every card, in the order they came in.
     public func cards() throws(EngineError) -> [Card] {
         try read(allCards(in:))
     }

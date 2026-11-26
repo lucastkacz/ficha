@@ -64,6 +64,12 @@ final class AddCommandTests {
         let cards = try engine.cards()
         #expect(FichaCommand.configuration.subcommands.contains { $0 == AddCommand.self })
         #expect(cards.map(\.front) == ["serendipia", "hornero"])
+        #expect(
+            cards.map(\.back) == [
+                "Un hallazgo valioso que se da por casualidad.", "Un pájaro que hace su nido de barro.",
+            ])
+        #expect(cards.map(\.type) == [.word, nil])
+        #expect(cards.map(\.tags) == [["etimología"], []])
         #expect(cards.map(\.deck) == ["Idiomas::Español", Deck.defaultName])
         #expect(cards.map(\.bothWays) == [true, false])
         #expect(cards.map(\.source) == [nil, "Aves argentinas"])
@@ -91,8 +97,11 @@ final class AddCommandTests {
         let printed = try await add(input)
 
         let card = try #require(try engine.cards().first)
-        #expect(card.frontImage != nil && card.backSound != nil)
+        let image = try #require(card.frontImage)
+        let sound = try #require(card.backSound)
         #expect(card.backImage == nil && card.frontSound == nil)
+        #expect(try !engine.image(image).isEmpty)
+        #expect(try !engine.sound(sound).isEmpty)
         #expect(try printed == json([card]))
     }
 
@@ -139,6 +148,15 @@ final class AddCommandTests {
                 added. Leave it out, or give it a front of its own, and add the list again.
                 """)
         #expect(repeatedInList.errorDescription?.hasPrefix("Card [2], “Hornero”, repeats card [0], “hornero”,") == true)
+    }
+
+    @Test("`ficha add` refuses an empty list, which would add nothing", .bug(id: 534))
+    func addRefusesAnEmptyList() async throws {
+        await #expect(throws: CardsInputError.self) { try await self.add(Data("[]".utf8)) }
+        #expect(
+            CardsInputError.noCards(.addedCards).errorDescription
+                == "There are no cards in the list: pass one or more; see `ficha add --help`.")
+        #expect(try engine.cards().isEmpty)
     }
 
     /// Runs `ficha add` on the engine with `input` on its standard input, as

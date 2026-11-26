@@ -195,6 +195,8 @@ private struct CardInput: Decodable {
 enum CardsInputError: LocalizedError {
     /// The input isn't the JSON the command reads, with every field.
     case unreadable(DecodingError, CardsInput)
+    /// The input is a list with no card in it, which would change nothing.
+    case noCards(CardsInput)
 
     var errorDescription: String? {
         switch self {
@@ -203,6 +205,8 @@ enum CardsInputError: LocalizedError {
             Couldn't read \(input.what): \(explanation(of: error, in: input)). \(input.rule); see \
             `ficha \(input.command) --help`.
             """
+        case .noCards(let input):
+            "There are no cards in \(input.whole): pass one or more; see `ficha \(input.command) --help`."
         }
     }
 }

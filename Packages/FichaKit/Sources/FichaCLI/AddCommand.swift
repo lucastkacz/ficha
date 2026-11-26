@@ -39,6 +39,9 @@ struct AddCommand: EngineCommand {
     /// returns them, as the command prints them; or adds none, and says why.
     func add(reading input: Data, on engine: Engine) async throws -> [Card] {
         let drafts = try cards(in: input, as: .addedCards)
+        guard !drafts.isEmpty else {
+            throw CardsInputError.noCards(.addedCards)
+        }
         switch try await engine.add(drafts) {
         case .added(let cards):
             return cards

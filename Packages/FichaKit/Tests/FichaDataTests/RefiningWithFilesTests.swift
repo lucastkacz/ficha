@@ -8,9 +8,9 @@ import Testing
 @testable import FichaData
 
 /// Tests on the images and sounds a refine session puts on cards through the
-/// `ficha` CLI: approving and fixing cards with a file for a side, given by
-/// its path or by the name Ficha holds it by, and putting one on, or taking
-/// one off, a side of any card.
+/// `ficha` CLI: approving, adding and fixing cards with a file for a side,
+/// given by its path or by the name Ficha holds it by, and putting one on, or
+/// taking one off, a side of any card.
 final class RefiningWithFilesTests {
     let time = ManualTimeSource(now: Date(timeIntervalSince1970: 1_760_000_000))
     /// A folder of the test's own, for the files it gives by their path.
@@ -403,15 +403,56 @@ final class RefiningWithFilesTests {
 
         let repeatsACard = try await engine.add([nido, draft(.word, front: " Hornero ", back: "Otro pájaro.")])
         let repeatsTheList = try await engine.add([nido, draft(nil, front: "NIDO", back: "Otro nido.")])
+        let imagesAfterDuplicates = try engine.keptImages()
+        let soundsAfterDuplicates = try engine.keptSounds()
         await #expect(throws: EngineError.blankSideOnNewCard(position: 1)) {
             try await engine.add([nido, draft(.word, front: "barro", back: " ")])
         }
 
         #expect(repeatsACard == .duplicate(position: 1, of: .card(hornero)))
         #expect(repeatsTheList == .duplicate(position: 1, of: .cardInList(position: 0)))
+        #expect(imagesAfterDuplicates.isEmpty && soundsAfterDuplicates.isEmpty)
         #expect(try engine.cards() == [hornero])
         #expect(try engine.keptImages().isEmpty)
         #expect(try engine.keptSounds().isEmpty)
+    }
+
+    // hornero has the photo and the song, which the refused adds bring in
+    // again from their files, or name by the names Ficha holds them by.
+    @Test(
+        "an add refused for a duplicate front leaves the files a card has, brought in again or named", .bug(id: 534))
+    func aRefusedAddLeavesACardsFiles() async throws {
+        let engine = try Engine(location: .inMemory, time: time)
+        let photo = try file("hornero.png", holding: picture(width: 800, height: 600, red: 0.8))
+        let song = try file("canto.wav", holding: tone(seconds: 1, hertz: 440))
+        let capture = try engine.newCapture("hornero")
+        let approved = try await engine.approve(
+            capture.id,
+            into: [
+                draft(
+                    .word, front: "hornero", back: "Un pájaro.", frontImage: .put(.file(photo)),
+                    backSound: .put(.file(song)))
+            ])
+        let hornero = try #require(approved.first)
+        let image = try #require(hornero.frontImage)
+        let sound = try #require(hornero.backSound)
+
+        let fromFiles = try await engine.add([
+            draft(
+                .word, front: "Hornero", back: "Otro pájaro.", frontImage: .put(.file(photo)),
+                backSound: .put(.file(song)))
+        ])
+        let byName = try await engine.add([
+            draft(
+                .word, front: "hornero ", back: "Otro pájaro.", frontImage: .put(.image(image)),
+                backSound: .put(.sound(sound)))
+        ])
+
+        #expect(fromFiles == .duplicate(position: 0, of: .card(hornero)))
+        #expect(byName == .duplicate(position: 0, of: .card(hornero)))
+        #expect(try engine.cards() == [hornero])
+        #expect(try engine.keptImages() == [image])
+        #expect(try engine.keptSounds() == [sound])
     }
 
     @Test(

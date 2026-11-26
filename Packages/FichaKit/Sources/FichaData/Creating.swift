@@ -56,8 +56,9 @@ extension Engine {
 
 /// The cards' fronts, by the duplicate rule, each with the first card that
 /// came in with it, which the Cards window's form looks a front up in as it's
-/// typed. Only fronts count: a card created or imported is a duplicate by its
-/// front alone.
+/// typed, and `Engine.add(_:)` looks up the fronts of the cards it adds in.
+/// Only fronts count: a card created or imported is a duplicate by its front
+/// alone.
 struct FrontsInUse: Sendable, Equatable {
     private var firstCardIDs: [String: Int64] = [:]
 
