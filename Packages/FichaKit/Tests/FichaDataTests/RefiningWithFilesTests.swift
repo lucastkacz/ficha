@@ -387,6 +387,33 @@ final class RefiningWithFilesTests {
         #expect(try engine.keptImages().isEmpty)
     }
 
+    // " Hornero " repeats hornero by the duplicate rule, and NIDO the nido
+    // before it in the list; barro's back is left blank.
+    @Test(
+        "an add refused for a duplicate front or a blank side adds no card, and keeps none of the files it brought in",
+        .bug(id: 534))
+    func aRefusedAddKeepsNoneOfItsFiles() async throws {
+        let engine = try Engine(location: .inMemory, time: time)
+        let hornero = try engine.create(card(.word, front: "hornero", back: "Un pájaro."))
+        let photo = try file("nido.png", holding: picture(width: 800, height: 600, red: 0.8))
+        let song = try file("canto.wav", holding: tone(seconds: 1, hertz: 440))
+        let nido = draft(
+            .word, front: "nido", back: "Lo hace el hornero.", frontImage: .put(.file(photo)),
+            backSound: .put(.file(song)))
+
+        let repeatsACard = try await engine.add([nido, draft(.word, front: " Hornero ", back: "Otro pájaro.")])
+        let repeatsTheList = try await engine.add([nido, draft(nil, front: "NIDO", back: "Otro nido.")])
+        await #expect(throws: EngineError.blankSideOnNewCard(position: 1)) {
+            try await engine.add([nido, draft(.word, front: "barro", back: " ")])
+        }
+
+        #expect(repeatsACard == .duplicate(position: 1, of: .card(hornero)))
+        #expect(repeatsTheList == .duplicate(position: 1, of: .cardInList(position: 0)))
+        #expect(try engine.cards() == [hornero])
+        #expect(try engine.keptImages().isEmpty)
+        #expect(try engine.keptSounds().isEmpty)
+    }
+
     @Test(
         "a side's file, as a refine session writes it, is a name Ficha holds when it reads as one, and a path otherwise"
     )

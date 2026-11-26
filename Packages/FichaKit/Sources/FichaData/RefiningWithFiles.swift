@@ -102,6 +102,25 @@ public enum FileKind: String, Sendable, CaseIterable {
     case sound
 }
 
+/// What adding a refine session's cards did: added them all, or found one
+/// whose front repeats another card's and added none.
+public enum AddResult: Sendable, Equatable {
+    /// The cards, as they were saved, in the order given.
+    case added([Card])
+    /// The card at this position in the list, from 0, repeats the front of
+    /// the card `of` names, by the duplicate rule, so no card of the list was
+    /// added.
+    case duplicate(position: Int, of: RepeatedFront)
+}
+
+/// The card whose front a card being added repeats.
+public enum RepeatedFront: Sendable, Equatable {
+    /// A card the user has.
+    case card(Card)
+    /// The card at this position, from 0, before it in the same list.
+    case cardInList(position: Int)
+}
+
 extension Engine {
     /// Approves a capture into the cards `drafts`, as
     /// `approve(_:into:deck:)` does, each in the deck its draft names, made
@@ -130,6 +149,14 @@ extension Engine {
                 }
             }
         }
+    }
+
+    /// Adds the cards `drafts` straight into their decks, with no capture, as
+    /// `approve(_:into:)` makes them from one (ADR 0041). A stub, until
+    /// #534's code.
+    @discardableResult
+    public func add(_ drafts: [CardDraft]) async throws(EngineError) -> AddResult {
+        .added([])
     }
 
     /// Fixes a flagged card with `draft`, as `fix(_:with:)` does with a
