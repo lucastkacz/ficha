@@ -308,7 +308,7 @@ The tool's source is `scripts/import-preview/`, a package like `scripts/render` 
 
 ## A workflow change from the cloud
 
-A cloud session can't push a change to `.github/workflows/`: GitHub refuses it, by git and by the session's GitHub tool, since its token has no `workflow` scope. So the change reaches its branch from Lucas's Mac, through Remote Control, after his OK on the session's card. A session that hasn't asked for it yet asks before step 1, as `.claude/skills/construir/SKILL.md`'s step 2 says, and goes on while the answer comes:
+A cloud session can't push a change to `.github/workflows/`: GitHub refuses it, by git and by the session's GitHub tool, since its token has no `workflow` scope. So the change reaches its branch from Lucas's Mac, through Remote Control. A session that hasn't asked for Lucas's OK on its card yet asks before step 1, as `.claude/skills/construir/SKILL.md`'s step 2 says:
 
 1. The cloud session writes the new file outside that folder, as `.github/<name>.yml`, where GitHub runs nothing, pushes it, and takes its `sha256sum`. If its PR has auto-merge on, as after Lucas's merge command, the session turns it off with its GitHub tool, since `merge-gate.sh` blocks every push to a branch whose PR has it on; Lucas runs his merge command again after the move (CLAUDE.md, Merging).
 2. Once Lucas has said yes, it starts Remote Control in the `ficha` folder, with instructions that name the cloud's branch, the staged file and that sum.
