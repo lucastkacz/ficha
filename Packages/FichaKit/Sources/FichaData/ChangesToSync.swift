@@ -157,6 +157,9 @@ enum SyncedField: String, Sendable, CaseIterable {
     /// Whether the user chose the deck to sync, beside its other switch. A
     /// tag's record held it before decks (ADR 0024), and sends it no more.
     case chosenToSync
+    /// The deck's place in the queue new cards come from, where the user
+    /// moved it (ADR 0034).
+    case queuePlace
     /// The tag's place among the pinned tags, while it's pinned.
     case pin
     // The settings that decide progress, each on its own. The ladder's, which

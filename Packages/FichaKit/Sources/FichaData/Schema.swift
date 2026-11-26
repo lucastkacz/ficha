@@ -1807,6 +1807,59 @@ enum Schema {
                     DELETE FROM syncFieldTime WHERE recordType = 'progressSettings' AND field = 'ladder';
                     """)
         }
+        migrator.registerMigration("v34 a deck's place in the queue") { db in
+            // New cards come from one deck at a time, the first in a queue of
+            // the decks at the top of the tree (ADR 0034). A deck takes its
+            // place when its first card came in, so that a deck that comes in
+            // goes last, unless the user moves it: then it keeps the place it
+            // moved to, a time the queue sorts by, or NULL while it has none.
+            // It's a field of the deck's record, `queuePlace`, as
+            // `SyncedField` names it, whose latest change wins, as its other
+            // fields: their triggers, from "v31 decks", made again with it.
+            try db.alter(table: "deck") { table in
+                table.add(column: "queuePlace", .datetime)
+            }
+            let recording = "(SELECT recordsChanges FROM syncWrite)"
+            let isOn = "(SELECT isOn FROM syncDevice)"
+            let deckFields = [
+                ("switchedOn", "IS NOT NULL"), ("color", "IS NOT NULL"), ("emoji", "IS NOT NULL"), ("chosenToSync", ""),
+                ("queuePlace", "IS NOT NULL"),
+            ]
+            let deckFieldsHoldingSomething = deckFields.map { field, holds in
+                "SELECT '\(field)' AS field WHERE NEW.\(field) \(holds)"
+            }.joined(separator: " UNION ALL ")
+            let changedDeckFields = deckFields.map { field, _ in
+                "SELECT '\(field)' AS field WHERE OLD.\(field) IS NOT NEW.\(field)"
+            }.joined(separator: " UNION ALL ")
+            let anyDeckFieldChanged = deckFields.map { field, _ in "OLD.\(field) IS NOT NEW.\(field)" }
+                .joined(separator: " OR ")
+            /// Records that `fields`, a query of one column, `field`, of the
+            /// deck `NEW`, changed as the write happens, and leaves the deck
+            /// waiting to be sent, in place of its change before, while sync
+            /// is on.
+            func stampAndWait(_ fields: String) -> String {
+                """
+                INSERT INTO syncFieldTime (recordType, recordName, field, changedAt)
+                SELECT 'deck', NEW.name, field, (SELECT at FROM syncWrite) FROM (\(fields)) WHERE true
+                ON CONFLICT (recordType, recordName, field) DO UPDATE SET changedAt = excluded.changedAt;
+                DELETE FROM syncPending WHERE recordType = 'deck' AND recordName = NEW.name;
+                INSERT INTO syncPending (recordType, recordName, isDeletion)
+                SELECT 'deck', NEW.name, 0 WHERE \(isOn);
+                """
+            }
+            try db.execute(
+                sql: """
+                    DROP TRIGGER sync_deck_inserted;
+                    DROP TRIGGER sync_deck_updated;
+                    CREATE TRIGGER sync_deck_inserted AFTER INSERT ON deck WHEN \(recording) BEGIN
+                    \(stampAndWait(deckFieldsHoldingSomething))
+                    END;
+                    CREATE TRIGGER sync_deck_updated AFTER UPDATE ON deck WHEN \(recording) AND (\(anyDeckFieldChanged))
+                    BEGIN
+                    \(stampAndWait(changedDeckFields))
+                    END;
+                    """)
+        }
         return migrator
     }()
 }

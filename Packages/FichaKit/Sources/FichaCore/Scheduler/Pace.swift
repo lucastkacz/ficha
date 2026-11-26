@@ -7,14 +7,21 @@ import Foundation
 public enum Pace: String, Sendable, CaseIterable, Codable {
     case chill, steady, faster
 
-    /// The new cards a day this pace brings.
+    /// The new cards a day this pace brings: 1, 2 or 4.
     public var newCardsPerDay: Int {
-        0
+        switch self {
+        case .chill: 1
+        case .steady: 2
+        case .faster: 4
+        }
     }
 
     /// The pace that brings `newCardsPerDay` new cards a day, or nil when
-    /// none does, as when the CLI or another version set another number.
+    /// none does, as for a number a version of Ficha before the pace kept.
     public init?(newCardsPerDay: Int) {
-        return nil
+        guard let pace = Self.allCases.first(where: { $0.newCardsPerDay == newCardsPerDay }) else {
+            return nil
+        }
+        self = pace
     }
 }

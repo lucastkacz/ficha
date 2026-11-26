@@ -11,7 +11,7 @@ public struct ReviewSettings: Sendable, Equatable {
     /// included.
     public var cardsPerAppearance: Int
     /// How many new cards Lucas meets in a day at most, by his Mac's calendar
-    /// day.
+    /// day, for every deck together: the pace's (`Pace`).
     public var newCardsPerDay: Int
     /// How far ahead an appearance looks: it brings along the cards due
     /// within it, and their reviews count as on time.
@@ -45,11 +45,12 @@ public struct ReviewSettings: Sendable, Equatable {
     /// never offers.
     public var forgottenOftenAfter: Int?
 
-    /// The settings Ficha starts with.
+    /// The settings Ficha starts with: on a new install, the scheduler's at
+    /// 85% and the Steady pace (ADR 0034).
     public static let defaults = ReviewSettings(
-        scheduler: .standard,
+        scheduler: .newInstall,
         cardsPerAppearance: 5,
-        newCardsPerDay: 5,
+        newCardsPerDay: Pace.steady.newCardsPerDay,
         lookAhead: .seconds(20 * 60),
         // From 9:00 to 22:00.
         activeHours: 9..<22,

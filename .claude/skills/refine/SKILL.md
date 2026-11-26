@@ -91,6 +91,7 @@ When Lucas asks to change a deck, a tag or a type of his own, or to move cards t
 | Setting a deck aside or prioritizing it, or undoing either | `ficha deck set-aside` or `prioritize`, with `--off` to undo |
 | A deck's color or emoji | `ficha deck color` or `emoji` |
 | Choosing a deck to sync, or unticking it | `ficha deck choose-to-sync`, with `--off` to untick |
+| Moving a deck in the queue new cards come from | `ficha deck queue <deck>`, with `--first`, `--last` or `--place <n>` |
 | Renaming or moving a tag, or merging it into another | `ficha tag rename <tag> <new name>` |
 | Deleting tags, or the tags no card carries | `ficha tag delete <tag>…`, or `ficha tag clear-unused` |
 | Pinning, unpinning or reordering the sidebar's tags | `ficha tag pin`, `unpin` or `move-pinned` |

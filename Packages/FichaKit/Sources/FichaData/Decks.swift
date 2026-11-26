@@ -56,6 +56,11 @@ public struct Deck: Sendable, Hashable {
     /// Whether the user chose it to sync, for selective sync (ADR 0020). A
     /// deck isn't, until the user ticks it.
     public var chosenToSync: Bool
+    /// Its place in the queue new cards come from (ADR 0034), where the user
+    /// moved it, or nil while it takes when its first card came in. A deck
+    /// inside another has none that counts: it comes with the deck at the
+    /// top.
+    public var queuePlace: Date?
     /// The color of the nearest deck it sits inside that has one, or nil when
     /// none does: never its own, and never stored.
     public let inheritedColor: TagColor?
@@ -65,13 +70,15 @@ public struct Deck: Sendable, Hashable {
 
     public init(
         name: String, switchedOn: DeckSwitch? = nil, color: TagColor? = nil, emoji: String? = nil,
-        chosenToSync: Bool = false, inheritedColor: TagColor? = nil, inheritedEmoji: String? = nil
+        chosenToSync: Bool = false, queuePlace: Date? = nil, inheritedColor: TagColor? = nil,
+        inheritedEmoji: String? = nil
     ) {
         self.name = name
         self.switchedOn = switchedOn
         self.color = color
         self.emoji = emoji
         self.chosenToSync = chosenToSync
+        self.queuePlace = queuePlace
         self.inheritedColor = inheritedColor
         self.inheritedEmoji = inheritedEmoji
     }
@@ -423,7 +430,8 @@ struct OwnDecks: Sendable {
         let own = byName[name] ?? Deck(name: name)
         return Deck(
             name: name, switchedOn: own.switchedOn, color: own.color, emoji: own.emoji,
-            chosenToSync: own.chosenToSync, inheritedColor: ancestors.lazy.compactMap(\.color).first,
+            chosenToSync: own.chosenToSync, queuePlace: own.queuePlace,
+            inheritedColor: ancestors.lazy.compactMap(\.color).first,
             inheritedEmoji: ancestors.lazy.compactMap(\.emoji).first)
     }
 }
@@ -495,12 +503,14 @@ func changeOwnDecks(_ decks: [String], in db: Database, _ change: (inout Deck) t
 func save(_ deck: Deck, in db: Database) throws {
     try db.execute(
         sql: """
-            INSERT INTO deck (name, switchedOn, color, emoji, chosenToSync) VALUES (?, ?, ?, ?, ?)
+            INSERT INTO deck (name, switchedOn, color, emoji, chosenToSync, queuePlace) VALUES (?, ?, ?, ?, ?, ?)
             ON CONFLICT (name) DO UPDATE SET
                 switchedOn = excluded.switchedOn, color = excluded.color, emoji = excluded.emoji,
-                chosenToSync = excluded.chosenToSync
+                chosenToSync = excluded.chosenToSync, queuePlace = excluded.queuePlace
             """,
-        arguments: [deck.name, deck.switchedOn?.rawValue, deck.color?.rawValue, deck.emoji, deck.chosenToSync])
+        arguments: [
+            deck.name, deck.switchedOn?.rawValue, deck.color?.rawValue, deck.emoji, deck.chosenToSync, deck.queuePlace,
+        ])
 }
 
 extension Deck {
@@ -522,6 +532,7 @@ extension Deck {
                 }
                 return color
             },
-            emoji: try row.decode(forColumn: "emoji"), chosenToSync: try row.decode(forColumn: "chosenToSync"))
+            emoji: try row.decode(forColumn: "emoji"), chosenToSync: try row.decode(forColumn: "chosenToSync"),
+            queuePlace: try row.decode(forColumn: "queuePlace"))
     }
 }

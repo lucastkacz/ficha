@@ -454,7 +454,9 @@ func checkDeckToChange(_ deck: String, in db: Database) throws {
 extension Deck {
     /// The deck with what it has of its own, under the name `name`.
     fileprivate func named(_ name: String) -> Deck {
-        Deck(name: name, switchedOn: switchedOn, color: color, emoji: emoji, chosenToSync: chosenToSync)
+        Deck(
+            name: name, switchedOn: switchedOn, color: color, emoji: emoji, chosenToSync: chosenToSync,
+            queuePlace: queuePlace)
     }
 
     /// Takes `fields` of what `other` has of its own, or throws for a field a
@@ -466,6 +468,7 @@ extension Deck {
             case .color: color = other.color
             case .emoji: emoji = other.emoji
             case .chosenToSync: chosenToSync = other.chosenToSync
+            case .queuePlace: queuePlace = other.queuePlace
             default: throw unreadable("A deck's row holds when a field a deck doesn't have changed")
             }
         }
@@ -479,6 +482,7 @@ extension Deck {
         if color != other.color { fields.append(.color) }
         if emoji != other.emoji { fields.append(.emoji) }
         if chosenToSync != other.chosenToSync { fields.append(.chosenToSync) }
+        if queuePlace != other.queuePlace { fields.append(.queuePlace) }
         return fields
     }
 }
