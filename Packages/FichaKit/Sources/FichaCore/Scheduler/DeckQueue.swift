@@ -131,12 +131,15 @@ extension CardsInReviews {
     /// the earliest for the first, `deck`'s being `now` when it has no card
     /// in Lucas's reviews. Those that would then go out of order, at one
     /// place, by name, go a second apart, so that decks that came in at once
-    /// part: later where the deck after them leaves room, else earlier where
-    /// the deck before them does, else later with the decks after them too,
-    /// as far as such ties reach. The other decks keep their places, and so
-    /// does a deck listed first for its priority cards alone, whose new cards
-    /// still come first, as do those of a priority deck `deck` holds. Only
-    /// the places that change, by deck, `deck`'s too when it had none.
+    /// part: later, and earlier where the deck after them leaves no room,
+    /// unless the deck before them leaves none either: then later, with the
+    /// decks after them too, as far as such ties reach. The other decks keep
+    /// their places, and so does a deck the move doesn't count: one set
+    /// aside, or one listed first for its priority cards alone, whose new
+    /// cards still come first, as do those of a priority deck `deck` holds.
+    /// So a deck the move passes or parts can land on the other side of one
+    /// it doesn't count. Only the places that change, by deck, `deck`'s too
+    /// when it had none.
     public func places(putting deck: String, at position: QueuePosition, now: Date) -> [String: Date] {
         let held = Dictionary(uniqueKeysWithValues: queue.map { ($0.deck, $0.place) })
         let placeOf = { (name: String) in held[name] ?? now }
