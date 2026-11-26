@@ -429,9 +429,10 @@ func captureInInbox(_ captureID: Int64, in db: Database) throws -> Capture {
     return try Capture(row: row)
 }
 
-/// A card a capture is approved into, as `Engine.approve(_:into:)` saves it:
-/// what it holds, the deck it goes to, by its whole name, made if it isn't
-/// there, or Default, and whether it goes both ways.
+/// A card a capture is approved into, as `Engine.approve(_:into:)` saves it,
+/// or one `Engine.add(_:)` adds with no capture: what it holds, the deck it
+/// goes to, by its whole name, made if it isn't there, or Default, and
+/// whether it goes both ways.
 struct ApprovedCard {
     let content: CardContent
     let deck: String
