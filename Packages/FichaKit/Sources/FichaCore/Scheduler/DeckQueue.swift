@@ -37,7 +37,8 @@ public struct QueuedDeck: Sendable, Hashable {
 
 /// Where a deck goes in the queue when the user moves it.
 public enum QueuePosition: Sendable, Hashable {
-    /// Ahead of every other deck.
+    /// Ahead of every other deck, but one listed first for its priority
+    /// cards alone.
     case first
     /// After every other deck.
     case last

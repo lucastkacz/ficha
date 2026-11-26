@@ -8,6 +8,8 @@ import Testing
 /// the queue alone, and each deck in the queue has a finish date. They start
 /// at 9 in the morning of Wednesday the 14th in Buenos Aires, when active
 /// hours start, on a new install, with Ficha's settings.
+/// `mockups/tools/check-engine.js` copies some of these cases into the web
+/// mocks' toy engine: run it after changing one (`mockups/README.md`).
 struct PaceAndQueueTests {
     let calendar: Calendar
     let time: ManualTimeSource

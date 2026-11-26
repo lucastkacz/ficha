@@ -42,7 +42,7 @@ public struct CardsInReviews: Sendable, Equatable {
     /// both ways'.
     /// The queue new ways come from holds each deck at the top of the tree,
     /// with the decks inside it, at its place (ADR 0034): the one in
-    /// `queuePlaces`, kept when the user moved it, or else when its first
+    /// `queuePlaces`, kept when a move put it there, or else when its first
     /// card came in, so that a deck that comes in goes last. Decks at the
     /// same place, such as two an import brought, go by name, as on every
     /// device. The place of a deck inside another counts for nothing.

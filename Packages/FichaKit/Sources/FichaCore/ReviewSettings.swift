@@ -1,10 +1,11 @@
 /// The settings that decide which cards Lucas reviews, and when, and how the
 /// review panel behaves. Each one starts as a default from the MVP spec (#4),
-/// but the new cards a day and the desired retention, from ADR 0034, and
-/// Lucas can change it in Settings; the app passes them to the engine as
-/// a value. Some of them decide a card's progress, the scheduler's settings,
-/// the new cards a day and the forgotten-often count, and sync, so the engine
-/// keeps them (`progress`); the rest stay each device's own.
+/// but for the new cards a day and the desired retention, which start as
+/// ADR 0034 sets them, and Lucas can change it in Settings; the app passes
+/// them to the engine as a value. Some of them decide a card's progress, the
+/// scheduler's settings, the new cards a day and the forgotten-often count,
+/// and sync, so the engine keeps them (`progress`); the rest stay each
+/// device's own.
 public struct ReviewSettings: Sendable, Equatable {
     /// The settings FSRS spaces cards with, as Anki does (#404).
     public var scheduler: Scheduler
