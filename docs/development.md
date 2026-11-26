@@ -167,13 +167,9 @@ The texts each app shows are in English alone (ADR 0036), and live in its String
 - When a text with plural variations changes, the export brings the new text in plain: move its variations over from the stale entry by hand, change them to say what the new text says, delete the stale entry, and run `make strings` again, which should change nothing. `StringCatalogsTests` fails while a stale entry is left.
 - The engine's messages (`EngineError`) are manual keys, which the export keeps as they are, in the catalogs `CODING_STANDARDS.md` names for them: a new or changed message is added, or changed, by hand in each, with the comment the other messages have, and FichaKit's `EngineMessagesTests` fails until it is. So is `“%@”`, one name in quotes (`EngineError.quotedName`), which quotes each name of a list a message takes as one value, such as two decks', so that the list's quotes are the catalog's.
 
-## Refining
-
-What you capture waits in the inbox, with the cards you flag and the follow-ups: what you ask about a card in the review panel. To turn it into cards, open Claude Code in this repository's folder and type `/refine`. Claude goes through it ten items at a time and, following [the content guide](content-guide.md), proposes cards for each capture, each in the deck of its subject, with Both ways on those whose back leads to their front, a fix or a burial for each flagged card, one you keep forgetting included, front first or back first, how to add each expansion to its card, and new cards in its card's deck, with its card's tags, for each follow-up. Point it to an image or a sound file on your Mac, and it proposes the card and the side it goes on, and copies the file into Downloads, the one folder the sandboxed `ficha` reads from. It also manages your decks, tags and card types: ask it to make, rename, move, merge or delete a deck, set it aside, prioritize it, color it, give it an emoji or choose it to sync, or move cards to another deck; to rename, move, merge or delete a tag, pin it, color it or give it an emoji; or to make, rename or delete a type of your own; and it proposes each change with the cards it reaches. Once, before sync is on, it turns the tags that were your subjects before decks into decks, after showing you its preview. It writes only what you approve, through the installed Ficha's `ficha` command.
-
 ## The `ficha` command
 
-Ficha ships with a command-line tool inside the app. Claude uses it to turn your captures into cards and to fix the cards you flag, and you can capture from a terminal with it:
+Ficha ships with a command-line tool inside the app. Claude uses it to read or change your cards in a session where you ask, and you can capture from a terminal with it:
 
 ```bash
 /Applications/Ficha.app/Contents/Helpers/ficha capture "serendipia" --source "Un ensayo de Borges"
