@@ -18,12 +18,12 @@ Done when you have the date.
 
 Since that date, with each time in the user's time zone:
 
-- **Each PR merged**: what it built, its area, the issues it closed, and what went sideways, from its body.
+- **Each PR merged**: what it built, its area, the day it merged and the issues it closed; how it went, from its checks and what went sideways in its body; and what it left the user, from its notes: a choice made without asking, for them to confirm; something to look at when they try it; a step before an upload; a check by hand. Of what it left, only what no later PR, decision or comment settled.
 - **Why**: each issue's `El problema`, and the decision records the PR wrote or follows, with the decision's artifact.
 - **What it left**: what `/entregar` wrote on the PR and its issues, and the issues it opened, such as a retro's Tasks.
 - **Without a PR**: the issues opened since the date, and those closed without a PR, with why.
 
-Done when each PR has its what, its why and what it left, and each issue without a PR its line, all in the user's language.
+Done when each PR has its what, its why, how it went and what it left, and each issue without a PR its line, all in the user's language.
 
 ## 3. Where it stands
 
@@ -44,7 +44,7 @@ The next step is the first of these that holds, with its command and why:
 3. **The next node**: a bug that blocks everything, alone; else the next node in the order of the work whose issues are ready: `/construir` with it.
 4. **What waits to be sorted or shaped**: `/idea` for the issues with no type; `/debate` for an Idea, or `/decision` for one small enough to need none; `/preparar` when the pliego no longer matches the project.
 
-Under it, the rest that waits, in the same order, and the nodes that can go in parallel.
+Under it, the rest that waits, in the same order, and the nodes that can go in parallel; and everything the PRs left the user, from step 2, each with its PR.
 
 Done when the next step has its command, or what the user does, and its why.
 
