@@ -1,5 +1,7 @@
 # The sidebar lists the tags the user pins, and All Tags holds every tag
 
+> Obsolete since [ADR 0041](0041-ficha-is-small-decks-shown-as-cards-without-ankis-packages-tags-or-capture.md): the sidebar lists decks alone, and All Tags goes (2026-11-26).
+
 Spec #363 listed every tag in the Cards window's sidebar as a tree, with a Set Aside section below it, and left a place of their own for tags out (#346). Lucas's first use of it, in the real Ficha's build 141 on 2026-10-29, found three things (#368): with many tags, most from Anki decks (ADR 0020), and many of them inside others, the tree became an endless list; a tag dropped between two others did nothing, where he expected it to land there; and nothing let him put his tags in an order of his own. So the sidebar now lists only the tags the user pins, in the order they choose, and ends with All Tags…, which opens All Tags: a place in the Cards window that lists every tag as a tree, where the user pins, sets aside, prioritizes, renames, moves and deletes them. Finder's sidebar treats tags the same way: its Tags section lists the ones the user chose, in their order, with All Tags… at its end.
 
 It also brings in four more things #363 left out: Prioritize in a tag's menu, deleting tags, clearing unused ones, and the `ficha` CLI renaming tags and managing card types.

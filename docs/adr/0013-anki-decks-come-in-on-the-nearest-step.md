@@ -1,5 +1,7 @@
 # Anki decks come in with their progress, on the nearest ladder step
 
+> Obsolete since [ADR 0041](0041-ficha-is-small-decks-shown-as-cards-without-ankis-packages-tags-or-capture.md): Anki's packages no longer come in (2026-11-26).
+
 Someone leaving Anki has years of reviews, and starting over at a few new cards a day would keep them in Anki. So Ficha reads Anki's `.apkg` packages, the file Anki exports by default, and brings each card's progress along. Anki gives each card an interval of its own while Ficha has a fixed ladder (ADR 0002), so a card Anki was reviewing lands on the step nearest its interval and falls due on the day Anki would have shown it; a new card stays new, and one Anki was still learning lands on the first step. Anki's review history stays behind: its four buttons don't map onto Ficha's three ratings, and Ficha works out a card's step by replaying its log, so the old reviews would put the card on another step. Instead, the card's log starts with one entry that places it on its step.
 
 ## Considered options

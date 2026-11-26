@@ -2,6 +2,8 @@
 
 > Changed in part by [ADR 0032](0032-ficha-is-for-a-few-small-things-anki-inside-ficha-outside.md), whose Ficha copies Anki's model but not its face, by [ADR 0033](0033-the-review-panel-shows-the-card-alone-with-two-buttons.md), whose panel no longer shows the deck and tags, and by [ADR 0034](0034-one-pace-with-its-finish-date-new-cards-from-one-deck-at-a-time.md), which gives a deck its place in the queue (2026-11-24).
 
+> Changed in part by [ADR 0041](0041-ficha-is-small-decks-shown-as-cards-without-ankis-packages-tags-or-capture.md): tags and card types leave the app's face, the database keeping them unseen, the priority deck goes, and Set aside takes a card too (2026-11-26).
+
 ADR 0011 made tags Ficha's subjects instead of decks, and ADRs 0020 to 0022 built on them: tags inside tags, selective sync and pinned tags. On 2026-10-29 Lucas imported an Anki package, Great Works of Art, into the real Ficha's build 144. In Anki it's a deck with two decks inside it, Artists and Titles, and its notes carry Anki's tags, such as Renaissance and Sculpture. The Import sheet listed them all as tags: `Great Works of Art::Artists` beside `Renaissance`. Ficha's tags did two jobs, where a card lives and a label that crosses subjects, and both took the same switches. So in the grilling of 2026-10-30 Lucas decided that Ficha has both, as Anki does, and copies Anki wherever it can, so that switching from Anki is seamless. Each card lives in exactly one deck. Decks sit inside decks by their names, `Great Works of Art::Artists`, and Default holds the cards with no other deck. Set aside, priority and selective sync move to decks, and tags become labels with no switches. Tags keep their tree, color, emoji, pins and All Tags.
 
 ## Considered options
