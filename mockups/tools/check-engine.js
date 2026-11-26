@@ -5,7 +5,7 @@
 const path = require('path');
 require(path.join(__dirname, '..', 'kit', 'engine.js'));
 const E = globalThis.FichaEngine;
-const { FSRS, rate, preview, SCHEDULER, DAY, HOUR } = E;
+const { FSRS, rate, preview, SCHEDULER, DAY, HOUR, PACES, ToyFicha, finishDays } = E;
 
 let failed = 0;
 const check = (name, ok, got) => {
@@ -100,6 +100,60 @@ const noSteps = { ...SCHEDULER, learningSteps: [] };
 {
   const after = (h) => rate({ ...fresh(), state: 'review', mem: { S: 5, D: 5 }, last: start, reps: 2 }, 3, start + h * HOUR).mem.S;
   check('days since the last review round to the nearest whole day', after(11) === after(0.1) && after(13) === after(24), [after(11), after(13)]);
+}
+
+// PaceAndQueueTests.aNewInstallStartsAtSteady: Chill, Steady and Faster,
+// Steady to start, and 85% on a new install.
+{
+  check('the paces are 1, 2 and 4 new cards a day', PACES.map((p) => p.perDay).join() === '1,2,4', PACES.map((p) => p.perDay));
+  const app = new ToyFicha({ decks: [], now: start, speed: 0 });
+  check('a new install starts at Steady and 85%', app.perDay() === 2 && app.scheduler.retention === 0.85, [app.perDay(), app.scheduler.retention]);
+}
+// PaceAndQueueTests.newCardsComeFromTheFirstDeckAlone: at Steady, new cards
+// come from the first deck in the queue alone, 2 a day, and then from the next.
+{
+  const deckOf = (id, fronts) => ({ id, name: id, cards: fronts.map((front) => ({ front, back: '' })) });
+  const app = new ToyFicha({ decks: [deckOf('arte', ['a', 'b', 'c']), deckOf('historia', ['d'])], now: start, speed: 0 });
+  app.addDeck('arte');
+  app.addDeck('historia');
+  const meetEachNewCard = (t) => {
+    app.state.now = t;
+    if (app.state.introduced.day !== E.startOfDay(t)) app.state.introduced = { day: E.startOfDay(t), count: 0 };
+    const met = [];
+    for (let id; (id = app.pickCards(t, 0).find((x) => app.card(x).state === 'new')) && met.length < 10; ) {
+      Object.assign(app.card(id), rate(app.card(id), 1, t));
+      app.state.introduced.count++;
+      met.push(id);
+    }
+    return met;
+  };
+  const firstDay = meetEachNewCard(start);
+  const secondDay = meetEachNewCard(start + DAY);
+  check('2 new cards a day from the first deck, then from the next', firstDay.join() === 'arte-0,arte-1' && secondDay.join() === 'arte-2,historia-0', [firstDay, secondDay]);
+}
+// PaceAndQueueTests.aDeckThatComesInGoesLast and aSetAsideDeckLeavesTheQueue:
+// a deck goes last, or first when asked; a deck set aside leaves the queue
+// and comes back to its place.
+{
+  const deckOf = (id) => ({ id, name: id, cards: [{ front: id, back: '' }] });
+  const app = new ToyFicha({ decks: ['arte', 'historia', 'musica', 'lenguaje'].map(deckOf), now: start, speed: 0 });
+  ['arte', 'historia', 'musica'].forEach((id) => app.addDeck(id));
+  app.addDeck('lenguaje', { first: true });
+  const queue = () => app.queueDecks().map((d) => d.id).join();
+  check('a deck goes last, or first when asked', queue() === 'lenguaje,arte,historia,musica', queue());
+  app.setAside('arte');
+  const setAside = queue();
+  app.setAside('arte', false);
+  check('a deck set aside leaves the queue and comes back to its place', setAside === 'lenguaje,historia,musica' && queue() === 'lenguaje,arte,historia,musica', [setAside, queue()]);
+}
+// PaceAndQueueTests.aDecksFinishDate: Arte's 3 new cards and then
+// Historia's 4, with today's 2 still to come at Steady, or 4 at Faster.
+{
+  const steady = finishDays({ left: [3, 4], perDay: 2, today: 2 });
+  const faster = finishDays({ left: [3, 4], perDay: 4, today: 4 });
+  const days = (f) => f.map((d) => `${d.soonest}-${d.latest}`).join();
+  check('at Steady, the finish dates are 1 to 2 days away and 3 to 5', days(steady) === '1-2,3-5', days(steady));
+  check('at Faster, they are today and 1 to 2 days away', days(faster) === '0-0,1-2', days(faster));
 }
 
 console.log(failed

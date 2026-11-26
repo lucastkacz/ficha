@@ -615,13 +615,14 @@
       this.changed();
       this.emit();
     }
-    /** Sets a deck aside, out of the queue, or brings it back, last (provisional in ADR 0034). */
+    /**
+     * Sets a deck aside, out of the queue, or brings it back to its place,
+     * as FichaCore's queue does (provisional in ADR 0034).
+     */
     setAside(id, aside = true) {
       const d = this.deck(id);
-      const s = this.state;
       d.setAside = aside;
-      if (!aside) s.queue = [...s.queue.filter((x) => x !== id), id];
-      this.log(aside ? `${d.name} set aside` : `${d.name} back in the queue, last`, 'deck');
+      this.log(aside ? `${d.name} set aside` : `${d.name} back in the queue, at its place`, 'deck');
       this.changed();
       this.emit();
     }
