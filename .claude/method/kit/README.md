@@ -8,6 +8,7 @@ The pieces every page of the method is built from, drawn once and filled with ea
 | `kit.js` | What the pieces do, and the user's answers, notes and approval, kept in the artifact's database. |
 | `pieces.html` | Every piece once, as a page uses it, published where the pliego's How it's drawn says. |
 | `inspect.js` | The inspection. |
+| `test.js` | The kit's own test: its saving, and pages the inspection must fail. |
 
 ## A page
 
@@ -63,4 +64,14 @@ With the Artifact tool: the page as `file_path`, and in `files` the kit, `{"kit/
 
 ## Changing the kit
 
-A change to a piece changes `pieces.html` with it, and the change passes the inspection on `pieces.html` and on [`../map.html`](../map.html). Before its PR is ready, both are published again at the links the pliego's How it's drawn gives, so the user sees the change while it waits to merge.
+A change to a piece changes `pieces.html` with it. Before the change's reviews, it passes the inspection on `pieces.html` and on [`../map.html`](../map.html), and the kit's test, where the inspection runs:
+
+```
+node .claude/method/kit/test.js
+```
+
+It tries the answers, notes and approval against `pieces.html`, with a database that's slow, absent or failing, and runs the inspection on copies of `pieces.html` with one defect each, which it must fail, naming the defect. A saving rule or an inspection check the change adds gets its case there, with generic examples, as the kit's; a failure whose words the change rewrites changes its case's.
+
+Before its PR is ready, both pages are published again at the links the pliego's How it's drawn gives, so the user sees the change while it waits to merge.
+
+Done when the test prints "All … passed", both pages pass the inspection, and both are published.
