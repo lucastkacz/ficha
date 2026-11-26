@@ -44,7 +44,7 @@ public enum QueuePosition: Sendable, Hashable {
     case last
     /// At this index among the other decks of the queue, as
     /// `ReviewSettings.queue(of:now:calendar:)` lists them, from 0, the
-    /// first.
+    /// first, but after one listed first for its priority cards alone.
     case at(Int)
 }
 

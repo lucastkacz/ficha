@@ -6,9 +6,10 @@ internal import GRDB
 // tree, each at its place, the first one's new cards first, at the pace. A
 // deck takes its place when its first card came in, so a deck that comes in
 // goes last; the user can move it, and then it keeps the place it moved to,
-// and the decks it passed theirs, a field of each that syncs. Which cards
-// come first is decided in FichaCore's `CardsInReviews` and
-// `DeckQueue.swift`, whose changes `make upload` lists.
+// and the decks it passed theirs, or those it parted from a deck that came in
+// at once, a field of each that syncs. Which cards come first is decided in
+// FichaCore's `CardsInReviews` and `DeckQueue.swift`, whose changes
+// `make upload` lists.
 
 extension Engine {
     /// The queue new cards come from now, with `settings`' pace: each deck at

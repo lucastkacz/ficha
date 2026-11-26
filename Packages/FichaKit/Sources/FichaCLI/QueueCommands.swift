@@ -86,7 +86,7 @@ struct QueueDeckCommand: EngineCommand {
     @ArgumentParser.Flag(help: "Put it last in the queue.")
     var last = false
 
-    @Option(help: "Put it at this place in the queue, from 1, the first, as `ficha queue` lists it.")
+    @Option(help: "Put it at this place in the queue, from 1, as `ficha queue` lists it, after any priority deck.")
     var place: Int?
 
     func validate() throws {

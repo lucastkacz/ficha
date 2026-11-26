@@ -67,7 +67,8 @@ func cardsThatShowUp(in db: Database) throws -> CardsThatShowUp {
 }
 
 /// The place in the queue new cards come from of each deck a move put in
-/// it, the one moved or one it passed (ADR 0034), by name.
+/// it, the one moved, one it passed, or one it parted from a deck that came
+/// in at once (ADR 0034), by name.
 func queuePlaces(in db: Database) throws -> [String: Date] {
     var places: [String: Date] = [:]
     for row in try Row.fetchAll(db, sql: "SELECT name, queuePlace FROM deck WHERE queuePlace IS NOT NULL") {

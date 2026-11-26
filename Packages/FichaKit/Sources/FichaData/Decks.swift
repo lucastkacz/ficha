@@ -56,10 +56,11 @@ public struct Deck: Sendable, Hashable {
     /// Whether the user chose it to sync, for selective sync (ADR 0020). A
     /// deck isn't, until the user ticks it.
     public var chosenToSync: Bool
-    /// Its place in the queue new cards come from (ADR 0034), where the user
-    /// moved it, or where it went as another deck moved past it, or nil while
-    /// it takes when its first card came in. A deck inside another has none
-    /// that counts: it comes with the deck at the top.
+    /// Its place in the queue new cards come from (ADR 0034), where a move
+    /// put it, the user's of this deck, or another's that passed it or parted
+    /// it from a deck that came in at once, or nil while it takes when its
+    /// first card came in. A deck inside another has none that counts: it
+    /// comes with the deck at the top.
     public var queuePlace: Date?
     /// The color of the nearest deck it sits inside that has one, or nil when
     /// none does: never its own, and never stored.
