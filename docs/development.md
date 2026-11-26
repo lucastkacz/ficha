@@ -308,10 +308,10 @@ The tool's source is `scripts/import-preview/`, a package like `scripts/render` 
 
 ## A workflow change from the cloud
 
-A cloud session can't push a change to `.github/workflows/`: GitHub refuses it, by git and by the session's GitHub tool, since its token has no `workflow` scope. So the change reaches its branch from Lucas's Mac, through Remote Control:
+A cloud session can't push a change to `.github/workflows/`: GitHub refuses it, by git and by the session's GitHub tool, since its token has no `workflow` scope. So the change reaches its branch from Lucas's Mac, through Remote Control, after his OK on the session's card. A session that hasn't asked for it yet asks before step 1, as `.claude/skills/construir/SKILL.md`'s step 2 says, and goes on while the answer comes:
 
 1. The cloud session writes the new file outside that folder, as `.github/<name>.yml`, where GitHub runs nothing, pushes it, and takes its `sha256sum`. If its PR has auto-merge on, as after Lucas's merge command, the session turns it off with its GitHub tool, since `merge-gate.sh` blocks every push to a branch whose PR has it on; Lucas runs his merge command again after the move (CLAUDE.md, Merging).
-2. It starts Remote Control in the `ficha` folder, with instructions that name the cloud's branch, the staged file and that sum, once Lucas has said yes on the session's card. `/construir` asks for that OK at the replanteo (`.claude/skills/construir/SKILL.md`, step 2); a session that hasn't asked yet asks now.
+2. Once Lucas has said yes, it starts Remote Control in the `ficha` folder, with instructions that name the cloud's branch, the staged file and that sum.
 3. The session on the Mac starts in the main folder. If a worktree at `.claude/worktrees/workflow-move`, or a local branch named as the cloud's branch, is left from an earlier move, it stops and tells Lucas. Otherwise it adds that worktree from the cloud's branch, with a local branch of the same name, so the push in step 5 names one branch, the form `merge-gate.sh` allows:
 
    ```bash
