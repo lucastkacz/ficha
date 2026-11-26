@@ -8,16 +8,16 @@ internal import GRDB
 // `Deck.defaultName`. A parent exists through the decks inside it, as a tag's
 // does (ADR 0021), and holds their cards. A deck has a row of its own in the
 // `deck` table while it exists (`Schema`'s "v31 decks"), so one the user makes
-// stays while it has no cards; it holds the deck's switch, color, emoji and
-// choice to sync, which sync as a tag's do (`SyncedDecks.swift`), and whether
-// the user made it on this device, which doesn't: making a deck, or putting
-// cards in it, as New Deck…, Change Deck, the card form, Approve and an
-// import do, says so, also of a deck this device heard of from another, and
-// nothing else does. Default gets its row once something is set on it, and
-// is listed only while it holds cards or has a switch on, so that its switch
-// can be turned off. Under selective sync, a device lists only the decks
-// that sync, those it holds cards of and those made on it
-// (`SelectiveSync.swift`).
+// stays while it has no cards; it holds the deck's switch, color, emoji, choice
+// to sync and place in the queue new cards come from (ADR 0034), which sync as
+// a tag's do (`SyncedDecks.swift`), and whether the user made it on this
+// device, which doesn't: making a deck, or putting cards in it, as New Deck…,
+// Change Deck, the card form, Approve and an import do, says so, also of a deck
+// this device heard of from another, and nothing else does. Default gets its
+// row once something is set on it, and is listed only while it holds cards or
+// has a switch on, so that its switch can be turned off. Under selective sync,
+// a device lists only the decks that sync, those it holds cards of and those
+// made on it (`SelectiveSync.swift`).
 
 /// A switch a deck can have on, which changes which of its cards show up
 /// (ADR 0011, ADR 0024). A deck has one on at most. Its raw value is how the

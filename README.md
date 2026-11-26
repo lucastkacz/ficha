@@ -49,7 +49,7 @@ flowchart LR
     g -- "Forgot" --> r["1 hour"] --> g
 ```
 
-A new card goes through two learning steps. "Got it" moves it to the next one, and "Forgot" sends it back to the first. Anki's other two keys do what they do there: 2, "Hard", waits a little more before it comes back, and 4, "Easy", graduates it at once. Once it's past them, it graduates: from every answer you gave it, FSRS works out how many days it can wait while you'd still remember it 9 times out of 10, so a card you know well waits longer each time, and one you find hard comes back sooner. "Forgot" on a graduated card sends it to relearn, back an hour later, and then it waits fewer days than before. A card that waits 21 days or more counts as learned, as in Anki, and still comes back now and then, so you keep it.
+A new card goes through two learning steps. "Got it" moves it to the next one, and "Forgot" sends it back to the first. Anki's other two keys do what they do there: 2, "Hard", waits a little more before it comes back, and 4, "Easy", graduates it at once. Once it's past them, it graduates: from every answer you gave it, FSRS works out how many days it can wait while you'd still remember it 85 times out of 100, to start, so a card you know well waits longer each time, and one you find hard comes back sooner. "Forgot" on a graduated card sends it to relearn, back an hour later, and then it waits fewer days than before. A card that waits 21 days or more counts as learned, as in Anki, and still comes back now and then, so you keep it.
 
 The steps, how sure you want to be to remember a card, and the longest it may wait can be changed in Settings' Scheduling tab.
 

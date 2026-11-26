@@ -35,9 +35,10 @@ public struct Scheduler: Sendable, Equatable {
         checkedLearningSteps: [.hours(1), .hours(4)], relearningSteps: [.hours(1)], desiredRetention: 0.9,
         longestIntervalInDays: 36_500, parameters: [])
 
-    /// The settings a new install starts with (ADR 0034): `standard`'s, with
-    /// a desired retention of 85%. A device with settings already stored
-    /// keeps its own.
+    /// The settings Ficha starts with since ADR 0034: `standard`'s, with a
+    /// desired retention of 85%, on every device that stores none of its
+    /// own, a new install or one whose user never changed them. A device
+    /// with settings of its own stored keeps them.
     public static let newInstall = Scheduler(
         checkedLearningSteps: standard.learningSteps, relearningSteps: standard.relearningSteps,
         desiredRetention: 0.85, longestIntervalInDays: standard.longestIntervalInDays, parameters: [])

@@ -1,6 +1,7 @@
 /// The settings that decide which cards Lucas reviews, and when, and how the
-/// review panel behaves. Each one starts as a default from the MVP spec (#4)
-/// and Lucas can change it in Settings; the app passes them to the engine as
+/// review panel behaves. Each one starts as a default from the MVP spec (#4),
+/// but the new cards a day and the desired retention, from ADR 0034, and
+/// Lucas can change it in Settings; the app passes them to the engine as
 /// a value. Some of them decide a card's progress, the scheduler's settings,
 /// the new cards a day and the forgotten-often count, and sync, so the engine
 /// keeps them (`progress`); the rest stay each device's own.
@@ -45,8 +46,9 @@ public struct ReviewSettings: Sendable, Equatable {
     /// never offers.
     public var forgottenOftenAfter: Int?
 
-    /// The settings Ficha starts with: on a new install, the scheduler's at
-    /// 85% and the Steady pace (ADR 0034).
+    /// The settings Ficha starts with, the scheduler's at 85% and the Steady
+    /// pace (ADR 0034), on every device that stores none of its own: a new
+    /// install, or one whose user never changed the settings that sync.
     public static let defaults = ReviewSettings(
         scheduler: .newInstall,
         cardsPerAppearance: 5,
