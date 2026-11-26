@@ -107,11 +107,9 @@ struct UpcomingAppearanceTests {
             ])
     }
 
-    @Test("once Lucas met the day's 5 new cards, the next one is planned for the next day's active hours")
+    @Test("once Lucas met the day's 2 new cards, the next one is planned for the next day's active hours")
     func theNextNewCardWaitsForTheNextDay() throws {
-        let met = try ["ubuntu", "petricor", "serendipia", "Schadenfreude", "navaja de Ockham"].map {
-            try approveCard($0, in: engine)
-        }
+        let met = try ["ubuntu", "petricor"].map { try approveCard($0, in: engine) }
         let sunkCost = try approveCard("costo hundido", in: engine)
         // Met at 9:00 and good twice, they're due again on the 16th.
         for card in met {

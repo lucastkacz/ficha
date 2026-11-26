@@ -61,7 +61,7 @@
   }
   /**
    * A finish date as a range (ADR 0034), between the day it comes if every
-   * day has appearances and the day if five days a week do. Within the week
+   * day has appearances and the day if five days in seven do. Within the week
    * it names both ends, "Wednesday or Thursday", "Wednesday to Saturday", or
    * one day when they meet; then "mid-December", "early to mid-December" or
    * "late November to early December".

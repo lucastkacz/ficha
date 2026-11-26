@@ -179,7 +179,11 @@ struct SeeMoreTests {
         try engine.meet(petricor)
         time.advance(by: minutes(30))
         let serendipia = try approveCard("serendipia", in: engine)
-        var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
+        // At Faster, 4 new cards a day, so that serendipia, the day's third,
+        // still comes.
+        var faster = settings
+        faster.newCardsPerDay = Pace.faster.newCardsPerDay
+        var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(faster), settings: faster)
         #expect(panel.cards == [.review(ubuntu), .new(serendipia)])
         try panel.answer(.review(.good), responseTime: .seconds(3))
         try panel.answer(.review(.again), responseTime: .seconds(8))

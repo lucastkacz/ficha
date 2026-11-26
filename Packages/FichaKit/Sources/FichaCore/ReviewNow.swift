@@ -51,11 +51,13 @@ extension ReviewSettings {
     /// either way, by `calendar`'s day; then the other ways due by `horizon`;
     /// then, if no new way came yet, another new way, if there's room
     /// (ADR 0003) and he's under the limit. Due ways come shortest interval
-    /// first, and then the longest overdue. New cards and new back-first ways
-    /// take turns: the new way goes the other way from Lucas's latest first
-    /// review today, front first when he had none, unless none waits that
-    /// way; each way's new ones come by card in the order he approved them.
-    /// With no priority cards, that's the due ways and then a new way.
+    /// first, and then the longest overdue. A new way comes from the deck
+    /// that goes first in the queue among those with one (ADR 0034), the
+    /// priority cards' first: new cards and new back-first ways take turns,
+    /// as the new way goes the other way from Lucas's latest first review
+    /// today, front first when he had none, unless none of that deck waits
+    /// that way; each way's new ones come by card in the order he approved
+    /// them. With no priority cards, that's the due ways and then a new way.
     func pickCards(
         after standings: [(way: CardWay, standing: WayStanding)],
         of cards: CardsInReviews,
@@ -66,20 +68,19 @@ extension ReviewSettings {
         let sorted = SortedStandings(standings, dueBy: horizon)
         let due = cards.splitByPriority(sorted.due)
         let new = cards.splitByPriority(sorted.new)
-        let firstReviewsToday = cards.log.filter {
-            $0.isFirstReview && calendar.isDate($0.answeredAt, inSameDayAs: now)
-        }
+        let firstReviewsToday = cards.firstReviews(onTheDayOf: now, calendar: calendar)
         let metToday = firstReviewsToday.count
         let turn: Way = firstReviewsToday.last?.way == .frontFirst ? .backFirst : .frontFirst
         // A new way of a priority card only waits for the due ways of
         // priority cards.
         var reviews = Array(due.priority.prefix(cardsPerAppearance))
         var newWay =
-            bringsNewCard(after: reviews.count, metToday: metToday) ? new.priority.first(preferring: turn) : nil
+            bringsNewCard(after: reviews.count, metToday: metToday)
+            ? cards.fromTheFirstDeck(new.priority).first(preferring: turn) : nil
         let slotsLeft = cardsPerAppearance - reviews.count - (newWay == nil ? 0 : 1)
         reviews += due.others.prefix(slotsLeft)
         if newWay == nil, bringsNewCard(after: reviews.count, metToday: metToday) {
-            newWay = new.others.first(preferring: turn)
+            newWay = cards.fromTheFirstDeck(new.others).first(preferring: turn)
         }
         return PanelCardIDs(reviews: reviews, reviewsAhead: [], newWay: newWay)
     }

@@ -1,9 +1,11 @@
 /// The settings that decide which cards Lucas reviews, and when, and how the
-/// review panel behaves. Each one starts as a default from the MVP spec (#4)
-/// and Lucas can change it in Settings; the app passes them to the engine as
-/// a value. Some of them decide a card's progress, the scheduler's settings,
-/// the new cards a day and the forgotten-often count, and sync, so the engine
-/// keeps them (`progress`); the rest stay each device's own.
+/// review panel behaves. Each one starts as a default from the MVP spec (#4),
+/// but for the new cards a day and the desired retention, which start as
+/// ADR 0034 sets them, and Lucas can change it in Settings; the app passes
+/// them to the engine as a value. Some of them decide a card's progress, the
+/// scheduler's settings, the new cards a day and the forgotten-often count,
+/// and sync, so the engine keeps them (`progress`); the rest stay each
+/// device's own.
 public struct ReviewSettings: Sendable, Equatable {
     /// The settings FSRS spaces cards with, as Anki does (#404).
     public var scheduler: Scheduler
@@ -11,7 +13,7 @@ public struct ReviewSettings: Sendable, Equatable {
     /// included.
     public var cardsPerAppearance: Int
     /// How many new cards Lucas meets in a day at most, by his Mac's calendar
-    /// day.
+    /// day, for every deck together: the pace's (`Pace`).
     public var newCardsPerDay: Int
     /// How far ahead an appearance looks: it brings along the cards due
     /// within it, and their reviews count as on time.
@@ -45,11 +47,13 @@ public struct ReviewSettings: Sendable, Equatable {
     /// never offers.
     public var forgottenOftenAfter: Int?
 
-    /// The settings Ficha starts with.
+    /// The settings Ficha starts with, the scheduler's at 85% and the Steady
+    /// pace (ADR 0034), on every device that stores none of its own: a new
+    /// install, or one whose user never changed the settings that sync.
     public static let defaults = ReviewSettings(
-        scheduler: .standard,
+        scheduler: .newInstall,
         cardsPerAppearance: 5,
-        newCardsPerDay: 5,
+        newCardsPerDay: Pace.steady.newCardsPerDay,
         lookAhead: .seconds(20 * 60),
         // From 9:00 to 22:00.
         activeHours: 9..<22,

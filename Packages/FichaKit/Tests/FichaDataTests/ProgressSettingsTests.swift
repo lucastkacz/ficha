@@ -33,12 +33,13 @@ final class ProgressSettingsTests {
         #expect(try Engine(location: .folder(folder), time: time).progressSettings() == customProgressSettings())
     }
 
-    // As spec #404 sets them: Ficha's steps, and Anki's desired retention,
-    // longest interval and FSRS-6's parameters, which none stands for, as
-    // Anki keeps them until Optimize.
+    // As spec #404 sets them: Ficha's steps, and Anki's longest interval and
+    // FSRS-6's parameters, which none stands for, as Anki keeps them until
+    // Optimize; and the desired retention of 85% ADR 0034 sets, in place of
+    // Anki's 90%.
     @Test(
-        "the scheduling settings start with learning steps of 1 hour and 4 hours, a relearning step of 1 hour, 90%, 36,500 days and FSRS-6's default parameters"
-    )
+        "the scheduling settings start with learning steps of 1 hour and 4 hours, a relearning step of 1 hour, 85%, 36,500 days and FSRS-6's default parameters",
+        .bug(id: 490))
     func theSchedulingSettingsStartAsTheSpecSays() throws {
         let engine = try Engine(location: .folder(folder), time: time)
 
@@ -46,7 +47,7 @@ final class ProgressSettingsTests {
 
         #expect(scheduler.learningSteps == [.seconds(hours(1)), .seconds(hours(4))])
         #expect(scheduler.relearningSteps == [.seconds(hours(1))])
-        #expect(scheduler.desiredRetention == 0.9)
+        #expect(scheduler.desiredRetention == 0.85)
         #expect(scheduler.longestIntervalInDays == 36_500)
         #expect(scheduler.parameters.isEmpty)
     }

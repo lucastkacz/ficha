@@ -49,6 +49,13 @@ public enum TagPath {
         levels(of: name).last ?? name
     }
 
+    /// The tag at the top that `name` sits inside, or `name` itself when it's
+    /// at the top: for a deck, the one it takes its place in the queue of
+    /// new cards from (ADR 0034).
+    public static func top(of name: String) -> String {
+        levels(of: name).first ?? name
+    }
+
     /// The tag `name` sits right inside, or nil for a tag at the top.
     public static func parent(of name: String) -> String? {
         let levels = levels(of: name)

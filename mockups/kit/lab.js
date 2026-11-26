@@ -1,6 +1,6 @@
 /*
  * Ficha mock kit: the lab. Runs weeks of Ficha in a made-up person's life,
- * with the toy engine (checked against FichaCore by tools/check-engine.js),
+ * with the toy engine (checked against FichaKit by tools/check-engine.js),
  * and counts what a setting costs and gives: how often Ficha interrupts,
  * how many minutes a day it takes, how many cards graduate.
  *

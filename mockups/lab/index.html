@@ -554,10 +554,10 @@
       <details>
         <summary>How the Lab works</summary>
         <ul>
-          <li>The engine is the mock's toy Ficha: FSRS-6 with fsrs-rs's default weights, learning steps of 1 h and 4 h, relearning 1 h, Anki's fuzz, and FichaCore's rules for when to appear (a card due now, cards due in the next 20 minutes come along, one new card each time unless B says more). tools/check-engine.js checks it against FichaCore's and FichaFSRS's own tests.</li>
+          <li>The engine is the mock's toy Ficha: FSRS-6 with fsrs-rs's default weights, learning steps of 1 h and 4 h, relearning 1 h, Anki's fuzz, and FichaCore's rules for when to appear (a card due now, cards due in the next 20 minutes come along, one new card each time unless B says more). tools/check-engine.js checks it against FichaKit's own tests.</li>
           <li>The person: the Mac is on weekdays from 9 to 6:30, some evenings from 8 to 10, and some weekend mornings; meetings last 30 to 60 minutes; they snooze one appearance in ten and spend 8 seconds a card.</li>
           <li>They answer as FSRS predicts: they forget a review card as often as its memory says. New cards: 15% forgotten, 5% hard, 5% easy.</li>
-          <li>The pace and the queue are ADR 0034's, ahead of FichaCore, which #490 builds: one count of new cards a day for all decks, from the first deck in the queue until its cards are all met. "Every deck in turn" splits them between the decks by turns instead, ADR 0034's "one pace split between them"; Ficha before uses it too, though the app took new cards in the order they came in. How fast? promises the queue's last deck: the soonest if every day has appearances, the latest if five days a week do.</li>
+          <li>The pace and the queue are ADR 0034's, as FichaCore has them since #490: one count of new cards a day for all decks, from the first deck in the queue until its cards are all met. "Every deck in turn" splits them between the decks by turns instead, ADR 0034's "one pace split between them"; Ficha before uses it too, though the app before #490 took new cards in the order they came in. How fast? promises the queue's last deck: the soonest if every day has appearances, the latest if five days in seven do.</li>
           <li>Meetings hold Ficha back, and Ficha waits 2 minutes after a meeting ends or the Mac wakes. Full-screen apps and videos aren't in the Lab yet.</li>
           <li>Every run uses the same weeks from a Monday, so A and B face the same days and the same meetings.</li>
         </ul>

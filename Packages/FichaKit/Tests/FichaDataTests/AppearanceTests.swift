@@ -166,13 +166,11 @@ struct AppearanceTests {
 
     // A new card counts once Lucas rates its first review, so a new card he
     // snoozed comes back in the next appearance.
-    @Test("a snoozed new card doesn't count toward the day's 5 new cards")
+    @Test("a snoozed new card doesn't count toward the day's 2 new cards")
     func aSnoozedNewCardDoesNotCount() throws {
-        let met = try ["ubuntu", "petricor", "serendipia", "Schadenfreude"].map { try approveCard($0, in: engine) }
+        let ubuntu = try approveCard("ubuntu", in: engine)
         let ockham = try approveCard("navaja de Ockham", in: engine)
-        for card in met {
-            try engine.meet(card)
-        }
+        try engine.meet(ubuntu)
         var panel = try openAppearance()
         #expect(panel.cards == [.new(ockham)])
 

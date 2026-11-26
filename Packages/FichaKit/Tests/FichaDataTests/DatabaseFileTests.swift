@@ -664,6 +664,26 @@ final class DatabaseFileTests {
         #expect(try app.progress(.defaults).inInbox == 1)
     }
 
+    // Ficha started with 5 new cards a day and a desired retention of 90%
+    // (ADR 0025) before the pace (ADR 0034): a database that stored its
+    // settings keeps them, as a Mac whose user changed them, while one that
+    // stored none holds Ficha's, which are now Steady and 85%.
+    @Test(
+        "a database from before the pace keeps the settings it stored, and one that stored none takes Ficha's new ones, Steady and 85%",
+        .bug(id: 490), arguments: [false, true])
+    func aDatabaseFromBeforeThePaceKeepsItsStoredSettings(storedSettings: Bool) throws {
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try saveDatabaseBeforeTheQueue(
+            at: folder.appending(path: "Ficha.sqlite"), storingSettings: storedSettings, at: time.now - days(1))
+
+        let engine = try Engine(location: .folder(folder), time: time)
+
+        let settings = try engine.progressSettings()
+        #expect(settings.newCardsPerDay == (storedSettings ? 5 : Pace.steady.newCardsPerDay))
+        #expect(settings.scheduler.desiredRetention == (storedSettings ? 0.9 : 0.85))
+        #expect(try engine.changesToSend().isEmpty)
+    }
+
     /// The path of a file in the data folder.
     private func path(of file: String) -> String {
         folder.appending(path: file).path(percentEncoded: false)
@@ -1326,6 +1346,34 @@ func saveFirstVersionDatabase(at file: URL, capturing text: String, at time: Dat
     try firstVersion.migrate(database)
     try database.write { db in
         try db.execute(sql: "INSERT INTO capture (text, createdAt) VALUES (?, ?)", arguments: [text, time])
+    }
+    try database.close()
+}
+
+/// Saves a database at `file` as Ficha left it before the queue of decks,
+/// through the schema's migrations up to the one before it, with sync on and
+/// nothing waiting to be sent: ubuntu, approved at `time`, and, when
+/// `storingSettings`, the settings that decide progress stored as Ficha
+/// started with them then, 5 new cards a day and a desired retention of 90%.
+func saveDatabaseBeforeTheQueue(at file: URL, storingSettings: Bool, at time: Date) throws {
+    let database = try DatabasePool(path: file.path(percentEncoded: false))
+    try Schema.migrator.migrate(database, upTo: "v33 the scheduler replaces the ladder")
+    try database.write { db in
+        try db.execute(sql: "UPDATE syncWrite SET recordsChanges = 0")
+        try db.execute(
+            sql: """
+                INSERT INTO card (id, type, front, back, tags, createdAt)
+                VALUES (1, 'concept', 'ubuntu', 'Soy porque somos.', '[]', ?)
+                """,
+            arguments: [time])
+        if storingSettings {
+            try db.execute(
+                sql: """
+                    INSERT INTO progressSettings (id, newCardsPerDay, forgottenOftenAfter, desiredRetention)
+                    VALUES (1, 5, 8, 0.9)
+                    """)
+        }
+        try db.execute(sql: "UPDATE syncWrite SET recordsChanges = 1")
     }
     try database.close()
 }

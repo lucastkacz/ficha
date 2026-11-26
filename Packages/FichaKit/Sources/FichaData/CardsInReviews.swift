@@ -1,4 +1,5 @@
 import FichaCore
+import Foundation
 internal import GRDB
 
 // Which cards are in Lucas's reviews, as their standing says: the only ones
@@ -19,11 +20,15 @@ struct CardsThatShowUp {
 
     /// The cards that show up out of `cards`, every card in the order Lucas
     /// approved them, those that live in one of `priorityDecks`, or in a deck
-    /// inside one, as priority cards, and `log`, the whole review log, in the
-    /// order it was written.
-    fileprivate init(_ cards: [Card], priorityDecks: Set<String>, log: [ReviewLogEntry]) {
+    /// inside one, as priority cards, the decks a move put in the queue new
+    /// cards come from at `queuePlaces`, and `log`, the whole review log, in
+    /// the order it was written.
+    fileprivate init(
+        _ cards: [Card], priorityDecks: Set<String>, queuePlaces: [String: Date], log: [ReviewLogEntry]
+    ) {
         inReviews = CardsInReviews(
-            cards.map { ($0.id, $0.standing, $0.deck, $0.bothWays) }, priorityDecks: priorityDecks, log: log)
+            cards.map { ($0.id, $0.standing, $0.deck, $0.bothWays, $0.createdAt) }, priorityDecks: priorityDecks,
+            queuePlaces: queuePlaces, log: log)
         self.cards = Dictionary(uniqueKeysWithValues: cards.map { ($0.id, $0) })
     }
 
@@ -51,12 +56,26 @@ struct CardsThatShowUp {
     }
 }
 
-/// The cards that show up, out of every card, the priority decks and the
-/// whole review log: the one way in to them, which every entry point that
-/// picks cards reads, never gathering them again.
+/// The cards that show up, out of every card, the priority decks, the
+/// places of the decks a move put in the queue new cards come from and the
+/// whole review log: the one way in to them, which every entry point
+/// that picks cards reads, never gathering them again.
 func cardsThatShowUp(in db: Database) throws -> CardsThatShowUp {
     CardsThatShowUp(
-        try allCards(in: db), priorityDecks: try decks(switchedOn: .priority, in: db), log: try logEntries(in: db))
+        try allCards(in: db), priorityDecks: try decks(switchedOn: .priority, in: db),
+        queuePlaces: try queuePlaces(in: db), log: try logEntries(in: db))
+}
+
+/// The place in the queue new cards come from of each deck a move put in
+/// it, the one moved, one it passed, or one it parted from a deck that came
+/// in at once (ADR 0034), by name.
+func queuePlaces(in db: Database) throws -> [String: Date] {
+    var places: [String: Date] = [:]
+    for row in try Row.fetchAll(db, sql: "SELECT name, queuePlace FROM deck WHERE queuePlace IS NOT NULL") {
+        let name: String = try row.decode(forColumn: "name")
+        places[name] = try row.decode(forColumn: "queuePlace") as Date
+    }
+    return places
 }
 
 /// The decks that are set aside: every card that lives in one of them, or in

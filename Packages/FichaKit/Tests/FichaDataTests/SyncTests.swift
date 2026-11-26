@@ -318,7 +318,7 @@ final class SyncTests {
     // carried over as it arrives. Whichever comes first, each review ends up
     // answering the entry before it, with the interval the carry-over gives
     // it there, as the migration carries over the Mac's: the Mac recorded
-    // them with Ficha's settings, which the carry-over uses.
+    // them with Ficha's settings as FSRS came, which the carry-over keeps.
     @Test(
         "an older Ficha's log carried over as it arrives ends up as the migration carries it over, in any order",
         arguments: [[2, 1, 0], [0, 1, 2], [1, 2, 0], [0, 2, 1]])
@@ -364,17 +364,26 @@ final class SyncTests {
     }
 
     /// Has a card reach the iPhone, and then the review log the Mac gives it,
-    /// met and rated good `goods` times, each when due, as a device still on
-    /// a Ficha before FSRS sends it (#407): each entry without the interval
-    /// it set, and the first review, which answers no entry, as a first view.
-    /// The entries arrive in `order`, each by when it was answered, counted
-    /// from 0. Returns the card, as the Mac holds it.
+    /// met and rated good `goods` times, each when due, with Ficha's settings
+    /// as FSRS came, which the carry-over keeps, as a device still on a Ficha
+    /// before FSRS sends it (#407): each entry without the interval it set,
+    /// and the first review, which answers no entry, as a first view. The
+    /// entries arrive in `order`, each by when it was answered, counted from
+    /// 0. Returns the card, as the Mac holds it.
     @discardableResult
     private func receiveAnOlderFichasLog(goods: Int, arrivingInOrder order: [Int]) async throws -> Card {
         let ubuntu = try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
         try await mac.syncNow()
         try await iPhone.syncNow()
-        try mac.engine.climb(ubuntu, goods: goods, movingForward: time)
+        var asFSRSCame = ReviewSettings.defaults
+        asFSRSCame.scheduler = .standard
+        try mac.engine.record(
+            .review(.again), of: ubuntu.id, responseTime: .seconds(8), trigger: .reviewNow, settings: asFSRSCame)
+        for _ in 0..<goods {
+            time.move(to: try #require(try mac.engine.standing(of: ubuntu.id, with: .standard).due))
+            try mac.engine.record(
+                .review(.good), of: ubuntu.id, responseTime: .seconds(3), trigger: .reviewNow, settings: asFSRSCame)
+        }
         try await mac.syncNow()
         let entries = try iCloud.records.filter { $0.type == SyncedRow.RecordType.reviewLogEntry.rawValue }
             .sorted { try $0.time("answeredAt") ?? .distantPast < $1.time("answeredAt") ?? .distantPast }

@@ -27,12 +27,21 @@ public struct Scheduler: Sendable, Equatable {
     /// reviews.
     public let parameters: [Float]
 
-    /// The settings Ficha starts with: learning steps of 1 hour and 4 hours,
-    /// a relearning step of 1 hour, a desired retention of 90%, a longest
-    /// interval of 36,500 days and FSRS-6's default parameters.
+    /// The settings Ficha started with before the pace (ADR 0025): learning
+    /// steps of 1 hour and 4 hours, a relearning step of 1 hour, a desired
+    /// retention of 90%, a longest interval of 36,500 days and FSRS-6's
+    /// default parameters.
     public static let standard = Scheduler(
         checkedLearningSteps: [.hours(1), .hours(4)], relearningSteps: [.hours(1)], desiredRetention: 0.9,
         longestIntervalInDays: 36_500, parameters: [])
+
+    /// The settings Ficha starts with since ADR 0034: `standard`'s, with a
+    /// desired retention of 85%, on every device that stores none of its
+    /// own, a new install or one whose user never changed them. A device
+    /// with settings of its own stored keeps them.
+    public static let newInstall = Scheduler(
+        checkedLearningSteps: standard.learningSteps, relearningSteps: standard.relearningSteps,
+        desiredRetention: 0.85, longestIntervalInDays: standard.longestIntervalInDays, parameters: [])
 
     /// The intervals a learning or relearning step can have: from 10 minutes
     /// to less than a day.

@@ -21,9 +21,10 @@ struct DecksCommand: EngineCommand {
             many cards live in it or in a deck inside it, buried ones left out; in "due", how many of those are \
             due now and in your reviews, which those of a set-aside deck never are; in "setAside" and "priority" \
             its own switch, which a deck inside it doesn't show; its own "color" and "emoji", left out when it \
-            has none; and in "chosenToSync" whether you chose it to sync. While only the cards in chosen decks \
-            sync, it lists your other devices' decks too, as Settings' Sync tab does. `ficha deck` changes them, \
-            and `ficha change-deck` moves cards between them.
+            has none; and in "chosenToSync" whether you chose it to sync. `ficha queue` prints its place in the \
+            queue new cards come from. While only the cards in chosen decks sync, it lists your other devices' \
+            decks too, as Settings' Sync tab does. `ficha deck` changes them, and `ficha change-deck` moves cards \
+            between them.
             """
     )
 
@@ -45,6 +46,7 @@ struct DeckCommand: ParsableCommand {
         subcommands: [
             MakeDeckCommand.self, RenameDeckCommand.self, DeleteDeckCommand.self, SetDeckAsideCommand.self,
             PrioritizeDeckCommand.self, DeckColorCommand.self, DeckEmojiCommand.self, ChooseDeckToSyncCommand.self,
+            QueueDeckCommand.self,
         ]
     )
 }
@@ -79,9 +81,9 @@ struct RenameDeckCommand: EngineCommand {
         discussion: """
             A new name with "::" moves the deck inside another, and one without moves it to the top. Every card \
             in it, or in a deck inside it, moves along, on every device, keeping its progress, its review log and its \
-            tags, and the deck keeps its switch, color, emoji and choice to sync. Onto a deck that exists, the two \
-            join, and the deck there keeps what it had of its own. Default is never renamed, and no deck moves \
-            inside itself. For example:
+            tags, and the deck keeps its switch, color, emoji, choice to sync and place in the queue. Onto a deck \
+            that exists, the two join, and the deck there keeps what it had of its own. Default is never renamed, \
+            and no deck moves inside itself. For example:
 
               ficha deck rename Idiomas::Inglés Inglés
             """
