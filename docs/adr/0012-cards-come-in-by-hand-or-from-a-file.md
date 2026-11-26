@@ -4,6 +4,8 @@
 
 > Changed in part by [ADR 0042](0042-lucas-makes-his-own-cards-with-no-refine-sessions.md), which takes refining with Claude and `ficha add` out: Lucas makes his own cards (2026-11-26).
 
+> Changed in part by [ADR 0043](0043-any-agent-makes-cards-through-ficha-add.md), which brings `ficha add` back, so anyone's agent makes cards through the CLI (2026-11-26).
+
 Ficha was Lucas's app, and his cards come from captures he refines with Claude through the `ficha` CLI (ADR 0001). Once it sells on the App Store (#160), anyone needs a way in of their own, and the app still holds no AI. So anyone creates cards in the Cards window, from scratch or from a capture, or imports a file. The file is plain text with one card per line, like the one Anki imports and exports as "Notes in Plain Text": an AI writes it from instructions the app copies, a spreadsheet saves it, and Anki reads what Ficha exports. Refining with Claude stays Lucas's own way of making cards, outside the app.
 
 ## Considered options
