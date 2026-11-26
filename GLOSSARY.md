@@ -332,7 +332,7 @@ _Avoid_: partial sync, local cards, offline decks
 ### First launch
 
 **Welcome page**:
-The one page Ficha shows the first time it opens on a Mac, which says it lives in the menu bar, offers Ficha's decks, an Anki file or starting from scratch, asks the pace, and asks whether it opens at login.
+The one page Ficha shows the first time it opens on a Mac, which says it lives in the menu bar, offers Ficha's decks or a deck of one's own, asks the pace, and asks whether it opens at login.
 _Avoid_: setup page, onboarding, tutorial
 
 ### Buying Ficha
@@ -346,5 +346,5 @@ The seven days the user has all of Ficha for free before the purchase, counted f
 _Avoid_: demo, free tier
 
 **Paywall**:
-What Ficha shows in place of everything else once the trial is over, until the purchase: Buy, Restore Purchases and Export. It deletes nothing, and the purchase brings everything back as it was.
+What Ficha shows in place of everything else once the trial is over, until the purchase, such as Buy and Restore Purchases. It deletes nothing, and the purchase brings everything back as it was.
 _Avoid_: lock screen, upgrade page

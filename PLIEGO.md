@@ -6,7 +6,7 @@ What the method's commands read about Ficha (`.claude/method/method.md`), approv
 
 - ✓ A macOS menu-bar app, for anyone, Lucas first, that shows its user a tiny flashcard every so often and spaces each card with FSRS, as Anki does. The cards stay on the user's devices and in their own iCloud (`README.md`, ADR 0017, ADR 0025).
 - ✓ It sells once on the App Store, the Mac and the iPhone together, after seven free days (ADR 0029, #160). The iPhone app is Ficha Dev with the sample cards for now (#97).
-- ✓ For a few small things the user wants to remember, which come to them while they work; for volume, Anki, which Ficha names once, honestly. Anki inside: its decks, FSRS and the four ratings each review stores; its packages neither come in nor go out. Ficha outside: the card alone with three buttons, Forgot, Kind of and Got it; a pace with its finish date, new cards coming from one deck at a time, at 85%; three small decks of Ficha's own, in Spanish for now, picked at the Welcome page, or a deck of the user's own; a deck's cards shown as cards, with their front's picture, and decks alone on the face, with no tags, card types, Capture or inbox; the app's UI in English alone (ADR 0032 to ADR 0036, decided on 2026-11-24 in the artifact "Hacia dónde va Ficha"; ADR 0039, the three buttons, on 2026-11-26 in "Tres botones en el panel"; ADR 0040, the three decks, on 2026-11-26 in "Los mazos de Ficha: decisión"; ADR 0041, small decks shown as cards, on 2026-11-26 in "Ficha más simple: decisión").
+- ✓ For a few small things the user wants to remember, which come to them while they work; for volume, Anki, which Ficha names once, honestly. Anki inside: its decks, FSRS and the four ratings each review stores; its packages neither come in nor go out. Ficha outside: the card alone with three buttons, Forgot, Kind of and Got it; a pace with its finish date, new cards coming from one deck at a time, at 85%; three small decks of Ficha's own, in Spanish for now, picked at the Welcome page, or a deck of the user's own; a deck's cards shown as cards, with their front's picture, and decks alone on the face, with no tags, card types, Capture or inbox, once ADR 0041's nodes build them, the Cards window being Anki's Browser until then; the app's UI in English alone (ADR 0032 to ADR 0036, decided on 2026-11-24 in the artifact "Hacia dónde va Ficha"; ADR 0039, the three buttons, on 2026-11-26 in "Tres botones en el panel"; ADR 0040, the three decks, on 2026-11-26 in "Los mazos de Ficha: decisión"; ADR 0041, small decks shown as cards, on 2026-11-26 in "Ficha más simple: decisión").
 
 ## Areas
 
@@ -14,7 +14,7 @@ What the method's commands read about Ficha (`.claude/method/method.md`), approv
 
 - `Mac` (blue): the Mac app.
   - `Mac › Review`: the review panel, appearances and what holds them back, Review now.
-  - `Mac › Cards`: the Cards window: decks, their cards as cards, the card form, flags and set-asides; tags, card types and the inbox until ADR 0041's nodes take them out.
+  - `Mac › Cards`: the Cards window: decks and their cards, the card form, flags and burials; the table until ADR 0041's node shows a deck's cards as cards, burials until it makes them set-asides, and tags, card types and the inbox until its nodes take them out.
     - `Mac › Cards › Import`: the import of Ficha's own deck files; the Import and Export sheets, with text files, zips and Anki's packages, until ADR 0041's node takes them out.
   - `Mac › Menu`: the menu bar item and its menu, the Welcome page; Capture and Diagnostics until ADR 0041's nodes take Capture out and move Diagnostics to Settings' Advanced tab.
   - `Mac › Settings`: the Settings window's tabs.
@@ -53,7 +53,7 @@ What the method's commands read about Ficha (`.claude/method/method.md`), approv
 ## Hands-free
 
 - **Drives it**
-  - ✓ `ficha`, the CLI: cards, decks, tags, types, captures, approvals, fixes, the pace and the queue. Agents run Ficha Dev's through `scripts/ficha-dev.sh` on a scratch folder ("Agents' runs of Ficha Dev's `ficha`").
+  - ✓ `ficha`, the CLI: cards, decks, tags, types, captures and approvals until ADR 0041's node gives them way to `ficha add`, fixes, the pace and the queue. Agents run Ficha Dev's through `scripts/ficha-dev.sh` on a scratch folder ("Agents' runs of Ficha Dev's `ficha`").
   - ✓ `make render`'s clicks, keys and typing in a window; `make preview-import` for an import; `xcrun simctl` for the simulator.
   - ○ Ficha Dev's Debug menu (the sample cards, its clock, an appearance now, the second device) takes clicks only: #474 brings it to the command line.
   - ○ Dragging, right-clicks, double-clicks, menus and popovers: `make render` can't; #293's driver would, on Lucas's screen.
@@ -150,14 +150,14 @@ The libraries, in `Packages/FichaKit/`, a Swift package for macOS and iOS:
 
 - ✓ **FichaCore**: the rules, as pure functions: scheduling, the planners, where a card stands, and reading Anki, until ADR 0041's node takes it out.
 - ✓ **FichaFSRS**: fsrs-rs's arithmetic for FichaCore, from our crate in `Rust/`, which `make fsrs` builds into an XCFramework (ADR 0026).
-- ✓ **FichaData**: the engine: SQLite through GRDB, import and export (ADR 0041 keeps only the import of Ficha's deck files, and takes zstd out with Anki's packages), sync's logic behind `ICloudSyncEngine`, backups, the windows' states, Ficha Dev's sample cards.
+- ✓ **FichaData**: the engine: SQLite through GRDB, import and export (ADR 0041 keeps only the import of Ficha's deck files, provisional, and takes zstd out with Anki's packages), sync's logic behind `ICloudSyncEngine`, backups, the windows' states, Ficha Dev's sample cards.
 - ✓ **FichaSVG**: draws an import's SVGs with WebKit: in the app, through the SVGDrawer service; in `swift test`, in the process.
 - ✓ **FichaICloud**: the thin adapter that puts CloudKit's `CKSyncEngine` behind FichaData's `ICloudSyncEngine`; the only part that loads CloudKit, and the Mac app alone links it.
 - ✓ **FichaCLI**: the `ficha` command's commands, with swift-argument-parser (ADR 0008).
 
 The rest:
 
-- ✓ Ficha's decks: a file each, in the app's resources, with each image's license, which come in through the engine's import, the only one ADR 0041 keeps; #458 brings them (ADR 0035, ADR 0040).
+- ✓ Ficha's decks: a file each, in the app's resources, with each image's license, which come in through the engine's import, the only one ADR 0041 keeps (provisional); #458 brings them (ADR 0035, ADR 0040).
 - ✓ `scripts/`: the render tools and the import-preview tool, which reach FichaKit by path (the render tool compiles `App/`'s files too); the hook tests; the watchdog for hung runs, with its tests; the build of fsrs-rs's XCFramework; the wrapper `make` runs `xcodebuild` through; what unregisters an app's other copies from LaunchServices; the reader of Ficha Dev's last crash, with its tests; the runner of its `ficha` on a scratch folder; the cleanup after a merge, with its tests; the list of what changed the cards' data since the last upload, with its tests; and the check that the clock and the review log's IDs come from their sources.
 - ✓ `docs/`: `development.md`, how to build, draw, test and publish; `agents/`, what agents read about the issues and the domain; `adr/`; `content-guide.md`, how a refine session drafts Lucas's cards; `app-review-notes.md`, what App Review is told; `instructions-for-an-ai.md`; `research/`; `prototypes/`; and `images/`, the README's pictures.
 - ✓ `.claude/`: the permissions, the hooks, the rules, the method's seven skills and what they share (`method/`), with its page kit (`method/kit/`) and its map, the `/refine` skill and the subagents' types.
@@ -172,7 +172,7 @@ Rules that don't break:
 1. ✓ Everything is driven and seen without hands: a new screen gets a `make render` window, a new behavior a `ficha` command, a Debug action an agent reaches or a test; what can't yet is a Task in `Environment › Hands-free`.
 2. ✓ FichaCore is pure: Foundation, the standard library and FichaFSRS; the time from `TimeSource`, the review log's IDs from `IDSource` (ADR 0005, ADR 0026, `CODING_STANDARDS.md`, Layers and Time and IDs).
 3. ✓ The apps are thin: what a window decides lives in FichaData, as a `Sendable` state (`CODING_STANDARDS.md`, Layers).
-4. ✓ One way in: where a card stands, the cards that show up, flags and burials, which ADR 0041 names set-asides (`CODING_STANDARDS.md`, Where a card stands).
+4. ✓ One way in: where a card stands, the cards that show up, flags and burials (set-asides, in ADR 0041's words) (`CODING_STANDARDS.md`, Where a card stands).
 5. ✓ The OS enters through protocols, so the logic is tested without it (`CODING_STANDARDS.md`, Layers).
 6. ✓ CloudKit lives in FichaICloud alone, which the Mac app alone links (ADR 0017, `Packages/FichaKit/Package.swift`).
 7. ✓ No network of Ficha's own; only the SVG drawer may use it, drawing files already on the Mac (ADR 0001, ADR 0017).
@@ -206,4 +206,5 @@ Rules that don't break:
 - ○ The hands-free gaps, for `/construir`: the checks an agent runs (#473), the Debug menu by command (#474) and the window as text (#139), which Lucas chose to build first; then the driver for dragging and right-clicks (#293) and taps on the iPhone (#136).
 - ○ The Idea issue type: Lucas creates it in his account's settings; then, as a chore handed out as `CLAUDE.md`'s Shipping says, the open issues get their types and areas, and lose the old triage labels (ADR 0030).
 - ○ `.out-of-scope/`: whether it stays, moves into the issues or goes.
-- ○ The app's new look, tried as many options in the web mock, and the codebase's structure once ADR 0041's nodes are built: each a `/debate` of its own (ADR 0041).
+- ○ What the paywall leaves the user in place of Export, so their cards are never hostage (ADR 0029, ADR 0041): #459's own `/debate`.
+- ○ The app's new look, tried as many options in the web mock; and the codebase's structure once ADR 0041's nodes are built, a `/debate` of its own (ADR 0041).

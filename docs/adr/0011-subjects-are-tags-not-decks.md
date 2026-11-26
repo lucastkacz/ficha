@@ -1,5 +1,7 @@
 # Subjects are tags, not decks
 
+> Changed in part by [ADR 0041](0041-ficha-is-small-decks-shown-as-cards-without-ankis-packages-tags-or-capture.md), whose one verb, Set aside, takes a deck or a card out of the reviews until it's put back, and Bury goes into it (2026-11-26).
+
 Lucas sometimes wants subjects apart: the topics an exam covers first (#36), or a course he's done with out of his reviews (#154). Anki splits cards into decks, each card in one, each deck with its own settings and studied on its own. Ficha keeps a single stream of cards and gives tags two switches instead: a priority tag brings its cards first, and setting a tag aside takes its cards out of reviews for now, without burying them. Appearances are short and spread through the day, so mixing subjects is the point, and Anki's own manual keeps decks for broad categories, since related cards reviewed together are easy to guess from context. Decks would also double the settings and screens on the Mac and the iPhone. Burying every card of a finished subject, with nothing new, was the other option: it mixes "not for now" with "not anymore", and misses the cards that get the tag later.
 
 ## Consequences
