@@ -76,13 +76,13 @@ async function openPieces(browser, mode = {}) {
     return r.fulfill({ status: 404, body: '' });
   });
   await ctx.addInitScript(fakeDb, mode);
+  // Time stands still: the kit's timers, its debounce, retries and waits, fire only as a case moves the clock.
+  await ctx.clock.install({ time: START });
+  await ctx.clock.pauseAt(START);
   const pg = await ctx.newPage();
   const errors = [];
   pg.on('console', (m) => { if (m.type() === 'error' && !/fonts\.(googleapis|gstatic)\.com/.test(m.text() + ' ' + (m.location().url || ''))) errors.push(m.text()); });
   pg.on('pageerror', (e) => errors.push(e.message));
-  // Time stands still: the kit's timers, its debounce, retries and waits, fire only as a case moves the clock.
-  await pg.clock.install({ time: START });
-  await pg.clock.pauseAt(START);
   await pg.goto(ORIGIN + 'pieces.html');
   if (!(await pg.evaluate(() => document.body.classList.contains('k-ready')))) throw new Error(`the kit didn't start on pieces.html${errors.length ? `: the console says "${errors[0].slice(0, 200)}"` : ''}`);
   // What a case does and reads, in the page, as a user's taps and what the screen says.
@@ -183,20 +183,20 @@ const SAVING = [
     await pg.clock.runFor(100);
     const s = await run((t) => t.screen()), docs = await pg.evaluate(() => window.__db.docs);
     if (s.status !== T.readOnly) return `the status says "${s.status}": a revoked database says "${T.readOnly}". Then ${KIT}.`;
-    if (s.button !== T.approve || !s.buttonOff || docs.aprobacion) return `Aprobar says "${s.button}" and is ${s.buttonOff ? 'off' : 'on'}: it says "${T.approve}", since an approval the database never held is taken back, and it's off, since the view is read-only. Then ${KIT}.`;
+    if (s.button !== T.approve || !s.buttonOff || docs.aprobacion) return `Aprobar says "${s.button}" and is ${s.buttonOff ? 'off' : 'on'}, and the database holds ${JSON.stringify(docs.aprobacion ?? null)}: Aprobar says "${T.approve}", since an approval the database never held is taken back, it's off, since the view is read-only, and the database holds no approval. Then ${KIT}.`;
   }],
   ['a choice that doesn\'t save says so, holds Aprobar back, and is tried again by itself', {}, async (pg, run, T) => {
     await pg.evaluate(() => window.__db.fail(1));
     await run((t) => t.choose('mazos', 'b'));
     await pg.clock.runFor(100);
     let s = await run((t) => t.screen());
-    if (s.status !== T.notSaved || !s.statusErr) return `after a failed save the status says "${s.status}": it says "${T.notSaved}", in red. Then ${KIT}.`;
+    if (s.status !== T.notSaved || !s.statusErr) return `after a failed save the status says "${s.status}"${s.statusErr ? ', in red' : ', not in red'}: it says "${T.notSaved}", in red. Then ${KIT}.`;
     if (!s.buttonOff || s.apState !== T.unsaved) return `while an answer isn't saved, Aprobar is ${s.buttonOff ? 'off' : 'on'} and says "${s.apState}": it waits, off, and says "${T.unsaved}". Then ${KIT}.`;
     await pg.clock.runFor(2000);
     const docs = await pg.evaluate(() => window.__db.docs);
     s = await run((t) => t.screen());
     if (docs.mazos?.choice !== 'b') return `2 s later the database holds ${JSON.stringify(docs.mazos)}: it holds the choice "b", since a failed save is tried again by itself. Then ${KIT}.`;
-    if (s.status !== T.saved || s.buttonOff || s.apState !== T.withChoices) return `once the retry saved, the status says "${s.status}" and Aprobar is ${s.buttonOff ? 'off' : 'on'}: "${T.saved}", and Aprobar on, saying "${T.withChoices}". Then ${KIT}.`;
+    if (s.status !== T.saved || s.buttonOff || s.apState !== T.withChoices) return `once the retry saved, the status says "${s.status}", and Aprobar is ${s.buttonOff ? 'off' : 'on'}, its line saying "${s.apState}": "${T.saved}", and Aprobar on, saying "${T.withChoices}". Then ${KIT}.`;
   }],
   ['a save that keeps failing is tried three more times, 2, 4 and 6 s apart, and the next tap saves it', {}, async (pg, run, T) => {
     await pg.evaluate(() => window.__db.fail(99));
@@ -226,6 +226,18 @@ const SAVING = [
     s = await run((t) => t.screen());
     const ap = await pg.evaluate(() => window.__db.docs.aprobacion);
     if (!ap?.approved || s.button !== T.approved || s.status !== T.saved) return `after the second press the database holds ${JSON.stringify(ap)}, Aprobar says "${s.button}" and the status "${s.status}": the approval, "${T.approved}" and "${T.saved}". Then ${KIT}.`;
+  }],
+  ['a note typed with an approval that didn\'t save stays when another answer saves, and is saved', { docs: { aprobacion: { approved: false, note: 'vieja', at } } }, async (pg, run, T) => {
+    await pg.evaluate(() => window.__db.fail(1));
+    await run((t) => { t.type('aprobacion', 'nueva'); t.approve(); });
+    await pg.clock.runFor(100);
+    await run((t) => t.choose('mazos', 'b'));
+    await pg.clock.runFor(100);
+    const typed = (await run((t) => t.screen())).notes.aprobacion;
+    if (typed !== 'nueva') return `the approval was taken back, then another answer's snapshot put back "${typed}" over Aprobar's note: it stays "nueva", since taking back the approval leaves the note the page's. Then ${KIT}.`;
+    await pg.clock.runFor(1000);
+    const ap = await pg.evaluate(() => window.__db.docs.aprobacion);
+    if (ap?.note !== 'nueva' || ap?.approved) return `a second after the user stopped typing, the database holds ${JSON.stringify(ap)}: Aprobar's note "nueva", unapproved. Then ${KIT}.`;
   }],
   ['an approval that saved is never taken back, by a note that fails or snapshots that fail', {}, async (pg, run, T) => {
     await pg.evaluate(() => { window.__db.hold = true; });
@@ -302,10 +314,11 @@ const DEFECTS = [
 const INSPECT_MS = 180000; // an inspection takes about 15 s, and a few run at once
 function inspect(file, out) {
   return new Promise((resolve) => {
-    execFile(process.execPath, [path.join(kitDir, 'inspect.js'), file, out], { maxBuffer: 1 << 24, timeout: INSPECT_MS }, (err, stdout, stderr) => {
+    // SIGKILL, since Playwright's own handler takes a SIGTERM and closes the browser without ending the process.
+    execFile(process.execPath, [path.join(kitDir, 'inspect.js'), file, out], { maxBuffer: 1 << 24, timeout: INSPECT_MS, killSignal: 'SIGKILL' }, (err, stdout, stderr) => {
+      if (err && err.killed) { resolve({ code: 2, failures: [], stderr: `it ran over ${INSPECT_MS / 1000} s and was stopped: a piece or a timer may loop, or the inspection waits for something that never comes. Look at inspect.js and kit.js.` }); return; }
       const code = err ? (typeof err.code === 'number' ? err.code : 2) : 0;
-      const failures = stdout.split('\n').filter((l) => l.startsWith('- ')).map((l) => l.slice(2));
-      resolve({ code, failures, stderr: err && err.killed ? `it ran over ${INSPECT_MS / 1000} s and was stopped: a piece or a timer may loop, or the inspection waits for something that never comes. Look at inspect.js and kit.js.` : stderr.trim() });
+      resolve({ code, failures: stdout.split('\n').filter((l) => l.startsWith('- ')).map((l) => l.slice(2)), stderr: stderr.trim() });
     });
   });
 }
@@ -353,7 +366,9 @@ async function inspection() {
 function docs() {
   const readme = read('README.md');
   const part = (readme.split(/^## Changing the kit$/m)[1] || '').split(/^## /m)[0];
-  check('the README\'s Changing the kit runs this test before a change\'s reviews', /test\.js/.test(part) && /review/.test(part) ? null : `${README}, Changing the kit, doesn't say that a change to the kit passes test.js before its reviews: say it there.`);
+  // The run itself: its command, and a paragraph that puts the kit's test before the reviews.
+  const run = part.includes('node .claude/method/kit/test.js') && part.split(/\n\s*\n/).some((p) => /review/.test(p) && /the kit's test/.test(p) && p.indexOf('review') < p.indexOf("the kit's test"));
+  check('the README\'s Changing the kit runs this test before a change\'s reviews', run ? null : `${README}, Changing the kit, doesn't say that a change to the kit passes the kit's test, \`node .claude/method/kit/test.js\`, before its reviews: say it there, in one paragraph, with the command.`);
   // The kit serves any project: no file of it names the one it lives in, as its pliego's title gives it.
   const name = 'no file of the kit names the project, as its pliego\'s title gives it';
   const pliego = path.resolve(kitDir, '..', '..', '..', 'PLIEGO.md');
