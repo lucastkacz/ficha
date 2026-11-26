@@ -2,15 +2,16 @@ import FichaCore
 import Foundation
 internal import GRDB
 
-/// A card a refine session drafted, as Lucas approved it and the `ficha` CLI
-/// reads it: what it holds, what becomes of each side's image and sound, the
-/// deck it lives in, and whether it goes both ways. The engine checks it as
-/// `CardContent` does once its files are in.
+/// A card an agent drafted, as the `ficha` CLI reads it for `ficha add`,
+/// `ficha approve`, `ficha approve-expansion` or `ficha fix`: what it holds,
+/// what becomes of each side's image and sound, the deck it lives in, and
+/// whether it goes both ways. The engine checks it as `CardContent` does once
+/// its files are in.
 public struct CardDraft: Sendable, Equatable {
-    /// Its type, as the refine session names it: one of the four Ficha comes
-    /// with, by its raw value, or a user type, by its name, which the engine
-    /// finds, ignoring case and accents, or makes, with no emoji, as an
-    /// import does; or nil when it has none.
+    /// Its type, as the draft names it: one of the four Ficha comes with, by
+    /// its raw value, or a user type, by its name, which the engine finds,
+    /// ignoring case and accents, or makes, with no emoji, as an import does;
+    /// or nil when it has none.
     public let type: String?
     public let front: String
     public let back: String
@@ -396,8 +397,8 @@ private struct DraftFiles {
     }
 }
 
-/// The images and sounds that came in for refine sessions' changes, held until
-/// the cards that have them are saved.
+/// The images and sounds that came in for the `ficha` CLI's changes, held
+/// until the cards that have them are saved.
 private struct FilesComingIn {
     private var images: [CardImage] = []
     private var sounds: [CardSound] = []

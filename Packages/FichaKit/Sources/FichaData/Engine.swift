@@ -39,9 +39,9 @@ public struct Engine: Sendable {
     /// Where the sounds on cards are kept: the Sounds folder beside the
     /// database, or memory with it.
     let sounds: FileStore<SoundName>
-    /// The Downloads folder, when a refine session's files may come from
-    /// there alone, as in the `ficha` CLI's sandbox (ADR 0018), or nil when
-    /// they may come from anywhere.
+    /// The Downloads folder, when the files the `ficha` CLI puts on cards may
+    /// come from there alone, as in its sandbox (ADR 0018), or nil when they
+    /// may come from anywhere.
     let refineFilesOnlyIn: URL?
     /// A new SVG drawer for each import's SVGs, or nil when its imports draw
     /// none.

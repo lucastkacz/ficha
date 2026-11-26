@@ -11,7 +11,7 @@ import Foundation
 public struct FichaCommand: ParsableCommand {
     public static let configuration = CommandConfiguration(
         commandName: "ficha",
-        abstract: "Add, capture and refine your cards from the terminal.",
+        abstract: "Add, capture, read and change your cards and decks from the terminal.",
         discussion: "Every command prints its result as JSON.",
         subcommands: [
             AddCommand.self, CaptureCommand.self, InboxCommand.self, ApproveCommand.self, ApproveExpansionCommand.self,
