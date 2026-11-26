@@ -83,7 +83,8 @@ Each kind of work, as a cloud session does it by `CLAUDE.md`'s Shipping:
 - ✓ Issues, debates, decisions, the reviews and the recorridas: the cloud.
 - ✓ Building a node: the cloud, unless Lucas starts the session on his Mac.
   - ○ A change to `.github/workflows/`: GitHub refuses a cloud session's push there, since its token has no `workflow` scope, so it's pushed from Lucas's Mac through Remote Control ("A workflow change from the cloud").
-  - ○ The other paths `.claude/hooks/merge-gate.sh` lists: no cloud session has tried a push to them yet; the next `/preparar` does.
+  - ✓ `.claude/hooks/`, `.claude/settings.json`, `.claude/agents/`, the `Makefile`, `scripts/data-changes.sh` and `project.yml`: GitHub took a cloud session's push to them, in #471 on 2026-11-21 and #494 on 2026-11-24.
+  - ○ The last paths `.claude/hooks/merge-gate.sh` lists, the `.entitlements` files and `CLI/Info.plist`: no cloud session has tried a push to them yet; the next `/preparar` does.
 - ✓ The tests while building, in two rounds per node (ADR 0031): from the cloud, GitHub's Macs; on Lucas's Mac, `make test`.
   - ◐ From the cloud, each push to the node's draft PR runs a round, CI's `tests` job, `make test` alone, which the session reads as `CLAUDE.md`'s Shipping says; marking the PR ready runs the full `check`.
 - ✓ The three checks' tests and CI: from the cloud, the last round on the draft PR, then CI's `check` once it's ready; on Lucas's Mac, `make check`, then CI.
@@ -201,7 +202,7 @@ Rules that don't break:
 - ○ Coming back after a break, without a wall of cards (#460): a `/debate` of its own (ADR 0034).
 - ○ The pictures from GitHub's Macs (#480), and the guards in a cloud session (#479): Where it runs.
 - ○ A change to `.github/workflows/` from a cloud session, pushed from Lucas's Mac while the session's token has no `workflow` scope: the `/debate` that takes it up; Where it runs.
-- ○ Which of the guards' other paths a cloud session can push to: the next `/preparar`; Where it runs.
+- ○ Whether a cloud session can push to the `.entitlements` files and `CLI/Info.plist`, the guards' last untried paths: the next `/preparar`; Where it runs.
 - ○ The hands-free gaps, for `/construir`: the checks an agent runs (#473), the Debug menu by command (#474) and the window as text (#139), which Lucas chose to build first; then the driver for dragging and right-clicks (#293) and taps on the iPhone (#136).
 - ○ The Idea issue type: Lucas creates it in his account's settings; then, as a chore handed out as `CLAUDE.md`'s Shipping says, the open issues get their types and areas, and lose the old triage labels (ADR 0030).
 - ○ `.out-of-scope/`: whether it stays, moves into the issues or goes.
