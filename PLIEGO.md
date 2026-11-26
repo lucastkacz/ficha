@@ -53,7 +53,7 @@ What the method's commands read about Ficha (`.claude/method/method.md`), approv
 ## Hands-free
 
 - **Drives it**
-  - ✓ `ficha`, the CLI: cards, decks, tags, types, captures and approvals until ADR 0041's node gives them way to `ficha add`, fixes, the pace and the queue. Agents run Ficha Dev's through `scripts/ficha-dev.sh` on a scratch folder ("Agents' runs of Ficha Dev's `ficha`").
+  - ✓ `ficha`, the CLI: cards, decks, tags, types, captures and approvals until ADR 0041's node takes them out, fixes, the pace and the queue. Agents run Ficha Dev's through `scripts/ficha-dev.sh` on a scratch folder ("Agents' runs of Ficha Dev's `ficha`").
   - ✓ `make render`'s clicks, keys and typing in a window; `make preview-import` for an import; `xcrun simctl` for the simulator.
   - ○ Ficha Dev's Debug menu (the sample cards, its clock, an appearance now, the second device) takes clicks only: #474 brings it to the command line.
   - ○ Dragging, right-clicks, double-clicks, menus and popovers: `make render` can't; #293's driver would, on Lucas's screen.
@@ -159,8 +159,8 @@ The rest:
 
 - ✓ Ficha's decks: a file each, in the app's resources, with each image's license, which come in through the engine's import, the only one ADR 0041 keeps (provisional); #458 brings them (ADR 0035, ADR 0040).
 - ✓ `scripts/`: the render tools and the import-preview tool, which reach FichaKit by path (the render tool compiles `App/`'s files too); the hook tests; the watchdog for hung runs, with its tests; the build of fsrs-rs's XCFramework; the wrapper `make` runs `xcodebuild` through; what unregisters an app's other copies from LaunchServices; the reader of Ficha Dev's last crash, with its tests; the runner of its `ficha` on a scratch folder; the cleanup after a merge, with its tests; the list of what changed the cards' data since the last upload, with its tests; and the check that the clock and the review log's IDs come from their sources.
-- ✓ `docs/`: `development.md`, how to build, draw, test and publish; `agents/`, what agents read about the issues and the domain; `adr/`; `content-guide.md`, how a refine session drafts Lucas's cards; `app-review-notes.md`, what App Review is told; `instructions-for-an-ai.md`; `research/`; `prototypes/`; and `images/`, the README's pictures.
-- ✓ `.claude/`: the permissions, the hooks, the rules, the method's seven skills and what they share (`method/`), with its page kit (`method/kit/`) and its map, the `/refine` skill and the subagents' types.
+- ✓ `docs/`: `development.md`, how to build, draw, test and publish; `agents/`, what agents read about the issues and the domain; `adr/`; `app-review-notes.md`, what App Review is told; `instructions-for-an-ai.md`; `research/`; `prototypes/`; and `images/`, the README's pictures.
+- ✓ `.claude/`: the permissions, the hooks, the rules, the method's seven skills and what they share (`method/`), with its page kit (`method/kit/`) and its map, and the subagents' types.
 - ✓ `.github/`: CI, the workflow that publishes `site/` on GitHub Pages, Dependabot and the issue forms.
 - ✓ `mockups/`: the web mock kit, the desktop mock and the Ficha Lab, with their tools in Node (its README).
 - ✓ `site/`: the privacy policy, the one page GitHub Pages publishes, which Settings' About tab links to.

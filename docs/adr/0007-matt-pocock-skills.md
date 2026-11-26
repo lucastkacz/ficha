@@ -1,5 +1,7 @@
 # Built with Matt Pocock's skills, plus a skill map
 
+> Changed in part by [ADR 0042](0042-lucas-makes-his-cards-apart-with-no-refine-sessions.md), which takes the `/refine` skill out (2026-11-26).
+
 Ficha is built by agents following the standard `mattpocock-skills` plugin instead of a hand-made process, partly as an experiment: after about a month, Lucas compares it with a project built the hand-made way. Lucas doesn't memorize commands, and Claude can't see the skills only he can run, so `CLAUDE.md` maps each situation to the command Claude suggests. Our own additions cover what the plugin leaves out on purpose: CI, branch protection, the merge policy, hooks and the Swift standards.
 
 ## Consequences

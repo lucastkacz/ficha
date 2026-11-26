@@ -69,7 +69,7 @@ _Avoid_: favorite tag, starred tag, sidebar tag
 Where the user came across what a capture or a card holds, like a book or a podcast.
 _Avoid_: origin, reference, citation
 
-### Capturing and refining
+### Capturing
 
 **Capture**:
 Something the user jots down to turn into cards later: the raw text, with an optional note and source.
@@ -93,12 +93,8 @@ A capture in the inbox attached to the card it repeats. Approving it gives that 
 A capture the user jots down in the review panel about the card in front of them, tied to that card, such as a question it raised. Approving it creates new cards, as any capture does, and leaves that card as it is.
 _Avoid_: question, expansion
 
-**Refine**:
-Turning what waits in the inbox into finished cards, in a Claude session Lucas starts. Claude drafts each change following the content guide, and Lucas approves it.
-_Avoid_: process, generate, import
-
 **Approve**:
-Turning a capture into the cards the user accepted for it, in the Cards window or a refine session, which takes it out of the inbox. Approving an expansion gives its card the content the user accepted instead.
+Turning a capture into the cards the user accepted for it, in the Cards window or through the `ficha` CLI, which takes it out of the inbox. Approving an expansion gives its card the content the user accepted instead.
 _Avoid_: accept, save
 
 **Discard**:
@@ -106,12 +102,8 @@ Taking a capture out of the inbox without turning it into cards.
 _Avoid_: delete, reject
 
 **Fix**:
-Editing a flagged card, as its note asks, in the Cards window or a refine session, which takes it out of the inbox, back to the user's reviews unless it's set aside.
+Editing a flagged card, as its note asks, in the Cards window or through the `ficha` CLI, which takes it out of the inbox, back to the user's reviews unless it's set aside.
 _Avoid_: correct
-
-**Content guide**:
-The written rules Claude follows to draft Lucas's cards: what each type holds, which deck and tags a card gets, which cards go both ways, how long a card is and how it's worded.
-_Avoid_: style guide, template, prompt
 
 ### Reviewing
 
@@ -156,7 +148,7 @@ A card with eight lapses, or as many as the user set, since its front or back la
 _Avoid_: leech, hard card
 
 **Bury**:
-Taking a card the user no longer wants out of reviews for good, and out of the inbox if it's flagged, without deleting it. Unburying it, in the Cards window or a refine session, puts it back where it would be without the burial.
+Taking a card the user no longer wants out of reviews for good, and out of the inbox if it's flagged, without deleting it. Unburying it, in the Cards window or through the `ficha` CLI, puts it back where it would be without the burial.
 _Avoid_: archive, suspend
 
 **Standing**:

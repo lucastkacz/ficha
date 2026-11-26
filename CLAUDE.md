@@ -29,7 +29,6 @@ Six commands take an idea or a bug from Lucas's words to the code and back to wh
 | A node has ready issues, of type Feature, Bug or Task, or a bug blocks everything | `/construir`, with the node or the bug |
 | A node's PR merged | `/entregar` |
 | Lucas comes back after a few days, or asks where things stand or what's next | `/recorrida` |
-| Captures or flagged cards wait in Ficha's inbox: Lucas mentions them, or the menu shows them; or Lucas wants an image or a sound on a card, his decks, tags or card types tidied, or his tags turned into decks | `/refine`, ours and outside the method: it proposes the cards, each in its deck, the changes to decks, tags and types, or the tags that become decks, and Lucas approves them |
 
 At the end of each phase of work, such as a debate's round, a node's build or a review, decide how to go on: continue, `/clear`, `/compact` or a subagent. Suggest it.
 
