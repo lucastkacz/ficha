@@ -2,12 +2,13 @@ name: pages
 
 # Publishes the site/ folder alone on GitHub Pages: Ficha's privacy policy,
 # site/privacy.md, at https://lucastkacz.github.io/ficha/privacy/, which
-# Settings' About tab links to. It's GitHub's starter workflow for Jekyll
-# (actions/starter-workflows, pages/jekyll-gh-pages.yml), with GitHub Pages'
-# own Jekyll and theme, building site/ instead of the whole repository, so
-# nothing else in it is published. Our own: it runs only when the site or this
-# file changes on main, or when started by hand, and checks out without
-# keeping the token. Pages must be on, with GitHub Actions as its source.
+# Settings links to at the foot of its General tab. It's GitHub's starter
+# workflow for Jekyll (actions/starter-workflows, pages/jekyll-gh-pages.yml),
+# with GitHub Pages' own Jekyll and theme, building site/ instead of the whole
+# repository, so nothing else in it is published. Our own: it runs only when the
+# site or this file changes on main, or when started by hand, and checks out
+# without keeping the token. Pages must be on, with GitHub Actions as its
+# source.
 
 on:
   push:
