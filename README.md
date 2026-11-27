@@ -51,7 +51,7 @@ flowchart LR
 
 A new card goes through two learning steps. "Got it" moves it to the next one, "Forgot" sends it back to the first, and "Kind of", Anki's "Hard", waits a little more before it comes back. Once it's past them, it graduates: from every answer you gave it, FSRS works out how many days it can wait while you'd still remember it 85 times out of 100, to start, so a card you know well waits longer each time, and one you find hard comes back sooner. "Forgot" on a graduated card sends it to relearn, back an hour later, and then it waits fewer days than before. "Kind of" still counts as remembered: it stretches the card's wait too, less than "Got it" does. A card that waits 21 days or more counts as learned, as in Anki, and still comes back now and then, so you keep it.
 
-The steps, how sure you want to be to remember a card, and the longest it may wait can be changed in Settings' Scheduling tab.
+The steps, how sure you want to be to remember a card, and the longest it may wait can be changed in Settings' Advanced tab.
 
 ## Your cards
 
@@ -89,7 +89,7 @@ flowchart LR
 
 ## Your cards stay yours
 
-Ficha has no account and no tracking, and it makes no network connections of its own. Your cards are kept on your Mac. When you turn on sync, in Settings' Sync tab, they, or only those in the decks you choose, also go to your private iCloud, which the developer can't see. Ficha backs them up on its own, once a day unless you pick another frequency, in a folder next to them, and Settings' Backups tab lists the copies and restores any of them. There's no AI inside the app either: an AI sees your cards only if you give them to it, and its cards come in only when you import its file or let it run Ficha's command-line tool on your Mac.
+Ficha has no account and no tracking, and it makes no network connections of its own. Your cards are kept on your Mac. When you turn on sync, in Settings' Sync tab, they, or only those in the decks you choose, also go to your private iCloud, which the developer can't see. Ficha backs them up on its own, once a day unless you pick another frequency, in a folder next to them, and Settings' Advanced tab lists the copies and restores any of them. There's no AI inside the app either: an AI sees your cards only if you give them to it, and its cards come in only when you import its file or let it run Ficha's command-line tool on your Mac.
 
 ---
 

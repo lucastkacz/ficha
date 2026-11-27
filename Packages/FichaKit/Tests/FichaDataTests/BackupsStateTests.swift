@@ -3,8 +3,8 @@ import FichaData
 import Foundation
 import Testing
 
-/// Tests on Settings' Backups tab, and on the backups the app saves on its
-/// own, which the tab and the menu say about, in a data folder of the test's
+/// Tests on Settings' Backups, in its Advanced tab, and on the backups the
+/// app saves on its own, which the tab and the menu say about, in a data folder of the test's
 /// own.
 final class BackupsStateTests {
     let calendar: Calendar

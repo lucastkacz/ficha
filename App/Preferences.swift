@@ -95,7 +95,7 @@ enum Preferences {
         return read(.backupsKept, as: Int.self) { BackupSettings(frequency: settings.frequency, kept: $0) } ?? settings
     }
 
-    /// Keeps `settings`, as Lucas changed them in Settings' Backups tab.
+    /// Keeps `settings`, as Lucas changed them in Settings' Backups.
     static func save(_ settings: BackupSettings) {
         let defaults = BackupSettings.defaults
         write(settings.frequency.rawValue, for: .backupFrequency, unless: defaults.frequency.rawValue)
@@ -142,11 +142,13 @@ enum Preferences {
         }
     }
 
-    /// The tab Settings opens on: the one Lucas left it on last, and at
-    /// first General. One that can't be read is only logged, with no alert:
-    /// Settings opens on General, and the next tab Lucas picks replaces it.
+    /// The tab Settings opens on: the one Lucas left it on last, or, for one
+    /// of the seven tabs before the five (#492), the one that took its rows;
+    /// and at first General. One that can't be read is only logged, with no
+    /// alert: Settings opens on General, and the next tab Lucas picks
+    /// replaces it.
     static var settingsTab: SettingsTab {
-        get { read(.settingsTab, as: String.self, SettingsTab.init(rawValue:)) ?? .general }
+        get { read(.settingsTab, as: String.self, SettingsTab.init(stored:)) ?? .general }
         set { write(newValue.rawValue, for: .settingsTab, unless: SettingsTab.general.rawValue) }
     }
 

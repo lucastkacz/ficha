@@ -25,12 +25,25 @@ public enum SettingsTab: String, Sendable, CaseIterable {
     /// the seven tabs before #492, so Settings opens where those rows are:
     /// nil for a name no tab had.
     public init?(stored: String) {
-        return nil
+        switch stored {
+        case "appearances", "reviewPanel": self = .interruptions
+        // Scheduling's was the Ladder tab's, which it replaced (#404).
+        case "ladder", "backups": self = .advanced
+        case "about": self = .general
+        default: self.init(rawValue: stored)
+        }
     }
 
     /// The tab's sections, in the order it shows them.
     public var sections: [SettingsSection] {
-        []
+        switch self {
+        case .general: [.general, .cardSize, .about]
+        case .pace: [.howFast, .upNext]
+        case .interruptions: [.whenFichaShowsUp, .holdAppearancesBack, .reviewPanel]
+        case .sync: [.sync, .decksToSync]
+        case .advanced:
+            [.learningSteps, .relearningSteps, .retention, .forgottenOften, .backups, .copies, .diagnostics]
+        }
     }
 }
 
@@ -67,7 +80,8 @@ public enum SettingsSection: Sendable, CaseIterable {
     case retention
     /// The offer to flag a card the user forgets often.
     case forgottenOften
-    /// How the app backs up on its own, and the last backup.
+    /// How the app backs up on its own, the last backup, and the folder the
+    /// copies are in.
     case backups
     /// The copies of the user's cards, to restore or delete.
     case copies
@@ -76,7 +90,26 @@ public enum SettingsSection: Sendable, CaseIterable {
 
     /// The section's rows, in the order it shows them.
     public var rows: [SettingsRow] {
-        []
+        switch self {
+        case .general: [.startAtLogin, .dueCountInMenuBar, .captureShortcut]
+        case .cardSize: [.cardSize]
+        case .about: [.version, .privacyPolicy]
+        case .howFast: [.pace]
+        case .upNext: [.queue]
+        case .whenFichaShowsUp:
+            [.activeHoursStart, .activeHoursEnd, .separation, .cardsPerAppearance, .lookAhead, .waitAfterWaking]
+        case .holdAppearancesBack: [.meetings, .videos, .fullScreenApps, .waitAfterSuppression]
+        case .reviewPanel: [.takeTheKeyboard, .idleBeforeTakingTheKeyboard, .closeWhenUntouched]
+        case .sync: [.syncWithICloud, .cardsToSync]
+        case .decksToSync: [.decksToSync]
+        case .learningSteps: [.learningSteps]
+        case .relearningSteps: [.relearningSteps]
+        case .retention: [.desiredRetention, .longestInterval]
+        case .forgottenOften: [.offerToFlag, .forgottenOftenAfter]
+        case .backups: [.backupFrequency, .backupsKept, .lastBackup, .backupsFolder]
+        case .copies: [.copies]
+        case .diagnostics: [.diagnostics]
+        }
     }
 }
 

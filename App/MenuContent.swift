@@ -52,7 +52,7 @@ struct MenuContent: View {
     let openDiagnostics: () -> Void
     /// Opens the Settings window.
     let openSettings: () -> Void
-    /// Opens the Settings window on its Backups tab.
+    /// Opens the Settings window on its Advanced tab, scrolled to Backups.
     let openBackupSettings: () -> Void
     /// Opens the Settings window on its Sync tab.
     let openSyncSettings: () -> Void
@@ -74,8 +74,8 @@ struct MenuContent: View {
                     Text(
                         "Last backup failed",
                         comment: """
-                            A menu item while the last backup failed, which opens Settings' Backups tab, where it says \
-                            why.
+                            A menu item while the last backup failed, which opens Settings on Backups, in its Advanced \
+                            tab, where it says why.
                             """)
                 } icon: {
                     Image(systemName: "exclamationmark.triangle")

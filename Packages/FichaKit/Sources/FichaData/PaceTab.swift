@@ -55,7 +55,8 @@ public struct PaceTabState: Sendable {
     /// while they're no pace, as a number a version of Ficha before the pace
     /// kept.
     public private(set) var pace: Pace?
-    /// Chill, Steady and Faster, in that order.
+    /// Chill, Steady and Faster, in that order, each with no finish while
+    /// the queue can't be read, so the user can still pick one.
     public private(set) var paces: [PaceOption] = []
     /// The decks with new cards, in the queue's order.
     public private(set) var queue: [QueueRow] = []
@@ -71,12 +72,53 @@ public struct PaceTabState: Sendable {
     }
 
     /// Reads the queue again, at the pace `settings`' new cards a day are,
-    /// with their active hours, which count today's new cards.
-    public mutating func read(_ settings: ReviewSettings) {}
+    /// with their active hours, which count today's new cards, as the queue
+    /// is at the engine's time, by its calendar: or keeps why it couldn't.
+    public mutating func read(_ settings: ReviewSettings) {
+        let now = engine.now
+        let calendar = engine.calendar
+        pace = Pace(newCardsPerDay: settings.newCardsPerDay)
+        do throws(EngineError) {
+            let (cards, decks) = try engine.paceTabCards()
+            paces = Pace.allCases.map { pace in
+                var paced = settings
+                paced.newCardsPerDay = pace.newCardsPerDay
+                let finish = paced.queue(of: cards, now: now, calendar: calendar).last?.finish
+                return PaceOption(pace: pace, finish: finish, wording: finish?.wording(now: now, calendar: calendar))
+            }
+            let inQueue = settings.queue(of: cards, now: now, calendar: calendar)
+            queue = inQueue.enumerated().map { place, queued in
+                // The decks ahead of it, and those still ahead once it's
+                // first, as FichaCore's queue puts it and How fast? reads
+                // them: a deck listed first for its priority cards stays
+                // ahead.
+                let ahead = inQueue.prefix(place).map(\.deck)
+                let withItFirst = cards.decksInQueue(putting: queued.deck, at: .first, now: now)
+                let stillAhead = withItFirst.prefix { $0 != queued.deck }
+                return QueueRow(
+                    deck: decks.first { $0.name == queued.deck } ?? Deck(name: queued.deck),
+                    newCards: queued.newCards, finish: queued.finish,
+                    wording: queued.finish?.wording(now: now, calendar: calendar), isNow: place == 0,
+                    offersPutItFirst: ahead.contains { !stillAhead.contains($0) })
+            }
+            unreadable = nil
+        } catch {
+            paces = Pace.allCases.map { PaceOption(pace: $0, finish: nil, wording: nil) }
+            queue = []
+            unreadable = error
+        }
+    }
 
     /// Puts `deck` first in the queue, as `ficha deck queue --first` does,
     /// and reads the queue again with `settings`, or keeps why it couldn't.
-    public mutating func putFirst(_ deck: String, with settings: ReviewSettings) {}
+    public mutating func putFirst(_ deck: String, with settings: ReviewSettings) {
+        do throws(EngineError) {
+            try engine.moveInQueue(deck: deck, to: .first)
+        } catch {
+            failure = Failure(deck: deck, error: error)
+        }
+        read(settings)
+    }
 
     /// Clears why Put it first failed, once the tab said so and the user
     /// closed it.
@@ -89,5 +131,17 @@ extension Engine {
     /// Settings' Pace tab, at the pace `settings`' new cards a day are.
     public func openPaceTab(_ settings: ReviewSettings) -> PaceTabState {
         PaceTabState(engine: self, settings: settings)
+    }
+
+    /// What the Pace tab reads, in one read: the cards in the user's
+    /// reviews, as the planners take them, and every deck the device lists,
+    /// as `decks()` lists them, for their emoji.
+    fileprivate func paceTabCards() throws(EngineError) -> (cards: CardsInReviews, decks: [Deck]) {
+        try read { db in
+            let own = try OwnDecks(in: db)
+            let cards = try allCards(in: db)
+            let decks = try listedDeckNames(of: own, livedInBy: cards, in: db).map(own.deck)
+            return (cards: try cardsThatShowUp(in: db).inReviews, decks: decks)
+        }
     }
 }

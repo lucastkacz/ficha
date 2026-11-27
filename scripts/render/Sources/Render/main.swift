@@ -115,18 +115,21 @@ enum Window: String, CaseIterable {
     /// photo of a rose alone, with no text, and its back the flower's name, a
     /// line about it and the photo's credit.
     case cardsFichaDeckFlower = "cards-ficha-deck-flower"
-    /// Settings, on its Backups tab.
+    /// Settings, on its Advanced tab, scrolled to Backups, as "Last backup
+    /// failed" in the menu opens it, down to Diagnostics' button.
     case backups
-    /// Settings, on its Backups tab, once a backup failed.
+    /// The same once a backup failed.
     case backupsFailed = "backups-failed"
-    /// Settings, on its Appearances tab, which holds the new cards a day,
-    /// with the settings that decide progress in the database not Ficha's.
-    case appearances
-    /// Settings, on its Review panel tab, which holds the forgotten-often
-    /// count, with those settings not Ficha's.
-    case reviewPanel = "review-panel"
-    /// Settings, on its Scheduling tab, with those settings not Ficha's.
-    case scheduling
+    /// Settings, on its Pace tab, at Steady, on the sample cards, with How
+    /// fast?'s paces and the queue of decks new cards come from.
+    case pace
+    /// Settings, on its Interruptions tab.
+    case interruptions
+    /// Settings, on its Advanced tab, at its top, with the settings that
+    /// decide progress in the database not Ficha's: the learning and
+    /// relearning steps, the desired retention, the longest interval and the
+    /// forgotten-often count.
+    case advanced
     /// Settings, on its Sync tab, once the Mac synced.
     case sync
     /// Settings, on its Sync tab, on a Mac signed out of iCloud.
@@ -152,10 +155,8 @@ enum Window: String, CaseIterable {
     /// The menu under Ficha's icon while iCloud is full, its content drawn in
     /// a window, since the tool can't open the menu offscreen.
     case menuICloudFull = "menu-icloud-full"
-    /// Settings, on its About tab.
-    case about
     /// Settings, on its General tab, in Ficha Dev, which never starts at
-    /// login.
+    /// login, with About at its foot.
     case general
     /// The capture window, empty.
     case capture
@@ -658,7 +659,7 @@ func sampleEngine(at location: DatabaseLocation) throws -> (engine: Engine, time
     return (engine, time)
 }
 
-/// Ficha Dev's data folder in the tool's scratch home, which the Backups tab
+/// Ficha Dev's data folder in the tool's scratch home, which Settings' Backups
 /// shows as `~/Library/Application Support/Ficha Dev/Backups`: where Ficha
 /// Dev kept it before its sandbox, which the tool runs outside. On a Mac,
 /// Ficha Dev's own is in its App Group's folder (ADR 0018).
@@ -1409,13 +1410,13 @@ func hours(_ count: Int) -> TimeInterval {
 
 /// The app's model for `name`'s window: on the sample cards in memory, or on
 /// none for `cards-empty` and `panel-met-them-all-offer`, and for Settings'
-/// Backups tab and Sync tab, and the menu while iCloud is full,
-/// in `renderDataFolder`, with copies to list, and files to weigh.
+/// Backups and Sync, and the menu while iCloud is full, in
+/// `renderDataFolder`, with copies to list, and files to weigh.
 func model(for name: Window) throws -> AppModel {
     switch name {
     case .cards, .cardsNewDeck, .cardsImport, .cardsImportAnki, .cardsHowFast, .cardsHowFastNewDeck,
-        .cardsFichaDeckWords, .cardsFichaDeckPicture, .cardsFichaDeckFlower, .about, .general, .capture, .welcome,
-        .welcomeOneButton, .panelCard, .panelMetThemAll:
+        .cardsFichaDeckWords, .cardsFichaDeckPicture, .cardsFichaDeckFlower, .general, .pace, .interruptions,
+        .capture, .welcome, .welcomeOneButton, .panelCard, .panelMetThemAll:
         return try AppModel(engine: try sampleEngine(at: .inMemory).engine)
     case .cardsEmpty, .panelMetThemAllOffer:
         return try AppModel(engine: try Engine(location: .inMemory, time: SystemTimeSource()))
@@ -1512,7 +1513,7 @@ func model(for name: Window) throws -> AppModel {
         } isShown: {
             $0 == .off(turningOn: .sendsCardsForTheFirstTime(onlyChosenDecks: false), sending: nil)
         }
-    case .appearances, .reviewPanel, .scheduling: return try progressSettingsModel()
+    case .advanced: return try progressSettingsModel()
     case .diagnostics: return try focusHeldBackModel()
     case .backups: return try AppModel(engine: try backupsEngine())
     case .backupsFailed:
@@ -1666,15 +1667,14 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         let window = CardsWindow(model: model)
         window.makeContent(opening: state)
         return window
-    case .backups, .backupsFailed: return settingsTabWindow(model: model, openingOn: .backups)
+    case .backups, .backupsFailed: return settingsTabWindow(model: model, openingOn: .advanced, at: .backups)
     case .sync, .syncNoAccount, .syncFull, .syncOff, .syncPurged, .syncRestored, .syncChosenDecks, .syncFirst:
         return settingsTabWindow(model: model, openingOn: .sync)
     case .menuICloudFull: return menuWindow(model: model)
-    case .appearances: return settingsTabWindow(model: model, openingOn: .appearances)
-    case .reviewPanel: return settingsTabWindow(model: model, openingOn: .reviewPanel)
-    case .scheduling: return settingsTabWindow(model: model, openingOn: .scheduling)
-    case .about: return settingsTabWindow(model: model, openingOn: .about)
     case .general: return settingsTabWindow(model: model, openingOn: .general)
+    case .pace: return settingsTabWindow(model: model, openingOn: .pace)
+    case .interruptions: return settingsTabWindow(model: model, openingOn: .interruptions)
+    case .advanced: return settingsTabWindow(model: model, openingOn: .advanced)
     case .capture:
         let window = CaptureWindow(model: model)
         if let view = window.contentView {
@@ -1893,11 +1893,13 @@ func menuWindow(model: AppModel) -> NSWindow {
     return window
 }
 
-/// Settings, at the size it opens at, on `tab`.
-func settingsTabWindow(model: AppModel, openingOn tab: SettingsTab) -> NSWindow {
+/// Settings, at the size it opens at, on `tab`, scrolled to `section` when
+/// it's one of the tab's.
+func settingsTabWindow(model: AppModel, openingOn tab: SettingsTab, at section: SettingsSection? = nil) -> NSWindow {
     let window = AppWindow(
         tabs: SettingsTabViewController(
-            model: model, captureShortcut: CaptureShortcutRegistration(), closeReviewPanel: {}, openingOn: tab))
+            model: model, captureShortcut: CaptureShortcutRegistration(), closeReviewPanel: {}, openDiagnostics: {},
+            openingOn: tab, at: section))
     if let content = window.contentView {
         window.setContentSize(content.fittingSize)
     }

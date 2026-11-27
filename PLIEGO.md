@@ -163,7 +163,7 @@ The rest:
 - ✓ `.claude/`: the permissions, the hooks, the rules, the method's seven skills and what they share (`method/`), with its page kit (`method/kit/`) and its map, and the subagents' types.
 - ✓ `.github/`: CI, the workflow that publishes `site/` on GitHub Pages, Dependabot and the issue forms.
 - ✓ `mockups/`: the web mock kit, the desktop mock and the Ficha Lab, with their tools in Node (its README).
-- ✓ `site/`: the privacy policy, the one page GitHub Pages publishes, which Settings' About tab links to.
+- ✓ `site/`: the privacy policy, the one page GitHub Pages publishes, which Settings links to, at the foot of its General tab.
 - ✓ `CODING_STANDARDS.md`: the standards `/construir`'s review checks every change against.
 - ○ `.out-of-scope/`: ideas Lucas decided against, from before ADR 0030; no command reads it.
 
