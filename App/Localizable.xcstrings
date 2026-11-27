@@ -1,6 +1,17 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%@ %@…" : {
+      "comment" : "A button in the review panel, once nothing waits in the queue, with the emoji and the name of one of Ficha's decks: it opens the Cards window to add it.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ %2$@…"
+          }
+        }
+      }
+    },
     "%@ (%lld)" : {
       "comment" : "An item of the Export sheet's menu: the cards that live in a deck, or a deck inside it, with the deck's emoji, when it has one, and its whole name, like “🗣️ Idiomas › Inglés”, and how many.\nAn item of the Export sheet's menu: the cards with a tag, with the tag and how many.\nAn item of the “+N more” menu above the Cards window's card list: a tag of the deck the sidebar chose, with how many of its cards carry it.",
       "localizations" : {
@@ -110,6 +121,29 @@
     },
     "%@y" : {
       "comment" : "An interval of this many years, a year counted as 365 days, with a decimal, like “2.1y”: short, as Anki's buttons show it, in the Cards window. Anki's own short unit in each language."
+    },
+    "%lld cards" : {
+      "comment" : "Under the name of one of Ficha's decks in the Cards window's sidebar: how many cards it brings.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld card"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld cards"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "%lld cards are Image Occlusion cards, which hide parts of an image." : {
       "comment" : "In the Import sheet, the cards of an Anki package that make none, with how many.",
@@ -615,7 +649,7 @@
       }
     },
     "%lld cards · one of Ficha's decks" : {
-      "comment" : "In How fast?, under the name of one of Ficha's decks: how many cards it brings.",
+      "comment" : "In How fast?, and in the Cards window while its sidebar chose one of Ficha's decks, under the deck's name: how many cards it brings.",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -1011,6 +1045,12 @@
     "Add" : {
       "comment" : "The button of the Cards window's card form that saves the card."
     },
+    "Add Deck…" : {
+      "comment" : "A button of the Cards window, beside one of Ficha's decks the user hasn't added: it asks how fast new cards come, and Start adds the deck."
+    },
+    "Add Deck… (↩)" : {
+      "comment" : "The tooltip of the Cards window's button that adds one of Ficha's decks."
+    },
     "Add Step" : {
       "comment" : "Settings, under Scheduling: adds a learning or relearning step at the end."
     },
@@ -1383,6 +1423,9 @@
     "Couldn't add the sound" : {
       "comment" : "An alert's title in the Cards window, after dragging or pasting a file onto a side's sound."
     },
+    "Couldn't add “%@”" : {
+      "comment" : "An alert's title in the Cards window, after Add Deck… or How fast?'s Start on one of Ficha's decks, with its name."
+    },
     "Couldn't bury %lld cards" : {
       "comment" : "An alert's title in the Cards window.",
       "localizations" : {
@@ -1552,6 +1595,9 @@
     },
     "Couldn't pin “%@” to the sidebar" : {
       "comment" : "An alert's title in the Cards window, after Pin to Sidebar in a tag's menu, its Pinned checkbox in All Tags or dragging a tag into the sidebar, with the tag's whole name."
+    },
+    "Couldn't read Ficha's deck “%@”" : {
+      "comment" : "An alert's title in the Cards window as it opens, when the file of one of the decks that come with Ficha couldn't be read, with the deck's name."
     },
     "Couldn't read the file" : {
       "comment" : "An alert's title in the Cards window's Import sheet."
@@ -1978,6 +2024,9 @@
     },
     "Ficha saves the cards to a zip, with a text file and their images and sounds, that another Ficha imports. It holds what the cards say, never your progress." : {
       "comment" : "Under the title of the Cards window's Export sheet, when a card has an image or a sound."
+    },
+    "Ficha's Decks" : {
+      "comment" : "A section of the Cards window's sidebar, after Decks: the decks that come with Ficha, which the user hasn't added."
     },
     "Find" : {
       "comment" : "A hidden button of the Cards window: ⌘F, which goes to the search field."
@@ -2606,6 +2655,9 @@
     "Nothing waits in the queue." : {
       "comment" : "In the review panel, under the decks it met in full: no deck has new cards."
     },
+    "Nothing waits in the queue. Another of Ficha's decks?" : {
+      "comment" : "In the review panel, under the decks it met in full: no deck has new cards, and a button under it adds one of the decks that come with Ficha."
+    },
     "OK" : {
 
     },
@@ -3133,6 +3185,10 @@
     },
     "This copy of Ficha is missing its instructions for an AI. Install Ficha again, or read them in Ficha's repository on GitHub, in docs/instructions-for-an-ai.md." : {
       "comment" : "An alert's message in the Import sheet, when the app has no instructions for an AI."
+    },
+    "This copy of Ficha is missing the deck “%@”, so it can't be added. Install Ficha again, then add it." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual"
     },
     "This is already in the inbox" : {
 

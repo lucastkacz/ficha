@@ -30,7 +30,7 @@ extension EngineError {
             .backupsFolder, .notAnImage, .notASound, .soundConversion, .unreadableFileForSide, .noSuchFile,
             .fileNotInDownloads,
             .fileNotAnImage, .fileNotASound, .notAnImageOrSound, .noFileNamed, .imagesFolder, .soundsFolder,
-            .unreadableFile, .unwritableFile:
+            .unreadableFile, .unwritableFile, .fichaDeckMissing:
             localizedDescription
         }
     }
@@ -57,7 +57,7 @@ extension EngineError {
             .copyMigratedByNewerVersion, .backupsFolder, .notAnImage, .notASound, .soundConversion,
             .unreadableFileForSide, .noSuchFile, .fileNotInDownloads, .fileNotAnImage, .fileNotASound,
             .notAnImageOrSound, .noFileNamed,
-            .imagesFolder, .soundsFolder, .unreadableFile, .unwritableFile:
+            .imagesFolder, .soundsFolder, .unreadableFile, .unwritableFile, .fichaDeckMissing:
             localizedDescription
         }
     }

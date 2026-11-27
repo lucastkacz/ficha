@@ -48,50 +48,102 @@ public enum FichaDeck: String, Sendable, CaseIterable {
 public struct FichaDeckFile: Sendable, Equatable {
     /// The deck.
     public let deck: FichaDeck
+    /// What importing the file would do, as the import read it, with the
+    /// images its cards refer to, which `Engine.add(_:)` imports.
+    let preview: ImportPreview
 
-    /// How many cards the file holds: "40 cards". Not read yet (#458): none.
+    /// How many cards the file holds: "40 cards".
     public var cardCount: Int {
-        0
+        preview.cardCount
     }
 
     /// The card the Cards window shows of the deck, front and back: the
     /// file's first, with its front's image, which the window shows along
-    /// with it. Not read yet (#458): none.
+    /// with it (`firstCardImages`).
     public var firstCard: CardContent? {
-        nil
+        preview.cards.first?.content
+    }
+
+    /// The images on the first card's sides, as the file holds them, which
+    /// the Cards window shows with it while they aren't the user's.
+    var firstCardImages: [CardImage] {
+        (firstCard?.images ?? []).sorted { $0.rawValue < $1.rawValue }.compactMap { preview.images[$0] }
+    }
+
+    /// How many new ways the file's cards bring as they come in, as the new
+    /// cards a day count them: each card's front-first way, and its
+    /// back-first way too when it goes both ways. How fast? counts them as
+    /// if they came in now, last in the queue.
+    var newWayCount: Int {
+        preview.cards.reduce(0) { count, card in count + (card.goesBothWays(bringingProgress: false) ? 2 : 1) }
     }
 }
 
 extension Engine {
     /// Reads the file of `deck` at `file`, the app's own, without importing
-    /// it, through the import's own reader of a zip of cards and its preview,
-    /// as `previewImport(of:)` reads one, so adding the deck is the same
-    /// import as any Ficha package's. It takes a while, so the app calls it
-    /// away from the main actor. A missing file is an error whose message
-    /// says to reinstall the app, never a crash. Not read yet (#458): the
-    /// deck alone.
+    /// it, as `previewImport(of:)` reads a file of cards: through the
+    /// import's own reader of a zip of cards and its preview, so adding the
+    /// deck is the same import as any Ficha package's. It takes a while, so
+    /// the app calls it away from the main actor. A missing file is an error
+    /// whose message says to reinstall the app, never a crash.
     public func readFichaDeck(_ deck: FichaDeck, at file: URL) async throws(EngineError) -> FichaDeckFile {
-        FichaDeckFile(deck: deck)
+        guard FileManager.default.fileExists(atPath: file.path(percentEncoded: false)) else {
+            logger.error("The file of one of Ficha's decks isn't there: \(deck.fileName, privacy: .public).zip")
+            throw .fichaDeckMissing(deck.name)
+        }
+        return FichaDeckFile(deck: deck, preview: try await previewImport(of: file))
     }
 
     /// Whether the user has added the deck `file` holds: once any of its
-    /// cards is among theirs, as the import finds a card that repeats one,
-    /// whatever deck it's in now, so that renaming the deck, or getting its
-    /// cards from another device, still counts, and deleting all its cards
-    /// offers it again. Not worked out yet (#458): never.
+    /// cards is among theirs, whatever deck it's in now, so that renaming the
+    /// deck, or getting its cards from another device, still counts, and
+    /// deleting all its cards offers it again. A card of the deck is among
+    /// theirs when one of theirs repeats it, as the import finds a card that
+    /// repeats one (`repeatedCards(of:in:)`), with its back as the file has
+    /// it: so a card of the user's own with a word of Palabras lindas on its
+    /// front, such as "serendipia", doesn't count, and an update of the app
+    /// that changes a card's back still finds the deck by the others.
     public func hasAdded(_ file: FichaDeckFile) throws(EngineError) -> Bool {
-        false
+        try !fichaDecks(among: [file], added: true).isEmpty
+    }
+
+    /// Those of `files` whose deck the user hasn't added, as `hasAdded(_:)`
+    /// says, in their order, or those whose deck they have when `added`, in
+    /// one read.
+    func fichaDecks(among files: [FichaDeckFile], added: Bool = false) throws(EngineError) -> [FichaDeckFile] {
+        try read { db in
+            try files.filter { file in
+                let repeated = try repeatedCards(of: file.preview.cards, in: db)
+                let isAdded = zip(file.preview.cards, repeated).contains { card, theirs in
+                    theirs?.back == card.content.back
+                }
+                return isAdded == added
+            }
+        }
     }
 
     /// Adds the deck `file` holds, after Add Deck… and How fast?'s Start:
-    /// imports its cards as the Import sheet imports a zip of cards, skipping
-    /// those that repeat the user's, which stay as they are, with their
-    /// progress, so that adding it twice adds nothing, and without the tag
-    /// an import gives a file's cards after the file's name; and gives the
-    /// deck its emoji when it came in new. Returns what the import did. Not
-    /// worked out yet (#458): it adds nothing.
+    /// imports its cards as the Import sheet imports a zip of cards
+    /// (`importCards(_:choosing:)`), skipping those that repeat the user's,
+    /// which stay as they are, with their progress, so that adding it twice
+    /// adds nothing, and without the tag an import gives a file's cards after
+    /// the file's name; and gives the deck its emoji, as `ficha deck emoji`
+    /// gives one, when it came in new: the user had no deck by its name, and
+    /// cards came into it. Returns what the import did.
     @discardableResult
     public func add(_ file: FichaDeckFile) throws(EngineError) -> ImportOutcome {
-        ImportOutcome(added: 0, updated: 0, skipped: 0, copyBeforeImport: nil)
+        let name = file.deck.name
+        let hadDeck = try read { db in
+            try deckWithRow(name, in: db) != nil || allCards(in: db).contains { $0.deck == name }
+        }
+        // The proposed tags, each once, are the file's name alone.
+        let choices = ImportChoices(
+            tagNames: Dictionary(uniqueKeysWithValues: file.preview.proposedTags.map { ($0, "") }),
+            repeatedCards: .skip)
+        let imported = try importCardsAndTheirDecks(file.preview, choosing: choices)
+        if !hadDeck, imported.newCardDecks.contains(name) {
+            try setEmoji(try Emoji(file.deck.emoji), ofDeck: name)
+        }
+        return imported.outcome
     }
 }

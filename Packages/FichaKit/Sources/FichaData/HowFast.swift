@@ -5,13 +5,15 @@ import Foundation
 // in, that asks how fast new cards come, for every deck together, and where
 // the deck goes in the queue new cards come from. It opens after the New Deck
 // sheet's OK makes a deck from the sidebar or a deck's menu, with the paces
-// alone, and after an import that brought new cards, once its sheet's Done
-// closes it. Each pace's finish date, where the deck is and with the deck
-// first, is FichaCore's, as the queue counts it (`DeckQueue.swift`), with the
-// settings the window reads the queue with. Start saves the pace as `ficha
-// pace` does, and puts the deck first as `ficha deck queue --first` does,
-// when Put it first is ticked; Cancel changes nothing, so a deck that came in
-// stays last, where it came.
+// alone, after an import that brought new cards, once its sheet's Done
+// closes it, and after Add Deck… on one of Ficha's decks, before it comes in
+// (`CardsWindowFichaDecks.swift`). Each pace's finish date, where the deck is
+// and with the deck first, is FichaCore's, as the queue counts it
+// (`DeckQueue.swift`), with the settings the window reads the queue with.
+// Start adds one of Ficha's decks, saves the pace as `ficha pace` does, and
+// puts the deck first as `ficha deck queue --first` does, when Put it first
+// is ticked; Cancel changes nothing, so a deck that came in stays last, where
+// it came, and one of Ficha's decks isn't added.
 
 extension CardsWindowState {
     /// How fast?, while the window asks it: the deck it asks about, the three
@@ -135,26 +137,43 @@ extension CardsWindowState {
         question = .howFast(howFast)
     }
 
-    /// Chooses Start in How fast?: saves the pace chosen, when it changed,
-    /// through `Engine.saveProgressSettings(_:changedFrom:)`, as `ficha pace`
-    /// does, puts the deck first through `Engine.moveInQueue(deck:to:)`, as
-    /// `ficha deck queue --first` does, when Put it first is ticked, and
-    /// reads the cards again; or records why it couldn't and goes on asking.
-    /// One of Ficha's decks gets only its pace for now (#458).
+    /// Chooses Start in How fast?: for one of Ficha's decks, adds it first
+    /// (`Engine.add(_:)`), and the sidebar then chooses the deck; saves the
+    /// pace chosen, when it changed, through
+    /// `Engine.saveProgressSettings(_:changedFrom:)`, as `ficha pace` does,
+    /// puts the deck first through `Engine.moveInQueue(deck:to:)`, as `ficha
+    /// deck queue --first` does, when Put it first is ticked, and reads the
+    /// cards again; or records why it couldn't and goes on asking. One of
+    /// Ficha's decks that came in stays in, so Start again adds nothing more.
     public mutating func startHowFast() {
         guard case .howFast(let howFast) = question else { return }
+        // The deck Put it first puts first, for one deck alone.
+        let firstable: String?
+        switch howFast.subject {
+        case .deck(let deck):
+            firstable = deck
+        case .decks:
+            firstable = nil
+        case .fichaDeck(let deck):
+            guard addFichaDeck(deck) else { return }
+            firstable = deck.name
+        }
         let done = perform(.startHowFast) { engine throws(EngineError) in
             let old = try engine.progressSettings()
             var paced = old
             paced.newCardsPerDay = howFast.pace.newCardsPerDay
             try engine.saveProgressSettings(paced, changedFrom: old)
-            if howFast.putsFirst, case .deck(let deck) = howFast.subject {
-                try engine.moveInQueue(deck: deck, to: .first)
+            if howFast.putsFirst, let firstable {
+                try engine.moveInQueue(deck: firstable, to: .first)
             }
         }
-        guard done else { return }
-        question = nil
-        read(with: scheduler)
+        if done {
+            question = nil
+            read(with: scheduler)
+        } else if case .fichaDeck = howFast.subject {
+            // It came in all the same, which the window lists.
+            read(with: scheduler)
+        }
     }
 
     /// Asks How fast? about `names`, decks at the top of the tree that came

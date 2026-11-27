@@ -100,6 +100,13 @@ public struct ReviewPanelState: Sendable {
         /// next new one: "Next in the queue: <emoji> <deck>."; or nil when
         /// nothing waits in the queue: "Nothing waits in the queue."
         public let nextInQueue: Deck?
+        /// While nothing waits in the queue, the first of Ficha's decks the
+        /// user hasn't added, in `FichaDeck`'s order, among those the app
+        /// gave the panel (`offerFichaDecks(_:)`): "Another of Ficha's
+        /// decks?", with a button named after it, which opens the Cards
+        /// window on it with How fast? (#458). Nil while something waits, or
+        /// while the user has added all of them.
+        public let fichaDeck: FichaDeck?
     }
 
     /// What opened the panel: Lucas, with review now, or an appearance.
@@ -173,6 +180,9 @@ public struct ReviewPanelState: Sendable {
     /// What the panel says it met in full, as it read it once Lucas last went
     /// through its cards, which `metThemAll` says while the panel's done.
     private var metInFull: MetThemAll?
+    /// Ficha's decks, as the app read them from its bundle once the panel
+    /// asked for them (`asksForFichaDecks`): nil until then.
+    private var fichaDecks: [FichaDeckFile]?
 
     init(
         trigger: Trigger, cards: [PanelCard], engine: Engine, settings: ReviewSettings, clock: some Clock<Duration>,
@@ -233,6 +243,24 @@ public struct ReviewPanelState: Sendable {
     /// card, and when no answer met a deck's last new card.
     public var metThemAll: MetThemAll? {
         content == .done ? metInFull : nil
+    }
+
+    /// Whether the panel asks the app for Ficha's decks, to offer one in
+    /// `metThemAll` (`offerFichaDecks(_:)`): once it says nothing waits in the
+    /// queue, until the app gives them. Reading them takes a while, so the
+    /// app reads them only then, away from the main actor.
+    public var asksForFichaDecks: Bool {
+        fichaDecks == nil && metThemAll != nil && metThemAll?.nextInQueue == nil
+    }
+
+    /// Takes Ficha's decks as the app read them from its bundle
+    /// (`Engine.readFichaDeck(_:at:)`), which `metThemAll` offers the first
+    /// of the user hasn't added, while nothing waits in the queue.
+    public mutating func offerFichaDecks(_ files: [FichaDeckFile]) {
+        fichaDecks = files
+        if metInFull != nil {
+            readMetThemAll()
+        }
     }
 
     /// What the panel's ⋯ menu offers to do with the card Lucas is on, each
@@ -696,8 +724,10 @@ public struct ReviewPanelState: Sendable {
     /// Reads what the panel says it met in full, once Lucas went through its
     /// cards: the decks his answers met in full, as they are now, in the
     /// order they were met, each once, and the deck first in the queue new
-    /// cards come from now, with the panel's settings. When they can't be
-    /// read, it says nothing of them, and the log says why.
+    /// cards come from now, with the panel's settings, or, with none, the
+    /// first of Ficha's decks the user hasn't added, among those the app gave
+    /// it. When they can't be read, it says nothing of them, and the log says
+    /// why.
     private mutating func readMetThemAll() {
         let met = wentThrough.compactMap(\.metInFull).uniqued()
         guard !met.isEmpty else {
@@ -707,9 +737,10 @@ public struct ReviewPanelState: Sendable {
         do throws(EngineError) {
             let decks = try engine.decks()
             let next = try engine.queue(settings).first?.deck
+            let fichaDeck = try next == nil ? engine.fichaDecks(among: fichaDecks ?? []).first?.deck : nil
             metInFull = MetThemAll(
                 decks: met.compactMap { name in decks.first { $0.name == name } },
-                nextInQueue: next.flatMap { name in decks.first { $0.name == name } })
+                nextInQueue: next.flatMap { name in decks.first { $0.name == name } }, fichaDeck: fichaDeck)
         } catch {
             metInFull = nil
             logger.error("Couldn't read the decks met in full: \(String(describing: error), privacy: .public)")

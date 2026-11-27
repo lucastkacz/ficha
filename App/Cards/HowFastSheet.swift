@@ -207,7 +207,8 @@ extension Pace {
 }
 
 extension CardsWindowState.HowFast.Line {
-    /// What How fast? says under the deck's name.
+    /// What How fast? says under the deck's name, and the Cards window under
+    /// the name of one of Ficha's decks.
     var text: String {
         switch self {
         case .noCards:
@@ -219,7 +220,10 @@ extension CardsWindowState.HowFast.Line {
         case .fichaDeck(let cardCount):
             String(
                 localized: "\(cardCount) cards · one of Ficha's decks",
-                comment: "In How fast?, under the name of one of Ficha's decks: how many cards it brings.")
+                comment: """
+                    In How fast?, and in the Cards window while its sidebar chose one of Ficha's decks, under the \
+                    deck's name: how many cards it brings.
+                    """)
         }
     }
 }

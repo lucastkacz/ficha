@@ -37,6 +37,8 @@ import Foundation
 /// fast? new cards come, and where the deck goes in the queue new cards come
 /// from (`HowFast.swift`), and each deck at the top of the tree says under
 /// its title how far it is and when it's all met (`CardsWindowDecks.swift`).
+/// It offers Ficha's decks the user hasn't added, each with its first card,
+/// which Add Deck… adds after How fast? (`CardsWindowFichaDecks.swift`).
 public struct CardsWindowState: Sendable {
     /// What the sidebar offers, one at a time: a group of cards, the inbox,
     /// All Tags, or one of Ficha's decks.
@@ -105,7 +107,8 @@ public struct CardsWindowState: Sendable {
     }
 
     /// What the table lists: the cards of a group, what waits in the inbox,
-    /// or All Tags' every tag, as a tree (`CardsWindowAllTags.swift`).
+    /// or All Tags' every tag, as a tree (`CardsWindowAllTags.swift`); no
+    /// card while one of Ficha's decks shows in its place.
     public enum Listing: Sendable, Equatable {
         case cards([CardRow])
         case inbox([InboxRow])
@@ -419,10 +422,16 @@ public struct CardsWindowState: Sendable {
         case deleteType(name: String)
         /// He exported cards, which couldn't be read or saved to the file.
         case export
+        /// He chose Add Deck… on this one of Ficha's decks, which reads the
+        /// queue for How fast?, or Start in How fast?, which adds it.
+        case addFichaDeck(FichaDeck)
+        /// He opened the window, which reads Ficha's decks from the app, and
+        /// the file of this one couldn't be read.
+        case readFichaDeck(FichaDeck)
     }
 
     /// What the sidebar chose: All cards, until Lucas picks another group,
-    /// the inbox or All Tags.
+    /// the inbox, All Tags or one of Ficha's decks.
     public internal(set) var sidebarItem = SidebarItem.cards(.all)
     /// What Lucas looks for in what the sidebar chose, from the search field.
     public internal(set) var search = ""
@@ -572,6 +581,15 @@ public struct CardsWindowState: Sendable {
     /// The Export sheet, while it's open, which `CardsWindowExport.swift`
     /// runs.
     public internal(set) var exporting: Exporting?
+    /// Ficha's decks as the app read them from its bundle, in `FichaDeck`'s
+    /// order: none until it gives them (`CardsWindowFichaDecks.swift`).
+    var fichaDeckFiles: [FichaDeckFile] = []
+    /// Those of them the user hasn't added, as last read, which the sidebar's
+    /// Ficha's Decks section lists.
+    var fichaDecksNotAdded: [FichaDeckFile] = []
+    /// The one of Ficha's decks the review panel asked to add before the app
+    /// gave the window Ficha's decks, which How fast? asks for once it does.
+    var fichaDeckAskedToAdd: FichaDeck?
     /// Internal, for the window's parts in files of their own.
     let engine: Engine
 
@@ -583,13 +601,17 @@ public struct CardsWindowState: Sendable {
     }
 
     /// The sidebar's sections, in its order: the cards by where they stand,
-    /// the inbox, the decks as a tree, the pinned tags with All Tags… after
-    /// them, and the type groups.
+    /// the inbox, the decks as a tree, Ficha's decks the user hasn't added,
+    /// while there are some, the pinned tags with All Tags… after them, and
+    /// the type groups.
     public var sidebarSections: [SidebarSection] {
-        [
+        var sections: [SidebarSection] = [
             .cardGroups([.all, .new, .due, .learned, .flagged, .buried]), .inbox, .decks(deckRows),
-            .tags(pinned: pinnedTags), .types(typeGroups),
         ]
+        if !fichaDecksNotAdded.isEmpty {
+            sections.append(.fichaDecks(fichaDecksNotAdded))
+        }
+        return sections + [.tags(pinned: pinnedTags), .types(typeGroups)]
     }
 
     /// Whether Lucas is looking for something, which narrows the table: a
@@ -1063,6 +1085,10 @@ public struct CardsWindowState: Sendable {
     /// stays chosen. All Tags' selection keeps only the tags there are. A
     /// tag chosen among the chosen deck's tags that none of its cards carries
     /// anymore is no longer chosen, and the deck lists all its cards again.
+    /// It finds which of Ficha's decks the user has added, as
+    /// `Engine.hasAdded(_:)` says, and when the one the sidebar chose is
+    /// added, by Start or meanwhile from another device, the sidebar chooses
+    /// the deck, or All cards while Decks doesn't list it.
     public mutating func read(with scheduler: Scheduler) {
         self.scheduler = scheduler
         now = engine.now
@@ -1086,6 +1112,10 @@ public struct CardsWindowState: Sendable {
             if case .cards(let group) = sidebarItem, !offers(group) {
                 sidebarItem = .cards(.all)
             }
+            fichaDecksNotAdded = try fichaDeckFiles.isEmpty ? [] : engine.fichaDecks(among: fichaDeckFiles)
+            if case .fichaDeck(let deck) = sidebarItem, !fichaDecksNotAdded.contains(where: { $0.deck == deck }) {
+                sidebarItem = .cards(listedDeck(deck.name) != nil ? .deck(deck.name) : .all)
+            }
             try readDeckTags()
             if let shown = tagShownFromAllTags, !offers(.tag(shown)) {
                 tagShownFromAllTags = nil
@@ -1102,6 +1132,9 @@ public struct CardsWindowState: Sendable {
             } else if let counted {
                 listing = .success(.allTags(allTagsRows(of: counted)))
                 unusedTags = try engine.unusedTags()
+            } else if case .fichaDeck = sidebarItem {
+                // The deck shows in the table's place (`shownFichaDeck`).
+                listing = .success(.cards([]))
             } else {
                 listing = .success(.inbox(try engine.inboxRows(matching: search, with: scheduler)))
             }

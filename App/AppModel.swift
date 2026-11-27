@@ -72,6 +72,15 @@ final class AppModel {
     /// What the menu's Prioritize submenu offers, as the engine reads it, or
     /// nil when it couldn't be read (the engine logs why).
     private(set) var prioritizeMenu: PrioritizeMenu?
+    /// The one of Ficha's decks the review panel's "You've met them all"
+    /// asked to add, until the Cards window, which it opens, asks How fast?
+    /// for it (#458): nil while none waits.
+    var fichaDeckToAdd: FichaDeck?
+    /// Whether `readFichaDecks()` reads Ficha's decks from the app's
+    /// resources: always in the app. `make render`, whose app has no bundle
+    /// of its own, turns it off, and gives a picture's Cards window the
+    /// decks itself, read from the repo, so each picture shows the same.
+    var readsFichaDecks = true
 
     /// The real Ficha's way into Lucas's cards, through `engine`, or why the
     /// settings that decide a card's progress couldn't be read.
@@ -198,6 +207,25 @@ final class AppModel {
         engine.changes()
     }
 
+    /// Ficha's decks, in `FichaDeck`'s order, each as its file in the app's
+    /// resources holds it, or why it couldn't be read, such as a file missing
+    /// from a damaged copy of the app (ADR 0040): read away from the main
+    /// actor, since reading them takes a while. Reading one imports nothing.
+    /// None while `readsFichaDecks` is off.
+    func readFichaDecks() async -> [(deck: FichaDeck, read: Result<FichaDeckFile, EngineError>)] {
+        guard readsFichaDecks else { return [] }
+        let files = FichaDeck.allCases.map { deck in (deck: deck, file: Self.fileOfFichaDeck(deck)) }
+        return await readAwayFromTheMainActor(files, with: engine)
+    }
+
+    /// Where the file of `deck` is in the app's resources, where `project.yml`
+    /// puts every file of `App/` without its folders; or, when they lack it,
+    /// where it would be, for the engine to say it's missing.
+    private static func fileOfFichaDeck(_ deck: FichaDeck) -> URL {
+        Bundle.main.url(forResource: deck.fileName, withExtension: "zip")
+            ?? (Bundle.main.resourceURL ?? Bundle.main.bundleURL).appending(path: "\(deck.fileName).zip")
+    }
+
     /// The engine's time: the system's, or, in Ficha Dev, the time its debug
     /// menu moves forward.
     var now: Date {
@@ -279,4 +307,24 @@ final class AppModel {
         try engine.moveInProgressSettings { Preferences.progressSettingsBeforeSync() }
         return try engine.progressSettings()
     }
+}
+
+/// Each of Ficha's decks in `files` as `engine` reads its file, or why it
+/// couldn't, in their order, away from the main actor: reading the files'
+/// pictures takes a while, while the windows go on answering. The engine
+/// logs why one couldn't be read.
+@concurrent
+private func readAwayFromTheMainActor(_ files: [(deck: FichaDeck, file: URL)], with engine: Engine) async
+    -> [(deck: FichaDeck, read: Result<FichaDeckFile, EngineError>)]
+{
+    var read: [(deck: FichaDeck, read: Result<FichaDeckFile, EngineError>)] = []
+    for (deck, file) in files {
+        do throws(EngineError) {
+            let deckFile = try await engine.readFichaDeck(deck, at: file)
+            read.append((deck: deck, read: .success(deckFile)))
+        } catch {
+            read.append((deck: deck, read: .failure(error)))
+        }
+    }
+    return read
 }

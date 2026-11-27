@@ -6,8 +6,9 @@ import Testing
 /// Tests on the review panel's "You've met them all" (ADR 0034, #491): once
 /// the panel went through its cards, the decks an answer in it met in full,
 /// and what comes next in the queue new cards come from, with the default
-/// settings. They start at 9 in the morning of Wednesday the 14th in Buenos
-/// Aires, when active hours start.
+/// settings, or, with nothing there, one of Ficha's decks (#458). They start
+/// at 9 in the morning of Wednesday the 14th in Buenos Aires, when active
+/// hours start.
 struct MetThemAllTests {
     let calendar: Calendar
     let time: ManualTimeSource
@@ -70,5 +71,45 @@ struct MetThemAllTests {
         let met = try #require(panel.metThemAll)
         #expect(met.decks.map(\.name) == ["Arte"])
         #expect(met.nextInQueue == nil)
+    }
+
+    // Small files of Ficha's decks, a card each, in a folder of the test's
+    // own: Lenguaje's ubuntu, met already, is Palabras lindas' card, front
+    // and back, so the user has added that deck, and Arte argentino is the
+    // first they haven't.
+    @Test(
+        "once nothing waits in the queue, the done panel asks for Ficha's decks, and offers the first the user hasn't added",
+        .bug(id: 458))
+    func nothingWaitsOffersOneOfFichasDecks() async throws {
+        let folder = URL.temporaryDirectory.appending(
+            path: "MetThemAllTests-\(UUID().uuidString)", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let fronts: [FichaDeck: String] = [
+            .palabrasLindas: "ubuntu", .arteArgentino: "Las Meninas", .floresDeBuenosAires: "Jacarandá",
+        ]
+        var files: [FichaDeckFile] = []
+        for deck in FichaDeck.allCases {
+            let front = try #require(fronts[deck])
+            let file = folder.appending(path: "\(deck.fileName).txt")
+            let text =
+                "#separator:tab\n#html:false\n#columns:Front\tBack\tDeck\n#deck column:3\n"
+                + "\(front)\tLo que quiere decir «\(front)».\t\(deck.name)\n"
+            try Data(text.utf8).write(to: file)
+            files.append(try await engine.readFichaDeck(deck, at: file))
+        }
+        try engine.meet(try approveInDeck("ubuntu", deck: "Lenguaje", in: engine))
+        let gioconda = try approveInDeck("La Gioconda", deck: "Arte", in: engine)
+        var panel = try engine.openPanel(.reviewNow, with: [.new(gioconda)], settings: settings)
+
+        try panel.answer(.review(.good), responseTime: .seconds(3))
+        let asked = panel.asksForFichaDecks
+        let beforeOffering = try #require(panel.metThemAll)
+        panel.offerFichaDecks(files)
+
+        #expect(asked)
+        #expect(beforeOffering.fichaDeck == nil)
+        #expect(panel.metThemAll?.fichaDeck == .arteArgentino)
+        #expect(!panel.asksForFichaDecks)
     }
 }

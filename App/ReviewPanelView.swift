@@ -22,7 +22,8 @@ import SwiftUI
 /// leaves it in his reviews. Once Lucas went through every card, the
 /// panel stays open until he closes it, says "You've met them all" for each
 /// deck whose last new card he met in it, with the next deck in the queue,
-/// and offers more cards if there are
+/// or, while nothing waits there, a button for one of Ficha's decks, which
+/// opens the Cards window to add it, and offers more cards if there are
 /// any, which Enter brings; review now with nothing due offers to review
 /// ahead the same way. A card taller than the panel's maximum
 /// height scrolls between the line at its top and what's under it, which
@@ -73,6 +74,13 @@ struct ReviewPanelView: View {
     /// The tallest the panel grows, which its window sets by the screen it
     /// shows on: a card taller than that scrolls.
     var maximumHeight = CGFloat.infinity
+    /// Reads Ficha's decks from the app, once "You've met them all" asks for
+    /// them, to offer one while nothing waits in the queue: none until the
+    /// window gives the panel a way to.
+    var readFichaDecks: () async -> [FichaDeckFile] = { [] }
+    /// Opens the Cards window on one of Ficha's decks with How fast?, as its
+    /// Add Deck… does, as the panel closes.
+    var addFichaDeck: (FichaDeck) -> Void = { _ in }
     /// The tallest a side's image shows.
     private var imageHeight: CGFloat { cardSize.imageHeightLimit(panelTallest: maximumHeight) }
     /// The widest the answer buttons and the writing fields show, the inside of
@@ -130,6 +138,11 @@ struct ReviewPanelView: View {
             .onChange(of: playingSound) { _, playing in
                 play(playing)
             }
+            .task(id: asksForFichaDecks) {
+                guard asksForFichaDecks, case .success(let panel) = model else { return }
+                let files = await readFichaDecks()
+                panel.state.offerFichaDecks(files)
+            }
             .padding(20)
             .frame(width: cardSize.panelWidth, alignment: .leading)
         }
@@ -140,6 +153,13 @@ struct ReviewPanelView: View {
     private var playingSound: ReviewPanelState.PlayingSound? {
         guard case .success(let panel) = model else { return nil }
         return panel.state.playingSound
+    }
+
+    /// Whether the panel asks for Ficha's decks, to offer one in "You've met
+    /// them all".
+    private var asksForFichaDecks: Bool {
+        guard case .success(let panel) = model else { return false }
+        return panel.state.asksForFichaDecks
     }
 
     /// Plays `playing`, the sound the panel says plays, from the start, or
@@ -275,8 +295,10 @@ struct ReviewPanelView: View {
     /// What the done panel says it met in full, under its title (ADR 0034,
     /// #491), as the state says it: "You've met them all", for each deck an
     /// answer in it met in full, and then the next deck in the queue new
-    /// cards come from, or that nothing waits there. Nothing while it met
-    /// none.
+    /// cards come from, or that nothing waits there, with a button for one
+    /// of Ficha's decks the user hasn't added, which closes the panel and
+    /// opens the Cards window on it, with How fast? (#458). Nothing while it
+    /// met none.
     @ViewBuilder
     private func metThemAll(of panel: ReviewPanelModel) -> some View {
         if let met = panel.state.metThemAll {
@@ -299,6 +321,13 @@ struct ReviewPanelView: View {
                                 In the review panel, under the decks it met in full: the deck new cards come from \
                                 now, with its emoji and name.
                                 """)
+                    } else if met.fichaDeck != nil {
+                        Text(
+                            "Nothing waits in the queue. Another of Ficha's decks?",
+                            comment: """
+                                In the review panel, under the decks it met in full: no deck has new cards, and a \
+                                button under it adds one of the decks that come with Ficha.
+                                """)
                     } else {
                         Text(
                             "Nothing waits in the queue.",
@@ -306,6 +335,20 @@ struct ReviewPanelView: View {
                     }
                 }
                 .foregroundStyle(.secondary)
+                if let deck = met.fichaDeck {
+                    Button {
+                        addFichaDeck(deck)
+                        panel.state.close(.byLucas)
+                    } label: {
+                        Text(
+                            "\(deck.emoji) \(deck.name)…",
+                            comment: """
+                                A button in the review panel, once nothing waits in the queue, with the emoji and the \
+                                name of one of Ficha's decks: it opens the Cards window to add it.
+                                """)
+                    }
+                    .padding(.top, 4)
+                }
             }
             .fixedSize(horizontal: false, vertical: true)
         }
@@ -1009,7 +1052,7 @@ extension EngineError {
             .copyNotFound, .copyMigratedByNewerVersion, .backupsFolder, .notAnImage, .notASound, .soundConversion,
             .unreadableFileForSide, .noSuchFile, .fileNotInDownloads, .fileNotAnImage, .fileNotASound,
             .notAnImageOrSound, .noFileNamed,
-            .imagesFolder, .soundsFolder, .unreadableFile, .unwritableFile:
+            .imagesFolder, .soundsFolder, .unreadableFile, .unwritableFile, .fichaDeckMissing:
             localizedDescription
         }
     }

@@ -27,7 +27,12 @@ import UniformTypeIdentifiers
 /// (`NewDeckSheet.swift`), which New Deck… in a deck's menu or the Decks
 /// title's opens too, to make the deck. As a deck comes in, made there or
 /// brought by an import, How fast? asks for the pace and where the deck goes
-/// in the queue new cards come from (`HowFastSheet.swift`). The sidebar's Tags section
+/// in the queue new cards come from (`HowFastSheet.swift`). The sidebar's
+/// Ficha's Decks section, after Decks, lists the decks that come with Ficha
+/// that Lucas hasn't added, each with how many cards it brings, which the
+/// window reads from the app as it opens: one chosen shows in the table's
+/// place, with Add Deck…, which asks How fast? before Start adds it, and its
+/// first card, front and back, in the detail's (#458). The sidebar's Tags section
 /// lists the tags he pins, in the order he drags them into, and ends with All
 /// Tags…, which lists every tag where the table was, as a tree with columns
 /// and a checkbox (`AllTagsOutline.swift`, ADR 0022), and a tag's cards in
@@ -161,6 +166,24 @@ struct CardsView: View {
                         return
                     }
                     readCards()
+                }
+            }
+            .task {
+                // Away from the main actor, since reading them takes a while:
+                // none when `make render` gives the window its own.
+                let decks = await model.readFichaDecks()
+                guard !decks.isEmpty else { return }
+                for case (let deck, .failure(let error)) in decks {
+                    state.couldNotRead(deck, because: error)
+                }
+                state.offerFichaDecks(decks.compactMap { try? $0.read.get() })
+            }
+            // The review panel's "You've met them all" asks for one of
+            // Ficha's decks as it opens the window, or while it's open.
+            .onChange(of: model.fichaDeckToAdd, initial: true) {
+                if let deck = model.fichaDeckToAdd {
+                    model.fichaDeckToAdd = nil
+                    state.askToAddFichaDeck(deck)
                 }
             }
             .onChange(of: model.settings.scheduler) {
@@ -905,6 +928,24 @@ struct CardsView: View {
                     comment: "An alert's title in the Cards window, after Delete… in a card type's menu, with its name."
                 ),
                 error: error)
+        case .addFichaDeck(let deck):
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't add “\(deck.name)”",
+                    comment: """
+                        An alert's title in the Cards window, after Add Deck… or How fast?'s Start on one of Ficha's \
+                        decks, with its name.
+                        """),
+                error: error)
+        case .readFichaDeck(let deck):
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't read Ficha's deck “\(deck.name)”",
+                    comment: """
+                        An alert's title in the Cards window as it opens, when the file of one of the decks that \
+                        come with Ficha couldn't be read, with the deck's name.
+                        """),
+                error: error)
         }
     }
 
@@ -941,7 +982,8 @@ struct CardsView: View {
     /// The sidebar's section `section`: the cards by where they stand; the
     /// inbox, with how many things wait in it, as the menu counts them; the
     /// decks as a tree, each parent open or closed as Lucas left it, each
-    /// deck with how many of its cards are due; the
+    /// deck with how many of its cards are due; Ficha's decks he hasn't
+    /// added, each with how many cards it brings; the
     /// cards of each pinned tag, in Lucas's order, each with its context
     /// menu, which he drags into another order, or tags from All Tags in
     /// among them to pin them, then All Tags…, which pins tags dropped on it
@@ -981,9 +1023,20 @@ struct CardsView: View {
                         NewDeckItem(state: $state)
                     }
             }
-        case .fichaDecks:
-            // Ficha's decks, which the state doesn't list yet (#458).
-            EmptyView()
+        case .fichaDecks(let files):
+            Section {
+                ForEach(files, id: \.deck) { file in
+                    FichaDeckRow(file: file)
+                        .tag(SidebarItem.fichaDeck(file.deck))
+                }
+            } header: {
+                Text(
+                    "Ficha's Decks",
+                    comment: """
+                        A section of the Cards window's sidebar, after Decks: the decks that come with Ficha, which \
+                        the user hasn't added.
+                        """)
+            }
         case .tags(let pinned):
             Section {
                 ForEach(pinned) { tag in
@@ -1286,9 +1339,60 @@ struct CardsView: View {
         if case .success(.allTags) = state.listing { true } else { false }
     }
 
-    /// What the table's pane lists, the cards' table with `cardColumns`.
+    /// What the table's pane lists, the cards' table with `cardColumns`, or
+    /// the one of Ficha's decks the sidebar chose, in its place.
     @ViewBuilder
     private func table(cardColumns: CardTableColumns) -> some View {
+        if let file = state.shownFichaDeck {
+            fichaDeckHead(file)
+        } else {
+            listing(cardColumns: cardColumns)
+        }
+    }
+
+    /// One of Ficha's decks, in the table's place while the sidebar chose it,
+    /// as the mock draws it: its emoji and name, with "40 cards · one of
+    /// Ficha's decks" under them, and Add Deck…, on Return while the search
+    /// field doesn't have it, which asks How fast? for the deck before it
+    /// comes in. The detail shows its first card.
+    private func fichaDeckHead(_ file: FichaDeckFile) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 12) {
+                Text(verbatim: file.deck.emoji)
+                    .font(.system(size: 32))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(verbatim: file.deck.name)
+                        .font(.title3)
+                        .bold()
+                    Text(verbatim: CardsWindowState.HowFast.Line.fichaDeck(cardCount: file.cardCount).text)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Button {
+                state.askToAddFichaDeck()
+            } label: {
+                Text(
+                    "Add Deck…",
+                    comment: """
+                        A button of the Cards window, beside one of Ficha's decks the user hasn't added: it asks how \
+                        fast new cards come, and Start adds the deck.
+                        """)
+            }
+            .buttonStyle(.borderedProminent)
+            .keyboardShortcut(isSearchFocused ? nil : .defaultAction)
+            .help(
+                Text(
+                    "Add Deck… (↩)",
+                    comment: "The tooltip of the Cards window's button that adds one of Ficha's decks."))
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    /// What the table's pane lists, the cards' table with `cardColumns`, as
+    /// the state lists it.
+    @ViewBuilder
+    private func listing(cardColumns: CardTableColumns) -> some View {
         switch state.listing {
         case .success(.cards(let rows)):
             VStack(spacing: 0) {
@@ -1589,7 +1693,11 @@ struct CardsView: View {
                             comment: "In the Cards window's detail, when nothing in the inbox is selected."),
                         systemImage: "tray")
                 case .noCardSelected:
-                    ContentUnavailableView("No card selected", systemImage: "rectangle.on.rectangle")
+                    if let card = state.shownFichaDeck?.firstCard {
+                        FichaDeckCard(card: card, images: state.images)
+                    } else {
+                        ContentUnavailableView("No card selected", systemImage: "rectangle.on.rectangle")
+                    }
                 case .allTags(let selected):
                     tagsDetail(selected)
                 }
@@ -2099,6 +2207,70 @@ extension CardsWindowState.DeckRow.Line {
             String(
                 localized: "\(met) of \(total)",
                 comment: "Under a deck's name in the Cards window's sidebar: how many of its cards are met.")
+        }
+    }
+}
+
+/// The row of one of Ficha's decks in the sidebar's Ficha's Decks section:
+/// its emoji before its name, and the deck symbol, as a deck's row in Decks,
+/// with how many cards it brings under its name, smaller and secondary.
+private struct FichaDeckRow: View {
+    let file: FichaDeckFile
+
+    var body: some View {
+        Label {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(verbatim: "\(file.deck.emoji) \(file.deck.name)")
+                Text(
+                    "\(file.cardCount) cards",
+                    comment: """
+                        Under the name of one of Ficha's decks in the Cards window's sidebar: how many cards it \
+                        brings.
+                        """
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+        } icon: {
+            Image(systemName: CardGroup.deck(file.deck.name).symbol)
+        }
+    }
+}
+
+/// The first card of one of Ficha's decks, in the detail's place while the
+/// window shows the deck, as the mock draws it, in a box of its own: its
+/// front, its image or its text, then a line, and its back, at the card
+/// size.
+private struct FichaDeckCard: View {
+    let card: CardContent
+    /// The images the window shows, the card's among them.
+    let images: ShownImages
+    @Environment(\.cardSize) private var cardSize
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 8) {
+                if let image = card.frontImage {
+                    SideImage(image: images[image], maximumHeight: cardSize.scaled(320))
+                }
+                if !card.front.isEmpty {
+                    TextAsItReads(card.front)
+                        .cardFont(.title)
+                }
+                Divider()
+                if let image = card.backImage {
+                    SideImage(image: images[image], maximumHeight: cardSize.scaled(320))
+                }
+                TextAsItReads(card.back)
+                    .cardFont(.body)
+                    .foregroundStyle(.secondary)
+            }
+            .textSelection(.enabled)
+            .padding(.vertical, 14)
+            .padding(.horizontal, 16)
+            .background(.fill.quaternary, in: .rect(cornerRadius: 12))
+            .padding(20)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }

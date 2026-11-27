@@ -32,9 +32,17 @@ final class ReviewPanelWindow: NSPanel {
     /// What the panel shows, which sizes the panel as it changes.
     private lazy var content = NSHostingView(
         rootView: SizedReviewPanel(
-            panel: ReviewPanelView(model: model, player: player) { [weak self] in
-                self?.close()
-            },
+            panel: ReviewPanelView(
+                model: model, player: player,
+                closeWindow: { [weak self] in
+                    self?.close()
+                },
+                readFichaDecks: { [appModel] in
+                    await appModel.readFichaDecks().compactMap { try? $0.read.get() }
+                },
+                addFichaDeck: { [weak self] deck in
+                    self?.whenAddingFichaDeck(deck)
+                }),
             appModel: appModel
         ) { [weak self] in
             self?.cardSizeKeyPressed()
@@ -52,6 +60,9 @@ final class ReviewPanelWindow: NSPanel {
     private var watching: Task<Void, Never>?
     /// What to do once the panel closed, however it closes.
     var whenClosed: () -> Void = {}
+    /// What to do when "You've met them all"'s button asks to add one of
+    /// Ficha's decks: open the Cards window on it, with How fast?.
+    var whenAddingFichaDeck: (FichaDeck) -> Void = { _ in }
 
     /// A panel for the cards a review now or an appearance brought, which
     /// closes itself when Lucas closes it or it closes on its own, or for why
