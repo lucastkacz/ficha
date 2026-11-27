@@ -15,13 +15,14 @@ import SwiftUI
 /// each click and key selects: a click selects one, a ⌘-click adds one or
 /// takes it out, a Shift-click selects the run from the last one clicked, a
 /// click between the tiles selects none, the arrow keys move the selection,
-/// with Shift extending the run, and ⌘A selects every tile (`CardsView`),
-/// all while the grid has the keyboard, which a click gives it. He drags a
-/// tile onto a deck in the sidebar, with the other selected ones when it's
-/// one of them, as Change Deck… moves them (`SidebarDrops.swift`).
+/// with Shift extending the run, and Edit › Select All, ⌘A, selects every
+/// tile, all while the grid has the keyboard, which a click gives it. He
+/// drags a tile onto a deck in the sidebar, with the other selected ones
+/// when it's one of them, as Change Deck… moves them (`SidebarDrops.swift`),
+/// and the state says what the drag carries.
 struct CardGrid: View {
     @Binding var state: CardsWindowState
-    /// Whether the grid has the keyboard, for the arrow keys and ⌘A.
+    /// Whether the grid has the keyboard, for the arrow keys and Select All.
     let isFocused: FocusState<Bool>.Binding
     /// How many tiles a row the grid lays out, which the arrow keys go up
     /// and down by.
@@ -85,6 +86,12 @@ struct CardGrid: View {
             state.moveSelection(
                 move(for: press.key), tilesPerRow: tilesPerRow, extending: press.modifiers.contains(.shift))
             return .handled
+        }
+        // Edit › Select All, from the menu or by ⌘A, sent to the grid while
+        // it has the keyboard: a text field that has it, as the search field
+        // or the editor's, selects its own text instead.
+        .onCommand(#selector(NSResponder.selectAll(_:))) {
+            state.selectAllTiles()
         }
     }
 

@@ -59,9 +59,9 @@ import UniformTypeIdentifiers
 /// the order they came in. He edits a card or a capture right there, in
 /// fields that take the detail's place while the sidebar and the grid or the
 /// inbox wait. He selects several tiles with ⌘ or Shift, as in the Finder, or
-/// all of them with ⌘A, and then the detail says how many, with what he can
-/// do with all of them. New Card in the toolbar, or ⌘N, and Convert to Card
-/// on a capture open the card form, a sheet of its own
+/// all of them with Select All, ⌘A, and then the detail says how many, with
+/// what he can do with all of them. New Card in the toolbar, or ⌘N, and
+/// Convert to Card on a capture open the card form, a sheet of its own
 /// (`CardFormSheet.swift`), Import… in the
 /// toolbar opens the Import sheet (`ImportSheet.swift`), which imports a text
 /// file of cards, and Export… opens the Export sheet (`ExportSheet.swift`),
@@ -253,21 +253,6 @@ struct CardsView: View {
                 Text("Find", comment: "A hidden button of the Cards window: ⌘F, which goes to the search field.")
             }
             .keyboardShortcut("f")
-            .hidden()
-            // ⌘A selects every tile while the grid has the keyboard:
-            // elsewhere, as in the search field or the editor's fields, it
-            // selects their text.
-            Button {
-                state.selectAllTiles()
-            } label: {
-                Text(
-                    "Select All",
-                    comment: """
-                        A hidden button of the Cards window: ⌘A, which selects every card the grid lists, while the \
-                        grid has the keyboard.
-                        """)
-            }
-            .keyboardShortcut(isListingFocused && listsTiles ? KeyboardShortcut("a") : nil)
             .hidden()
             CardSizeKeys(model: model)
         }
@@ -1350,15 +1335,6 @@ struct CardsView: View {
     /// more room than the grid.
     private var listsAllTagsTree: Bool {
         if case .success(.allTags) = state.listing { true } else { false }
-    }
-
-    /// Whether the middle pane lists the grid, with some tile in it, which
-    /// ⌘A selects.
-    private var listsTiles: Bool {
-        guard state.shownFichaDeck == nil, case .success(.cards(let rows)) = state.listing else {
-            return false
-        }
-        return !rows.isEmpty
     }
 
     /// What the middle pane lists: what the state lists, or the one of

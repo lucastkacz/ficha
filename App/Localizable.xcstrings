@@ -3191,9 +3191,6 @@
         }
       }
     },
-    "Select All" : {
-      "comment" : "A hidden button of the Cards window: ⌘A, which selects every card the grid lists, while the grid has the keyboard."
-    },
     "Selected cards" : {
       "comment" : "The name the Export sheet's save panel proposes for the file of the selected cards."
     },
