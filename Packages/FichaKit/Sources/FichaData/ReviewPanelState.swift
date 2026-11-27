@@ -16,9 +16,11 @@ import Foundation
 /// way. Each is saved as he does it, and ⌘Z undoes it, the last first, while
 /// the panel is open, and shows the card again as he left it. Once he went
 /// through every card, the panel stays open and offers more cards, if there are
-/// any, until he closes it. The panel goes into the appearance log as it
-/// closes. It runs on the engine's time, which Ficha Dev's debug menu moves
-/// forward, and times Lucas on a steady clock, which it doesn't.
+/// any, until he closes it, and says which decks his answers met in full, with
+/// what comes next in the queue new cards come from (`metThemAll`). The panel
+/// goes into the appearance log as it closes. It runs on the engine's time,
+/// which Ficha Dev's debug menu moves forward, and times Lucas on a steady
+/// clock, which it doesn't.
 public struct ReviewPanelState: Sendable {
     /// Who closes the panel.
     public enum Closing: Sendable {
@@ -164,6 +166,13 @@ public struct ReviewPanelState: Sendable {
     /// order he asked them: ⌘Z deletes the last one before it goes back to
     /// the card before.
     private var followUpsOnCard: [Int64] = []
+    /// The deck at the top of the tree whose last new card Lucas's answer to
+    /// the card he's on met, by its whole name, until he moves on, as when
+    /// the panel offers to flag the card first: his visit to it keeps it.
+    private var answerMetInFull: String?
+    /// What the panel says it met in full, as it read it once Lucas last went
+    /// through its cards, which `metThemAll` says while the panel's done.
+    private var metInFull: MetThemAll?
 
     init(
         trigger: Trigger, cards: [PanelCard], engine: Engine, settings: ReviewSettings, clock: some Clock<Duration>,
@@ -221,10 +230,9 @@ public struct ReviewPanelState: Sendable {
     /// What the panel says it met in full, once Lucas went through its cards
     /// (`.done`): the decks whose last new card an answer in it met, which
     /// undoing that answer forgets, and what comes next; nil while he's on a
-    /// card, and when no answer met a deck's last new card. Not worked out
-    /// yet (#491): always nil.
+    /// card, and when no answer met a deck's last new card.
     public var metThemAll: MetThemAll? {
-        nil
+        content == .done ? metInFull : nil
     }
 
     /// What the panel's ⋯ menu offers to do with the card Lucas is on, each
@@ -538,12 +546,21 @@ public struct ReviewPanelState: Sendable {
     /// how many times he forgot it the way it showed, and the card's time
     /// stopped at his answer. The panel's buttons answer through
     /// `rate(_:)`, which times him on the steady clock,
-    /// and say what failed.
+    /// and say what failed. When a new way's first review takes the deck at
+    /// the top of the tree its card lives in out of the queue new cards come
+    /// from, the answer met the deck in full, which the panel says once it's
+    /// done (`metThemAll`).
     public mutating func answer(_ kind: ReviewLogEntry.Kind, responseTime: Duration) throws(EngineError) {
         guard outcome == nil, let answering = current else { return }
+        let deck = TagPath.top(of: answering.card.deck)
+        var wasQueued = false
+        if case .new = answering {
+            wasQueued = queuedDecks()?.contains(deck) == true
+        }
         let forgottenOften = try engine.record(
             kind, of: answering.card.id, way: answering.way, responseTime: responseTime, trigger: trigger,
             settings: settings, reviewingAhead: answering.isAhead, intervalsWorkedOutAt: shownIntervals?.at)
+        answerMetInFull = wasQueued && queuedDecks()?.contains(deck) == false ? deck : nil
         // Also when the panel stays on the card, to offer to flag it.
         playingSound = nil
         guard let forgottenOften else {
@@ -653,14 +670,17 @@ public struct ReviewPanelState: Sendable {
 
     /// Moves on to the next card, from its upper side, with its time starting
     /// now, once Lucas did `actions`, in order, with the current one after
-    /// `timeOnCard` on it. After the last one, the panel looks for more cards
-    /// to offer.
+    /// `timeOnCard` on it, and the deck his answer to it met in full, if any.
+    /// After the last one, the panel looks for more cards to offer, and reads
+    /// what it met in full.
     private mutating func moveOn(after actions: [PanelAction], timeOnCard: Duration) {
         wentThrough.append(
             Visit(
-                actions: actions, followUps: followUpsOnCard, showedLowerSide: isFlipped, timeOnCard: timeOnCard))
+                actions: actions, followUps: followUpsOnCard, showedLowerSide: isFlipped, timeOnCard: timeOnCard,
+                metInFull: answerMetInFull))
         showSounds()
         followUpsOnCard = []
+        answerMetInFull = nil
         isFlipped = false
         shownIntervals = nil
         flagging = nil
@@ -669,6 +689,42 @@ public struct ReviewPanelState: Sendable {
         touch()
         if current == nil {
             lookForMore()
+            readMetThemAll()
+        }
+    }
+
+    /// Reads what the panel says it met in full, once Lucas went through its
+    /// cards: the decks his answers met in full, as they are now, in the
+    /// order they were met, each once, and the deck first in the queue new
+    /// cards come from now, with the panel's settings. When they can't be
+    /// read, it says nothing of them, and the log says why.
+    private mutating func readMetThemAll() {
+        let met = wentThrough.compactMap(\.metInFull).uniqued()
+        guard !met.isEmpty else {
+            metInFull = nil
+            return
+        }
+        do throws(EngineError) {
+            let decks = try engine.decks()
+            let next = try engine.queue(settings).first?.deck
+            metInFull = MetThemAll(
+                decks: met.compactMap { name in decks.first { $0.name == name } },
+                nextInQueue: next.flatMap { name in decks.first { $0.name == name } })
+        } catch {
+            metInFull = nil
+            logger.error("Couldn't read the decks met in full: \(String(describing: error), privacy: .public)")
+        }
+    }
+
+    /// The decks at the top of the tree in the queue new cards come from now,
+    /// with the panel's settings, by their whole names: nil when it can't be
+    /// read, and the log says why.
+    private func queuedDecks() -> Set<String>? {
+        do throws(EngineError) {
+            return Set(try engine.queue(settings).map(\.deck))
+        } catch {
+            logger.error("Couldn't read the queue new cards come from: \(String(describing: error), privacy: .public)")
+            return nil
         }
     }
 
@@ -734,8 +790,9 @@ private enum PanelAction: Sendable {
 
 /// A card Lucas went through in the review panel: what he did with it, which
 /// ⌘Z undoes, the follow-ups he asked about it, which ⌘Z takes back once it's
-/// back on the card, and how he left it, which ⌘Z shows again: whether its
-/// lower side showed, and how long he had been on it.
+/// back on the card, how he left it, which ⌘Z shows again: whether its
+/// lower side showed, and how long he had been on it, and the deck his
+/// answer to it met in full, which ⌘Z forgets along with the visit.
 private struct Visit: Sendable {
     /// What he did with it, in order: one thing, or his answer and then a
     /// flag, when the panel offered it. One ⌘Z undoes them all, the last
@@ -745,6 +802,9 @@ private struct Visit: Sendable {
     let followUps: [Int64]
     let showedLowerSide: Bool
     let timeOnCard: Duration
+    /// The deck at the top of the tree whose last new card his answer met,
+    /// by its whole name, or nil.
+    let metInFull: String?
 }
 
 /// The note Lucas is writing to flag the card he's on, how long he had been

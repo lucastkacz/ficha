@@ -55,6 +55,11 @@ extension CardsWindowState {
         public fileprivate(set) var bringsProgress = true
         /// What couldn't be done, while the sheet says so.
         public fileprivate(set) var failure: ImportFailure?
+        /// The decks at the top of the tree the cards that came in new came
+        /// into, once the import's done, by their whole names, in the order
+        /// a tree lists them: How fast? asks about them as Done closes the
+        /// sheet (#491).
+        fileprivate var newCardDecks: [String] = []
 
         /// The preview of the file chosen, while the sheet shows it.
         public var preview: ImportPreview? {
@@ -385,8 +390,9 @@ extension CardsWindowState {
                 step: .preview(preview), tagFields: preview.proposedTags.map { TagField(proposed: $0, name: $0) })
         case .preview(.failure(let error)):
             importing?.failure = ImportFailure(action: .preview, error: error)
-        case .imported(.success(let outcome)):
-            importing?.step = .done(outcome)
+        case .imported(.success(let imported)):
+            importing?.step = .done(imported.outcome)
+            importing?.newCardDecks = imported.newCardDecks
         case .imported(.failure(let error)):
             importing?.failure = ImportFailure(action: .importCards, error: error)
         }
@@ -398,9 +404,13 @@ extension CardsWindowState {
         importing?.failure = nil
     }
 
-    /// Closes the Import sheet.
+    /// Closes the Import sheet: after an import that brought new cards, with
+    /// Done, How fast? then asks about the decks at the top of the tree they
+    /// came into (`HowFast.swift`).
     public mutating func closeImport() {
+        let newCardDecks = importing?.newCardDecks ?? []
         importing = nil
+        askHowFast(about: newCardDecks, cameInFrom: .anImport)
     }
 }
 
@@ -418,7 +428,7 @@ public struct ImportWork: Sendable {
     public struct Done: Sendable {
         fileprivate enum Result: Sendable {
             case preview(Swift.Result<ImportPreview, EngineError>)
-            case imported(Swift.Result<ImportOutcome, EngineError>)
+            case imported(Swift.Result<(outcome: ImportOutcome, newCardDecks: [String]), EngineError>)
         }
 
         fileprivate let id: UUID
@@ -442,7 +452,9 @@ public struct ImportWork: Sendable {
             return Done(
                 id: id,
                 result: .imported(
-                    Result { () throws(EngineError) in try engine.importCards(preview, choosing: choices) }))
+                    Result { () throws(EngineError) in
+                        try engine.importCardsAndTheirDecks(preview, choosing: choices)
+                    }))
         }
     }
 }

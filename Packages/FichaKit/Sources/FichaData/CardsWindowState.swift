@@ -32,7 +32,11 @@ import Foundation
 /// with its Deck field and the editor's (`CardsWindowDeckField.swift`), runs
 /// the Import sheet, from a file's preview, with the decks its cards go to,
 /// to what the import did (`CardsWindowImport.swift`), and the Export sheet,
-/// from what it offers to export to the file it writes.
+/// from what it offers to export to the file it writes. As a deck comes in,
+/// made by New Deck… in the sidebar or brought by an import, it asks How
+/// fast? new cards come, and where the deck goes in the queue new cards come
+/// from (`HowFast.swift`), and each deck at the top of the tree says under
+/// its title how far it is and when it's all met (`CardsWindowDecks.swift`).
 public struct CardsWindowState: Sendable {
     /// What the sidebar offers, one at a time: a group of cards, the inbox,
     /// All Tags, or one of Ficha's decks.
@@ -400,6 +404,9 @@ public struct CardsWindowState: Sendable {
         /// He made a deck, in the New Deck sheet, after New Deck… in the
         /// sidebar.
         case makeDeck
+        /// He chose Start in How fast?, which saves the pace and, when Put it
+        /// first is ticked, puts the deck first in the queue.
+        case startHowFast
         /// He made a type, in the New Type sheet.
         case makeType
         /// He renamed the user type with this name, in the rename sheet.
@@ -475,6 +482,9 @@ public struct CardsWindowState: Sendable {
     /// its own and its counts, in the order a tree lists them, Default first
     /// while it holds cards or has a switch on: `CardsWindowDecks.swift`.
     public private(set) var decks: [CountedDeck] = []
+    /// What the row of each of those decks at the top of the tree says under
+    /// its title, by its whole name, read with them (#491).
+    var deckLines: [String: DeckRow.Line] = [:]
     /// The sidebar's decks Lucas closed, which each start open, and the
     /// window remembers while it's open.
     var closedDecks: Set<String> = []
@@ -1037,9 +1047,10 @@ public struct CardsWindowState: Sendable {
         failure = Failure(action: action, error: error)
     }
 
-    /// Reads the decks, the tags and what the sidebar chose, as they are now,
-    /// with `scheduler`, the settings in Settings, which may have changed
-    /// since the last read, and the review log of the card the detail shows.
+    /// Reads the decks, with what each one's row says under its title, the
+    /// tags and what the sidebar chose, as they are now, with `scheduler`,
+    /// the settings in Settings, which may have changed since the last read,
+    /// and the review log of the card the detail shows.
     /// It follows each deck renamed or deleted since it last read, whoever
     /// did it (`follow(_:)`). When the chosen deck is gone, as Default once
     /// its last card moved out,
@@ -1068,6 +1079,7 @@ public struct CardsWindowState: Sendable {
             }
             pinnedTags = tags.pinnedInOrder.map(PinnedTagRow.init(tag:))
             decks = try engine.countedDecks(with: scheduler)
+            try readDeckLines()
             follow(deckChanges)
             typeGroups = try engine.sidebarTypeGroups()
             followUserTypes()

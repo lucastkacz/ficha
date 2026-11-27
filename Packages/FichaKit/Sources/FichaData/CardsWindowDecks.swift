@@ -5,9 +5,12 @@ import Foundation
 // Inbox and before Tags, lists every deck as a tree, Default first while it
 // holds cards or has a switch on, then the others in alphabetical order,
 // each with how many of its cards are due, those of the decks inside it
-// counted. Each parent starts open, as in Anki's deck list, and the window
-// remembers the ones Lucas closes while it's open. Choosing a deck lists its cards and those of every
-// deck inside it. A deck's menu, Default's too, the same in its row's context
+// counted, and each at the top of the tree, Default too, with a line under
+// its title that says how far it is and when it's all met, from the queue
+// new cards come from (ADR 0034, #491). Each parent starts open, as in
+// Anki's deck list, and the window remembers the ones Lucas closes while it's
+// open. Choosing a deck lists its cards and those of every deck inside it. A
+// deck's menu, Default's too, the same in its row's context
 // menu and in the Actions menu above the card list while the sidebar chose
 // it, which is its keyboard path, sets it aside or prioritizes it
 // (`DeckSwitches.swift`), and gives it a color or an emoji
@@ -16,8 +19,9 @@ import Foundation
 // inside it. Every deck's but Default's also renames it and deletes it, and
 // in the sidebar cards and decks dropped on a deck move there
 // (`CardsWindowDeckEdits.swift`). Every deck's menu and the Decks title's have
-// New Deck…, whose OK makes a deck with no card, where its name says. A chosen
-// deck's tags line up above its cards
+// New Deck…, whose OK makes a deck with no card, where its name says, and
+// then asks How fast? for a new deck at the top of the tree (`HowFast.swift`).
+// A chosen deck's tags line up above its cards
 // (`CardsWindowDeckTags.swift`). Change Deck… moves the selected cards to the deck Lucas
 // picks in its sheet, from the same tree with Default always in it, or to one
 // he names there with New Deck…, which the move makes. The Deck field, in the
@@ -48,7 +52,6 @@ extension CardsWindowState {
         /// What its row says under its title, in the sidebar's Decks section,
         /// for a deck at the top of the tree, Default included (#491): nil
         /// for a deck inside another, and in the Change Deck sheet's tree.
-        /// Not worked out yet: nil for every deck.
         public let line: Line?
         /// The decks right inside it, in the order a tree lists them.
         public let children: [DeckRow]
@@ -57,7 +60,11 @@ extension CardsWindowState {
         /// stands and the queue new cards come from (ADR 0034): "9 of 14"
         /// counts the cards met, those whose front-first way has an entry in
         /// the review log, of every card of the deck and the decks inside
-        /// it, whatever its standing.
+        /// it, whatever its standing. A deck with no card says so, and a deck
+        /// set aside so, before anything else; a deck in the queue says where
+        /// it is, also when its cards are all met but some of their
+        /// back-first ways are still to come; and a deck out of it, that it's
+        /// met in full, or how far it is.
         public enum Line: Sendable, Equatable {
             /// "No cards yet": the deck, with the decks inside it, has no
             /// card.
@@ -74,7 +81,8 @@ extension CardsWindowState {
             /// queue after the first, with its finish date.
             case next(finish: FinishDate.Wording)
             /// "9 of 14": the deck has new cards in the user's reviews but no
-            /// finish date, as when the pace brings no new card.
+            /// finish date, as when the pace brings no new card, or it has
+            /// cards still to meet out of them, such as buried ones.
             case progress(met: Int, of: Int)
         }
 
@@ -173,9 +181,9 @@ extension CardsWindowState {
 
     /// The sidebar's Decks section, as last read: every deck as a tree,
     /// Default first while it holds cards or has a switch on, each with its
-    /// counts.
+    /// counts, and each at the top of the tree with its line.
     public var deckRows: [DeckRow] {
-        Self.deckRows(of: decks)
+        Self.deckRows(of: decks, lines: deckLines)
     }
 
     /// Whether the sidebar's deck `deck` is open, showing the decks inside
@@ -308,7 +316,7 @@ extension CardsWindowState {
         let listed = decks.map(\.deck.name)
         let others = TagPath.lineages(of: named).subtracting(listed + [Deck.defaultName])
         let defaultDeck = listed.contains(Deck.defaultName) ? [] : [CountedDeck.empty(Deck.defaultName)]
-        return Self.deckRows(of: defaultDeck + decks + others.map(CountedDeck.empty))
+        return Self.deckRows(of: defaultDeck + decks + others.map(CountedDeck.empty), lines: [:])
     }
 
     /// The decks a pop-up of decks offers while it holds `held`, before New
@@ -407,9 +415,13 @@ extension CardsWindowState {
 
     /// Makes the deck `name`, a name OK takes, with no card, which the sidebar
     /// asked for: it opens the decks it sits inside, so it shows, leaves the
-    /// sidebar where it was, and reads the cards again; or records why it
-    /// couldn't and goes on asking.
+    /// sidebar where it was, and reads the cards again, and How fast? then
+    /// asks about the deck at the top of the tree it made, the deck or one
+    /// it sits inside, while the sidebar didn't list it before
+    /// (`HowFast.swift`); or records why it couldn't and goes on asking.
     private mutating func makeDeck(named name: String) {
+        let top = TagPath.top(of: name)
+        let isNewAtTheTop = listedDeck(top) == nil
         let done = perform(.makeDeck) { engine throws(EngineError) in
             try engine.makeDeck(named: name)
         }
@@ -417,6 +429,9 @@ extension CardsWindowState {
         question = nil
         closedDecks.subtract(TagPath.ancestors(of: name))
         read(with: scheduler)
+        if isNewAtTheTop {
+            askHowFast(about: [top], cameInFrom: .newDeck)
+        }
     }
 
     /// Goes back from the name New Deck… asked for, which Lucas cancelled,
@@ -446,16 +461,85 @@ extension CardsWindowState {
         }
     }
 
+    /// Reads what the row of each deck at the top of the tree the sidebar
+    /// lists says under its title, as last read, from where it stands now and
+    /// the queue new cards come from, with the pace the database holds.
+    mutating func readDeckLines() throws(EngineError) {
+        deckLines = try engine.deckLines(of: listedTopDecks, with: try engine.cardsWindowQueueSettings())
+    }
+
+    /// The decks at the top of the tree the sidebar lists, as last read, in
+    /// its order.
+    var listedTopDecks: [Deck] {
+        decks.map(\.deck).filter { TagPath.parent(of: $0.name) == nil }
+    }
+
     /// The rows of `decks`, as a tree, in the order a tree lists them, each
-    /// named by its last level under its parent, and grayed while it's set
-    /// aside, on its own or inside one of `decks` that is.
-    private static func deckRows(of decks: [CountedDeck]) -> [DeckRow] {
+    /// named by its last level under its parent, grayed while it's set
+    /// aside, on its own or inside one of `decks` that is, and with its line
+    /// in `lines`, by its whole name, if any.
+    private static func deckRows(of decks: [CountedDeck], lines: [String: DeckRow.Line]) -> [DeckRow] {
         let setAside = decks.map(\.deck).setAsideNames
         return deckTree(of: decks, named: \.deck.name) { counted, title, children in
             DeckRow(
                 deck: counted.deck, title: title, counts: counted.counts,
-                isGrayed: deckSettingAside(counted.deck.name, amongSetAside: setAside) != nil, line: nil,
-                children: children)
+                isGrayed: deckSettingAside(counted.deck.name, amongSetAside: setAside) != nil,
+                line: lines[counted.deck.name], children: children)
+        }
+    }
+}
+
+extension Engine {
+    /// The settings the Cards window reads the queue new cards come from
+    /// with, as `ficha queue` reads it: those that decide progress, the pace
+    /// among them, as the database holds them, and Ficha's own for the rest,
+    /// such as active hours, which the window doesn't have.
+    func cardsWindowQueueSettings() throws(EngineError) -> ReviewSettings {
+        var settings = ReviewSettings.defaults
+        settings.progress = try progressSettings()
+        return settings
+    }
+
+    /// What the rows of `decks`, decks at the top of the tree, say under
+    /// their titles in the Cards window's sidebar (#491), by their whole
+    /// names, now, in one read: out of every card, whatever its standing, how
+    /// many of each deck's are met, its front-first way in the review log,
+    /// and the queue new cards come from, with `settings`' pace, as
+    /// `queue(_:)` reads it, with its finish dates as they read by the
+    /// engine's calendar.
+    fileprivate func deckLines(of decks: [Deck], with settings: ReviewSettings) throws(EngineError)
+        -> [String: CardsWindowState.DeckRow.Line]
+    {
+        let now = time.now
+        return try read { db in
+            let met = Set(try logEntries(in: db).filter { $0.way == .frontFirst }.map(\.cardID))
+            var counts: [String: (met: Int, of: Int)] = [:]
+            for card in try allCards(in: db) {
+                let top = TagPath.top(of: card.deck)
+                counts[top, default: (0, 0)].of += 1
+                counts[top, default: (0, 0)].met += met.contains(card.id) ? 1 : 0
+            }
+            let queue = settings.queue(of: try cardsThatShowUp(in: db).inReviews, now: now, calendar: calendar)
+            var lines: [String: CardsWindowState.DeckRow.Line] = [:]
+            for deck in decks {
+                let count = counts[deck.name, default: (0, 0)]
+                let place = queue.firstIndex { $0.deck == deck.name }
+                let finish = place.flatMap { queue[$0].finish }?.wording(now: now, calendar: calendar)
+                let line: CardsWindowState.DeckRow.Line =
+                    if count.of == 0 {
+                        .noCards
+                    } else if deck.isSetAside {
+                        .setAside(met: count.met, of: count.of)
+                    } else if let finish {
+                        place == 0 ? .first(met: count.met, of: count.of, finish: finish) : .next(finish: finish)
+                    } else if place == nil, count.met == count.of {
+                        .metThemAll
+                    } else {
+                        .progress(met: count.met, of: count.of)
+                    }
+                lines[deck.name] = line
+            }
+            return lines
         }
     }
 }

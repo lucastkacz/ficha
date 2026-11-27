@@ -6,9 +6,12 @@ import Foundation
 // the deck goes in the queue new cards come from. It opens after the New Deck
 // sheet's OK makes a deck from the sidebar or a deck's menu, with the paces
 // alone, and after an import that brought new cards, once its sheet's Done
-// closes it. Start saves the pace as `ficha pace` does, and puts the deck
-// first as `ficha deck queue --first` does, when Put it first is ticked;
-// Cancel changes nothing, so a deck that came in stays last, where it came.
+// closes it. Each pace's finish date, where the deck is and with the deck
+// first, is FichaCore's, as the queue counts it (`DeckQueue.swift`), with the
+// settings the window reads the queue with. Start saves the pace as `ficha
+// pace` does, and puts the deck first as `ficha deck queue --first` does,
+// when Put it first is ticked; Cancel changes nothing, so a deck that came in
+// stays last, where it came.
 
 extension CardsWindowState {
     /// How fast?, while the window asks it: the deck it asks about, the three
@@ -36,7 +39,9 @@ extension CardsWindowState {
             /// "No cards yet": the deck New Deck…'s OK just made.
             case noCards
             /// "14 cards · imported": the deck an import's new cards came
-            /// into, with its cards and those of the decks inside it.
+            /// into, with its cards and those of the decks inside it,
+            /// whatever their standing, or those of all the decks they came
+            /// into.
             case imported(cardCount: Int)
             /// "40 cards · one of Ficha's decks": one of Ficha's decks, with
             /// the cards its file holds (#458).
@@ -59,6 +64,10 @@ extension CardsWindowState {
 
         /// What it asks about.
         public let subject: Subject
+        /// The decks it asks about, as the sidebar lists them, with their
+        /// emoji, in the queue's order, which the sheet names at its top:
+        /// none for one of Ficha's decks, which the sidebar doesn't list yet.
+        public let decks: [Deck]
         /// What the line under the deck's name says.
         public let line: Line
         /// The pace Start saves, ticked in the radio group: the user's as
@@ -75,6 +84,12 @@ extension CardsWindowState {
         /// Whether the user has other decks, so the sheet says one pace is
         /// for all of them, and that a deck waits its turn for new cards.
         public let hasOtherDecks: Bool
+        /// Chill, Steady and Faster, each with when the deck's new cards are
+        /// all met at it where the deck is in the queue, as the sheet opens.
+        let pacesWhereItIs: [PaceOption]
+        /// The same, once the deck is first in the queue, as Put it first
+        /// would put it.
+        let pacesFirst: [PaceOption]
 
         /// Whether the sheet offers Put it first: while other decks with new
         /// cards are ahead of the deck.
@@ -84,10 +99,18 @@ extension CardsWindowState {
 
         /// Chill, Steady and Faster, in that order, each with when the deck's
         /// new cards are all met at it, where the deck goes as Put it first
-        /// says. Not worked out yet (#491): none.
+        /// says.
         public var paces: [PaceOption] {
-            []
+            putsFirst ? pacesFirst : pacesWhereItIs
         }
+    }
+
+    /// How a deck How fast? asks about came in.
+    enum ComingIn {
+        /// New Deck…'s OK made it, with no card.
+        case newDeck
+        /// An import brought new cards into it.
+        case anImport
     }
 
     /// How fast?, while the window asks it.
@@ -96,21 +119,117 @@ extension CardsWindowState {
         return howFast
     }
 
-    /// Chooses `pace` in How fast?'s radio group, which Start saves. Not
-    /// worked out yet (#491): it chooses none.
-    public mutating func chooseHowFastPace(_ pace: Pace) {}
+    /// Chooses `pace` in How fast?'s radio group, which Start saves.
+    public mutating func chooseHowFastPace(_ pace: Pace) {
+        guard case .howFast(var howFast) = question else { return }
+        howFast.pace = pace
+        question = .howFast(howFast)
+    }
 
     /// Ticks How fast?'s Put it first, or unticks it when `isFirst` is
     /// false, while it's offered: the paces then say when the deck's new
-    /// cards are all met with the deck first in the queue. Not worked out yet
-    /// (#491): it ticks nothing.
-    public mutating func putHowFastFirst(_ isFirst: Bool) {}
+    /// cards are all met with the deck first in the queue.
+    public mutating func putHowFastFirst(_ isFirst: Bool) {
+        guard case .howFast(var howFast) = question, howFast.offersPutItFirst else { return }
+        howFast.putsFirst = isFirst
+        question = .howFast(howFast)
+    }
 
     /// Chooses Start in How fast?: saves the pace chosen, when it changed,
     /// through `Engine.saveProgressSettings(_:changedFrom:)`, as `ficha pace`
     /// does, puts the deck first through `Engine.moveInQueue(deck:to:)`, as
     /// `ficha deck queue --first` does, when Put it first is ticked, and
     /// reads the cards again; or records why it couldn't and goes on asking.
-    /// Not worked out yet (#491): it does nothing.
-    public mutating func startHowFast() {}
+    /// One of Ficha's decks gets only its pace for now (#458).
+    public mutating func startHowFast() {
+        guard case .howFast(let howFast) = question else { return }
+        let done = perform(.startHowFast) { engine throws(EngineError) in
+            let old = try engine.progressSettings()
+            var paced = old
+            paced.newCardsPerDay = howFast.pace.newCardsPerDay
+            try engine.saveProgressSettings(paced, changedFrom: old)
+            if howFast.putsFirst, case .deck(let deck) = howFast.subject {
+                try engine.moveInQueue(deck: deck, to: .first)
+            }
+        }
+        guard done else { return }
+        question = nil
+        read(with: scheduler)
+    }
+
+    /// Asks How fast? about `names`, decks at the top of the tree that came
+    /// in as `comingIn` says, by their whole names, or Default by
+    /// `Deck.defaultName`, once the window read them again: nothing for no
+    /// deck. When the queue can't be read, it asks nothing, and says why in
+    /// the log, so the decks stay where they came in, at the pace there was,
+    /// as after Cancel.
+    mutating func askHowFast(about names: [String], cameInFrom comingIn: ComingIn) {
+        guard !names.isEmpty else { return }
+        do throws(EngineError) {
+            let cards = try engine.cardsForHowFast(countingIn: names)
+            let settings = try engine.cardsWindowQueueSettings()
+            question = .howFast(
+                HowFast(
+                    about: names, line: comingIn == .newDeck ? .noCards : .imported(cardCount: cards.cardCount),
+                    amongTopDecks: listedTopDecks, cards: cards.inReviews, settings: settings, now: engine.now,
+                    calendar: engine.calendar))
+        } catch {
+            logger.error("Couldn't read the queue for How fast?: \(String(describing: error), privacy: .public)")
+        }
+    }
+}
+
+extension CardsWindowState.HowFast {
+    /// How fast? as it opens about `names`, decks at the top of the tree
+    /// among `topDecks`, those the sidebar lists, with `line` under their
+    /// names, out of `cards`, the cards in the user's reviews, at `now`, by
+    /// `calendar`, the engine's, with `settings`' pace and Ficha's other
+    /// settings: at the user's pace, or Steady while it's none, with Put it
+    /// first unticked, and each pace's finish date, of the deck, or of the
+    /// last of the decks in the queue, where it is and with the deck first.
+    /// Put it first is for one deck alone.
+    fileprivate init(
+        about names: [String], line: Line, amongTopDecks topDecks: [Deck], cards: CardsInReviews,
+        settings: ReviewSettings, now: Date, calendar: Calendar
+    ) {
+        let queue = settings.queue(of: cards, now: now, calendar: calendar).map(\.deck)
+        let inQueueOrder = queue.filter(names.contains) + names.filter { !queue.contains($0) }
+        let last = queue.last(where: names.contains)
+        let paces = { (first: Bool) -> [PaceOption] in
+            Pace.allCases.map { pace in
+                var paced = settings
+                paced.newCardsPerDay = pace.newCardsPerDay
+                let finish = last.flatMap {
+                    paced.finishDate(of: $0, first: first, in: cards, now: now, calendar: calendar)
+                }
+                return PaceOption(pace: pace, finish: finish, wording: finish?.wording(now: now, calendar: calendar))
+            }
+        }
+        var decksAhead: [String] = []
+        if names.count == 1, let place = queue.firstIndex(of: names[0]) {
+            decksAhead = Array(queue[..<place])
+        }
+        self.init(
+            subject: names.count == 1 ? .deck(names[0]) : .decks(inQueueOrder),
+            decks: inQueueOrder.compactMap { name in topDecks.first { $0.name == name } }, line: line,
+            pace: Pace(newCardsPerDay: settings.newCardsPerDay) ?? .steady, decksAhead: decksAhead,
+            putsFirst: false, hasOtherDecks: topDecks.contains { !names.contains($0.name) },
+            pacesWhereItIs: paces(false), pacesFirst: paces(true))
+    }
+}
+
+extension Engine {
+    /// What How fast? reads of the cards, in one read: those in the user's
+    /// reviews, as the planners take them, and how many cards the decks
+    /// `names`, decks at the top of the tree, hold, with the decks inside
+    /// them, whatever their standing.
+    fileprivate func cardsForHowFast(countingIn names: [String]) throws(EngineError)
+        -> (inReviews: CardsInReviews, cardCount: Int)
+    {
+        try read { db in
+            let cardCount = try allCards(in: db).count { names.contains(TagPath.top(of: $0.deck)) }
+            let inReviews = try cardsThatShowUp(in: db).inReviews
+            return (inReviews: inReviews, cardCount: cardCount)
+        }
+    }
 }

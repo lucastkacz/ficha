@@ -459,6 +459,18 @@ extension Engine {
     public func importCards(_ preview: ImportPreview, choosing choices: ImportChoices) throws(EngineError)
         -> ImportOutcome
     {
+        try importCardsAndTheirDecks(preview, choosing: choices).outcome
+    }
+
+    /// Imports the cards `preview` read, as the user chose, as
+    /// `importCards(_:choosing:)` does, and returns what it did, with the
+    /// decks at the top of the tree the cards that came in new came into, by
+    /// their whole names, or Default by `Deck.defaultName`, in the order a
+    /// tree lists them: those How fast? asks about, once the Import sheet
+    /// closes (#491).
+    func importCardsAndTheirDecks(_ preview: ImportPreview, choosing choices: ImportChoices) throws(EngineError)
+        -> (outcome: ImportOutcome, newCardDecks: [String])
+    {
         /// The tags `card` proposes, as the user named them.
         func addedTags(_ card: ImportedCard) -> [String] {
             tagsAdded(to: card, namedAs: choices.tagNames)
@@ -467,7 +479,7 @@ extension Engine {
         let repeatedCount = try read { db in try repeatedCards(of: preview.cards, in: db) }.count { $0 != nil }
         let skippedCount = choices.repeatedCards == .skip ? repeatedCount : 0
         guard preview.cards.count > skippedCount else {
-            return ImportOutcome(added: 0, updated: 0, skipped: skippedCount, copyBeforeImport: nil)
+            return (ImportOutcome(added: 0, updated: 0, skipped: skippedCount, copyBeforeImport: nil), [])
         }
         let copy = try saveCopy(.beforeImport)
         let importedAt = time.now
@@ -476,24 +488,27 @@ extension Engine {
         // such as a skipped card's, or all of them when the cards can't be
         // written.
         let held = HeldFiles(images: Array(preview.images.values), sounds: Array(preview.sounds.values))
-        let (added, updated, skipped, letGo) = try keeping(held) { () throws(EngineError) in
+        let (added, updated, skipped, letGo, newCardDecks) = try keeping(held) { () throws(EngineError) in
             try write { db in
                 var (added, updated, skipped) = (0, 0, 0)
                 var letGo = (images: Set<ImageName>(), sounds: Set<SoundName>())
+                var newCardDecks: Set<String> = []
                 var types = try CardTypesByName(in: db)
                 let scheduler = try FichaData.progressSettings(in: db).scheduler
                 for (card, repeated) in zip(preview.cards, try repeatedCards(of: preview.cards, in: db)) {
                     switch (repeated, choices.repeatedCards) {
                     case (nil, _):
                         let type = try types.type(named: card.typeName, savingIn: db)
+                        let deck = try decks.deck(of: card)
                         let cardID = try insertCard(
-                            try card.content(as: type, adding: addedTags(card)), deck: try decks.deck(of: card),
+                            try card.content(as: type, adding: addedTags(card)), deck: deck,
                             bothWays: card.goesBothWays(bringingProgress: choices.bringsProgress), capturedAs: nil,
                             at: importedAt, in: db)
                         if choices.bringsProgress {
                             try bring(card, to: cardID, at: importedAt, with: scheduler, in: db)
                         }
                         added += 1
+                        newCardDecks.insert(TagPath.top(of: deck))
                     case (let repeated?, .update):
                         let type = try types.type(named: card.typeName, savingIn: db)
                         let updatedCard = try replaceContent(
@@ -509,12 +524,13 @@ extension Engine {
                         skipped += 1
                     }
                 }
-                return (added, updated, skipped, letGo)
+                return (added, updated, skipped, letGo, newCardDecks)
             }
         }
         removeFilesNoCardUses(
             images: Set(preview.images.keys).union(letGo.images), sounds: Set(preview.sounds.keys).union(letGo.sounds))
-        return ImportOutcome(added: added, updated: updated, skipped: skipped, copyBeforeImport: copy)
+        let outcome = ImportOutcome(added: added, updated: updated, skipped: skipped, copyBeforeImport: copy)
+        return (outcome, TagPath.sortedAsTree(newCardDecks))
     }
 
     /// Gives the card with the id `cardID`, which is coming in new to Ficha
