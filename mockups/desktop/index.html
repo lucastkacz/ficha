@@ -394,7 +394,11 @@
   }
 
   function CardsWindow({ app, state, request, ...win }) {
-    const yours = [...app.state.queue.map((id) => app.deck(id)).filter((d) => !d.setAside), ...state.decks.filter((d) => d.added && d.setAside)];
+    // The queue's decks with cards, in its order, then the decks with none
+    // yet, by name, then those set aside, as the app's Your Decks lists them.
+    const queued = app.state.queue.map((id) => app.deck(id)).filter((d) => !d.setAside);
+    const empty = queued.filter((d) => !cardsIn(app, d.id)).sort((a, b) => a.name.localeCompare(b.name));
+    const yours = [...queued.filter((d) => cardsIn(app, d.id)), ...empty, ...state.decks.filter((d) => d.added && d.setAside)];
     const toAdd = state.decks.filter((d) => d.ficha && !d.added);
     const anki = state.decks.find((d) => !d.ficha && !d.added);
     const [selected, setSelected] = useState((yours[0] || toAdd[0]).id);
