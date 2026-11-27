@@ -74,8 +74,8 @@ struct CardGrid: View {
                     isFocused.wrappedValue = true
                     state.clickBetweenTiles()
                 }
-                // The card Show Card selected, or the arrow keys moved to,
-                // which may be far down the grid.
+                // The card Show Card or Add selected, or the arrow keys
+                // moved to, which may be far down the grid.
                 .onChange(of: state.cardToReveal, initial: true) {
                     guard let id = state.cardToReveal else { return }
                     proxy.scrollTo(id)

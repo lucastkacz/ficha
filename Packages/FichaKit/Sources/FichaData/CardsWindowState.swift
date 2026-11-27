@@ -484,8 +484,8 @@ public struct CardsWindowState: Sendable {
     /// The row Lucas selected in the inbox, one at a time, which its table
     /// may no longer list, as with the cards.
     public private(set) var inboxSelection: InboxRow.ID?
-    /// The card the grid scrolls to, until it has: the one Show Card
-    /// selected, which may be far down the grid.
+    /// The card the grid scrolls to, until it has: the one Show Card or Add
+    /// selected, or an arrow key moved to, which may be far down the grid.
     public internal(set) var cardToReveal: CardRow.ID?
     /// The review log of the card the detail shows, while it shows one: read
     /// with the cards, and again when Lucas selects another card.

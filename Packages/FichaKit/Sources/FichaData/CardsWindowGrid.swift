@@ -136,7 +136,7 @@ extension CardsWindowState {
     }
 
     /// The ids of the cards the grid lists, in its order.
-    private var gridCardIDs: [CardRow.ID] {
+    var gridCardIDs: [CardRow.ID] {
         guard case .success(.cards(let rows))? = listing else {
             return []
         }
