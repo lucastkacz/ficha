@@ -92,7 +92,7 @@ Each kind of work, as a cloud session does it by `CLAUDE.md`'s Shipping:
 - ○ The pictures of Ficha: GitHub's Macs, if the probe shows they draw Ficha's windows (#480); until then, Lucas's Mac, through Remote Control.
 - ✓ The hand checks an agent can run (#473): Lucas's Mac, through Remote Control.
 - ○ An agent's runs of Ficha, with `ficha`, `make render`'s clicks or the simulator: Lucas's Mac, through Remote Control, as the hand checks; GitHub's Macs, if the probe shows they can (#480).
-- ✓ An acceptance criterion's proof: `test` runs where the tests do, `picture` where its picture is made, above, and `hand` on Lucas's Mac, from the Hand checks issue.
+- ✓ An acceptance criterion's proof: `test` runs where the tests do, `review` where the reviews do, `picture` where its picture is made, above, and `hand` on Lucas's Mac, from the Hand checks issue.
 - ◐ In the cloud, a node's branch is the one the session is given.
 - ○ The guards: no hook of the repo ran in a cloud session on 2026-11-23, and none matches the session's GitHub tools (#479). Until they do, a cloud session keeps them itself.
 

@@ -29,12 +29,12 @@ Done when each issue has its files and tests, every criterion its proof, nothing
 
 Open the node's branch from the default branch, as [`../../method/method.md`](../../method/method.md) names it, or as the project's instructions say. Each run of the tests goes where the pliego says; where that's CI on a draft PR, the first push opens the node's PR as a draft. Before the node's first push, look again as step 1 does: when an open PR now closes one of the node's issues, stop, and tell the user which PR holds which issue, as step 1 does. Then the node in two rounds:
 
-1. **The tests first**: for each issue in turn, a test that fails for its reason, the bug reproduced or an `Accept (test)` criterion unmet, marked with its issue as the project's standards say, in a commit that names the issue. What a test needs that doesn't exist yet gets a stub that compiles and fails it, so one missing part doesn't hide the other tests. Run them all at once, and see each fail for its own issue's reason.
+1. **The tests first**: for each issue in turn, a test that fails for its reason, the bug reproduced or an `Accept (test)` criterion unmet, marked with its issue as the project's standards say, in a commit that names the issue. An `Accept (review)` criterion gets no test: step 4's check 2 reads it. What a test needs that doesn't exist yet gets a stub that compiles and fails it, so one missing part doesn't hide the other tests. Run them all at once, and see each fail for its own issue's reason.
 2. **The code**: for each issue in turn, each building on the last, in a commit that names the issue; a change order the user approved updates the plano in it. Then run the project's tests until all pass, each fix in a commit of its own that names its issue. Each commit of this round, a fix's too, also updates the lines elsewhere that describe what it changed: the project's standards say which changes those are and how to find the lines.
 
 A fix that would change a decision goes back to `/debate`: stop, and tell the user.
 
-Done when every issue has its commits and its passing test.
+Done when every issue has its commits, and each bug and `Accept (test)` criterion its passing test.
 
 ## 4. The three checks
 

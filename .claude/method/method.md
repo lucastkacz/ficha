@@ -50,7 +50,7 @@ The user's words, from building works, kept in Spanish where the user sees them.
   2. `Qué buscamos`: the outcome, in a line. The review checks the PR against it.
   3. `Antes y después`: pictures, as the pliego says how the product is drawn, or a line each.
   4. `El artifact`: the link to the debate or the decision it came from.
-  5. A folded part for the agent, in English: `<details><summary>Para el agente</summary>`, then the decision records it follows and its acceptance criteria, one line each, each naming its proof: `Accept (test): …`, a test that runs; `Accept (picture): …`, a picture, as the pliego says how the product is drawn; or `Accept (hand): …`, a check by hand. The pliego says which machine runs each.
+  5. A folded part for the agent, in English: `<details><summary>Para el agente</summary>`, then the decision records it follows and its acceptance criteria, one line each, each naming its proof: `Accept (test): …`, a test that runs; `Accept (review): …`, what a document says, which `/construir`'s review against the issue reads, since a test reads a document only for its exact words, such as a command or a file's name; `Accept (picture): …`, a picture, as the pliego says how the product is drawn; or `Accept (hand): …`, a check by hand. The pliego says which machine runs each.
 
   An Idea needs only the first two. Files and tests stay out of the issue: the replanteo sets them against the code.
 - **Through `gh`** 2.94 or later, whose `issue` commands take the type: `gh issue create --type <Type> --label <area>` creates one, `gh issue edit <n> --type <Type>` changes its type, and `gh issue list --limit 1000 --json number,title,issueType,labels` lists them all, or those of one type with `--type <Type>`.
