@@ -14,11 +14,9 @@ struct AnswerButtonTests {
         "Forgot and key 1 record again, Kind of and key 2 hard, Got it, Space and key 3 good, and key 4 nothing",
         .bug(id: 517))
     func theKeysRecordTheButtonsRatings() {
-        let keys: [Character] = ["1", "2", "3", "4"]
-
         #expect(AnswerButton.allCases.map(\.rating) == [.again, .hard, .good])
         #expect(AnswerButton.forgot.key == .digit("1"))
         #expect(AnswerButton.gotIt.key == .space)
-        #expect(keys.map(AnswerButton.init(ratingKey:)) == [.forgot, .kindOf, .gotIt, nil])
+        #expect(AnswerButton.allCases.map(\.ratingKey) == ["1", "2", "3"])
     }
 }

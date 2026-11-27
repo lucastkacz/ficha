@@ -24,15 +24,6 @@ public enum AnswerButton: CaseIterable, Sendable {
         case space
     }
 
-    /// The button the rating key `digit` presses, or nil for any other key:
-    /// 4, Anki's key for easy, presses none (ADR 0039).
-    public init?(ratingKey digit: Character) {
-        guard let button = Self.allCases.first(where: { $0.ratingKey == digit }) else {
-            return nil
-        }
-        self = button
-    }
-
     /// The rating the button records.
     public var rating: Rating {
         switch self {
@@ -43,7 +34,8 @@ public enum AnswerButton: CaseIterable, Sendable {
     }
 
     /// The rating key that presses it, "1" to "3", Anki's keys for its
-    /// rating, which its shortcut takes.
+    /// rating, which its shortcut takes. 4, Anki's key for easy, presses
+    /// none (ADR 0039).
     public var ratingKey: Character {
         switch self {
         case .forgot: "1"
