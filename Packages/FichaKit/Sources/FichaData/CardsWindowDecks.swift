@@ -491,10 +491,12 @@ extension CardsWindowState {
 
     /// Reads what the row of each deck at the top of the tree the sidebar
     /// lists says under its title, as last read, from where it stands now and
-    /// the queue new cards come from, with the pace the database holds, and
-    /// the queue's order, which the sidebar lists them in.
+    /// the queue new cards come from, with the pace the database holds and
+    /// the window's active hours, and the queue's order, which the sidebar
+    /// lists them in.
     mutating func readDeckLines() throws(EngineError) {
-        let lines = try engine.deckLines(of: listedTopDecks, with: try engine.cardsWindowQueueSettings())
+        let settings = try engine.cardsWindowQueueSettings(activeHours: activeHours)
+        let lines = try engine.deckLines(of: listedTopDecks, with: settings)
         deckLines = lines.lines
         queuedTopDecks = lines.queue
     }
@@ -522,12 +524,14 @@ extension CardsWindowState {
 
 extension Engine {
     /// The settings the Cards window reads the queue new cards come from
-    /// with, as `ficha queue` reads it: those that decide progress, the pace
-    /// among them, as the database holds them, and Ficha's own for the rest,
-    /// such as active hours, which the window doesn't have.
-    func cardsWindowQueueSettings() throws(EngineError) -> ReviewSettings {
+    /// with: those that decide progress, the pace among them, as the
+    /// database holds them, `activeHours`, Settings' on this device, as the
+    /// review panel's settings hold them, so today's new cards end when they
+    /// do, and Ficha's own for the rest, which the queue doesn't read.
+    func cardsWindowQueueSettings(activeHours: Range<Int>) throws(EngineError) -> ReviewSettings {
         var settings = ReviewSettings.defaults
         settings.progress = try progressSettings()
+        settings.activeHours = activeHours
         return settings
     }
 

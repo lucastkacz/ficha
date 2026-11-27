@@ -527,6 +527,10 @@ public struct CardsWindowState: Sendable {
     /// The scheduling settings in Settings, which the cards stand by, and
     /// which give the intervals of a card's review log.
     public private(set) var scheduler: Scheduler
+    /// The active hours in Settings, this device's own, which the queue new
+    /// cards come from counts today's new cards by, as the review panel's
+    /// settings count them: the decks' finish dates and How fast?'s.
+    public private(set) var activeHours: Range<Int>
     /// What Lucas edits, until he saves or cancels.
     public private(set) var editing: Editing?
     /// The form that creates cards, while it's open: `CardForm.swift`.
@@ -597,9 +601,10 @@ public struct CardsWindowState: Sendable {
     /// Internal, for the window's parts in files of their own.
     let engine: Engine
 
-    init(engine: Engine, scheduler: Scheduler, lastDeckAddedTo: String) {
+    init(engine: Engine, scheduler: Scheduler, activeHours: Range<Int>, lastDeckAddedTo: String) {
         self.engine = engine
         self.scheduler = scheduler
+        self.activeHours = activeHours
         self.lastDeckAddedTo = lastDeckAddedTo
         now = engine.now
     }
@@ -1094,6 +1099,13 @@ public struct CardsWindowState: Sendable {
     /// added, by Start or meanwhile from another device, the sidebar chooses
     /// the deck, or All cards while Decks doesn't list it.
     public mutating func read(with scheduler: Scheduler) {
+        read(with: scheduler, activeHours: activeHours)
+    }
+
+    /// Reads the window as `read(with:)` does, with `activeHours` too,
+    /// Settings', which may have changed since the last read.
+    public mutating func read(with scheduler: Scheduler, activeHours: Range<Int>) {
+        self.activeHours = activeHours
         self.scheduler = scheduler
         now = engine.now
         offersFirstCards = false
@@ -1187,12 +1199,15 @@ private struct CardReviewLog: Sendable {
 extension Engine {
     /// Opens the Cards window on All cards, with nothing searched or
     /// selected, for Lucas's cards standing by `scheduler`, the settings in
-    /// Settings, which it reads once the window asks, remembering
+    /// Settings, which it reads once the window asks, with `activeHours`,
+    /// Settings' too, or Ficha's own while it's given none, remembering
     /// `lastDeckAddedTo`, the deck he last added a card to, as this device's
     /// preferences keep it: Default when they keep none.
-    public func openCardsWindow(with scheduler: Scheduler, lastDeckAddedTo: String = Deck.defaultName)
-        -> CardsWindowState
-    {
-        CardsWindowState(engine: self, scheduler: scheduler, lastDeckAddedTo: lastDeckAddedTo)
+    public func openCardsWindow(
+        with scheduler: Scheduler, activeHours: Range<Int> = ReviewSettings.defaults.activeHours,
+        lastDeckAddedTo: String = Deck.defaultName
+    ) -> CardsWindowState {
+        CardsWindowState(
+            engine: self, scheduler: scheduler, activeHours: activeHours, lastDeckAddedTo: lastDeckAddedTo)
     }
 }

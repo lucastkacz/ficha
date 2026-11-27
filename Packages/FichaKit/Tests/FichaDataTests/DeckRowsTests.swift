@@ -119,6 +119,30 @@ struct DeckRowsTests {
         #expect(window.deckRows.first { $0.id == "Lenguaje" }?.line == .metThemAll(cards: 1, days: 2))
     }
 
+    // La Gioconda came in the day before. At 9 in the morning, active hours
+    // that end at 9 bring no new card today, and those that end at 22 bring
+    // it today.
+    @Test(
+        "a deck's finish date counts today's new cards by the active hours the window is given, those in Settings, as the review panel's queue counts them",
+        .bug(id: 491))
+    func aFinishDateCountsTodayByTheActiveHours() throws {
+        time.move(to: try morning(of: 13, in: calendar))
+        try approveInDeck("La Gioconda", deck: "Arte", in: engine)
+        time.move(to: try morning(of: 14, in: calendar))
+        var settings = ReviewSettings.defaults
+        settings.activeHours = 6..<9
+        var window = engine.openCardsWindow(with: scheduler, activeHours: settings.activeHours)
+        window.read(with: scheduler)
+        let overForToday = window.deckRows.first { $0.id == "Arte" }?.line
+        let queued = try #require(try engine.queue(settings).first?.finish)
+
+        window.read(with: scheduler, activeHours: ReviewSettings.defaults.activeHours)
+
+        #expect(overForToday == .first(met: 0, of: 1, finish: queued.wording(now: time.now, calendar: calendar)))
+        #expect(overForToday != .first(met: 0, of: 1, finish: .day(.today)))
+        #expect(window.deckRows.first { $0.id == "Arte" }?.line == .first(met: 0, of: 1, finish: .day(.today)))
+    }
+
     // The Wednesday the 14th is today; the 20th, a Tuesday, is the last day
     // less than 7 days from today's start. Days 1 to 10 of a month are its
     // early third, 11 to 20 its mid third, and 21 on its late third.

@@ -190,6 +190,9 @@ struct CardsView: View {
             .onChange(of: model.settings.scheduler) {
                 readCards()
             }
+            .onChange(of: model.settings.activeHours) {
+                readCards()
+            }
             .onChange(of: model.debugTools?.timeShift) {
                 readCards()
             }
@@ -520,10 +523,10 @@ struct CardsView: View {
         .help(Text("Back to All Tags (⌘[)", comment: "The tooltip of the Cards window's Back button."))
     }
 
-    /// Reads Lucas's cards, as they are now, with the scheduling settings he
-    /// set.
+    /// Reads Lucas's cards, as they are now, with the scheduling settings and
+    /// the active hours he set.
     private func readCards() {
-        state.read(with: model.settings.scheduler)
+        state.read(with: model.settings.scheduler, activeHours: model.settings.activeHours)
     }
 
     /// Plays `playing`, the sound the window says plays, from the start, or

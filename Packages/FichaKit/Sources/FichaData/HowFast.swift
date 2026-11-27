@@ -186,7 +186,7 @@ extension CardsWindowState {
         guard !names.isEmpty else { return }
         do throws(EngineError) {
             let cards = try engine.cardsForHowFast(countingIn: names)
-            let settings = try engine.cardsWindowQueueSettings()
+            let settings = try engine.cardsWindowQueueSettings(activeHours: activeHours)
             question = .howFast(
                 HowFast(
                     about: names, line: comingIn == .newDeck ? .noCards : .imported(cardCount: cards.cardCount),

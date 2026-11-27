@@ -52,7 +52,7 @@ extension CardsWindowState {
         guard let file = shownFichaDeck else { return }
         do throws(EngineError) {
             let cards = try engine.cardsInReviewsForFichaDeck()
-            let settings = try engine.cardsWindowQueueSettings()
+            let settings = try engine.cardsWindowQueueSettings(activeHours: activeHours)
             question = .howFast(
                 HowFast(
                     adding: file, amongTopDecks: listedTopDecks, cards: cards, settings: settings, now: engine.now,
