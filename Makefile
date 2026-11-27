@@ -116,10 +116,10 @@ project: fsrs ## Generate Ficha.xcodeproj from project.yml (never edit it by han
 # scripts/xcodebuild.sh runs xcodebuild, waits for any other Xcode build on the
 # Mac, and keeps a failed build's output short.
 BUILD_NUMBER = $(or $(shell git rev-list --count HEAD),$(error No build number: git couldn't count this checkout's commits))
-XCODEBUILD_MAC = scripts/xcodebuild.sh -project Ficha.xcodeproj -scheme Ficha -derivedDataPath $(DERIVED) -quiet \
-	CURRENT_PROJECT_VERSION=$(BUILD_NUMBER)
-# The builds for this Mac, for Apple silicon alone.
-XCODEBUILD = $(XCODEBUILD_MAC) -destination 'platform=macOS,arch=arm64'
+XCODEBUILD_MAC = scripts/xcodebuild.sh -project Ficha.xcodeproj -scheme Ficha -quiet CURRENT_PROJECT_VERSION=$(BUILD_NUMBER)
+# The builds for this Mac, for Apple silicon alone, in the derived data they
+# share.
+XCODEBUILD = $(XCODEBUILD_MAC) -derivedDataPath $(DERIVED) -destination 'platform=macOS,arch=arm64'
 
 # Ficha Dev, and the real Ficha that `make upload` builds, sign with Lucas's
 # paid team, whose ID git ignores, in iPhone/Local.xcconfig, which
@@ -212,6 +212,11 @@ CHECKS += data-changes-test
 data-changes-test: ## Test the list make upload leaves of the changes to the cards' data, on a scratch repo.
 	scripts/test-data-changes.sh
 
+.PHONY: english-alone-test
+CHECKS += english-alone-test
+english-alone-test: ## Test the check make upload runs that the archive's app holds English alone, on apps made by hand, and that make upload runs it before the export.
+	scripts/test-english-alone.sh
+
 .PHONY: last-crash-test
 CHECKS += last-crash-test
 last-crash-test: ## Test make last-crash on a crash report written by hand.
@@ -281,8 +286,15 @@ on-main: ## Fail unless this checkout is on main, with nothing uncommitted, as G
 # neither the repo nor CI holds a secret. ExportOptions.plist keeps the build
 # to TestFlight's internal testers, and its number as the Makefile sets it.
 # Archiving and exporting with xcodebuild is Apple's documented way. The archive
-# holds a Ficha.app, which a widget's click or a ficha:// link must never open
-# in place of the installed one, on Lucas's cards, so the other copies go.
+# builds the app and its packages again, with the XCFramework `make fsrs` keeps,
+# in derived data of its own inside $(UPLOAD), which each upload deletes first:
+# the derived data the other builds share can keep what an earlier build left
+# there, such as the folders of languages Ficha no longer comes in, which an
+# archive built from it could carry (#518). The archive holds a Ficha.app, which
+# a widget's click or a ficha:// link must never open in place of the installed
+# one, on Lucas's cards, so the other copies go. Then, before the export,
+# scripts/english-alone.sh checks that the archive's app holds English alone,
+# and stops the upload when it doesn't; that check is our own.
 # Once the build is up, it lists what changed the cards' data since the last
 # upload, which reaches Lucas's cards when he installs this one, and tags the
 # build's commit with its version and build number, which the next upload
@@ -295,11 +307,12 @@ APP_VERSION = $(or $(shell sed -n 's/^[[:space:]]*MARKETING_VERSION:[[:space:]]*
 UPLOAD_TAG = v$(APP_VERSION)-$(BUILD_NUMBER)
 
 .PHONY: upload
-upload: on-main team project ## From main: archive the real Ficha, upload it to TestFlight, for its internal testers alone, list what changed the cards' data since the last upload, and tag its commit.
+upload: on-main team project ## From main: archive the real Ficha in derived data of its own, stop unless it holds English alone, upload it to TestFlight, for its internal testers alone, list what changed the cards' data since the last upload, and tag its commit.
 	rm -rf $(UPLOAD)
-	$(XCODEBUILD_MAC) -configuration Release -destination 'generic/platform=macOS' \
-		-archivePath $(UPLOAD)/Ficha.xcarchive $(SIGNING) archive
+	$(XCODEBUILD_MAC) -derivedDataPath $(UPLOAD)/DerivedData -configuration Release \
+		-destination 'generic/platform=macOS' -archivePath $(UPLOAD)/Ficha.xcarchive $(SIGNING) archive
 	@scripts/unregister-other-copies.sh Ficha.app /Applications/Ficha.app
+	@scripts/english-alone.sh $(UPLOAD)/Ficha.xcarchive/Products/Applications/Ficha.app
 	xcodebuild -exportArchive -archivePath $(UPLOAD)/Ficha.xcarchive -exportOptionsPlist ExportOptions.plist \
 		-exportPath $(UPLOAD)/export -allowProvisioningUpdates || { \
 		echo "The export to App Store Connect failed, as the lines above say. \"No Accounts\" means xcodebuild can't reach your account: open Xcode › Settings › Accounts, sign in again if it asks, and run make upload again." >&2; \
