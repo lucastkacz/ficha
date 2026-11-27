@@ -28,10 +28,10 @@ The user's words, from building works, kept in Spanish where the user sees them.
 - **Node** (nodo): one point of that tree, of any size: a leaf, or `Mac › UI` whole. `/construir` builds a node.
 - **Replanteo**: setting each issue against today's code before it's built, as a site's layout is set out again before work starts, to find what changed since it was decided: `/construir`'s step 2.
 - **Change order** (orden de cambio): a change to the plano, found while building, that the user approves before the work goes on: `/construir`'s step 2 makes one, and [`artifacts.md`](artifacts.md) shows its page.
-- **As built** (conforme a obra): after the merge, the decision, its issues, the pliego and the plano tell what was built, not what was planned.
+- **As built** (conforme a obra): after the merge, the decision, its issues, the pliego and the plano tell what was built, not what was planned: `/entregar`'s step 1.
 - **Probe** (prueba): a Task that settles an open item by trying it on the machine it's about, such as whether a rented machine can draw the pictures, before the issue that depends on it is written: `/decision`'s step 3 writes one, and takes up what its PR found.
 - **Sideways** (se torció): a check that failed more than once, a replanteo or a change order that stopped the work, the user correcting the work, a procedure written for agents that couldn't run on its machine, or a node that took far longer than its size: what `/construir`'s step 5 writes in the PR, and `/entregar`'s step 3 looks back at.
-- **Recorrida**: a walk through the work as it stands, as a site's director walks the site before work resumes: what was done since the last one and why, where each node stands, and what comes next.
+- **Recorrida**: a walk through the work as it stands, as a site's director walks the site before work resumes: what was done since the last one and why, where each node stands, and what comes next: `/recorrida`.
 
 ## What the user sees
 
