@@ -152,13 +152,16 @@ final class HowFastTests {
         #expect(try engine.decks().map(\.name) == ["Arte", "Historia"])
     }
 
-    // Coliseo waits in Historia, new. The first file only updates it; the
-    // second brings two cards into Arte, one of them inside Arte::Barroco.
+    // Coliseo waits in Historia, new, from a minute before the imports, so
+    // Historia goes ahead of a deck they bring. The first file only updates
+    // it; the second brings two cards into Arte, one of them inside
+    // Arte::Barroco.
     @Test(
         "How fast? opens once the Import sheet's Done closes it after an import that brought new cards into one deck, for that deck, and not after one that brought none",
         .bug(id: 491))
     func howFastAfterAnImport() async throws {
         try approveInDeck("Coliseo", deck: "Historia", in: engine)
+        time.advance(by: minutes(1))
         let update = try write("Repaso.txt", "Coliseo\tEn Roma, del siglo I.\n")
         let arte = try write(
             "Arte.txt",
