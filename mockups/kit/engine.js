@@ -335,6 +335,9 @@
             mem: null,
             due: null,
             last: null,
+            // Its review log, oldest first: when it was rated, how, and how
+            // long it waits after, as the Cards window's Details lists it.
+            reviewLog: [],
           }),
         );
       }
@@ -743,6 +746,8 @@
         intro.count++;
       }
       Object.assign(card, rate(card, g, now, this.scheduler));
+      // A new array, so that undo's copy keeps the log as it was.
+      card.reviewLog = [...(card.reviewLog || []), { t: now, g, wait: card.due - now }];
       const deck = this.deck(card.deckId);
       if (wasNew && this.newLeft(deck.id) === 0) {
         deck.metAllAt = now;

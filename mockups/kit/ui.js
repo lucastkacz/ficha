@@ -180,6 +180,15 @@
       onClick=${onClick}>${icon()}</button>`;
   const Capsule = ({ children, tint }) => html`<span className=${tint ? 'capsule tint' : 'capsule'}>${children}</span>`;
   const Divider = () => html`<hr className="divider" />`;
+  /**
+   * DisclosureGroup: its label after a triangle, ▸ closed and ▾ open, which a
+   * click on either toggles, as Space does once Tab gives it the focus, with
+   * what it holds under it while it's open. `open` and `onChange` keep it in
+   * the page's state, as `isExpanded` does in the app.
+   */
+  const DisclosureGroup = ({ label, open, onChange, children }) =>
+    html`<details className="disclosure" open=${open} onToggle=${(e) => onChange(e.currentTarget.open)}>
+      <summary>${label}</summary><div className="disclosure-content">${children}</div></details>`;
   /** Picker with .pickerStyle(.segmented). */
   const Segmented = ({ options, value, onChange, label }) =>
     html`<div className="segmented" role="group" aria-label=${label}>
@@ -890,6 +899,7 @@
     KeyLabel,
     Capsule,
     Divider,
+    DisclosureGroup,
     Segmented,
     Stage,
     MenuBar,

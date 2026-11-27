@@ -15,7 +15,7 @@ No step of `make check` builds or reads this folder: the pages run in a browser,
 
 | Mock | Artifact | What it explores |
 |---|---|---|
-| `desktop/` | [Ficha Desktop Mock](https://claude.ai/artifact/D9dTXwJWK5gNsFp36y2XrU) | Ficha as ADRs 0033 to 0035 and 0039 decided it: the review panel's card alone with Forgot, a yellow Kind of and Got it (#489, #517), and its four buttons before as a variant; the Welcome page with Ficha's decks (#467, #458); the Cards window's decks in their queue, each deck's cards as a grid, its front's picture or its text, with the selected card's detail beside it (#536), and How fast? as a deck comes in (#491); Settings in five tabs, each row where Lucas approved it on 2026-11-25 and marked with the tab it was in (#492). As before: the panel over a working day on a fast clock, a meeting, a video or a full-screen app that holds an appearance back, the menu, Capture and the card size, on a Mac's real screen sizes. It starts at the first launch, or 25 days in. |
+| `desktop/` | [Ficha Desktop Mock](https://claude.ai/artifact/D9dTXwJWK5gNsFp36y2XrU) | Ficha as ADRs 0033 to 0035 and 0039 decided it: the review panel's card alone with Forgot, a yellow Kind of and Got it (#489, #517), and its four buttons before as a variant; the Welcome page with Ficha's decks (#467, #458); the Cards window's decks in their queue, each deck's cards as a grid, its front's picture or its text, with the selected card's detail beside it (#536), which says in words when the card is back and how many times it was seen, its numbers under Details (#537), and How fast? as a deck comes in (#491); Settings in five tabs, each row where Lucas approved it on 2026-11-25 and marked with the tab it was in (#492). As before: the panel over a working day on a fast clock, a meeting, a video or a full-screen app that holds an appearance back, the menu, Capture and the card size, on a Mac's real screen sizes. It starts at the first launch, or 25 days in. |
 | `lab/` | [Ficha Lab](https://claude.ai/artifact/9frTfAJnYsNJukGgK8E1jd) | Not a screen: four or twelve weeks of Ficha in a made-up working life, A against B, Ficha as decided against Ficha before the decision to start with. What a setting costs (appearances and minutes a weekday, meetings it waits out) and what it gives (cards met, each deck's day all met, graduated, how often a review is remembered), day by day. |
 
 ## How it's built
@@ -27,7 +27,7 @@ No build step: React 18.3.1 from cdnjs and htm 3.1.1 from jsDelivr, pinned, so c
 | `kit/tokens.css` | Colors, type and shapes, named as macOS names them, in light and dark. |
 | `kit/ui.css` | The look of macOS 26 controls, Liquid Glass, the review panel, and the mock's own bar. |
 | `kit/ui.js` | React components named after their SwiftUI counterparts, the fake Mac, and `MockControls`. |
-| `kit/engine.js` | The toy engine: FSRS-6, the learning steps, the appearance rules, the clock, and the pace, the queue and the finish date. Plain JavaScript, so it also runs in Node. |
+| `kit/engine.js` | The toy engine: FSRS-6, the learning steps, the appearance rules, the clock, the pace, the queue and the finish date, and each card's review log. Plain JavaScript, so it also runs in Node. |
 | `kit/decks.js` | Ficha's three decks, `ficha: true`, with the cards the app ships in `App/FichaDecks/`, which the Claude project's `build_decks.py` writes between its `// <ficha-decks>` lines, from `/mnt/project-files/mazos-ficha/build/` in its sessions (`PLIEGO.md`, An artifact's sources), and a made-up deck of the user's own. |
 | `kit/lab.js` | The Lab's simulator: weeks of the toy engine in a made-up life (the Mac's hours, meetings, snoozed appearances, ratings as FSRS predicts), run several times and averaged. Plain JavaScript; the Lab page and `tools/simulate.js` share it. |
 
@@ -45,12 +45,14 @@ No build step: React 18.3.1 from cdnjs and htm 3.1.1 from jsDelivr, pinned, so c
 | `IconButton` | `.labelStyle(.iconOnly)`, `.buttonStyle(.borderless)` |
 | `KeyLabel`, `Capsule` | `KeyLabel`, `capsuleLook(tintedWith:)` (`App/TagCapsule.swift`) |
 | `Segmented` | `Picker` with `.pickerStyle(.segmented)` |
+| `DisclosureGroup` | `DisclosureGroup(isExpanded:)` |
 | `MenuContent` | `App/MenuContent.swift` |
 | `ReviewPanelView` | `App/ReviewPanelView.swift`, placed as `ReviewPanelWindow` places it: centered, 40 points under the menu bar; its `face` 'new' is the app's since #489, with #517's three buttons, and 'today' the app's before #489 |
 | `CaptureView` | `App/CaptureView.swift` |
 | `WelcomePage`, in `desktop/` | `App/WelcomePage.swift`, with #467's steps |
 | `CardsWindow` and `HowFast`, in `desktop/` | `App/Cards/CardsView.swift`'s deck rows and `App/Cards/HowFastSheet.swift`, since #491 |
 | `CardsWindow`'s grid of tiles, its legend and `dotOf`, in `desktop/` | `App/Cards/CardGrid.swift`, with FichaData's `CardsWindowState.Tile` deciding each tile's face and dot, since #536 |
+| `CardsWindow`'s card pane, `backWords`, `seenWords` and `CardNumbers`, in `desktop/` | `App/Cards/CardsDetail.swift`'s `CardDetail`, with FichaData's `CardsWindowState.wording(of:)` deciding its words, and Details' numbers and review log, `App/ReviewLogView.swift`, since #537 |
 | `formatFinish` and `metBy`, a finish date's words | FichaData's `FinishDate.wording(now:calendar:)`, as `App/Cards/HowFastSheet.swift` writes it, since #491 |
 | `SettingsWindow`, in `desktop/` | `App/SettingsTabViewController.swift`, `App/SettingsTabViews.swift`, `App/BackupsSettings.swift` and `App/SyncSettings.swift`, in #492's five tabs, each row where FichaData's `SettingsTabs.swift` places it; the Pace tab's paces and queue, FichaData's `PaceTab.swift` |
 

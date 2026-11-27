@@ -142,6 +142,18 @@
   .cards.with-detail { grid-template-columns: 230px 1fr 240px; }
   .cards .card-pane { min-width: 0; margin-bottom: 10px; padding: 6px 14px 18px; border-left: 1px solid var(--separator); overflow: auto; display: flex; flex-direction: column; gap: 8px; }
   .cards .card-pane .none { margin: auto; color: var(--secondary-label); font-size: var(--text-callout); text-align: center; }
+  /* The card in words, and its numbers under Details (#537). */
+  .cards .card-pane .words { display: flex; flex-direction: column; gap: 2px; padding-top: 2px; }
+  .cards .card-pane .disclosure > summary { color: var(--secondary-label); font-size: var(--text-callout); font-weight: 600; }
+  .cards .numbers { display: grid; grid-template-columns: max-content 1fr; gap: 3px 10px; margin: 0; font-size: var(--text-callout); }
+  .cards .numbers dt { color: var(--secondary-label); text-align: right; }
+  .cards .numbers dd { margin: 0; }
+  .cards .numbers .when { display: block; }
+  .cards .review-log { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 3px; font-size: var(--text-callout); }
+  .cards .review-log li { display: grid; grid-template-columns: 1fr max-content max-content; gap: 8px; }
+  .cards .review-log i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 4px; vertical-align: 1px; }
+  .cards .review-log .ivl { color: var(--secondary-label); font-variant-numeric: tabular-nums; text-align: right; }
+  .cards .card-pane .disclosure-content > .sub { margin-top: 8px; font-size: var(--text-callout); }
   .cards .sides { display: flex; flex-direction: column; gap: 8px; }
   .cards .side { min-width: 0; padding: 8px 10px; border-radius: 8px; background: var(--fill); white-space: pre-line; }
   .cards .side small { display: block; color: var(--secondary-label); font-size: var(--text-footnote); }
@@ -244,7 +256,8 @@
   const {
     html, Icon, useStore, useClock, useTheme, useScreen, Stage, MenuBar, Menu, MenuContent,
     ReviewPanelView, CaptureView, DocumentWindow, CallWindow, VideoWindow, Dock, DOCK, Window, Button, Capsule, Divider,
-    DeskToast, MockControls, HudGroup, HudChoice, CardPicture, formatDay, formatTime, formatFinish, metBy,
+    DisclosureGroup, DeskToast, MockControls, HudGroup, HudChoice, CardPicture, formatDay, formatTime, formatFinish,
+    metBy,
   } = FichaUI;
   const E = FichaEngine;
   const listFmt = new Intl.ListFormat('en', { type: 'conjunction' });
@@ -396,7 +409,9 @@
 
   // ---------------------------------------------------------------------
   // CardsWindow: the decks, in their queue, and Ficha's decks to add; a
-  // deck's cards as a grid, each its front's picture or its text (#536).
+  // deck's cards as a grid, each its front's picture or its text (#536);
+  // and the selected card's detail, which says in words when it's back and
+  // how many times it was seen, with its numbers under Details (#537).
   // ---------------------------------------------------------------------
   /** A deck's line, as its row says it (#491). */
   function deckStatus(app, state, d) {
@@ -417,10 +432,48 @@
   }
   /** A tile's dot: met, due, or none while the card is new. */
   const dotOf = (c, now) => (c.state === 'new' ? null : c.due <= now ? 'due' : 'met');
-  function nextReview(c, now) {
-    if (c.state === 'new') return 'New';
-    if (c.due <= now) return 'Due';
-    return E.startOfDay(c.due) === E.startOfDay(now) ? formatTime(c.due) : formatDay(c.due);
+  /**
+   * When a card the user has met is back, as the app's detail says it
+   * (#537): due now, later today at a time, on a later day, or not while
+   * it's out of the reviews, buried or with its deck set aside. Its days
+   * are Ficha's, as the engine's startOfDay counts them.
+   */
+  function backWords(c, outOfReviews, now) {
+    if (outOfReviews) return 'Out of your reviews';
+    if (c.due <= now) return 'Due now';
+    return E.startOfDay(c.due) === E.startOfDay(now) ? `Back today at ${formatTime(c.due)}` : `Back on ${formatDay(c.due)}`;
+  }
+  /** How many times the user has seen a card, as the detail says it. */
+  const seenWords = (n) => (n === 0 ? 'Not seen in Ficha yet' : n === 1 ? 'Seen once' : `Seen ${n} times`);
+  /** Anki's four ratings, as the review log names and colors them. */
+  const RATINGS = { 1: ['Again', 'var(--red)'], 2: ['Hard', 'var(--orange)'], 3: ['Good', 'var(--green)'], 4: ['Easy', 'var(--accent)'] };
+  /**
+   * What a card's Details hold, as the app's detail has them under its
+   * disclosure (#537): its interval, when it's due, FSRS's stability,
+   * difficulty, as Anki shows it, and retrievability, when it was last seen
+   * and how many times, and its review log, the latest first.
+   */
+  function CardNumbers({ card: c, outOfReviews, now }) {
+    const interval = c.state === 'new' ? 'New' : c.state === 'learning' ? 'Learning' : E.formatInterval(c.due - c.last);
+    const rows = [['Interval', interval]];
+    if (c.state !== 'new' && !outOfReviews) {
+      rows.push(['Due', html`${c.due <= now ? 'now' : `in ${E.formatInterval(c.due - now)}`} <span className="sub when">${formatDay(c.due)}, ${formatTime(c.due)}</span>`]);
+    }
+    if (c.mem) {
+      rows.push(['Stability', `${c.mem.S.toFixed(1)} days`]);
+      rows.push(['Difficulty', `${Math.round(((c.mem.D - 1) / 9) * 100)}%`]);
+      rows.push(['Retrievability', `${Math.round(E.FSRS.retrievability((now - c.last) / E.DAY, c.mem.S) * 100)}%`]);
+    }
+    if (c.last != null) rows.push(['Last seen', `${formatDay(c.last)}, ${formatTime(c.last)}`]);
+    rows.push(['Reviews', String(c.reps || 0)]);
+    const log = c.reviewLog || [];
+    return html`<dl className="numbers">${rows.map(([k, v]) => html`<dt key=${`${k}-t`}>${k}</dt><dd key=${`${k}-d`}>${v}</dd>`)}</dl>
+      ${log.length
+        ? html`<ol className="review-log">${[...log].reverse().map((r, i) => html`<li key=${i}>
+            <span className="sub">${formatDay(r.t)}, ${formatTime(r.t)}</span>
+            <span><i style=${{ background: RATINGS[r.g][1] }} />${RATINGS[r.g][0]}</span>
+            <span className="ivl">${E.formatInterval(r.wait)}</span></li>`)}</ol>`
+        : html`<p className="sub">No reviews yet</p>`}`;
   }
 
   function CardsWindow({ app, state, request, ...win }) {
@@ -435,6 +488,9 @@
     const [sheet, setSheet] = useState(null);
     const [cardId, setCardId] = useState(null);
     useEffect(() => setCardId(null), [selected]);
+    // Whether the card's Details are open: closed as the window opens, and
+    // kept from card to card, as the app's window keeps it (#537).
+    const [detailsOpen, setDetailsOpen] = useState(false);
     const [pace, setPace] = useState(state.pace);
     const [first, setFirst] = useState(false);
     const openSheet = (id) => (setSheet(id), setPace(app.state.pace), setFirst(false));
@@ -468,6 +524,7 @@
     const current = app.currentDeck();
     const cards = making ? [] : app.deckCards(deck.id);
     const chosenCard = cards.find((c) => c.id === cardId);
+    const chosenOutOfReviews = Boolean(chosenCard) && (deck.setAside || state.buried[chosenCard.id] > state.now);
     const sheetDeck = sheet && (sheet === NEW ? deck : app.deck(sheet));
     const row = (d) => {
       const st = deckStatus(app, state, d);
@@ -525,7 +582,11 @@
         ${browsing && html`<aside className="card-pane" aria-label="The card's detail">
           ${chosenCard ? html`<div className="sides"><div className="side"><small>Front</small>${chosenCard.picture ? html`<${CardPicture} card=${chosenCard} />` : chosenCard.front}</div>
               <div className="side"><small>Back</small>${chosenCard.back}</div></div>
-            <p className="sub">${chosenCard.state === 'new' ? 'New: it waits its turn in the queue.' : `Next review: ${nextReview(chosenCard, state.now)}`}</p>`
+            <div className="words">${chosenCard.state === 'new'
+              ? html`<p>New: it waits its turn in the queue.</p>`
+              : html`<p>${backWords(chosenCard, chosenOutOfReviews, state.now)}</p><p className="sub">${seenWords(chosenCard.reps || 0)}</p>`}</div>
+            <${DisclosureGroup} label="Details" open=${detailsOpen} onChange=${setDetailsOpen}>
+              <${CardNumbers} card=${chosenCard} outOfReviews=${chosenOutOfReviews} now=${state.now} /></${DisclosureGroup}>`
           : html`<p className="none">No card selected</p>`}</aside>`}
         ${sheetDeck && html`<div className="sheet-cover"><div className="sheet" role="dialog" aria-label="How fast?">
           <div className="deck-head"><span className="deck-emoji">${sheetDeck.emoji}</span>
