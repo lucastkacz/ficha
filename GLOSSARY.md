@@ -49,6 +49,14 @@ _Avoid_: no deck, unsorted, inbox
 The three small decks Ficha comes with, in Spanish for now, which the user picks at the Welcome page or later, in the Cards window. Once added, a deck is the user's like any other, and an update of the app doesn't touch it. The user has added one while any of its cards, front and back, is among theirs, in whatever deck; deleting all of them offers it again.
 _Avoid_: sample cards, starter deck, preset
 
+**Description**:
+One or two lines a deck has on what it holds, such as which years Arte argentino spans, which the user sees as they choose a deck and above its cards. Any deck can have one, Ficha's or the user's, and the user writes or changes it as they give a deck its emoji.
+_Avoid_: blurb, about, summary, subtitle
+
+**Deck's file**:
+A deck as one file, named after it with `.ficha`: its cards, their images and sounds, its emoji and its description, never the user's progress. Ficha's decks come as one; Share Deck… sends one to someone else, who opens it with a double-click or Open Deck…, and an agent makes one with `ficha deck export`.
+_Avoid_: package, zip, bundle
+
 **Tag**:
 A label a card carries, which can cross decks, like "Renaissance" or "inflación"; a card can have several, or none. A tag can sit inside another, its parent, as "Argentina" does in "países › Argentina".
 _Avoid_: topic, category, deck, subtag, nested tag
