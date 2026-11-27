@@ -62,7 +62,7 @@ struct DeckRowsTests {
                 .first(met: 1, of: 4, finish: .day(.today)),
                 .noCards,
                 .next(finish: .dayOrNext(.tomorrow, .weekday(6))),
-                .metThemAll,
+                .metThemAll(cards: 1, days: 1),
                 .setAside(met: 1, of: 2),
             ])
         #expect(window.deckRows.first { $0.id == "Arte" }?.children.map(\.line) == [nil])
@@ -88,7 +88,7 @@ struct DeckRowsTests {
         window.read(with: scheduler)
 
         #expect(beforeBackFirst == .first(met: 1, of: 1, finish: .day(.today)))
-        #expect(window.deckRows.first { $0.id == "Lenguaje" }?.line == .metThemAll)
+        #expect(window.deckRows.first { $0.id == "Lenguaje" }?.line == .metThemAll(cards: 1, days: 2))
     }
 
     // The Wednesday the 14th is today; the 20th, a Tuesday, is the last day

@@ -2429,6 +2429,59 @@
     "Met them all" : {
       "comment" : "Under a deck's name in the Cards window's sidebar: every card of the deck is met."
     },
+    "Met them all · %lld cards in %lld days" : {
+      "comment" : "Under a deck's name in the Cards window's sidebar: every card of the deck is met, with how many cards it has, and in how many days, from the day its first card came in to the day its last was met.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Met them all · %#@cards@ in %#@days@"
+          },
+          "substitutions" : {
+            "cards" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg card"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg cards"
+                    }
+                  }
+                }
+              }
+            },
+            "days" : {
+              "argNum" : 2,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg day"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg days"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "Microphone" : {
       "comment" : "A detector in Diagnostics: the microphones in use."
     },

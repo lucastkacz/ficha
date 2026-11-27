@@ -89,7 +89,7 @@ struct MetThemAllTests {
         window.read(with: settings.scheduler)
 
         #expect(panel.metThemAll?.decks.map(\.name) == ["Arte"])
-        #expect(window.deckRows.first { $0.id == "Arte" }?.line == .metThemAll)
+        #expect(window.deckRows.first { $0.id == "Arte" }?.line == .metThemAll(cards: 2, days: 1))
     }
 
     // Lenguaje's ubuntu was met already, so Arte is the only deck in the

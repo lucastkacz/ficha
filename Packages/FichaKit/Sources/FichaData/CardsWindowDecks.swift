@@ -73,9 +73,14 @@ extension CardsWindowState {
             case noCards
             /// "Set aside · 9 of 14 met": the deck is set aside.
             case setAside(met: Int, of: Int)
-            /// "Met them all": the deck is met in full, out of the queue, as
-            /// `CardsInReviews.decksMetInFull` says.
-            case metThemAll
+            /// "Met them all · 14 cards in 9 days": the deck is met in full,
+            /// out of the queue, as `CardsInReviews.decksMetInFull` says,
+            /// with its cards, all of them, whatever their standing, and the
+            /// calendar days from the one its first card came in to the one
+            /// its last way was met, both counted; or "Met them all" alone
+            /// without them, as when an import's reviews from Anki come
+            /// before its cards came in.
+            case metThemAll(cards: Int, days: Int?)
             /// "9 of 14 · on track for early December": the deck is first in
             /// the queue, the one new cards come from now, with its finish
             /// date.
@@ -507,21 +512,52 @@ extension Engine {
     /// their titles in the Cards window's sidebar (#491), by their whole
     /// names, now, in one read: out of every card, whatever its standing, how
     /// many of each deck's are met, as `CardsInReviews.metCards(in:)` says;
-    /// which decks are met in full, as `CardsInReviews.decksMetInFull` says;
-    /// and the queue new cards come from, with `settings`' pace, as
-    /// `queue(_:)` reads it, with its finish dates as they read by the
-    /// engine's calendar.
+    /// which decks are met in full, as `CardsInReviews.decksMetInFull` says,
+    /// each with the days from when its first card came in to when its last
+    /// way was met, each way met at its first entry; and the queue new cards
+    /// come from, with `settings`' pace, as `queue(_:)` reads it, with its
+    /// finish dates as they read by the engine's calendar.
     fileprivate func deckLines(of decks: [Deck], with settings: ReviewSettings) throws(EngineError)
         -> [String: CardsWindowState.DeckRow.Line]
     {
         let now = time.now
         return try read { db in
-            let met = CardsInReviews.metCards(in: try logEntries(in: db))
+            let log = try logEntries(in: db)
+            let met = CardsInReviews.metCards(in: log)
+            var metAt: [CardWay: Date] = [:]
+            for entry in log {
+                let way = CardWay(cardID: entry.cardID, way: entry.way)
+                metAt[way] = min(metAt[way] ?? entry.answeredAt, entry.answeredAt)
+            }
             var counts: [String: (met: Int, of: Int)] = [:]
+            var cameIn: [String: Date] = [:]
+            var lastMet: [String: Date] = [:]
             for card in try allCards(in: db) {
                 let top = TagPath.top(of: card.deck)
                 counts[top, default: (0, 0)].of += 1
                 counts[top, default: (0, 0)].met += met.contains(card.id) ? 1 : 0
+                cameIn[top] = min(cameIn[top] ?? card.createdAt, card.createdAt)
+                for way in [Way.frontFirst, .backFirst] {
+                    if let at = metAt[CardWay(cardID: card.id, way: way)] {
+                        lastMet[top] = max(lastMet[top] ?? at, at)
+                    }
+                }
+            }
+            /// The calendar days `deck` took to be met in full, counting the
+            /// day its first card came in and the day its last way was met:
+            /// nil without both, or when the log's last first entry comes
+            /// before the first card, as an import's reviews from Anki can.
+            func daysToMeet(_ deck: String) -> Int? {
+                guard let first = cameIn[deck], let last = lastMet[deck] else {
+                    return nil
+                }
+                let start = calendar.startOfDay(for: first)
+                guard let days = calendar.dateComponents([.day], from: start, to: calendar.startOfDay(for: last)).day,
+                    days >= 0
+                else {
+                    return nil
+                }
+                return days + 1
             }
             let inReviews = try cardsThatShowUp(in: db).inReviews
             let metInFull = inReviews.decksMetInFull
@@ -537,7 +573,7 @@ extension Engine {
                     } else if deck.isSetAside {
                         .setAside(met: count.met, of: count.of)
                     } else if metInFull.contains(deck.name) {
-                        .metThemAll
+                        .metThemAll(cards: count.of, days: daysToMeet(deck.name))
                     } else if let finish {
                         place == 0 ? .first(met: count.met, of: count.of, finish: finish) : .next(finish: finish)
                     } else {

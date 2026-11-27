@@ -2175,8 +2175,9 @@ private struct DeckBranch: View {
 
 extension CardsWindowState.DeckRow.Line {
     /// What a deck's row says under its title in the sidebar, as the state
-    /// words it: "9 of 14 · on track for early December", "Next · on track
-    /// for mid-December".
+    /// words it, and as the mock's `deckStatus` does: "9 of 14 · on track for
+    /// early December", "Next · on track for mid-December", "Met them all ·
+    /// 14 cards in 9 days".
     var text: String {
         switch self {
         case .noCards:
@@ -2185,7 +2186,15 @@ extension CardsWindowState.DeckRow.Line {
             String(
                 localized: "Set aside · \(met) of \(total) met",
                 comment: "Under a set-aside deck's name in the Cards window's sidebar: how many of its cards are met.")
-        case .metThemAll:
+        case .metThemAll(let cards, let days?):
+            String(
+                localized: "Met them all · \(cards) cards in \(days) days",
+                comment: """
+                    Under a deck's name in the Cards window's sidebar: every card of the deck is met, with how many \
+                    cards it has, and in how many days, from the day its first card came in to the day its last was \
+                    met.
+                    """)
+        case .metThemAll(_, nil):
             String(
                 localized: "Met them all",
                 comment: "Under a deck's name in the Cards window's sidebar: every card of the deck is met.")
