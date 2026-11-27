@@ -29,7 +29,7 @@ In Settings you pick the hours, how many cards come at a time and how far apart,
   <img src="docs/images/card-back.png" width="49%" alt="The same card turned over: Antonio Machado wrote it in “Campos de Castilla”, and its meaning, with the buttons Forgot and Got it.">
 </p>
 
-A card shows its front first. Try to remember what's on the back, press Space to turn it over, and say whether you remembered it: 1 for "Forgot", or Space for "Got it". The panel shows the card alone, with those two buttons. It takes a few seconds, and every button has its key, so you never need the mouse. If you come from Anki, its four keys still work: 2 for "Hard", 3 for "Good", as Space, and 4 for "Easy". A card you haven't met yet comes the same way, its buttons named "New to me" and "Knew it": try to remember its back too, even if you can't yet, and say which.
+A card shows its front first. Try to remember what's on the back, press Space to turn it over, and say whether you remembered it: 1 for "Forgot", or Space for "Got it". The panel shows the card alone, with those two buttons. It takes a few seconds, and everything you do with a card has its key, so you never need the mouse. If you come from Anki, its four keys still work: 2 for "Hard", 3 for "Good", as Space, and 4 for "Easy". A card you haven't met yet comes the same way, its buttons named "New to me" and "Knew it": try to remember its back too, even if you can't yet, and say which.
 
 A card can also go both ways, as a word and its translation do. Once you've met it, it comes back first too, marked "Back first": the back on top, and you try to remember the front. Each way is spaced on its own, and the first time it comes back first its buttons say "New to me" and "Knew it" too.
 

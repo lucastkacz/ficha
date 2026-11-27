@@ -7,32 +7,31 @@ import SwiftUI
 /// once flipped, its lower side under it, the card alone, with no deck, tags
 /// or intervals (ADR 0033). A card shows front first, or, when it goes both
 /// ways, back first too, with the back on top and a "Back first" mark, and a
-/// review ahead is marked "Ahead". Every action has a key: Space flips a
-/// card, and then two buttons answer it, Forgot, on 1, and Got it, on Space,
-/// named New to me and Knew it on a new way's first review (`AnswerButton`),
-/// while 2, 3 and 4 still rate it hard, good and easy, as a small line under
-/// them says of 2 and 4. A ⋯ menu in the corner offers the rest, each also on
-/// its key: A asks a question about the card, which waits in the inbox as a
-/// follow-up, M flags it with a note, E buries it (`CardAction`), ⌘Z undoes
-/// the last thing Lucas did, and Esc closes the panel, which snoozes an
-/// appearance. A side with a sound has a ▶ under its text, which plays it and
-/// shows ■ while it plays, and R plays or stops the lower side's sound once
-/// it shows, or else the upper side's. When 1 makes a card forgotten often,
-/// the panel offers to flag it, its note written: Enter flags it, and Esc
-/// leaves it in his reviews. Once Lucas went through every card, the
-/// panel stays open until he closes it, says "You've met them all" for each
-/// deck whose last new card he met in it, with the next deck in the queue,
-/// or, while nothing waits there, a button for one of Ficha's decks, which
-/// opens the Cards window to add it, and offers more cards if there are
-/// any, which Enter brings; review now with nothing due offers to review
-/// ahead the same way. A card taller than the panel's maximum
-/// height scrolls between the line at its top and what's under it, which
-/// stay in view. A card's text and images show at the card size, which ⌘+, ⌘−
-/// and ⌘0 change (`ReviewPanelWindow`), and above 100% the panel widens with
-/// them; its buttons, a sound's ▶, the note's and the question's fields and its
-/// messages stay their size, as Anki's bottom bar does. `ReviewPanelState`
-/// decides what the panel shows and what happens when Lucas acts, and the view
-/// draws it.
+/// review ahead is marked "Ahead". Every action on a card has a key: Space
+/// flips a card, and then two buttons answer it, Forgot, on 1, and Got it, on
+/// Space, named New to me and Knew it on a new way's first review
+/// (`AnswerButton`), while 2, 3 and 4 still rate it hard, good and easy, as a
+/// small line under them says of 2 and 4. A ⋯ menu in the corner offers the
+/// rest, each also on its key: A asks a question about the card, which waits
+/// in the inbox as a follow-up, M flags it with a note, E buries it
+/// (`CardAction`), ⌘Z undoes the last thing Lucas did, and Esc closes the
+/// panel, which snoozes an appearance. A side with a sound has a ▶ under its
+/// text, which plays it and shows ■ while it plays, and R plays or stops the
+/// lower side's sound once it shows, or else the upper side's. When 1 makes a
+/// card forgotten often, the panel offers to flag it, its note written: Enter
+/// flags it, and Esc leaves it in his reviews. Once Lucas went through every
+/// card, the panel stays open until he closes it, says "You've met them all"
+/// for each deck whose last new card he met in it, with the next deck in the
+/// queue, or, while nothing waits there, a button for one of Ficha's decks,
+/// which opens the Cards window to add it, and offers more cards if there are
+/// any, which Enter brings; review now with nothing due offers to review ahead
+/// the same way. A card taller than the panel's maximum height scrolls between
+/// the line at its top and what's under it, which stay in view. A card's text
+/// and images show at the card size, which ⌘+, ⌘− and ⌘0 change
+/// (`ReviewPanelWindow`), and above 100% the panel widens with them; its
+/// buttons, a sound's ▶, the note's and the question's fields and its messages
+/// stay their size, as Anki's bottom bar does. `ReviewPanelState` decides what
+/// the panel shows and what happens when Lucas acts, and the view draws it.
 struct ReviewPanelView: View {
     /// The corner radius of the panel's glass, with continuous corners. The
     /// panel's window clips its content to it, which matches the glass while
