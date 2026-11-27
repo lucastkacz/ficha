@@ -1809,7 +1809,10 @@ func metThemAllPanelWindow(model: AppModel, offersFichaDeck: Bool = false) throw
             type: nil, front: "La Gioconda", back: "De Leonardo da Vinci, en el Louvre.", tags: [], source: nil)
     else {
         throw RenderError(
-            description: "The card the tool adds to Arte has a blank front or back: fix metThemAllPanelWindow(model:).")
+            description: """
+                The card the tool adds to Arte has a blank front or back: fix \
+                metThemAllPanelWindow(model:offersFichaDeck:).
+                """)
     }
     let card = try model.engine.create(content, deck: "Arte")
     try model.engine.setEmoji(try Emoji("🎨"), ofDeck: "Arte")
@@ -1817,7 +1820,10 @@ func metThemAllPanelWindow(model: AppModel, offersFichaDeck: Bool = false) throw
     let panel = model.startAppearance(with: [.new(card)])
     guard case .success(let opened) = panel else {
         throw RenderError(
-            description: "The review panel didn't open on Arte's card: \(panel). Fix metThemAllPanelWindow(model:).")
+            description: """
+                The review panel didn't open on Arte's card: \(panel). Fix \
+                metThemAllPanelWindow(model:offersFichaDeck:).
+                """)
     }
     try opened.state.answer(.review(.good), responseTime: .seconds(4))
     guard offersFichaDeck else {
