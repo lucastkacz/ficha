@@ -115,6 +115,7 @@ final class SyncedFilesTests {
         #expect(panel.images[bird] == nil)
         #expect(panel.sounds[song] == nil)
         #expect(window.images[bird] == nil)
+        #expect(window.tileImages.image(bird) == nil)
         #expect(window.sounds[song] == nil)
 
         try await iPhone.syncNow()
@@ -123,6 +124,7 @@ final class SyncedFilesTests {
             .reviewNow, with: iPhone.engine.reviewNow(.defaults), settings: .defaults)
 
         #expect(try window.images[bird]?.get() == mac.engine.image(bird))
+        #expect(try window.tileImages.image(bird)?.get() == mac.engine.image(bird))
         #expect(try window.sounds[song]?.get().data == mac.engine.sound(song))
         #expect(try panelOnceThere.images[bird]?.get() == mac.engine.image(bird))
         #expect(try panelOnceThere.sounds[song]?.get().data == mac.engine.sound(song))

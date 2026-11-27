@@ -570,9 +570,9 @@ public struct CardsWindowState: Sendable {
     /// The images on the sides of the card the user edits, as Save would give
     /// them to it, while they edit one: `CardsWindowImages.swift`.
     public internal(set) var editedImages = SideImages()
-    /// The images the window shows, in the grid's tiles, the detail, the
-    /// editor and the form, each read, or held until it's saved:
-    /// `CardsWindowImages.swift`.
+    /// The images the window shows in the detail, the editor and the form,
+    /// each read, or held until it's saved: `CardsWindowImages.swift`. The
+    /// grid's tiles read theirs on their own (`TileImages`).
     public internal(set) var images = ShownImages()
     /// The sounds on the sides of the card the user edits, as Save would give
     /// them to it, while they edit one: `CardsWindowSounds.swift`.

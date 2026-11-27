@@ -63,10 +63,11 @@ struct CardsWindowImageTests {
         #expect(try pixelSize(of: engine.image(nest)) == (1600, 1067))
         #expect(window.cardForm?.draft.front.image == nil)
         #expect(window.cardForm?.draft.back.image == nil)
-        // The window, on Default once the card is in it, shows the front's
-        // image on the card's tile, and the back's nowhere.
-        #expect(try window.images[bird]?.get() == shownBird)
+        // The window lets go of both once the form clears them, and the
+        // card's tile, on Default, reads its front's where Ficha keeps it.
+        #expect(window.images[bird] == nil)
         #expect(window.images[nest] == nil)
+        #expect(try window.tileImages.image(bird)?.get() == shownBird)
     }
 
     @Test("what isn't an image stays off the side, and the window says why")

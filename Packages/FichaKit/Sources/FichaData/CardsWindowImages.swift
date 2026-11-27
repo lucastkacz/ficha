@@ -80,11 +80,20 @@ public struct ShownImages: Sendable, Equatable {
         images = images.filter { names.contains($0.key) }
         for name in names where held[name] == nil {
             if case .success = images[name] { continue }
-            do throws(EngineError) {
-                images[name] = try engine.isOnItsWay(name) ? nil : .success(try engine.image(name))
-            } catch {
-                images[name] = .failure(error)
-            }
+            images[name] = engine.imageToShow(name)
+        }
+    }
+}
+
+extension Engine {
+    /// The image named `name`, as a window shows it: as Ficha keeps it, or
+    /// why it couldn't be read, or nil while it's on its way from another
+    /// device, so what shows it shows without it, with no error.
+    func imageToShow(_ name: ImageName) -> Result<Data, EngineError>? {
+        do throws(EngineError) {
+            return try isOnItsWay(name) ? nil : .success(try image(name))
+        } catch {
+            return .failure(error)
         }
     }
 }
@@ -243,16 +252,12 @@ extension CardsWindowState {
     /// Shows the images and sounds of the card the detail shows, of the card
     /// the user edits, of the card the form makes, and of the first card of
     /// the one of Ficha's decks the window shows, held as its file holds
-    /// them, and the pictures of the grid's tiles, and lets go of the others.
+    /// them, and lets go of the others. The grid's tiles read their pictures
+    /// on their own, as each appears (`TileImages`).
     mutating func showFiles() {
         var names = Set<ImageName>()
         if case .card(let row, _) = detail {
             names.formUnion(row.card.images)
-        }
-        for tile in tiles {
-            if case .picture(let name) = tile.face {
-                names.insert(name)
-            }
         }
         for image in shownFichaDeck?.firstCardImages ?? [] {
             images.hold(image)

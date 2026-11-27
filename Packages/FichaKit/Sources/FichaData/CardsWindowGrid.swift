@@ -8,7 +8,8 @@ import Foundation
 // 0041): green once the user met the card, orange while it's due, and none
 // while it's new, whose tile is dimmed. What a tile shows is the window's
 // decision, so FichaData works it out here, and the app's grid
-// (`App/Cards/CardGrid.swift`) draws it. Lucas selects tiles as in Photos and
+// (`App/Cards/CardGrid.swift`) draws it, reading each tile's picture as the
+// tile appears (`TileImages`). Lucas selects tiles as in Photos and
 // the Finder: a click selects one, a ⌘-click adds one or takes it out, a
 // Shift-click selects the run from the last one clicked, the arrow keys move
 // the selection, Shift extending the run with them, and Select All selects
@@ -99,6 +100,26 @@ extension CardsWindowState {
         case extending
     }
 
+    /// What reads the pictures of the grid's tiles, one image at a time, as
+    /// each tile appears: the app reads them away from the main actor, and
+    /// keeps a thumbnail of each in a cache of its own, which lets go of
+    /// those it doesn't need (`App/Cards/CardGrid.swift`). So the window
+    /// reads none of them as it lists the cards or as Lucas selects one,
+    /// which, for a deck of photos, would read them all at their full size
+    /// on the main actor each time. Which image a tile shows is its face's
+    /// (`Tile.Face.picture`).
+    public struct TileImages: Sendable {
+        let engine: Engine
+
+        /// The image named `name`, as Ficha keeps it, or why it couldn't be
+        /// read, or nil while it's on its way from another device, which the
+        /// tile shows without, with no error, until it's read again once the
+        /// window reads the cards again.
+        public func image(_ name: ImageName) -> Result<Data, EngineError>? {
+            engine.imageToShow(name)
+        }
+    }
+
     /// The tiles of the cards the grid lists, in its order: none while the
     /// window lists something else, such as the inbox.
     public var tiles: [Tile] {
@@ -106,6 +127,11 @@ extension CardsWindowState {
             return []
         }
         return rows.map { Tile($0, at: now) }
+    }
+
+    /// What reads the pictures of the grid's tiles.
+    public var tileImages: TileImages {
+        TileImages(engine: engine)
     }
 
     /// The ids of the cards the grid lists, in its order.

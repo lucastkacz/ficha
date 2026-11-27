@@ -45,7 +45,33 @@ struct CardsWindowGridTests {
             window.tiles.map(\.face) == [
                 .picture(bird), .picture(bird), .text("petricor"), .text("¿Qué nota es?"), .sound,
             ])
+        #expect(try window.tileImages.image(bird)?.get() == engine.image(bird))
+    }
+
+    // The grid's tiles read their pictures as each appears, so the window
+    // reads only the images its detail shows: the hornero's two once it's
+    // selected, and never the egg's tile's.
+    @Test(
+        "the window reads no tile's picture as it lists the cards or as Lucas selects one: each tile reads its own, and the detail its card's",
+        .bug(id: 536))
+    func eachTileReadsItsOwnPicture() throws {
+        let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))
+        let nest = try engine.addImage(picture(width: 800, height: 600, red: 0.3))
+        let egg = try engine.addImage(picture(width: 800, height: 600, red: 0.1))
+        let hornero = try engine.create(
+            card(nil, front: "¿Qué ave es?", back: "El hornero.", frontImage: bird, backImage: nest))
+        try engine.create(card(nil, front: "¿De quién es este huevo?", back: "Del hornero.", frontImage: egg))
+        var window = openWindow()
+        let readOnOpening = [bird, nest, egg].filter { window.images[$0] != nil }
+
+        window.select([hornero.id])
+
+        #expect(window.tiles.map(\.face) == [.picture(bird), .picture(egg)])
+        #expect(readOnOpening.isEmpty)
         #expect(try window.images[bird]?.get() == engine.image(bird))
+        #expect(try window.images[nest]?.get() == engine.image(nest))
+        #expect(window.images[egg] == nil)
+        #expect(try window.tileImages.image(egg)?.get() == engine.image(egg))
     }
 
     // A deck's row counts a card met once its front-first way is, so a
