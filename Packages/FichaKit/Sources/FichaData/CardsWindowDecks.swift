@@ -17,7 +17,7 @@ import Foundation
 // it's open. Choosing a deck lists its cards and those of every deck inside
 // it. A deck's menu,
 // Default's too, the same in its row's context menu and in the Actions menu
-// above the card list while the sidebar chose it, which is its keyboard
+// above the grid while the sidebar chose it, which is its keyboard
 // path, sets it aside or prioritizes it (`DeckSwitches.swift`), and gives it
 // a color or an emoji (`DeckColorAndEmoji.swift`), which its row shows, as
 // the decks inside it that have none do; a set-aside deck is grayed, with
@@ -132,8 +132,8 @@ extension CardsWindowState {
     }
 
     /// What a deck's menu offers, Default's too: in the sidebar, as its row's
-    /// context menu, and above the card list while the sidebar chose it, as
-    /// the Actions menu, which is how the keyboard reaches it. The same menu
+    /// context menu, and above the grid while the sidebar chose it, as the
+    /// Actions menu, which is how the keyboard reaches it. The same menu
     /// in both places, which acts on the one deck: Set Aside, Prioritize,
     /// Color and Emoji…, and Rename… and Delete… while it offers them
     /// (`offersRenameAndDelete`). New Deck…, always above them, acts on no
@@ -268,9 +268,9 @@ extension CardsWindowState {
     }
 
     /// The menu of the deck the sidebar chose, which the Actions menu above
-    /// the card list offers, the keyboard's way to a deck's menu: nil while
-    /// the sidebar chose something else. While Lucas edits a card, it stays,
-    /// waiting with the card list, so the list doesn't move.
+    /// the grid offers, the keyboard's way to a deck's menu: nil while the
+    /// sidebar chose something else. While Lucas edits a card, it stays,
+    /// waiting with the grid, so the grid doesn't move.
     public var chosenDeckMenu: DeckMenu? {
         guard case .cards(.deck(let deck)) = sidebarItem else { return nil }
         return menu(forDeck: deck)

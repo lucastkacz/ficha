@@ -15,7 +15,7 @@ struct NewDeckItem: View {
                 "New Deck…",
                 comment: """
                     An item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu \
-                    above the card list, and of the menu of the Your Decks title in the sidebar: it asks for a new \
+                    above the grid, and of the menu of the Your Decks title in the sidebar: it asks for a new \
                     deck's name, and OK makes the deck.
                     """)
         }
@@ -23,7 +23,7 @@ struct NewDeckItem: View {
 }
 
 /// The items of a deck's menu, the same in the context menu of its row in
-/// the sidebar's Your Decks section and in the Actions menu above the card list
+/// the sidebar's Your Decks section and in the Actions menu above the grid
 /// while the sidebar chose it, as the state offers them: New Deck…
 /// (`NewDeckItem`), which acts on no deck; Set Aside, ticked
 /// while the deck is set aside on its own; Prioritize, ticked while it's a
@@ -47,7 +47,7 @@ struct DeckMenuItems: View {
                 "Set Aside",
                 comment: """
                     An item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu \
-                    above the card list, ticked while the deck is set aside: its cards, and those of the decks \
+                    above the grid, ticked while the deck is set aside: its cards, and those of the decks \
                     inside it, are out of Lucas's reviews for now.
                     """)
         }
@@ -58,7 +58,7 @@ struct DeckMenuItems: View {
                 "Prioritize",
                 comment: """
                     An item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu \
-                    above the card list, ticked while the deck is a priority deck, and off while it's set aside.
+                    above the grid, ticked while the deck is a priority deck, and off while it's set aside.
                     """)
         }
         .disabled(!menu.canPrioritize)
@@ -71,7 +71,7 @@ struct DeckMenuItems: View {
                     "Rename…",
                     comment: """
                         An item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu \
-                        above the card list: it asks for the deck's whole name, which moves it too.
+                        above the grid: it asks for the deck's whole name, which moves it too.
                         """)
             }
         }
@@ -89,7 +89,7 @@ struct DeckMenuItems: View {
                 "Color",
                 comment: """
                     A submenu of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu \
-                    above the card list: the deck's color, which the decks inside it show while they have none.
+                    above the grid: the deck's color, which the decks inside it show while they have none.
                     """)
         }
         Button {
@@ -99,7 +99,7 @@ struct DeckMenuItems: View {
                 "Emoji…",
                 comment: """
                     An item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu \
-                    above the card list: it asks for the deck's emoji.
+                    above the grid: it asks for the deck's emoji.
                     """)
         }
         if menu.offersRenameAndDelete {
@@ -111,7 +111,7 @@ struct DeckMenuItems: View {
                     "Delete…",
                     comment: """
                         An item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu \
-                        above the card list: it asks whether to delete the deck, with the decks inside it and their \
+                        above the grid: it asks whether to delete the deck, with the decks inside it and their \
                         cards.
                         """)
             }
@@ -119,7 +119,7 @@ struct DeckMenuItems: View {
     }
 }
 
-/// The bar above the card list while the sidebar chose a deck, Default too:
+/// The bar above the grid while the sidebar chose a deck, Default too:
 /// the deck's whole name, after its emoji and its symbol in its color, and
 /// the Actions menu, which holds the deck's menu, as its row's context menu
 /// in the sidebar does; and under them, while its cards carry tags, the
@@ -150,7 +150,7 @@ struct DeckBar: View {
                     Text(
                         "Actions",
                         comment: """
-                            A menu button of the Cards window, above the card list while the sidebar chose a deck: \
+                            A menu button of the Cards window, above the grid while the sidebar chose a deck: \
                             the deck's menu, as on its row in the sidebar.
                             """)
                 }

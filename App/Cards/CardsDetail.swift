@@ -59,9 +59,10 @@ private struct FlagIcon: View {
     }
 }
 
-/// The mark beside a buried card, in the inbox and the detail: an eye
-/// crossed out, since the card stays out of the reviews until it's
-/// unburied.
+/// The mark beside a buried card in the detail, as beside the card an
+/// expansion or a follow-up is tied to: an eye crossed out, since the card
+/// stays out of the reviews until it's unburied. The inbox lists no buried
+/// card.
 private struct BuriedIcon: View {
     var body: some View {
         Image(systemName: "eye.slash")
