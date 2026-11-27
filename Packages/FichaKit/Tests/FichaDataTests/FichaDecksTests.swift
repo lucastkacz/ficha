@@ -14,6 +14,13 @@ private let painters: [String: Int] = [
     "Martín Malharro": 1911,
     "Fernando Fader": 1935,
     "Pío Collivadino": 1945,
+    "Reinaldo Giudici": 1921,
+    "Augusto Ballerini": 1902,
+    "Carlos Morel": 1894,
+    "Graciano Mendilaharzu": 1894,
+    "Ramón Silva": 1919,
+    "Walter de Navazio": 1921,
+    "Valentín Thibon de Libian": 1931,
 ]
 
 /// Tests on Ficha's decks (ADR 0040, #458), the three zips of cards in the
