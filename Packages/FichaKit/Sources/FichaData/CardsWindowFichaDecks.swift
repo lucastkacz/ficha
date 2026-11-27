@@ -18,20 +18,16 @@ extension CardsWindowState {
     /// lists while the user hasn't added them, in `FichaDeck`'s order, and
     /// leaves out once all are, as each read of the cards finds them; and
     /// asks How fast? for the one the review panel asked for meanwhile
-    /// (`askToAddFichaDeck(_:)`), while it's offered. A deck whose file
-    /// couldn't be read, such as one missing from a damaged copy of the app,
-    /// isn't listed: the window says why the first couldn't until Lucas
-    /// closes it, and the log says each.
+    /// (`askToAddFichaDeck(_:)`), while it's offered, as the read of the
+    /// cards does. A deck whose file couldn't be read, such as one missing
+    /// from a damaged copy of the app, isn't listed: the window says why the
+    /// first couldn't until Lucas closes it, and the log says each.
     public mutating func offerFichaDecks(_ read: [FichaDeck: Result<FichaDeckFile, EngineError>]) {
         let (files, failures) = FichaDeck.files(in: read)
         fichaDeckFiles = files
         self.read(with: scheduler)
         if let failed = failures.first {
             record(failed.error, for: .readFichaDeck(failed.deck))
-        }
-        if let asked = fichaDeckAskedToAdd {
-            fichaDeckAskedToAdd = nil
-            askToAddFichaDeck(asked)
         }
     }
 
@@ -68,18 +64,31 @@ extension CardsWindowState {
 
     /// Chooses `deck`, one of Ficha's decks, in the sidebar, and asks How
     /// fast? for it, as its Add Deck… does: what the review panel's "You've
-    /// met them all" asks for. Before the app gave the window Ficha's decks
-    /// (`offerFichaDecks(_:)`), it asks once they come; and it asks nothing
-    /// for one the user has added, or while the window asks something else,
-    /// Lucas edits, or a sheet of its own is open.
+    /// met them all" asks for, which has closed, so the window never drops
+    /// it. Before the app gave the window Ficha's decks
+    /// (`offerFichaDecks(_:)`), or while the window asks something else,
+    /// Lucas edits, or a sheet of its own is open, it waits, and asks once
+    /// they come and what's open closes, as
+    /// `askForTheFichaDeckAskedToAdd()` says; and it asks nothing for one
+    /// the user has added.
     public mutating func askToAddFichaDeck(_ deck: FichaDeck) {
-        guard fichaDeckFiles.contains(where: { $0.deck == deck }) else {
-            fichaDeckAskedToAdd = deck
-            return
-        }
-        guard question == nil, editing == nil, cardForm == nil, importing == nil, exporting == nil,
-            fichaDecksNotAdded.contains(where: { $0.deck == deck })
+        fichaDeckAskedToAdd = deck
+        askForTheFichaDeckAskedToAdd()
+    }
+
+    /// Asks How fast? for the one of Ficha's decks the review panel asked
+    /// for (`askToAddFichaDeck(_:)`), as soon as the window can: once the
+    /// app gave it the deck's file, and while it asks nothing else, Lucas
+    /// edits nothing, and no sheet of its own is open. The read of the cards
+    /// calls it, and so does each way out of a question, an edit, the card
+    /// form or a sheet that reads nothing. It forgets the deck once it asks,
+    /// or once the user has added it meanwhile.
+    mutating func askForTheFichaDeckAskedToAdd() {
+        guard let deck = fichaDeckAskedToAdd, fichaDeckFiles.contains(where: { $0.deck == deck }),
+            question == nil, editing == nil, cardForm == nil, importing == nil, exporting == nil
         else { return }
+        fichaDeckAskedToAdd = nil
+        guard fichaDecksNotAdded.contains(where: { $0.deck == deck }) else { return }
         choose(.fichaDeck(deck))
         askToAddFichaDeck()
     }

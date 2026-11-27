@@ -192,6 +192,11 @@ extension CardsWindowState {
         do throws(EngineError) {
             let cards = try engine.cardsForHowFast(countingIn: names)
             let settings = try engine.cardsWindowQueueSettings(activeHours: activeHours)
+            // One of Ficha's decks the review panel asked for, which the read
+            // before asked about, waits again, until this one closes.
+            if case .howFast(let asked) = question, case .fichaDeck(let deck) = asked.subject {
+                fichaDeckAskedToAdd = deck
+            }
             question = .howFast(
                 HowFast(
                     about: names, line: comingIn == .newDeck ? .noCards : .imported(cardCount: cards.cardCount),

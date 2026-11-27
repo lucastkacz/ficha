@@ -595,8 +595,10 @@ public struct CardsWindowState: Sendable {
     /// Those of them the user hasn't added, as last read, which the sidebar's
     /// Ficha's Decks section lists.
     var fichaDecksNotAdded: [FichaDeckFile] = []
-    /// The one of Ficha's decks the review panel asked to add before the app
-    /// gave the window Ficha's decks, which How fast? asks for once it does.
+    /// The one of Ficha's decks the review panel asked to add, while the
+    /// window waits to ask How fast? for it: until the app gives it Ficha's
+    /// decks, and until what's open closes
+    /// (`askForTheFichaDeckAskedToAdd()`).
     var fichaDeckAskedToAdd: FichaDeck?
     /// Internal, for the window's parts in files of their own.
     let engine: Engine
@@ -867,6 +869,7 @@ public struct CardsWindowState: Sendable {
     public mutating func cancelEditing() {
         endEditing()
         showFiles()
+        askForTheFichaDeckAskedToAdd()
     }
 
     /// Ends the edit, with the images and sounds it put on the card, and the
@@ -1052,6 +1055,7 @@ public struct CardsWindowState: Sendable {
     /// Drops what the window asks, which Lucas cancelled.
     public mutating func cancelQuestion() {
         question = nil
+        askForTheFichaDeckAskedToAdd()
     }
 
     /// Clears what failed, once the window said so and Lucas closed it.
@@ -1159,6 +1163,7 @@ public struct CardsWindowState: Sendable {
         }
         readFrontsInUse()
         readReviewLog()
+        askForTheFichaDeckAskedToAdd()
     }
 
     /// Whether the sidebar offers `group`, as last read: a deck while the

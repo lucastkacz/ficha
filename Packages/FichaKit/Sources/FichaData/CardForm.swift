@@ -288,6 +288,7 @@ extension CardsWindowState {
         cardForm = nil
         frontsInUse = nil
         finishClosing(form)
+        askForTheFichaDeckAskedToAdd()
     }
 
     /// Closes `form` for good, once it's no longer open, as Close does.

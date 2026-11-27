@@ -158,11 +158,13 @@ extension CardsWindowState {
         }
         if isExported {
             self.exporting = nil
+            askForTheFichaDeckAskedToAdd()
         }
     }
 
     /// Closes the Export sheet.
     public mutating func closeExport() {
         exporting = nil
+        askForTheFichaDeckAskedToAdd()
     }
 }

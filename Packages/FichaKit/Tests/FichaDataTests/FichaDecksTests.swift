@@ -209,6 +209,39 @@ final class FichaDecksTests {
         #expect(window.failure?.error == missing)
     }
 
+    // The review panel asks for Arte argentino twice while the window asks
+    // for a new deck's name: once Lucas cancels it, and once its OK makes
+    // Historia, which How fast? asks about first.
+    @Test(
+        "the review panel's ask for one of Ficha's decks waits while the Cards window asks something else, and How fast? asks for it as soon as that closes, after a new deck's own How fast?",
+        .bug(id: 458))
+    func anAskForOneOfFichasDecksWaits() async throws {
+        let arte = try await engine.readFichaDeck(.arteArgentino, at: try fileInTheRepo(of: .arteArgentino))
+        try approveInDeck("serendipia", deck: "Lenguaje", in: engine)
+        var window = engine.openCardsWindow(with: scheduler)
+        window.read(with: scheduler)
+        window.offerFichaDecks([.arteArgentino: .success(arte)])
+
+        window.askToMakeDeck()
+        window.askToAddFichaDeck(.arteArgentino)
+        let whileNaming = window.question
+        window.cancelQuestion()
+        let afterCancel = window.howFast?.subject
+        window.cancelQuestion()
+        window.askToMakeDeck()
+        window.askToAddFichaDeck(.arteArgentino)
+        window.chooseNewDeck("Historia")
+        let forTheNewDeck = window.howFast?.subject
+        window.startHowFast()
+        let afterStart = window.howFast?.subject
+
+        #expect(whileNaming == .makeDeck)
+        #expect(afterCancel == .fichaDeck(.arteArgentino))
+        #expect(forTheNewDeck == .deck("Historia"))
+        #expect(afterStart == .fichaDeck(.arteArgentino))
+        #expect(window.sidebarItem == .fichaDeck(.arteArgentino))
+    }
+
     // The user is meeting Lenguaje: ubuntu, which goes both ways, was met
     // now, so its back-first way is still to come, and ojalá goes both ways
     // too, new. Música, which came in a minute later, is a priority deck,

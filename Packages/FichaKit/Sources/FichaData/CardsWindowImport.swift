@@ -412,6 +412,7 @@ extension CardsWindowState {
         let newDecks = importing?.newDecks ?? []
         importing = nil
         askHowFast(about: newDecks, cameInFrom: .anImport)
+        askForTheFichaDeckAskedToAdd()
     }
 }
 
