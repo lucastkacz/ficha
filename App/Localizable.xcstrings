@@ -1367,6 +1367,12 @@
     "Cards come in with Anki's reviews of them: those Anki was reviewing keep their interval and due date, those it was learning go on with your learning steps, due when Anki said, and suspended cards come in buried. Unticked, every card comes in new." : {
       "comment" : "In the Import sheet's preview of an Anki package, under Bring progress: what it does."
     },
+    "Cards in %@" : {
+      "comment" : "What VoiceOver names the Cards window's grid while it lists a deck's cards, those of the decks inside it too, with the deck's whole name, like “Idiomas › Inglés”."
+    },
+    "Cards in Default" : {
+      "comment" : "What VoiceOver names the Cards window's grid while it lists Default's cards, the deck of cards with no other."
+    },
     "Cards per appearance" : {
 
     },
@@ -2515,6 +2521,9 @@
     },
     "List only the deck's cards tagged %@" : {
       "comment" : "The tooltip of a tag above the Cards window's card list, with its whole name: choosing it narrows the deck's cards to those that carry it, or a tag inside it."
+    },
+    "Listed cards" : {
+      "comment" : "What VoiceOver names the Cards window's grid while it lists cards of no deck, such as a tag's or a type's."
     },
     "Longest interval" : {
       "comment" : "Settings, under Advanced: the longest a card can wait after a review, in days."

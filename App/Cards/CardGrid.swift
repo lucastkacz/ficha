@@ -62,6 +62,10 @@ struct CardGrid: View {
                         tilesPerRow = max(1, Int((width + Self.spacing) / (Self.tileWidth + Self.spacing)))
                     }
                     .padding(16)
+                    // VoiceOver goes into the tiles as a group, named for
+                    // whose cards they are, as the mock's grid is named.
+                    .accessibilityElement(children: .contain)
+                    .accessibilityLabel(accessibilityName)
                 }
                 // A click between the tiles selects none, as in the Finder: a
                 // tile's own click takes precedence over this one.
@@ -92,6 +96,34 @@ struct CardGrid: View {
         // or the editor's, selects its own text instead.
         .onCommand(#selector(NSResponder.selectAll(_:))) {
             state.selectAllTiles()
+        }
+    }
+
+    /// What VoiceOver names the grid: the cards of the deck the sidebar
+    /// chose, by its whole name, or else of what it chose instead.
+    private var accessibilityName: String {
+        switch state.selectedDeck {
+        case Deck.defaultName?:
+            String(
+                localized: "Cards in Default",
+                comment: """
+                    What VoiceOver names the Cards window's grid while it lists Default's cards, the deck of cards \
+                    with no other.
+                    """)
+        case .some(let deck):
+            String(
+                localized: "Cards in \(TagPath.shown(deck))",
+                comment: """
+                    What VoiceOver names the Cards window's grid while it lists a deck's cards, those of the decks \
+                    inside it too, with the deck's whole name, like “Idiomas › Inglés”.
+                    """)
+        case nil:
+            String(
+                localized: "Listed cards",
+                comment: """
+                    What VoiceOver names the Cards window's grid while it lists cards of no deck, such as a tag's or a \
+                    type's.
+                    """)
         }
     }
 
