@@ -5,11 +5,12 @@ import Foundation
 
 // The `ficha` CLI's control of tags (ADR 0022), which the database keeps and
 // the apps no longer show (#538): `ficha tags` lists every tag, and each of
-// `ficha tag`'s commands makes one change through the engine's actions, so
-// it syncs, and prints what it changed. None asks first: the refine session asks Lucas. A
-// tag only labels its cards (ADR 0024): setting aside and prioritizing are a
-// deck's, and `ficha tag convert-to-decks` turns the tags that said where
-// Lucas's cards lived before decks into decks, once (`TagsIntoDecks.swift`).
+// `ficha tag`'s commands makes one change through the engine's actions, so it
+// syncs, and prints what it changed. None asks first: the refine session asks
+// Lucas. A tag only labels its cards (ADR 0024): setting aside and
+// prioritizing are a deck's, and `ficha tag convert-to-decks` turns the tags
+// that said where Lucas's cards lived before decks into decks, once
+// (`TagsIntoDecks.swift`).
 
 /// `ficha tags`: lists every tag.
 struct TagsCommand: EngineCommand {

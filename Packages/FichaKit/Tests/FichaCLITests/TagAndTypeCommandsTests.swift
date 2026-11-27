@@ -143,7 +143,7 @@ struct TagAndTypeCommandsTests {
         #expect(unpinned.map(\.name) == ["historia", "literatura"])
     }
 
-    @Test("`ficha tag move-pinned` refuses a tag that isn't pinned, as the app does")
+    @Test("`ficha tag move-pinned` refuses a tag that isn't pinned")
     func movingATagThatIsntPinned() async throws {
         try approveCard("Martín Fierro", tags: ["literatura", "historia"])
         try engine.pin("literatura")

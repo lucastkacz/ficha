@@ -45,7 +45,9 @@ struct CardFormTests {
 
     // So that the next card on the same subject is quick, as in Anki. The
     // form shows no tags and no type, so the card it adds has neither (#538).
-    @Test("after Add, the front and back are empty and the source stays, and the card has no tags and no type")
+    @Test(
+        "after Add, the front and back are empty and the source stays, and the card has no tags and no type",
+        .bug(id: 538))
     func afterAddTheSidesAreEmptyAndTheRestStays() throws {
         var window = openWindow()
         window.openNewCardForm()
@@ -196,7 +198,9 @@ struct CardFormTests {
         #expect(try engine.inbox().captures == [bostezo])
     }
 
-    @Test("Convert to Card on a follow-up opens the form beside the follow-up and its card, in the card's deck")
+    @Test(
+        "Convert to Card on a follow-up opens the form beside the follow-up and its card, in the card's deck",
+        .bug(id: 538))
     func theFormFromAFollowUpShowsItsCard() throws {
         let poderes = try approve(
             card(
@@ -222,8 +226,8 @@ struct CardFormTests {
     }
 
     @Test(
-        "adding cards from a follow-up leaves its card as it is, and closing the form after them takes the follow-up out of the inbox"
-    )
+        "adding cards from a follow-up leaves its card as it is, and closing the form after them takes the follow-up out of the inbox",
+        .bug(id: 538))
     func closingTheFormFromAFollowUpLeavesItsCard() throws {
         let poderes = try approve(
             card(
