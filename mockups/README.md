@@ -52,7 +52,7 @@ No build step: React 18.3.1 from cdnjs and htm 3.1.1 from jsDelivr, pinned, so c
 | `CardsWindow` and `HowFast`, in `desktop/` | `App/Cards/CardsView.swift`'s deck rows and `App/Cards/HowFastSheet.swift`, since #491 |
 | `CardsWindow`'s grid of tiles, its legend and `dotOf`, in `desktop/` | `App/Cards/CardGrid.swift`, with FichaData's `CardsWindowState.Tile` deciding each tile's face and dot, since #536 |
 | `formatFinish` and `metBy`, a finish date's words | FichaData's `FinishDate.wording(now:calendar:)`, as `App/Cards/HowFastSheet.swift` writes it, since #491 |
-| `SettingsWindow`, in `desktop/` | `App/SettingsTabViewController.swift` and `App/SettingsTabViews.swift`, in #492's five tabs |
+| `SettingsWindow`, in `desktop/` | `App/SettingsTabViewController.swift`, `App/SettingsTabViews.swift`, `App/BackupsSettings.swift` and `App/SyncSettings.swift`, in #492's five tabs, each row where FichaData's `SettingsTabs.swift` places it; the Pace tab's paces and queue, FichaData's `PaceTab.swift` |
 
 ### What the toy engine copies
 
@@ -72,8 +72,8 @@ No build step: React 18.3.1 from cdnjs and htm 3.1.1 from jsDelivr, pinned, so c
 
 What `desktop/` shows that the app doesn't yet, or not where the mock has it, so a picture of the app differs from the mock there. `tools/check-engine.js` checks only the toy engine against FichaKit's tests, so it can't check these.
 
-- The Welcome page's steps, `WelcomePage` (#467), and Settings in five tabs, `SettingsWindow` (#492).
-- In the Cards window, a deck's bar, with Put it first and Set aside: the app has Set Aside in the deck's menu, and Put it first in How fast? alone.
+- The Welcome page's steps, `WelcomePage` (#467).
+- In the Cards window, a deck's bar, with Put it first and Set aside: the app has Set Aside in the deck's menu, and Put it first in How fast? and in Settings' Pace tab.
 - The Cards window's "Your Own" section, with New Deck… and Import an Anki file…, which the app keeps elsewhere: New Deck… in a deck's menu and the Your Decks title's, and Import… in the toolbar, on ⇧⌘I.
 
 ### Sizes

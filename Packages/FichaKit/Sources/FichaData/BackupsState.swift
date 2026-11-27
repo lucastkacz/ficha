@@ -1,15 +1,15 @@
 import FichaCore
 import Foundation
 
-/// Settings' Backups tab, and the backups the app saves on its own, which
-/// the tab and the menu say about, for as long as the app runs: what the tab
-/// lists, the copies in the Backups folder, newest first, what Lucas selected
-/// and so what the tab offers, Restore for one copy and Delete for any, what
-/// it asks before it acts, and what couldn't be done. It also keeps why the
-/// last attempt to back up failed, on its own or with Back Up Now, until a
-/// backup is saved, which the tab says, and the menu with "Last backup
-/// failed". It reads the copies again after each thing it does, and when the
-/// tab asks.
+/// Settings' Backups, in its Advanced tab, and the backups the app saves on
+/// its own, which the tab and the menu say about, for as long as the app
+/// runs: what the tab lists, the copies in the Backups folder, newest first,
+/// what Lucas selected and so what the tab offers, Restore for one copy and
+/// Delete for any, what it asks before it acts, and what couldn't be done. It
+/// also keeps why the last attempt to back up failed, on its own or with Back
+/// Up Now, until a backup is saved, which the tab says, and the menu with
+/// "Last backup failed". It reads the copies again after each thing it does,
+/// and when the tab asks.
 public struct BackupsState: Sendable {
     /// What Lucas can do with the selected copies.
     public enum Action: Sendable, Hashable {
@@ -256,8 +256,8 @@ public struct BackupsState: Sendable {
 }
 
 extension Engine {
-    /// The Backups tab's state, and the backups the app saves on its own,
-    /// before the copies are read.
+    /// The state of Settings' Backups, and the backups the app saves on its
+    /// own, before the copies are read.
     public func openBackups() -> BackupsState {
         BackupsState(engine: self)
     }

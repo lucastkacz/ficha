@@ -1,5 +1,7 @@
 # The cards sync through the user's own iCloud, and nothing else leaves the device
 
+> Changed in part by [ADR 0045](0045-fichas-day-starts-at-4-am-and-active-hours-may-cross-midnight.md), whose settings that decide progress, which sync, gain the hour Ficha's day starts at (2026-11-27).
+
 Ficha sells on the App Store for the Mac and the iPhone together (#160), and someone with both wants the same cards on each. ADR 0001 kept everything on the Mac. Now the cards, their progress and the inbox sync through the user's private iCloud database, which macOS and iOS reach on Ficha's behalf, through Apple's `CKSyncEngine`, and which the developer can't see. Ficha still makes no network connections of its own and has no accounts or analytics: the only part of it allowed on the network is the one that draws SVG images, and it draws only files already on the Mac (ADR 0018). This supersedes the part of ADR 0001 that keeps everything on the Mac; the rest of it stands: no AI in the app, and Claude changes Lucas's cards only through the CLI.
 
 ## Considered options

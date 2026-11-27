@@ -140,7 +140,7 @@ targets:
         # Menu bar only: no Dock icon and no main window.
         INFOPLIST_KEY_LSUIElement: YES
         INFOPLIST_KEY_CFBundleDisplayName: $(PRODUCT_NAME)
-        # The copyright line, which Settings' About tab shows.
+        # The copyright line, which Settings shows at the foot of its General tab.
         INFOPLIST_KEY_NSHumanReadableCopyright: "© 2026 Lucas Ariel Tkacz"
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.education
         # Ficha uses no encryption that needs a declaration, so App Store

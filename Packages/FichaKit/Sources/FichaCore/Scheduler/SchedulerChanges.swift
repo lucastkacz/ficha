@@ -1,6 +1,6 @@
 import Foundation
 
-// The changes Settings' Scheduling tab makes to the scheduler's settings
+// The changes Settings' Advanced tab makes to the scheduler's settings
 // (#404), each of which leaves them valid, or makes none: which intervals a
 // step offers, the step Add Step adds, and a desired retention or a longest
 // interval kept within what the scheduler takes.

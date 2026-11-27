@@ -3,7 +3,7 @@ import FichaData
 import Foundation
 
 /// `ficha restore`: lists the copies Ficha saved in its Backups folder, or
-/// brings one back, as Restore does in Settings' Backups tab.
+/// brings one back, as Restore… does in Settings' Backups.
 struct RestoreCommand: EngineCommand {
     static let configuration = CommandConfiguration(
         commandName: "restore",

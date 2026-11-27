@@ -415,7 +415,7 @@ struct CardsView: View {
                     """))
         sentences.append(
             String(
-                localized: "You can't undo this, but the daily backups in Settings › Backups hold what it deletes.",
+                localized: "You can't undo this, but the daily backups, in Settings › Advanced, hold what it deletes.",
                 comment: "The last sentence of the Cards window's question before it deletes a deck."))
         return joinedSentences(sentences)
     }

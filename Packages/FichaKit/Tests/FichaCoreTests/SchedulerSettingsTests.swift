@@ -3,7 +3,7 @@ import Foundation
 import Testing
 
 /// Tests on which settings make a scheduler (#404), Anki's limits and Ficha's
-/// steps of less than a day, and on the changes Settings' Scheduling tab makes
+/// steps of less than a day, and on the changes Settings' Advanced tab makes
 /// to them within those.
 struct SchedulerSettingsTests {
     @Test("steps from 10 minutes to less than a day, each longer than the one before, or none, are valid")

@@ -176,7 +176,7 @@ struct HowFastSheet: View {
             choosePace(option.pace)
         } label: {
             HStack(spacing: 8) {
-                radio(isChosen)
+                PaceRadio(isChosen: isChosen)
                     .frame(width: 18)
                 Text(verbatim: option.pace.name)
                     .bold()
@@ -212,21 +212,6 @@ struct HowFastSheet: View {
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(isChosen ? [.isSelected] : [])
-    }
-
-    /// A tile's radio, as the mock draws it: a ring, thick in the accent
-    /// when the tile is chosen.
-    @ViewBuilder
-    private func radio(_ isChosen: Bool) -> some View {
-        if isChosen {
-            Circle()
-                .strokeBorder(.tint, lineWidth: 4.5)
-                .frame(width: 14, height: 14)
-        } else {
-            Circle()
-                .strokeBorder(.tertiary, lineWidth: 1.5)
-                .frame(width: 14, height: 14)
-        }
     }
 
     /// Where the deck goes in the queue, as `whereItGoes` says it.
@@ -290,25 +275,52 @@ struct HowFastSheet: View {
     }
 }
 
+/// A pace's radio, in How fast?'s tiles and in Settings' Pace tab, as the
+/// mock draws it: a ring, thick in the accent when the pace is chosen.
+struct PaceRadio: View {
+    let isChosen: Bool
+
+    var body: some View {
+        if isChosen {
+            Circle()
+                .strokeBorder(.tint, lineWidth: 4.5)
+                .frame(width: 14, height: 14)
+        } else {
+            Circle()
+                .strokeBorder(.tertiary, lineWidth: 1.5)
+                .frame(width: 14, height: 14)
+        }
+    }
+}
+
 extension Pace {
-    /// The pace's name, as How fast? says it.
+    /// The pace's name, as How fast? and Settings' Pace tab say it.
     var name: String {
         switch self {
         case .chill:
-            String(localized: "Chill", comment: "A pace in How fast?, the slowest: 1 new card a day.")
+            String(
+                localized: "Chill",
+                comment: "A pace in How fast? and in Settings' Pace tab, the slowest: 1 new card a day.")
         case .steady:
-            String(localized: "Steady", comment: "A pace in How fast?, the one Ficha starts at: 2 new cards a day.")
+            String(
+                localized: "Steady",
+                comment: "A pace in How fast? and in Settings' Pace tab, the one Ficha starts at: 2 new cards a day.")
         case .faster:
-            String(localized: "Faster", comment: "A pace in How fast?, the fastest: 4 new cards a day.")
+            String(
+                localized: "Faster",
+                comment: "A pace in How fast? and in Settings' Pace tab, the fastest: 4 new cards a day.")
         }
     }
 
-    /// How many new cards a day it brings, as How fast? says it: "2 new a
-    /// day".
+    /// How many new cards a day it brings, as How fast? and Settings' Pace
+    /// tab say it: "2 new a day".
     var newCardsADay: String {
         String(
             localized: "\(newCardsPerDay) new a day",
-            comment: "In How fast?, beside a pace's name: how many new cards a day it brings.")
+            comment: """
+                In How fast?, beside a pace's name, and in Settings' Pace tab, below it: how many new cards a day \
+                it brings.
+                """)
     }
 }
 
@@ -380,7 +392,8 @@ extension FinishDate.Wording {
     private static func either(_ day: String, _ next: String) -> String {
         String(
             localized: "\(day) or \(next)",
-            comment: "A finish date of two days in a row, in the Cards window: “today or tomorrow”.")
+            comment:
+                "A finish date of two days in a row, in the Cards window and Settings' Pace tab: “today or tomorrow”.")
     }
 
     /// Two ends of a finish date, joined by "to": "Wednesday to Saturday",
@@ -388,7 +401,9 @@ extension FinishDate.Wording {
     private static func range(_ first: String, _ last: String) -> String {
         String(
             localized: "\(first) to \(last)",
-            comment: "A finish date from one day or third of a month to another, in the Cards window.")
+            comment:
+                "A finish date from one day or third of a month to another, in the Cards window and Settings' Pace tab."
+        )
     }
 }
 
@@ -398,9 +413,13 @@ extension FinishDate.Wording.Day {
     var text: String {
         switch self {
         case .today:
-            String(localized: "today", comment: "A finish date's day, in the Cards window: “on track for today”.")
+            String(
+                localized: "today",
+                comment: "A finish date's day, in the Cards window and Settings' Pace tab: “on track for today”.")
         case .tomorrow:
-            String(localized: "tomorrow", comment: "A finish date's day, in the Cards window: “all met by tomorrow”.")
+            String(
+                localized: "tomorrow",
+                comment: "A finish date's day, in the Cards window and Settings' Pace tab: “all met by tomorrow”.")
         case .weekday(let day):
             day.formatted(.dateTime.weekday(.wide))
         }

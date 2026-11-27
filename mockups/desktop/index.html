@@ -195,13 +195,11 @@
   .queue-row + .queue-row { border-top: 1px solid var(--separator); }
   .queue-row .emoji { font-size: 18px; }
   .queue-row small { display: block; color: var(--secondary-label); font-size: var(--text-subheadline); }
-  .about { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 14px 0 4px; text-align: center; }
+  .about { justify-content: flex-start; gap: 12px; }
   .about .app-icon {
-    width: 56px; height: 56px; border-radius: 13px; display: grid; place-items: center; margin-bottom: 4px;
+    width: 40px; height: 40px; border-radius: 9px; display: grid; place-items: center; flex: none;
     background: linear-gradient(#fdfdfd, #e6e1d6); color: #4a3f2e; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
   }
-  .about b { font-size: var(--text-title3); }
-  .about .origin { align-self: center; }
   .copies { width: 100%; border-collapse: collapse; font-size: var(--text-subheadline); }
   .copies td { padding: 4px 12px; border-top: 1px solid var(--separator); color: var(--secondary-label); }
   .copies td:first-child { color: var(--label); }
@@ -582,7 +580,7 @@
 
   function GeneralTab({ app, state, prefs, setPrefs }) {
     return html`
-      <${Group} footer="A capture shortcut needs two of Control, Option and Command at least, so it doesn't take what you type or another app's shortcut.">
+      <${Group} footer="A capture shortcut needs two of Control, Option and Command at least, so it doesn't take what you type or another app's shortcut. While you type one, Esc keeps the old one and Delete turns it off.">
         <${Row} label="Start at login" from="General"><${Toggle} label="Start at login" on=${prefs.login} onChange=${(login) => setPrefs({ ...prefs, login })} /></${Row}>
         <${Row} label="Show how many cards are due in the menu bar" from="General">
           <${Toggle} label="Show how many cards are due" on=${prefs.showsDueCount} onChange=${(showsDueCount) => setPrefs({ ...prefs, showsDueCount })} /></${Row}>
@@ -593,22 +591,27 @@
           options=${[80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200].map((v) => ({ value: v, label: `${v}%` }))}
           onChange=${(v) => app.setCardSize(v)} /></${Row}>
       </${Group}>
-      <div className="about">
-        <span className="app-icon">${Icon.book(30)}</span><b>Ficha</b><span className="sub">Version 1.0 (1)</span>
-        <button type="button" className="linkish">Privacy Policy</button>
-        <${Origin} from="About" />
-      </div>`;
+      <${Group}>
+        <div className="frow about"><span className="app-icon">${Icon.book(22)}</span>
+          <div className="flabel"><b>Ficha</b><span>Version 1.0 (1)</span><${Origin} from="About" /></div></div>
+        <div className="frow"><button type="button" className="linkish">Privacy Policy</button><${Origin} from="About" /></div>
+      </${Group}>`;
   }
 
   function PaceTab({ app, state }) {
     const queue = app.queueDecks().filter((d) => app.newLeft(d.id) > 0);
     const dates = app.finishDates();
     const last = queue.length ? dates[queue[queue.length - 1].id] : null;
+    // "by mid-December", or "today or tomorrow" alone, as the app says it.
+    const metWhen = (f) => {
+      const when = formatFinish(f.soonestAt, f.latestAt, state.now);
+      return /^today\b/.test(when) ? when : `by ${when}`;
+    };
     return html`
-      <${Group} title=${html`How fast?<${Origin} from="Appearances" label="Replaces New cards per day, in Appearances" />`} footer=${last ? `At this pace, you'll have met every deck in your queue by ${formatFinish(last.soonestAt, last.latestAt, state.now)}.` : 'No deck waits for new cards.'}>
+      <${Group} title=${html`How fast?<${Origin} from="Appearances" label="Replaces New cards per day, in Appearances" />`} footer=${last ? `At this pace, you'll have met every deck in your queue ${metWhen(last)}.` : 'No deck waits for new cards.'}>
         ${E.PACES.map((p) => {
           const all = queue.length ? app.finishDates({ pace: p.id })[queue[queue.length - 1].id] : null;
-          return html`<${Row} key=${p.id} label=${p.name} sub=${`${p.perDay} new card${p.perDay > 1 ? 's' : ''} a day${all ? ` · queue met by ${formatFinish(all.soonestAt, all.latestAt, state.now)}` : ''}`}>
+          return html`<${Row} key=${p.id} label=${p.name} sub=${`${p.perDay} new a day${all ? ` · queue met ${metWhen(all)}` : ''}`}>
             <${Radio} on=${state.pace === p.id} label=${p.name} onClick=${() => app.setPace(p.id)} /></${Row}>`;
         })}
       </${Group}>
@@ -616,7 +619,7 @@
         ${queue.length
           ? queue.map((d, i) => html`<div className="queue-row" key=${d.id}>
               <span className="emoji">${d.emoji}</span>
-              <span>${d.name}<small>${i === 0 ? 'Now' : 'Next'} · ${app.newLeft(d.id)} cards to meet · ${formatFinish(dates[d.id].soonestAt, dates[d.id].latestAt, state.now)}</small></span>
+              <span>${d.name}<small>${i === 0 ? 'Now' : 'Next'} · ${app.newLeft(d.id)} card${app.newLeft(d.id) === 1 ? '' : 's'} to meet · on track for ${formatFinish(dates[d.id].soonestAt, dates[d.id].latestAt, state.now)}</small></span>
               ${i > 0 ? html`<${Button} title="Put it first" onClick=${() => app.putFirst(d.id)} />` : html`<span />`}
             </div>`)
           : html`<div className="queue-row"><span /><span className="sub">No deck waits. Add one from the Cards window.</span><span /></div>`}
@@ -667,7 +670,7 @@
   function SyncTab({ state, prefs, setPrefs }) {
     const added = state.decks.filter((d) => d.added);
     return html`
-      <${Group} footer="Your cards go only to your own iCloud, which the developer can't see.">
+      <${Group} footer="Your cards, their progress and the inbox stay the same on each of your devices, through your own iCloud. Each device keeps its own backups.">
         <${Row} label="Sync with iCloud" from="Sync"><${Toggle} label="Sync with iCloud" on=${prefs.sync} onChange=${(sync) => setPrefs({ ...prefs, sync })} /></${Row}>
         <${Row} label="Cards to sync" from="Sync"><${Popup} label="Cards to sync" value=${prefs.syncWhat} disabled=${!prefs.sync}
           onChange=${(syncWhat) => setPrefs({ ...prefs, syncWhat })}
@@ -690,11 +693,11 @@
         <${Row} label="Steps" from="Scheduling"><span className="chips"><${Capsule}>1h</${Capsule}></span></${Row}>
       </${Group}>
       <${Group} footer="A higher retention means shorter intervals and more reviews a day. A change applies from each card's next review.">
-        <${Row} label="Desired retention" sub="From 70% to 99% · 85% on a new install" from="Scheduling">
+        <${Row} label="Desired retention" sub="From 70% to 99%" from="Scheduling">
           <span className="num">${Math.round(r * 100)}%</span><${Stepper} label="Desired retention" onStep=${step} /></${Row}>
         <${Row} label="Longest interval" sub="In days, up to 36,500" from="Scheduling"><span className="num">36500</span></${Row}>
       </${Group}>
-      <${Group} footer="Each Again to a card out of its learning and relearning steps counts, since its front or back last changed.">
+      <${Group} footer="Each “Forgot” to a card out of its learning and relearning steps counts, since the card's front or back last changed. If you don't flag it, the panel offers again after half as many more.">
         <${Row} label="Offer to flag a card you forget often" sub="So it gets fixed. Ficha never flags a card on its own."
           from="Review panel">
           <${Toggle} label="Offer to flag" on=${prefs.offerFlag} onChange=${(offerFlag) => setPrefs({ ...prefs, offerFlag })} /></${Row}>
@@ -712,6 +715,10 @@
           <tr><td>Today, 8:00</td><td>Every day</td></tr><tr><td>Yesterday, 8:00</td><td>Every day</td></tr>
         </tbody></table>
         <div className="frow"><span /><span className="fcontrol"><${Button} title="Restore…" /><${Button} title="Delete…" /></span></div>
+      </${Group}>
+      <${Group}>
+        <${Row} label="Diagnostics" sub="What each detector sees right now, and the latest appearances." from="the menu">
+          <${Button} title="Open Diagnostics" /></${Row}>
       </${Group}>`;
   }
 
