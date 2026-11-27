@@ -43,13 +43,13 @@ enum Window: String, CaseIterable {
     /// in, with its sidebar's Your Decks section: Default first, then every
     /// deck as a tree, those at the top with cards in the reviews in the
     /// order of the queue new cards come from, the rest after them and those
-    /// set aside last, each with how
-    /// many of its cards are due, Idiomas and Ciencias with a color and an
-    /// emoji, which the decks inside them show too, Ciencias and Humanidades
-    /// closed, so that Sociedad shows, set aside, grayed with the deck inside
-    /// it; the bar above the card list, with Idiomas's name, its Actions menu
-    /// and its cards' tags; and two of Idiomas's cards selected, which
-    /// `--key cmd+d` asks to move in the Change Deck sheet.
+    /// set aside last, each with how many of its cards are due, Idiomas and
+    /// Ciencias with a color and an emoji, which the decks inside them show
+    /// too, Ciencias, Humanidades and Idiomas › Español closed, so that
+    /// Sociedad shows, set aside, grayed with the deck inside it; the bar
+    /// above the card list, with Idiomas's name, its Actions menu and its
+    /// cards' tags; and two of Idiomas's cards selected, which `--key cmd+d`
+    /// asks to move in the Change Deck sheet.
     case cardsDecks = "cards-decks"
     /// The same on Idiomas › Español, with historia, one of its
     /// tags, chosen above the card list, which lists only the deck's cards
@@ -985,13 +985,15 @@ func giveSampleDecksLooks(in engine: Engine) throws {
 }
 
 /// The Cards window of `model` on the sample cards' deck `deck`, its cards
-/// read, with Ciencias and Humanidades closed in the sidebar, as
-/// `cards-decks`, `cards-deck-tag` and `cards-delete-deck` start.
+/// read, with Ciencias, Humanidades and Idiomas › Español closed in the
+/// sidebar, as `cards-decks`, `cards-deck-tag` and `cards-delete-deck`
+/// start, so that Sociedad shows below the top decks' lines.
 func cardsWindow(onSampleDeck deck: String, of model: AppModel) -> CardsWindowState {
     var state = model.openCardsWindow()
     state.read(with: state.scheduler)
     state.setDeckOpen(false, "Ciencias")
     state.setDeckOpen(false, "Humanidades")
+    state.setDeckOpen(false, "Idiomas::Español")
     state.choose(.cards(.deck(deck)))
     return state
 }
@@ -1060,13 +1062,17 @@ func scrollSidebarToEnd(of window: NSWindow) throws {
 }
 
 /// Scrolls the sidebar of the Cards window `window`, once it shows, to its
-/// selected row, for the same reason as `scrollSidebarToEnd(of:)`.
+/// selected row, for the same reason as `scrollSidebarToEnd(of:)`. While
+/// that row is out of sight, below Your Decks, the outline view selects no
+/// row, so it scrolls to the end first, which Ficha's Decks are near, and
+/// then to the selected row, once the outline view selects one.
 func scrollSidebarToSelection(of window: NSWindow) throws {
+    try scrollSidebarToEnd(of: window)
+    try wait(0.5)
     let sidebar = outlineViews(in: window.contentView).min { isNearerLeadingSide($0, than: $1, in: window) }
-    guard let sidebar, sidebar.selectedRow >= 0 else {
-        throw RenderError(description: "The Cards window's sidebar selects no row: fix scrollSidebarToSelection(of:).")
+    if let sidebar, sidebar.selectedRow >= 0 {
+        sidebar.scrollRowToVisible(sidebar.selectedRow)
     }
-    sidebar.scrollRowToVisible(sidebar.selectedRow)
 }
 
 /// Whether `view` starts nearer the leading side of `window` than `other`:
