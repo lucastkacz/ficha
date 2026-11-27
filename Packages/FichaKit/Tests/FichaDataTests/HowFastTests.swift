@@ -220,14 +220,17 @@ final class HowFastTests {
         #expect(howFast.paces.map(\.finish) == whereItIs)
     }
 
-    // Coliseo waits in Historia, new, from a minute before the import, which
-    // brings a card into Historia and one into Historia::Grecia, a deck the
-    // user didn't have, inside Historia.
+    // Coliseo waits in Historia, new, from a minute before La Gioconda in
+    // Arte, and two before the import, which brings a card into Historia and
+    // one into Historia::Grecia, a deck the user didn't have, inside
+    // Historia.
     @Test(
         "How fast? doesn't open after an import whose new cards all came into a deck the user had, or into decks inside it, which keeps its place in the queue, at the pace there was",
         .bug(id: 491))
     func noHowFastForADeckTheUserHad() async throws {
         try approveInDeck("Coliseo", deck: "Historia", in: engine)
+        time.advance(by: minutes(1))
+        try approveInDeck("La Gioconda", deck: "Arte", in: engine)
         time.advance(by: minutes(1))
         let more = try write(
             "Historia.txt",
@@ -239,12 +242,15 @@ final class HowFastTests {
             Machu Picchu\tEn Perú.\tHistoria
 
             """)
+        let progress = try engine.progressSettings()
         var window = openWindow()
 
         await window.importThroughTheSheet(more)
 
         #expect(window.question == nil)
         #expect(try engine.cards().count { TagPath.top(of: $0.deck) == "Historia" } == 3)
+        #expect(try engine.queue(settings).map(\.deck) == ["Historia", "Arte"])
+        #expect(try engine.progressSettings() == progress)
     }
 
     // The user is meeting Arte, as above. A minute later, an import brings
