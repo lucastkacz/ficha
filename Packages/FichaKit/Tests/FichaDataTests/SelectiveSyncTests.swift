@@ -613,7 +613,7 @@ final class SelectiveSyncTests {
     // The iPhone holds petricor in Lenguaje, which doesn't sync, and colors
     // its tag palabras, whose row syncs; the Mac holds no card with it.
     @Test(
-        "Clear Unused Tags under selective sync deletes a tag's own row alone, and another device's card that doesn't sync keeps the tag"
+        "clearing the unused tags under selective sync deletes a tag's own row alone, and another device's card that doesn't sync keeps the tag"
     )
     func clearUnusedTagsLeavesOtherDevicesCardsTheirTags() async throws {
         try iPhone.engine.syncOnlyChosenDecks(true)
@@ -622,7 +622,6 @@ final class SelectiveSyncTests {
         try iPhone.engine.setColor(.green, of: "palabras")
         try await syncBoth()
 
-        #expect(try mac.engine.unusedTags() == ["palabras"])
         #expect(try mac.engine.clearUnusedTags() == ["palabras"])
         try await syncBoth()
 

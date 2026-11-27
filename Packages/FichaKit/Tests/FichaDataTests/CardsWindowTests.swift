@@ -168,32 +168,9 @@ struct CardsWindowTests {
         #expect(inDefault.map(\.card.id) == [serendipia.id, ubuntu.id])
     }
 
-    @Test("a tag lists the cards that have it, and a type the cards of it, flagged ones too but not the buried ones")
-    func aTagAndATypeListTheirCards() throws {
-        let scheduler = ReviewSettings.defaults.scheduler
-        let mayo = try approve(
-            card(.concept, front: "Revolución de Mayo", back: "1810.", tags: ["historia", "política"]), in: engine)
-        let ubuntu = try approve(
-            card(.word, front: "Ubuntu", back: "Humanidad hacia los otros.", tags: ["filosofía", "lenguaje"]),
-            in: engine)
-        try engine.flag(ubuntu.id, note: note("Falta un ejemplo"))
-        let descartes = try approve(
-            card(.quote, front: "Pienso, luego existo.", back: "Descartes.", tags: ["filosofía"]), in: engine)
-        let estoicismo = try approve(
-            card(.concept, front: "Estoicismo", back: "Aceptar lo que no depende de uno.", tags: ["historia"]),
-            in: engine)
-        try engine.bury(estoicismo.id)
-        let serendipia = try approveCard("serendipia", in: engine)
-
-        #expect(try engine.cardRows(in: .tag("historia"), with: scheduler).map(\.card.id) == [mayo.id])
-        #expect(
-            try engine.cardRows(in: .tag("filosofía"), with: scheduler).map(\.card.id) == [ubuntu.id, descartes.id])
-        #expect(try engine.cardRows(in: .type(.concept), with: scheduler).map(\.card.id) == [mayo.id])
-        #expect(try engine.cardRows(in: .type(.word), with: scheduler).map(\.card.id) == [ubuntu.id, serendipia.id])
-    }
-
-    @Test("All Tags lists every tag of the cards, buried ones too, once each, alphabetically")
-    func allTagsListsEveryTagOfTheCards() throws {
+    // As `ficha tags` lists them, since tags left the window (#538).
+    @Test("every tag of the cards is listed, buried ones too, once each, alphabetically")
+    func everyTagOfTheCardsIsListed() throws {
         try approve(card(.word, front: "Ubuntu", back: "Humanidad.", tags: ["lenguaje", "filosofía"]), in: engine)
         try approve(card(.concept, front: "Eudaimonía", back: "Vida plena.", tags: ["ética", "filosofía"]), in: engine)
         let mercantilismo = try approve(
@@ -251,7 +228,7 @@ struct CardsWindowTests {
     @Test("a search narrows the sidebar's choice, and a blank one leaves it whole")
     func aSearchNarrowsTheSidebarsChoice() throws {
         let scheduler = ReviewSettings.defaults.scheduler
-        try approve(card(.word, front: "Ubérrimo", back: "Muy fértil.", tags: ["lenguaje"]), in: engine)
+        try approve(card(.word, front: "Ubérrimo", back: "Muy fértil."), in: engine)
         let fecundo = try engine.create(
             card(.word, front: "Fecundo", back: "Fértil, que produce mucho."), deck: "Palabras")
         let serendipia = try engine.create(card(nil, front: "serendipia", back: "Un hallazgo."), deck: "Palabras")
@@ -260,7 +237,7 @@ struct CardsWindowTests {
             try engine.cardRows(in: .deck("Palabras"), matching: "fertil", with: scheduler).map(\.card.id) == [
                 fecundo.id
             ])
-        #expect(try engine.cardRows(in: .tag("lenguaje"), matching: "fecundo", with: scheduler).isEmpty)
+        #expect(try engine.cardRows(in: .deck(Deck.defaultName), matching: "fecundo", with: scheduler).isEmpty)
         #expect(
             try engine.cardRows(in: .deck("Palabras"), matching: "  ", with: scheduler).map(\.card.id) == [
                 fecundo.id, serendipia.id,

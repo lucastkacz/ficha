@@ -2,14 +2,12 @@ import FichaCore
 import Foundation
 internal import GRDB
 
-// Each tag's counts (ADR 0022): how many cards it lists, and how many of
-// those are due, as All Tags' Cards and Due columns show them and `ficha
-// tags` writes them.
+// Each tag's counts (ADR 0022): how many cards carry it, and how many of
+// those are due, as `ficha tags` writes them.
 
-/// Each tag's counts, as All Tags shows them and `ficha tags` writes them.
+/// Each tag's counts, as `ficha tags` writes them.
 public struct TagCounts: Sendable, Equatable {
-    /// How many cards the tag lists when it's chosen: those that carry it or
-    /// a tag inside it, and aren't buried.
+    /// How many cards carry the tag or a tag inside it, and aren't buried.
     public let cards: Int
     /// How many of those are due now and in the user's reviews, which those
     /// of a set-aside deck never are.
@@ -37,10 +35,10 @@ public struct CountedTag: Sendable, Equatable {
 
 extension Engine {
     /// Every tag `allTags()` lists, in its order, each with its counts, as
-    /// All Tags shows them, each card standing as `scheduler` replays its log
-    /// now: a tag no card lists counts none. One read, so each tag's pin,
-    /// which gives the pinned tags' order (`pinnedInOrder`), and its counts
-    /// are of the same moment.
+    /// `ficha tags` writes them, each card standing as `scheduler` replays
+    /// its log now: a tag no card lists counts none. One read, so each tag's
+    /// pin, which gives the pinned tags' order (`pinnedInOrder`), and its
+    /// counts are of the same moment.
     public func countedTags(with scheduler: Scheduler) throws(EngineError) -> [CountedTag] {
         let now = time.now
         return try read { db in

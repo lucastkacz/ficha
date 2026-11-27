@@ -2,8 +2,9 @@ import FichaCore
 import Foundation
 internal import GRDB
 
-// Pinned tags (ADR 0022): the tags the user keeps in the Cards window's
-// sidebar, in an order of their own. A pin is a tag's own, as its switch is,
+// Pinned tags (ADR 0022): the tags the user pinned, in an order of their own,
+// which the Cards window's sidebar listed until tags left the app's face
+// (#538), and `ficha tag pin` keeps. A pin is a tag's own, as its switch is,
 // so it stays while no card carries the tag, and syncs as its row does; a
 // rename or a move keeps it (`RenamingTags.swift`). Each pinned tag holds its
 // place as a key (`PinPosition`), so that moving one rewrites its row alone.
@@ -18,16 +19,16 @@ extension Engine {
         }
     }
 
-    /// Pins `tag` to the Cards window's sidebar, as `pin(_:at:)` pins
-    /// several: at `index` among the other pinned tags, moving there when
+    /// Pins `tag`, as `pin(_:at:)` pins several: at `index` among the other
+    /// pinned tags, moving there when
     /// it's pinned, or after them when `index` is nil, where a pinned tag
     /// stays where it is.
     public func pin(_ tag: String, at index: Int? = nil) throws(EngineError) {
         try pin([tag], at: index)
     }
 
-    /// Pins `tags` to the Cards window's sidebar, next to each other in the
-    /// order they're given, the first at `index` among the other pinned
+    /// Pins `tags`, next to each other in the order they're given, the first
+    /// at `index` among the other pinned
     /// tags, whose order stays; an index past them puts them last. Those
     /// already pinned move there. When `index` is nil, those that aren't
     /// pinned go after the pinned tags, and the pinned ones stay where they
@@ -59,8 +60,7 @@ extension Engine {
         }
     }
 
-    /// Unpins `tag` from the Cards window's sidebar. A tag that isn't pinned
-    /// stays as it is.
+    /// Unpins `tag`. A tag that isn't pinned stays as it is.
     public func unpin(_ tag: String) throws(EngineError) {
         try unpin([tag])
     }

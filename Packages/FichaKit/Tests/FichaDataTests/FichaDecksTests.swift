@@ -173,7 +173,7 @@ final class FichaDecksTests {
         let asked = window.howFast
         window.startHowFast()
 
-        #expect(sections == [.inbox, .decks, .fichaDecks, .tags, .types])
+        #expect(sections == [.inbox, .decks, .fichaDecks])
         #expect(offered == FichaDeck.allCases)
         #expect(words.deck == .palabrasLindas)
         #expect(words.firstCard?.front.isEmpty == false)

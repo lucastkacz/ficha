@@ -42,21 +42,19 @@ final class CardsWindowExportTests {
         try approve(card(.word, front: front, back: "Lo que hay que saber de «\(front)».", tags: tags), in: engine)
     }
 
+    // The window shows no tags (#538), so it offers no tag's cards either.
     @Test(
-        "the Export sheet offers the selected cards only while some are selected, then all cards, each deck and each tag with cards, each with how many it takes, buried ones too"
-    )
+        "the Export sheet offers the selected cards only while some are selected, then all cards and each deck with cards, each with how many it takes, buried ones too, and no tag's cards",
+        .bug(id: 538))
     func theExportSheetOffersEachChoiceWithItsCount() throws {
         let mayo = try approveCard("Revolución de Mayo", tags: ["historia"])
         let socrates = try approveCard("Sócrates", tags: ["historia", "filosofía"])
         let ubuntu = try approveCard("ubuntu")
         let cabildo = try approveCard("Cabildo abierto", tags: ["historia"])
         try engine.bury(cabildo.id)
-        let guernica = try approveCard("Guernica", tags: ["arte"])
-        // All Tags still lists a tag with a color and no cards, and the
-        // sidebar a deck made with none.
-        try engine.setColor(.red, of: "arte")
-        try engine.delete([guernica.id])
         try engine.changeDeck(of: [mayo.id], to: "Historia::Argentina")
+        // The sidebar lists a deck made with no cards, which Export doesn't
+        // offer.
         try engine.makeDeck(named: "Arte")
         var unselected = openWindow()
         var selected = openWindow()
@@ -70,28 +68,20 @@ final class CardsWindowExportTests {
         let defaultDeck = CardsWindowState.ExportChoice(cards: .deck(Deck.defaultName), cardCount: 3)
         let historyDeck = CardsWindowState.ExportChoice(cards: .deck("Historia"), cardCount: 1)
         let argentina = CardsWindowState.ExportChoice(cards: .deck("Historia::Argentina"), cardCount: 1)
-        let philosophy = CardsWindowState.ExportChoice(cards: .tag("filosofía"), cardCount: 1)
-        let history = CardsWindowState.ExportChoice(cards: .tag("historia"), cardCount: 3)
-        #expect(unselected.exporting?.choices == [all, defaultDeck, historyDeck, argentina, philosophy, history])
+        #expect(unselected.exporting?.choices == [all, defaultDeck, historyDeck, argentina])
         #expect(unselected.exporting?.cardChoices == [all])
         #expect(unselected.exporting?.deckChoices == [defaultDeck, historyDeck, argentina])
-        #expect(unselected.exporting?.tagChoices == [philosophy, history])
         let selectedCards = CardsWindowState.ExportChoice(cards: .cards([socrates.id, ubuntu.id]), cardCount: 2)
-        #expect(
-            selected.exporting?.choices == [
-                selectedCards, all, defaultDeck, historyDeck, argentina, philosophy, history,
-            ])
+        #expect(selected.exporting?.choices == [selectedCards, all, defaultDeck, historyDeck, argentina])
         #expect(selected.exporting?.cardChoices == [selectedCards, all])
     }
 
     // Which another Ficha proposes as their tag when it imports them.
-    @Test(
-        "the save panel proposes the deck's or the tag's name for its cards, and a name for the selected cards or all of them"
-    )
-    func theSavePanelProposesTheTagsName() throws {
-        let mayo = try approveCard("Revolución de Mayo", tags: ["historia"])
+    @Test("the save panel proposes the deck's name for its cards, and a name for the selected cards or all of them")
+    func theSavePanelProposesTheDecksName() throws {
+        let mayo = try approveCard("Revolución de Mayo")
         let ubuntu = try approveCard("ubuntu")
-        let socrates = try approveCard("Sócrates", tags: ["historia"])
+        let socrates = try approveCard("Sócrates")
         try engine.changeDeck(of: [socrates.id], to: "Historia::Argentina")
         var window = openWindow()
         // The window opens on Default, which lists them both.
@@ -99,33 +89,27 @@ final class CardsWindowExportTests {
 
         window.startExport()
         let selected = window.exporting?.fileName
-        window.chooseCardsToExport(.tag("historia"))
-        let history = window.exporting?.fileName
         window.chooseCardsToExport(.deck("Historia::Argentina"))
         let argentina = window.exporting?.fileName
         window.chooseCardsToExport(.all)
 
         #expect(selected == .selectedCards)
-        #expect(history == .tag("historia"))
         #expect(argentina == .deck("Historia::Argentina"))
         #expect(window.exporting?.fileName == .allCards)
     }
 
     // One selected card is often just the one the detail shows.
     @Test(
-        "the Export sheet starts on the selected cards when several are selected, else on the deck or the tag the sidebar chose, else on all cards"
+        "the Export sheet starts on the selected cards when several are selected, else on the deck the sidebar chose, else on all cards"
     )
     func theExportSheetStartsOnWhatTheWindowPointsAt() throws {
-        let mayo = try approveCard("Revolución de Mayo", tags: ["historia"])
-        let socrates = try approveCard("Sócrates", tags: ["historia", "filosofía"])
+        let mayo = try approveCard("Revolución de Mayo")
+        let socrates = try approveCard("Sócrates")
         try approveCard("ubuntu")
         try engine.changeDeck(of: [mayo.id, socrates.id], to: "Historia")
         var several = openWindow()
         several.choose(.cards(.deck("Historia")))
         several.select([mayo.id, socrates.id])
-        var tag = openWindow()
-        tag.choose(.cards(.tag("filosofía")))
-        tag.select([socrates.id])
         var deck = openWindow()
         deck.choose(.cards(.deck("Historia")))
         deck.select([socrates.id])
@@ -133,14 +117,11 @@ final class CardsWindowExportTests {
         inbox.choose(.inbox)
 
         several.startExport()
-        tag.startExport()
         deck.startExport()
         inbox.startExport()
 
         #expect(several.exporting?.chosen == .cards([mayo.id, socrates.id]))
         #expect(several.exporting?.cardCount == 2)
-        #expect(tag.exporting?.chosen == .tag("filosofía"))
-        #expect(tag.exporting?.cardCount == 1)
         #expect(deck.exporting?.chosen == .deck("Historia"))
         #expect(deck.exporting?.cardCount == 2)
         #expect(inbox.exporting?.chosen == .all)
@@ -148,17 +129,19 @@ final class CardsWindowExportTests {
     }
 
     @Test(
-        "Export writes what the user chose to the file they picked, the selected cards, a tag's or all, and closes the sheet"
+        "Export writes what the user chose to the file they picked, the selected cards, a deck's or all, and closes the sheet"
     )
     func exportWritesWhatTheUserChose() async throws {
-        let mayo = try approveCard("Revolución de Mayo", tags: ["historia"])
-        try approveCard("Sócrates", tags: ["historia", "filosofía"])
+        let mayo = try approveCard("Revolución de Mayo")
+        let socrates = try approveCard("Sócrates")
         let ubuntu = try approveCard("ubuntu")
+        try engine.changeDeck(of: [socrates.id], to: "Filosofía")
         var window = openWindow()
+        // The window opens on Default, which lists them both.
         window.select([mayo.id, ubuntu.id])
 
         var exportedFronts: [[String]] = []
-        for choice in [CardsToExport.cards([mayo.id, ubuntu.id]), .tag("historia"), .all] {
+        for choice in [CardsToExport.cards([mayo.id, ubuntu.id]), .deck("Filosofía"), .all] {
             let file = folder.appending(path: "Tarjetas \(exportedFronts.count).txt")
             window.startExport()
             window.chooseCardsToExport(choice)
@@ -170,7 +153,7 @@ final class CardsWindowExportTests {
         #expect(
             exportedFronts == [
                 ["Revolución de Mayo", "ubuntu"],
-                ["Revolución de Mayo", "Sócrates"],
+                ["Sócrates"],
                 ["Revolución de Mayo", "Sócrates", "ubuntu"],
             ])
     }
@@ -198,14 +181,15 @@ final class CardsWindowExportTests {
     @Test("Export writes a zip when a card it takes has an image, and a text file when none does")
     func exportWritesAZipWhenACardHasAnImage() throws {
         let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))
-        try engine.create(card(nil, front: "hornero", back: "Un pájaro.", tags: ["aves"], frontImage: bird))
-        try approveCard("ubuntu", tags: ["filosofía"])
+        try engine.create(card(nil, front: "hornero", back: "Un pájaro.", frontImage: bird))
+        let ubuntu = try approveCard("ubuntu")
+        try engine.changeDeck(of: [ubuntu.id], to: "Filosofía")
         var window = openWindow()
 
         window.startExport()
         window.chooseCardsToExport(.all)
         let all = window.exporting?.writesZip
-        window.chooseCardsToExport(.tag("filosofía"))
+        window.chooseCardsToExport(.deck("Filosofía"))
         let philosophy = window.exporting?.writesZip
 
         #expect(all == true)

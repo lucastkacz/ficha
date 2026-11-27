@@ -18,19 +18,10 @@ import Foundation
 /// whose tree the sidebar lists too, where a deck's menu sets it aside,
 /// prioritizes it, and gives it a color or asks for its emoji
 /// (`CardsWindowDecks.swift`), and renames and deletes it, as dropping cards
-/// or a deck on a deck there moves them (`CardsWindowDeckEdits.swift`), and a
-/// chosen deck's tags narrow its cards to one of them
-/// (`CardsWindowDeckTags.swift`), as it pins tags to the sidebar
-/// or gives them a color from a tag's context menu, for one tag or several,
-/// it asks which emoji a tag gets and which name, and puts
-/// the sidebar's pinned tags in the order Lucas drags them into, pinning a
-/// tag he drags in from All Tags (`CardsWindowTags.swift`), it lists every
-/// tag in All Tags, sorted, searched and selected, deletes tags and clears
-/// unused ones after asking, moves the tags he drags onto another or between
-/// two rows, and lists a tag's cards in All Tags' place until Back
-/// (`CardsWindowAllTags.swift`), it makes, renames, gives an emoji to and
-/// deletes card types of the user's own (`CardsWindowTypes.swift`), and it
-/// records what couldn't be saved, for the window to say. It also holds the
+/// or a deck on a deck there moves them (`CardsWindowDeckEdits.swift`), and it
+/// records what couldn't be saved, for the window to say. A card shows its
+/// deck alone: the database keeps each card's tags and type, which editing
+/// it keeps, but the window shows neither (#538). It also holds the
 /// form that creates cards while it's open, which `CardForm.swift` decides,
 /// with its Deck field and the editor's (`CardsWindowDeckField.swift`), runs
 /// the Import sheet, from a file's preview, with the decks its cards go to,
@@ -44,13 +35,11 @@ import Foundation
 /// offers Ficha's decks the user hasn't added, each with its first card, which
 /// Add Deck… adds after How fast? (`CardsWindowFichaDecks.swift`).
 public struct CardsWindowState: Sendable {
-    /// What the sidebar offers, one at a time: a group of cards, a deck's, a
-    /// tag's or a type's, the inbox, All Tags, or one of Ficha's decks.
+    /// What the sidebar offers, one at a time: a deck's cards, the inbox, or
+    /// one of Ficha's decks.
     public enum SidebarItem: Sendable, Hashable {
         case cards(CardGroup)
         case inbox
-        /// Every tag, pinned or not (ADR 0022).
-        case allTags
         /// One of Ficha's decks the user hasn't added, which the window shows
         /// in the grid's and the detail's place, with Add Deck…:
         /// `CardsWindowFichaDecks.swift`.
@@ -68,19 +57,12 @@ public struct CardsWindowState: Sendable {
         /// The Ficha's Decks section: the decks of Ficha's the user hasn't
         /// added, in `FichaDeck`'s order (`CardsWindowFichaDecks.swift`).
         case fichaDecks([FichaDeckFile])
-        /// The Tags section: the pinned tags, as `pinnedTags` lists them,
-        /// then All Tags….
-        case tags(pinned: [PinnedTagRow])
-        /// The Types section: the type groups, as `typeGroups` lists them.
-        case types([CardGroup])
 
         /// Which section it is, whatever it lists.
         public enum ID: Sendable, Hashable {
             case inbox
             case decks
             case fichaDecks
-            case tags
-            case types
         }
 
         public var id: ID {
@@ -88,32 +70,26 @@ public struct CardsWindowState: Sendable {
             case .inbox: .inbox
             case .decks: .decks
             case .fichaDecks: .fichaDecks
-            case .tags: .tags
-            case .types: .types
             }
         }
 
         /// What it offers, in its order.
         public var items: [SidebarItem] {
             switch self {
-            case .types(let groups): groups.map(SidebarItem.cards)
             case .inbox: [.inbox]
             case .decks(let rows): rows.flatMap(\.flattened).map(\.item)
             case .fichaDecks(let files): files.map(\.deck).map(SidebarItem.fichaDeck)
-            case .tags(let pinned): pinned.map(\.item) + [.allTags]
             }
         }
     }
 
     /// What the window lists between the sidebar and the detail: the cards of
-    /// a group, which the grid shows as tiles, what waits in the inbox, or
-    /// All Tags' every tag, as a tree (`CardsWindowAllTags.swift`); no card
-    /// while one of Ficha's decks shows in the grid's place, or while the
-    /// sidebar chose nothing.
+    /// a deck, which the grid shows as tiles, or what waits in the inbox; no
+    /// card while one of Ficha's decks shows in the grid's place, or while
+    /// the sidebar chose nothing.
     public enum Listing: Sendable, Equatable {
         case cards([CardRow])
         case inbox([InboxRow])
-        case allTags([AllTagsRow])
     }
 
     /// What the detail shows.
@@ -137,10 +113,6 @@ public struct CardsWindowState: Sendable {
         case nothingSelectedInInbox
         /// That no card is selected.
         case noCardSelected
-        /// That the window lists All Tags, with the tags selected in it that
-        /// it lists, in its order, which the detail names or counts: a tag's
-        /// own actions are in its menu (`CardsWindowAllTags.swift`).
-        case allTags(selected: [CardTag])
     }
 
     /// What Lucas can do with what the detail shows.
@@ -176,34 +148,13 @@ public struct CardsWindowState: Sendable {
         case capture(Capture)
     }
 
-    /// What the context menu of a tag offers, in the sidebar or in All Tags,
-    /// where it acts on every tag Lucas selected when he opens it on one of
-    /// them: one menu, whose items act on all the tags it's for.
-    public struct TagMenu: Sendable, Equatable {
-        /// The tags it acts on, in the order a tree lists them: one, or
-        /// several selected in All Tags.
-        public let tags: [String]
-        /// Whether every one is pinned to the sidebar, so the menu offers
-        /// Unpin from Sidebar, and Pin to Sidebar otherwise.
-        public let isPinned: Bool
-        /// The Color submenu's items: None, then Finder's seven colors in
-        /// Finder's order, with the one every tag has of its own ticked, or
-        /// None when none has one.
-        public let colorItems: [ColorItem]
-
-        /// Whether Rename… and Emoji… are on: the menu is for one tag.
-        public var isForOneTag: Bool {
-            tags.count == 1
-        }
-    }
-
-    /// An item of the Color submenu in a tag's menu or a deck's.
+    /// An item of the Color submenu in a deck's menu.
     public struct ColorItem: Sendable, Equatable {
-        /// The color it gives the tags or the deck, or nil for None, which
-        /// takes their own colors away.
+        /// The color it gives the deck, or nil for None, which takes its own
+        /// color away.
         public let color: TagColor?
-        /// Whether it's ticked: every tag, or the deck, has this color of its
-        /// own, or none has one for None.
+        /// Whether it's ticked: the deck has this color of its own, or none
+        /// for None.
         public let isTicked: Bool
 
         /// The Color submenu's items for what the menu acts on, which has
@@ -215,9 +166,8 @@ public struct CardsWindowState: Sendable {
         }
     }
 
-    /// The fields a card is written in, each with a type picker and a Deck
-    /// field, whose New Type… and New Deck… give them the type or the deck
-    /// their sheet makes or names.
+    /// The fields a card is written in, each with a Deck field, whose New
+    /// Deck… gives them the deck its sheet names.
     public enum CardFields: Sendable, Equatable {
         /// The card form's.
         case form
@@ -243,16 +193,10 @@ public struct CardsWindowState: Sendable {
         /// A new deck's whole name, in the New Deck sheet, after New Deck… in
         /// the sidebar, whose OK makes the deck: `CardsWindowDecks.swift`.
         case makeDeck
-        /// Which emoji this tag gets, in the emoji sheet, whose field starts
-        /// with the one it has.
-        case emoji(CardTag)
         /// Which emoji this deck gets, Default too, in the emoji sheet, whose
         /// field starts with the one it has of its own:
         /// `CardsWindowDecks.swift`.
         case deckEmoji(Deck)
-        /// Which name this tag gets, in the rename sheet, whose field starts
-        /// with its whole name, written with `::`: `CardsWindowTags.swift`.
-        case renameTag(CardTag)
         /// Which name this deck gets, in the rename sheet, whose field starts
         /// with its whole name, written with `::`:
         /// `CardsWindowDeckEdits.swift`.
@@ -261,56 +205,42 @@ public struct CardsWindowState: Sendable {
         /// card in them, which does what the deletion says:
         /// `CardsWindowDeckEdits.swift`.
         case deleteDeck(DeckDeletion)
-        /// A new type's name and emoji, in the New Type sheet, for the type
-        /// picker of the fields New Type… was chosen in, which takes it:
-        /// `CardsWindowTypes.swift`.
-        case newType(CardFields)
-        /// A new type's name and emoji, in the New Type sheet, after New Type…
-        /// in the sidebar, whose OK makes the type, for no card:
-        /// `CardsWindowTypes.swift`.
-        case makeType
-        /// Which name this user type gets, in the rename sheet, whose field
-        /// starts with its name.
-        case renameType(UserType)
-        /// Which emoji this user type gets, in the emoji sheet, whose field
-        /// starts with the one it has.
-        case typeEmoji(UserType)
-        /// Whether to delete this user type, which this many cards have,
-        /// buried ones too.
-        case deleteType(UserType, cardCount: Int)
-        /// Whether to delete these tags, each with every tag inside it, which
-        /// does what the deletion says: `CardsWindowAllTags.swift`.
-        case deleteTags(TagDeletion)
-        /// Whether to clear these unused tags, which no card carries.
-        case clearUnusedTags([String])
         /// How fast new cards come, and where a deck goes in the queue, as
         /// it comes in: `HowFast.swift`.
         case howFast(HowFast)
     }
 
-    /// What OK in the emoji sheet, or in the New Type sheet, makes of what an
-    /// emoji field holds.
+    /// What OK in the emoji sheet makes of what its field holds.
     public enum EmojiEntry: Sendable, Equatable {
-        /// One emoji, which the tag, the deck or the user type gets.
+        /// One emoji, which the deck gets.
         case emoji(Emoji)
-        /// Nothing but spaces, if any, which takes the tag's, the deck's or
-        /// the user type's emoji away, or makes the type with none.
+        /// Nothing but spaces, if any, which takes the deck's own emoji away.
         case removal
         /// Something that isn't one emoji, which OK refuses, and why, for
         /// the sheet to say.
         case refused(EngineError)
+
+        /// The emoji OK gives, or nil for none: for a removal, and a refusal,
+        /// which gives nothing.
+        var emoji: Emoji? {
+            guard case .emoji(let emoji) = self else { return nil }
+            return emoji
+        }
+
+        /// Whether OK refuses it.
+        var isRefused: Bool {
+            guard case .refused = self else { return false }
+            return true
+        }
     }
 
-    /// What OK in the rename sheet, or the New Type sheet's name, makes of
-    /// what the name field holds.
+    /// What OK in the rename sheet makes of what its field holds.
     public enum RenameEntry: Sendable, Equatable {
-        /// The tag's or the deck's new whole name, its levels cleaned up, or
-        /// the type's name, without the spaces around it.
+        /// The deck's new whole name, its levels cleaned up.
         case name(String)
-        /// A name OK refuses, and why, for the sheet to say: a blank one, or
-        /// one inside the tag or the deck itself, or a deck's whose top level
-        /// is one of Default's; or a type's name of one of the four Ficha
-        /// comes with, or another user type's.
+        /// A name OK refuses, and why, for the sheet to say: a blank one, one
+        /// inside the deck itself, or one whose top level is one of
+        /// Default's.
         case refused(EngineError)
     }
 
@@ -379,48 +309,12 @@ public struct CardsWindowState: Sendable {
         /// He deleted this deck, or chose Delete… on it, which counts what
         /// goes first.
         case deleteDeck(deck: String)
-        /// He gave this tag a color, or took its color away, with any others
-        /// he chose it on along with it.
-        case setColor(tag: String)
-        /// He gave this tag an emoji, or took its emoji away.
-        case setEmoji(tag: String)
-        /// He renamed this tag, in the rename sheet.
-        case rename(tag: String)
-        /// He dragged this tag, in All Tags, onto another or between two
-        /// rows, to move it, with any he dragged along after it.
-        case move(tag: String)
-        /// He pinned this tag to the sidebar, from its menu, its Pinned
-        /// checkbox or by dragging it there, with any tags he chose it on or
-        /// dragged along after it.
-        case pin(tag: String)
-        /// He unpinned this tag from the sidebar, with any others he chose
-        /// it on along with it.
-        case unpin(tag: String)
-        /// He deleted this tag, with any others he chose Delete… on along
-        /// with it, or chose Delete…, which counts what goes first.
-        case deleteTags(tag: String)
-        /// He cleared the unused tags, or chose Clear Unused Tags…, which
-        /// counts them first.
-        case clearUnusedTags
-        /// He dragged this pinned tag to another place among the sidebar's
-        /// pinned tags, with any he dragged along after it.
-        case reorderPinned(tag: String)
         /// He made a deck, in the New Deck sheet, after New Deck… in the
         /// sidebar.
         case makeDeck
         /// He chose Start in How fast?, which saves the pace and, when Put it
         /// first is ticked, puts the deck first in the queue.
         case startHowFast
-        /// He made a type, in the New Type sheet.
-        case makeType
-        /// He renamed the user type with this name, in the rename sheet.
-        case renameType(name: String)
-        /// He gave the user type with this name an emoji, or took its emoji
-        /// away, in the emoji sheet.
-        case setTypeEmoji(name: String)
-        /// He deleted the user type with this name, or chose Delete… on it,
-        /// which counts its cards first.
-        case deleteType(name: String)
         /// He exported cards, which couldn't be read or saved to the file.
         case export
         /// He chose Add Deck… on this one of Ficha's decks, which reads the
@@ -432,41 +326,13 @@ public struct CardsWindowState: Sendable {
     }
 
     /// What the sidebar chose: the first deck Your Decks lists, as the window
-    /// opens, until Lucas picks another, or a tag, a type, the inbox, All
-    /// Tags or one of Ficha's decks; or nothing, while Your Decks lists no
-    /// deck and Lucas picked nothing else, as before the window first reads
-    /// the cards, and when a new user opens it.
+    /// opens, until Lucas picks another, or the inbox or one of Ficha's
+    /// decks; or nothing, while Your Decks lists no deck and Lucas picked
+    /// nothing else, as before the window first reads the cards, and when a
+    /// new user opens it.
     public internal(set) var sidebarItem: SidebarItem?
     /// What Lucas looks for in what the sidebar chose, from the search field.
     public internal(set) var search = ""
-    /// The tag whose cards All Tags lists in its place, after Lucas
-    /// double-clicked it, until Back: `CardsWindowAllTags.swift`.
-    public internal(set) var tagShownFromAllTags: String?
-    /// All Tags' search, while it lists a tag's cards in its place, which
-    /// Back puts back in the search field.
-    var allTagsSearch = ""
-    /// How All Tags sorts each level of its tree: alphabetically, until Lucas
-    /// clicks a column's title.
-    public internal(set) var allTagsSort = AllTagsSort.alphabetical
-    /// The tags Lucas selected in All Tags, which can include tags it no
-    /// longer lists, as a search narrows it: its actions take only those it
-    /// lists.
-    public internal(set) var selectedTags: Set<String> = []
-    /// All Tags' parents Lucas opened while no search narrows it. Each starts
-    /// closed, and the window remembers them while it's open.
-    var openTags: Set<String> = []
-    /// All Tags' parents Lucas closed while a search narrows it, which opens
-    /// every parent it keeps, until the search changes.
-    var tagsClosedInSearch: Set<String> = []
-    /// The tags Lucas drags from All Tags, by their names, from when he
-    /// starts until he lets go of them, or nil while he drags none: the only
-    /// ones a drop in the sidebar pins, or in All Tags moves, so that text
-    /// dragged in from another app, or from elsewhere in Ficha, never pins or
-    /// moves a tag it names (`CardsWindowTags.swift`).
-    public internal(set) var draggedTags: [String]?
-    /// The tags Clear Unused Tags would delete, as All Tags last read them:
-    /// it's offered while there are some.
-    var unusedTags: [String] = []
     /// The cards Lucas selected, which can include cards the grid no longer
     /// lists: the detail and the actions take only those it lists.
     public private(set) var selection: Set<CardRow.ID> = []
@@ -498,11 +364,6 @@ public struct CardsWindowState: Sendable {
     /// user has no cards at all, buried ones included, as when they just
     /// started.
     public private(set) var offersFirstCards = false
-    /// Every tag the window offers, with what each has of its own and takes
-    /// from the tags it sits inside, as All Tags lists them: those of the
-    /// cards, buried ones too, those with something of their own, and every
-    /// tag they sit inside, in the order a tree lists them.
-    public private(set) var tags: [CardTag] = []
     /// Every deck the sidebar's Your Decks section lists, with what each has of
     /// its own and its counts, in the order a tree lists them, Default first
     /// while it holds cards or has a switch on: `CardsWindowDecks.swift`.
@@ -523,22 +384,6 @@ public struct CardsWindowState: Sendable {
     /// until it first reads the cards: it follows those after it each time
     /// it reads them again (`CardsWindowDeckEdits.swift`).
     var lastDeckChangeFollowed: Int64?
-    /// The tags of the deck the sidebar chose, with how many of its cards
-    /// carry each, the most first, which the row above the card list shows:
-    /// none while it chose no deck (`CardsWindowDeckTags.swift`).
-    public internal(set) var deckTags: [DeckTag] = []
-    /// The tag Lucas chose in that row, which narrows the deck's cards to
-    /// those that carry it or a tag inside it, until he chooses it again or
-    /// the sidebar chooses something else: nil while he chose none.
-    public internal(set) var chosenDeckTag: String?
-    /// The sidebar's Tags section: the pinned tags, in Lucas's order, each
-    /// named by its whole path, before All Tags: `CardsWindowTags.swift`.
-    public private(set) var pinnedTags: [PinnedTagRow] = []
-    /// The type groups the sidebar offers: one for each of the four types
-    /// Ficha comes with, then one for each of the user's types, in
-    /// alphabetical order, and No Type after them while a card that isn't
-    /// buried has no type.
-    public private(set) var typeGroups = CardType.builtIn.map(CardGroup.type)
     /// The engine's time when the cards were read, which the tiles' marks,
     /// the detail's words for when a card is back and its Due rows count
     /// from.
@@ -587,10 +432,6 @@ public struct CardsWindowState: Sendable {
     /// Whether the card the user edits goes both ways, as Save would set it,
     /// while they edit one: the card's own until they switch it.
     public private(set) var editedBothWays = false
-    /// The type of the card the user edits, as Save would give it, while they
-    /// edit one: the card's own until they pick another, or make one with New
-    /// Type… (`CardsWindowTypes.swift`).
-    public internal(set) var editedType: CardType?
     /// The deck of the card the user edits, as Save would move it to, by its
     /// whole name, or Default's, while they edit one: the card's own until
     /// they pick another in the Deck field, or name one with New Deck…
@@ -632,16 +473,17 @@ public struct CardsWindowState: Sendable {
     }
 
     /// The sidebar's sections, in its order: the inbox, the decks as a tree,
-    /// Ficha's decks the user hasn't added, while there are some, the pinned
-    /// tags with All Tags… after them, and the type groups. No group of cards
-    /// by where they stand, such as every card, the new ones or the buried
-    /// ones: a deck's cards show where each stands on its tile (ADR 0041).
+    /// and Ficha's decks the user hasn't added, while there are some. No
+    /// group of cards by where they stand, such as every card, the new ones
+    /// or the buried ones: a deck's cards show where each stands on its tile
+    /// (ADR 0041). Nor by what labels them: the cards' tags and types stay
+    /// in the database, which the sidebar no longer lists (#538).
     public var sidebarSections: [SidebarSection] {
         var sections: [SidebarSection] = [.inbox, .decks(deckRows)]
         if !fichaDecksNotAdded.isEmpty {
             sections.append(.fichaDecks(fichaDecksNotAdded))
         }
-        return sections + [.tags(pinned: pinnedTags), .types(typeGroups)]
+        return sections
     }
 
     /// The deck the sidebar chose, by its whole name, or Default by
@@ -667,7 +509,7 @@ public struct CardsWindowState: Sendable {
             rows.filter { selection.contains($0.id) }
         case .success(.inbox):
             selectedInboxRow?.flaggedCard.map { [$0] } ?? []
-        case .success(.allTags), .failure, nil:
+        case .failure, nil:
             []
         }
     }
@@ -690,7 +532,7 @@ public struct CardsWindowState: Sendable {
             expansion.capture
         case .followUp(let followUp):
             followUp.capture
-        case .card, .cards, .nothingSelectedInInbox, .noCardSelected, .allTags:
+        case .card, .cards, .nothingSelectedInInbox, .noCardSelected:
             nil
         }
     }
@@ -702,8 +544,8 @@ public struct CardsWindowState: Sendable {
     }
 
     /// What the detail shows: the capture, the expansion or the follow-up
-    /// selected in the inbox, the selected cards the grid lists, that
-    /// nothing is selected, or that the window lists All Tags.
+    /// selected in the inbox, the selected cards the grid lists, or that
+    /// nothing is selected.
     public var detail: Detail {
         switch selectedInboxRow?.item {
         case .capture(let capture):
@@ -725,8 +567,7 @@ public struct CardsWindowState: Sendable {
         }
         switch sidebarItem {
         case .inbox?: return .nothingSelectedInInbox
-        case .allTags? where tagShownFromAllTags == nil: return .allTags(selected: selectedListedTags)
-        case .allTags?, .cards?, .fichaDeck?, nil: return .noCardSelected
+        case .cards?, .fichaDeck?, nil: return .noCardSelected
         }
     }
 
@@ -747,7 +588,7 @@ public struct CardsWindowState: Sendable {
             return Self.actions(for: row.cardStanding).union([.edit, .changeDeck, .delete])
         case .cards(let rows):
             return buryOrUnbury(rows).union([Self.bothWaysAction(for: rows), .changeDeck, .delete])
-        case .nothingSelectedInInbox, .noCardSelected, .allTags:
+        case .nothingSelectedInInbox, .noCardSelected:
             return []
         }
     }
@@ -778,17 +619,10 @@ public struct CardsWindowState: Sendable {
         rows.allSatisfy(\.card.bothWays) ? .turnOffBothWays : .turnOnBothWays
     }
 
-    /// Lists what Lucas chose in the sidebar. All Tags, while it lists a
-    /// tag's cards in its place, goes back to its tree, as Back does.
+    /// Lists what Lucas chose in the sidebar.
     public mutating func choose(_ item: SidebarItem) {
-        if item == .allTags, tagShownFromAllTags != nil {
-            goBack()
-            return
-        }
         guard item != sidebarItem else { return }
         sidebarItem = item
-        tagShownFromAllTags = nil
-        chosenDeckTag = nil
         readAgain()
     }
 
@@ -797,9 +631,6 @@ public struct CardsWindowState: Sendable {
     public mutating func search(for search: String) {
         guard search != self.search else { return }
         self.search = search
-        if sidebarItem == .allTags, tagShownFromAllTags == nil {
-            tagsClosedInSearch = []
-        }
         readAgain()
     }
 
@@ -834,7 +665,6 @@ public struct CardsWindowState: Sendable {
             editedImages = SideImages(front: row.card.frontImage, back: row.card.backImage)
             editedSounds = SideSounds(front: row.card.frontSound, back: row.card.backSound)
             editedBothWays = row.card.bothWays
-            editedType = row.card.type
             editedDeck = row.card.deck
             // The editor takes the detail's place, and its sound's.
             showFiles()
@@ -864,9 +694,11 @@ public struct CardsWindowState: Sendable {
     /// `editedImages` and `editedSounds` hold them, going both ways as
     /// `editedBothWays` says, in the deck `editedDeck` says, and ends the
     /// edit, while Save is on, or records why it couldn't and goes on with
-    /// it. The card keeps its progress and its review log, and a flagged one is
-    /// fixed, back in the reviews unless it's buried. The detail shows it as
-    /// saved at once, without waiting for the engine to say it changed.
+    /// it. The card keeps its progress and its review log, and its tags and
+    /// its type as the database holds them, whatever `content` says, since
+    /// the editor shows neither (#538); a flagged one is fixed, back in the
+    /// reviews unless it's buried. The detail shows it as saved at once,
+    /// without waiting for the engine to say it changed.
     public mutating func saveCard(_ content: CardContent) {
         guard case .card(let card) = editing, canSaveCard else { return }
         let files = heldFiles(of: content)
@@ -915,7 +747,6 @@ public struct CardsWindowState: Sendable {
         editedSounds = SideSounds()
         editedSoundsComingIn = [:]
         editedBothWays = false
-        editedType = nil
         editedDeck = Deck.defaultName
     }
 
@@ -1027,9 +858,9 @@ public struct CardsWindowState: Sendable {
         askForTheFichaDeckAskedToAdd()
     }
 
-    /// What OK in the emoji sheet, or in the New Type sheet, makes of `text`,
-    /// what an emoji field holds: one emoji for the tag, the deck or the user
-    /// type, none when the field is empty, or a refusal of anything else.
+    /// What OK in the emoji sheet makes of `text`, what its field holds: one
+    /// emoji for the deck, none when the field is empty, or a refusal of
+    /// anything else.
     public func emojiEntry(_ text: String) -> EmojiEntry {
         if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             return .removal
@@ -1042,62 +873,38 @@ public struct CardsWindowState: Sendable {
     }
 
     /// Chooses OK in the emoji sheet, whose field holds `text`: gives the
-    /// tag, the deck or the user type the window asks about that emoji, or
-    /// takes its emoji away when the field is empty, and reads the cards
-    /// again, or records why it couldn't and goes on asking. While OK refuses
-    /// `text`, it does nothing, and the sheet says why.
+    /// deck the window asks about that emoji, or takes its emoji away when
+    /// the field is empty, and reads the cards again, or records why it
+    /// couldn't and goes on asking. While OK refuses `text`, it does nothing,
+    /// and the sheet says why.
     public mutating func chooseEmoji(_ text: String) {
         let entry = emojiEntry(text)
-        guard !entry.isRefused else { return }
-        let done: Bool
-        switch question {
-        case .emoji(let tag): done = setEmoji(entry.emoji, of: tag)
-        case .deckEmoji(let deck): done = setEmoji(entry.emoji, of: deck)
-        case .typeEmoji(let type): done = setEmoji(entry.emoji, of: type)
-        default: return
-        }
-        if done {
+        guard !entry.isRefused, case .deckEmoji(let deck) = question else { return }
+        if setEmoji(entry.emoji, of: deck) {
             question = nil
             askForTheFichaDeckAskedToAdd()
         }
     }
 
-    /// What OK in the rename sheet makes of `text`, what its field holds: for
-    /// the tag the window asks about, the tag's new whole name, or a refusal
-    /// of a blank name or one inside the tag itself; for the deck it asks
-    /// about, the deck's new whole name, or a refusal of a blank name, one
-    /// whose top level is one of Default's, or one inside the deck itself;
-    /// for the user type it asks about, the type's name, or a refusal of a
-    /// blank name, a name of one of the four Ficha comes with, or another
-    /// user type's; each as the engine refuses them. Nil while the window
-    /// asks about no name.
+    /// What OK in the rename sheet makes of `text`, what its field holds, for
+    /// the deck the window asks about: the deck's new whole name, or a
+    /// refusal of a blank name, one whose top level is one of Default's, or
+    /// one inside the deck itself, as the engine refuses them. Nil while the
+    /// window asks about no name.
     public func renameEntry(_ text: String) -> RenameEntry? {
-        switch question {
-        case .renameTag(let tag): tagNameEntry(text, renaming: tag.name)
-        case .renameDeck(let deck): deckNameEntry(text, renaming: deck.name)
-        case .renameType(let type): typeNameEntry(text, renaming: type.id)
-        default: nil
-        }
+        guard case .renameDeck(let deck) = question else { return nil }
+        return deckNameEntry(text, renaming: deck.name)
     }
 
     /// Chooses OK in the rename sheet, whose field holds `text`: renames the
-    /// tag the window asks about, and every tag inside it, as
-    /// `Engine.renameTag(_:to:)` does, the deck it asks about, and every
-    /// deck inside it, as `Engine.renameDeck(_:to:)` does, or the user type
-    /// it asks about, and reads the cards again, the sidebar following the
-    /// tag, the deck or the type it chose to its new name; or records why it
-    /// couldn't and goes on asking. While OK refuses `text`, it does nothing,
-    /// and the sheet says why.
+    /// deck the window asks about, and every deck inside it, as
+    /// `Engine.renameDeck(_:to:)` does, and reads the cards again, the
+    /// sidebar following the deck it chose to its new name; or records why
+    /// it couldn't and goes on asking. While OK refuses `text`, it does
+    /// nothing, and the sheet says why.
     public mutating func chooseNewName(_ text: String) {
-        guard case .name(let name)? = renameEntry(text) else { return }
-        let done: Bool
-        switch question {
-        case .renameTag(let tag): done = renameTag(tag.name, to: name, as: .rename(tag: tag.name))
-        case .renameDeck(let deck): done = renameDeck(deck.name, to: name, as: .renameDeck(deck: deck.name))
-        case .renameType(let type): done = renameType(type, to: name)
-        default: return
-        }
-        if done {
+        guard case .name(let name)? = renameEntry(text), case .renameDeck(let deck) = question else { return }
+        if renameDeck(deck.name, to: name, as: .renameDeck(deck: deck.name)) {
             question = nil
             askForTheFichaDeckAskedToAdd()
         }
@@ -1133,24 +940,16 @@ public struct CardsWindowState: Sendable {
         failure = Failure(action: action, error: error)
     }
 
-    /// Reads the decks, with what each one's row says under its title, the
-    /// tags and what the sidebar chose, as they are now, with `scheduler`,
-    /// the settings in Settings, which may have changed since the last read,
-    /// and the review log of the card the detail shows.
+    /// Reads the decks, with what each one's row says under its title, and
+    /// what the sidebar chose, as they are now, with `scheduler`, the
+    /// settings in Settings, which may have changed since the last read, and
+    /// the review log of the card the detail shows.
     /// It follows each deck renamed or deleted since it last read, whoever
     /// did it (`follow(_:)`). While the sidebar chose nothing, as the window
     /// opens, it chooses the first deck Your Decks lists, as soon as it lists
     /// one. When the chosen deck is gone, as Default once its last card moved
-    /// out, or the chosen tag is gone, because its last card was edited or
-    /// deleted while it has nothing of its own, the sidebar goes back to that
-    /// first deck, or to nothing while Your Decks lists none, and so it does
-    /// when No Type is gone, once every card that isn't buried has a type,
-    /// and when the chosen user type is deleted; and when the tag whose cards
-    /// All Tags lists is gone, All Tags lists its tree again, as after Back.
-    /// A user type renamed, or given another emoji, stays chosen. All Tags'
-    /// selection keeps only the tags there are. A tag chosen among the chosen
-    /// deck's tags that none of its cards carries anymore is no longer
-    /// chosen, and the deck lists all its cards again. It finds which of
+    /// out, the sidebar goes back to that first deck, or to nothing while
+    /// Your Decks lists none. It finds which of
     /// Ficha's decks the user has added, as `Engine.hasAdded(_:)` says, and
     /// when the one the sidebar chose is added, by Start or meanwhile from
     /// another device, the sidebar chooses the deck, or the first deck while
@@ -1184,20 +983,9 @@ public struct CardsWindowState: Sendable {
         offersFirstCards = false
         do throws(EngineError) {
             let deckChanges = try engine.deckChanges(after: lastDeckChangeFollowed)
-            // All Tags reads every tag with its counts, which its tree lists,
-            // and the rest of the window reads every tag alone.
-            let counted = sidebarItem == .allTags ? try engine.countedTags(with: scheduler) : nil
-            if let counted {
-                tags = counted.map(\.tag)
-            } else {
-                tags = try engine.allTags()
-            }
-            pinnedTags = tags.pinnedInOrder.map(PinnedTagRow.init(tag:))
             decks = try engine.countedDecks(with: scheduler)
             try readDeckLines()
             follow(deckChanges)
-            typeGroups = try engine.sidebarTypeGroups()
-            followUserTypes()
             if case .cards(let group) = sidebarItem, !offers(group) {
                 sidebarItem = nil
             }
@@ -1210,19 +998,8 @@ public struct CardsWindowState: Sendable {
                 // first deck, as soon as Your Decks lists one.
                 sidebarItem = deckRows.first?.item
             }
-            try readDeckTags()
-            if let shown = tagShownFromAllTags, !offers(.tag(shown)) {
-                tagShownFromAllTags = nil
-                search = allTagsSearch
-            }
-            let names = Set(tags.map(\.name))
-            selectedTags.formIntersection(names)
-            if let group = listedGroup {
-                let rows = narrowedToChosenDeckTag(try engine.cardRows(in: group, matching: search, with: scheduler))
-                listing = .success(.cards(rows))
-            } else if let counted {
-                listing = .success(.allTags(allTagsRows(of: counted)))
-                unusedTags = try engine.unusedTags()
+            if case .cards(let group) = sidebarItem {
+                listing = .success(.cards(try engine.cardRows(in: group, matching: search, with: scheduler)))
             } else if sidebarItem == .inbox {
                 listing = .success(.inbox(try engine.inboxRows(matching: search, with: scheduler)))
             } else {
@@ -1242,16 +1019,11 @@ public struct CardsWindowState: Sendable {
     }
 
     /// Whether the sidebar offers `group`, as last read: a deck while the
-    /// Your Decks section lists it, a tag while All Tags lists it, pinned or
-    /// not, No Type while some card has none, and a user type while it lists
-    /// it. It never offers every card, nor the flagged ones, which only the
-    /// engine's counts and the inbox read.
+    /// Your Decks section lists it. It never offers every card, nor the
+    /// flagged ones, which only the engine's counts and the inbox read.
     private func offers(_ group: CardGroup) -> Bool {
         switch group {
         case .deck(let deck): listedDeck(deck) != nil
-        case .tag(let tag): tags.contains { $0.name == tag }
-        case .noType: typeGroups.contains(.noType)
-        case .type(let type): offersType(type)
         case .all, .flagged: false
         }
     }

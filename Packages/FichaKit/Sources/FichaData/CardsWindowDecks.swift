@@ -2,7 +2,7 @@ import FichaCore
 import Foundation
 
 // The Cards window's decks (ADR 0024): the sidebar's Your Decks section, after
-// Inbox and before Tags, lists every deck as a tree, Default first while it
+// Inbox, lists every deck as a tree, Default first while it
 // holds cards or has a switch on, where it always was, then the decks at the
 // top of the tree with cards in the user's reviews, in the order of the
 // queue new cards come from, a deck listed first for its priority cards
@@ -27,7 +27,6 @@ import Foundation
 // (`CardsWindowDeckEdits.swift`). Every deck's menu and the Your Decks title's
 // have New Deck…, whose OK makes a deck with no card, where its name says, and
 // then asks How fast? for a new deck at the top of the tree (`HowFast.swift`).
-// A chosen deck's tags line up above its cards (`CardsWindowDeckTags.swift`).
 // Change Deck… moves the selected cards to the deck Lucas picks in its sheet,
 // from the same tree with Default always in it, or to one he names there with
 // New Deck…, which the move makes. The Deck field, in the card form and the

@@ -3915,7 +3915,7 @@
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },
-    "“%@” isn't pinned to the sidebar, maybe since another of your devices unpinned it, so nothing moved. Pin it first." : {
+    "“%@” isn't pinned, maybe since another of your devices unpinned it, so nothing moved. Pin it first." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },

@@ -3,12 +3,12 @@ import FichaData
 import Foundation
 import Testing
 
-/// Tests on deleting tags (ADR 0022): a tag deleted, with every tag inside
-/// it, comes off every card that carries it, and its rows go, while every
-/// card stays; what Delete…'s question counts first; Clear Unused Tags,
-/// which deletes the tags no card carries; and each tag's counts, which All
-/// Tags shows beside them (`TagCounts.swift`). They start at 9 in the morning
-/// in Buenos Aires, with the default settings.
+/// Tests on deleting tags (ADR 0022), as `ficha tag delete` does: a tag
+/// deleted, with every tag inside it, comes off every card that carries it,
+/// and its rows go, while every card stays; what a deletion counts;
+/// clearing the unused tags, which deletes the tags no card carries; and
+/// each tag's counts, which `ficha tags` prints (`TagCounts.swift`). They
+/// start at 9 in the morning in Buenos Aires, with the default settings.
 struct DeletingTagsTests {
     let calendar: Calendar
     let time: ManualTimeSource
@@ -41,8 +41,8 @@ struct DeletingTagsTests {
 
     // Only the cards in Borges sync, chosen, and Martín Fierro's tags change
     // nothing of it; Ficciones is buried.
-    @Test("Delete… counts first the tags inside and the cards that carry them, under selective sync too")
-    func deleteCountsFirst() throws {
+    @Test("deleting a tag counts the tags inside and the cards that carried them, under selective sync too")
+    func deletingCounts() throws {
         try approveCard("Martín Fierro", tags: ["literatura::poesía", "historia"])
         let ficciones = try approveCard("Ficciones", tags: ["literatura"])
         try approveInDeck("El Aleph", deck: "Borges", tags: ["literatura", "argentina"], in: engine)
@@ -52,12 +52,11 @@ struct DeletingTagsTests {
         try engine.syncOnlyChosenDecks(true)
         try engine.setChosenToSync(true, ofDeck: "Borges")
 
-        let deletion = try engine.deletion(of: ["literatura"])
+        let deletion = try engine.deleteTags(["literatura"])
 
         #expect(deletion.tags == ["literatura"])
         #expect(deletion.tagsInside == ["literatura::poesía"])
         #expect(deletion.cards == 4)
-        #expect(try engine.deleteTags(["literatura"]) == deletion)
     }
 
     @Test("deleting a tag with a tag inside it among those chosen deletes each once, the tag inside it with it")
@@ -73,15 +72,13 @@ struct DeletingTagsTests {
 
     // literatura has a color, and a card carries a tag inside it; música,
     // música::tango and cine have something of their own and no card.
-    @Test("Clear Unused Tags deletes each tag with a row of its own that no card carries, nor a tag inside it")
+    @Test("clearing the unused tags deletes each tag with a row of its own that no card carries, nor a tag inside it")
     func clearingUnusedTags() throws {
         try approveCard("Martín Fierro", tags: ["literatura::poesía"])
         try engine.setColor(.purple, of: "literatura")
         try engine.setColor(.blue, of: "música")
         try engine.pin("música::tango")
         try engine.setEmoji(Emoji("🎬"), of: "cine")
-
-        #expect(try engine.unusedTags() == ["cine", "música", "música::tango"])
 
         #expect(try engine.clearUnusedTags() == ["cine", "música", "música::tango"])
         #expect(try engine.allTags().map(\.name) == ["literatura", "literatura::poesía"])
@@ -91,8 +88,8 @@ struct DeletingTagsTests {
 
     // Only the cards in Música sync, chosen; Martín Fierro, which carries
     // literatura, doesn't. Another device's cards keep their tags, which
-    // Clear Unused Tags never changes (`SelectiveSyncTests`).
-    @Test("under selective sync, Clear Unused Tags considers every tag no card here carries, whatever syncs")
+    // clearing the unused tags never changes (`SelectiveSyncTests`).
+    @Test("under selective sync, clearing the unused tags considers every tag no card here carries, whatever syncs")
     func clearingUnusedTagsUnderSelectiveSync() throws {
         try approveCard("Martín Fierro", tags: ["literatura"])
         try engine.setColor(.purple, of: "literatura")
@@ -101,7 +98,7 @@ struct DeletingTagsTests {
         try engine.syncOnlyChosenDecks(true)
         try engine.setChosenToSync(true, ofDeck: "Música")
 
-        #expect(try engine.unusedTags() == ["cine", "música::tango"])
+        #expect(try engine.clearUnusedTags() == ["cine", "música::tango"])
     }
 
     // Martín Fierro, Facundo and El Aleph are due, Ficciones too but buried,

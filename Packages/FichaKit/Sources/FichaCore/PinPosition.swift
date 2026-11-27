@@ -1,7 +1,8 @@
 import Foundation
 
 /// Where a pinned tag sits among the pinned tags, in the order the user chose
-/// for the Cards window's sidebar (ADR 0022): a key that sorts as text, as in
+/// (ADR 0022), which the database keeps and the apps no longer show (#538): a
+/// key that sorts as text, as in
 /// fractional indexing, so that moving one tag gives it a key between its new
 /// neighbors' and leaves every other tag's as it was. Two devices that pin a
 /// tag at the same place at once can give two tags the same key, and their

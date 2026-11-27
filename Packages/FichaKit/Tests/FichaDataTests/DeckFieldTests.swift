@@ -84,21 +84,6 @@ struct DeckFieldTests {
         #expect(window.cardForm?.draft.deck == Deck.defaultName)
     }
 
-    // A tag doesn't say where a card lives.
-    @Test("with a tag chosen in the sidebar, a new card's form starts in the deck the last card was added to")
-    func aNewCardStartsInTheLastDeckAddedToWhenTheSidebarChoseATag() throws {
-        try engine.create(
-            card(.concept, front: "La Gioconda", back: "De Leonardo.", tags: ["renacimiento"]), deck: "Arte")
-        try engine.makeDeck(named: "Música")
-        var window = openWindow(lastDeckAddedTo: "Música")
-        window.choose(.cards(.tag("renacimiento")))
-
-        window.openNewCardForm()
-
-        #expect(window.sidebarItem == .cards(.tag("renacimiento")))
-        #expect(window.cardForm?.draft.deck == "Música")
-    }
-
     @Test(
         "the form's Deck field offers Default and every deck as a tree, and New Deck… there refuses Default's name, names a deck the field then holds and offers, and Add makes it"
     )
@@ -143,7 +128,8 @@ struct DeckFieldTests {
         try engine.makeDeck(named: "Arte::Pintura")
         try engine.meet(gioconda)
         let standing = try engine.standing(of: gioconda.id, with: scheduler)
-        let edited = try card(.concept, front: "La Gioconda", back: "De Leonardo da Vinci.", tags: ["renacimiento"])
+        // The editor shows no tags (#538), and Save keeps the card's.
+        let edited = try card(nil, front: "La Gioconda", back: "De Leonardo da Vinci.")
         var window = openWindow()
         window.select([gioconda.id])
 
@@ -198,7 +184,7 @@ struct DeckFieldTests {
         #expect(cards.map(\.deck) == ["Humanidades::Filosofía", "Humanidades::Filosofía"])
     }
 
-    // As they start with its tags, so that they land beside it.
+    // So that they land beside it.
     @Test("Convert to Card on a follow-up starts in its card's deck, whatever the last card was added to")
     func aFollowUpsCardsStartInItsCardsDeck() throws {
         let poderes = try approve(

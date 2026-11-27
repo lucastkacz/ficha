@@ -22,7 +22,7 @@ struct CardsWindowDecksTests {
     // Each card met the day before is due, and guernica, buried, counts in
     // no deck: Música::Tango has no card.
     @Test(
-        "the Your Decks section, after Inbox and before Tags, lists every deck as a tree, Default first while it holds cards, each with its due cards, those inside it counted"
+        "the Your Decks section, after Inbox, lists every deck as a tree, Default first while it holds cards, each with its due cards, those inside it counted"
     )
     func theDecksSection() throws {
         let gioconda = try engine.create(card(.concept, front: "La Gioconda", back: "De Leonardo."))
@@ -40,7 +40,7 @@ struct CardsWindowDecksTests {
 
         let window = openWindow()
 
-        #expect(window.sidebarSections.map(\.id) == [.inbox, .decks, .tags, .types])
+        #expect(window.sidebarSections.map(\.id) == [.inbox, .decks])
         #expect(window.deckRows.outline == ["Default 1", "Arte 2", "  Pintura 1", "Música 0", "  Tango 0"])
         #expect(
             window.sidebarSections[1].items
@@ -343,8 +343,7 @@ struct CardsWindowDecksTests {
     }
 
     // Each group of cards the sidebar offers is a deck: no All cards, New,
-    // Due, Learned, Flagged or Buried. The tags' and the types' groups leave
-    // the sidebar with #538, which takes their exception out of this test.
+    // Due, Learned, Flagged or Buried, and no tag or type (#538).
     @Test(
         "the sidebar offers the decks, and no group of cards by where they stand: All cards, New, Due, Learned, Flagged or Buried",
         .bug(id: 536))
@@ -356,10 +355,7 @@ struct CardsWindowDecksTests {
 
         let groups = window.sidebarSections.flatMap(\.items).compactMap { item -> CardGroup? in
             guard case .cards(let group) = item else { return nil }
-            switch group {
-            case .tag, .type, .noType: return nil
-            default: return group
-            }
+            return group
         }
         #expect(groups.count == 2)
         #expect(Set(groups) == [.deck("Historia"), .deck("Arte")])

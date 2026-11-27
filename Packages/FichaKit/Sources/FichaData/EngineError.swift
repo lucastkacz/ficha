@@ -346,8 +346,8 @@ extension EngineError: LocalizedError {
         case .tagNotPinned(let tag):
             LocalizedStringResource(
                 """
-                “\(TagPath.shown(tag))” isn't pinned to the sidebar, maybe since another of your devices unpinned \
-                it, so nothing moved. Pin it first.
+                “\(TagPath.shown(tag))” isn't pinned, maybe since another of your devices unpinned it, so nothing \
+                moved. Pin it first.
                 """
             )
         case .deckSetAside(let deck):
