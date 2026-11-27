@@ -3,18 +3,23 @@
 /// but for the new cards a day and the desired retention, which start as
 /// ADR 0034 sets them, and Lucas can change it in Settings; the app passes
 /// them to the engine as a value. Some of them decide a card's progress, the
-/// scheduler's settings, the new cards a day and the forgotten-often count,
-/// and sync, so the engine keeps them (`progress`); the rest stay each
-/// device's own.
+/// scheduler's settings, the new cards a day, the hour Ficha's day starts at
+/// and the forgotten-often count, and sync, so the engine keeps them
+/// (`progress`); the rest stay each device's own.
 public struct ReviewSettings: Sendable, Equatable {
     /// The settings FSRS spaces cards with, as Anki does (#404).
     public var scheduler: Scheduler
     /// How many cards an appearance or a review now brings at most, a new one
     /// included.
     public var cardsPerAppearance: Int
-    /// How many new cards Lucas meets in a day at most, by his Mac's calendar
-    /// day, for every deck together: the pace's (`Pace`).
+    /// How many new cards Lucas meets in a day at most, by Ficha's day, for
+    /// every deck together: the pace's (`Pace`).
     public var newCardsPerDay: Int
+    /// The hour Ficha's day starts at, by the device's clock, from 0 to 23:
+    /// Ficha's day runs from it to the same hour the next day, and the new
+    /// cards a day, the finish date and the days Ficha names count by it
+    /// (ADR 0045).
+    public var dayStartsAtHour: Int
     /// How far ahead an appearance looks: it brings along the cards due
     /// within it, and their reviews count as on time.
     public var lookAhead: Duration
@@ -54,6 +59,8 @@ public struct ReviewSettings: Sendable, Equatable {
         scheduler: .newInstall,
         cardsPerAppearance: 5,
         newCardsPerDay: Pace.steady.newCardsPerDay,
+        // Anki's "Next day starts at".
+        dayStartsAtHour: 4,
         lookAhead: .seconds(20 * 60),
         // From 9:00 to 22:00.
         activeHours: ActiveHours(start: 9, end: 22),

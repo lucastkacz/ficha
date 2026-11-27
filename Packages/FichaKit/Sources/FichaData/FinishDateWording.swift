@@ -78,7 +78,7 @@ extension FinishDate {
     /// ends, joined by "or" when they're one day apart and by "to" otherwise;
     /// and else each end by the third of its month it falls in, one third
     /// when both are in the same one, two of one month, or two months.
-    public func wording(now: Date, calendar: Calendar) -> Wording {
+    public func wording(now: Date, dayStartsAtHour: Int, calendar: Calendar) -> Wording {
         let today = calendar.startOfDay(for: now)
         let daysFromToday = { (date: Date) in
             calendar.dateComponents([.day], from: today, to: calendar.startOfDay(for: date)).day ?? 0

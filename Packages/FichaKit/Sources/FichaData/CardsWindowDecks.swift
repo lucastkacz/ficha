@@ -604,11 +604,13 @@ extension Engine {
             let inReviews = try cardsThatShowUp(in: db).inReviews
             let metInFull = inReviews.decksMetInFull
             let queue = settings.queue(of: inReviews, now: now, calendar: calendar)
+            let dayStartsAtHour = settings.dayStartsAtHour
             var lines: [String: CardsWindowState.DeckRow.Line] = [:]
             for deck in decks {
                 let count = counts[deck.name, default: (0, 0)]
                 let place = queue.firstIndex { $0.deck == deck.name }
-                let finish = place.flatMap { queue[$0].finish }?.wording(now: now, calendar: calendar)
+                let finishDate = place.flatMap { queue[$0].finish }
+                let finish = finishDate?.wording(now: now, dayStartsAtHour: dayStartsAtHour, calendar: calendar)
                 let line: CardsWindowState.DeckRow.Line =
                     if count.of == 0 {
                         .noCards

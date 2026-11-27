@@ -127,7 +127,9 @@ struct WidgetTests {
         #expect(timeline.refreshAt == nil)
     }
 
-    @Test("a new card waits for the next day once Lucas met the day's new cards, and the widget says so")
+    @Test(
+        "a new card waits for Ficha's next day, from 4:00, once Lucas met the day's new cards, and the widget says so",
+        .bug(id: 562))
     func aNewCardWaitsForTheNextDay() throws {
         var settings = ReviewSettings.defaults.progress
         settings.newCardsPerDay = 1
@@ -136,13 +138,13 @@ struct WidgetTests {
         let new = try approveCard("ubuntu", in: engine)
         // Met this morning, and due again in 2 days.
         try engine.climb(met, goods: 2, movingForward: time)
-        let midnight = try #require(calendar.dateInterval(of: .day, for: time.now)?.end)
+        let nextDay = try #require(calendar.date(from: DateComponents(year: 2026, month: 10, day: 15, hour: 4)))
 
         #expect(
             try engine.widgetTimeline(.defaults, engineAheadBy: .zero).entries.prefix(2) == [
-                WidgetTimeline.Entry(date: time.now, content: .nextCard(at: midnight)),
+                WidgetTimeline.Entry(date: time.now, content: .nextCard(at: nextDay)),
                 WidgetTimeline.Entry(
-                    date: midnight,
+                    date: nextDay,
                     content: .card(
                         WidgetCard(
                             way: CardWay(cardID: new.id, way: .frontFirst), isNew: true, side: .front,
@@ -369,8 +371,10 @@ final class FichaDevWidgetTests {
         try? FileManager.default.removeItem(at: folder)
     }
 
-    @Test("Ficha Dev's widget shows a new card at the system's midnight before Ficha Dev's, and asks nothing more")
-    func aNewCardShowsAtTheSystemsMidnight() throws {
+    @Test(
+        "Ficha Dev's widget shows a new card as the system's next day starts, at 4:00, before Ficha Dev's, and asks nothing more",
+        .bug(id: 562))
+    func aNewCardShowsAsTheSystemsNextDayStarts() throws {
         var settings = ReviewSettings.defaults.progress
         settings.newCardsPerDay = 1
         try engine.saveProgressSettings(settings, changedFrom: ReviewSettings.defaults.progress)
@@ -379,17 +383,17 @@ final class FichaDevWidgetTests {
         // The day's new card, met, and out of the way.
         try engine.meet(met)
         try engine.bury([met.id])
-        // A day before Ficha Dev's midnight, which is a day ahead.
-        let systemsMidnight = try #require(
-            calendar.date(from: DateComponents(year: 2026, month: 10, day: 15, hour: 0)))
+        // A day before Ficha Dev's next day, which is a day ahead.
+        let systemsNextDay = try #require(
+            calendar.date(from: DateComponents(year: 2026, month: 10, day: 15, hour: 4)))
 
         let timeline = try engine.widgetTimeline(.defaults, engineAheadBy: fichaDevTime.shift)
 
         #expect(
             timeline.entries == [
-                WidgetTimeline.Entry(date: system.now, content: .nextCard(at: systemsMidnight)),
+                WidgetTimeline.Entry(date: system.now, content: .nextCard(at: systemsNextDay)),
                 WidgetTimeline.Entry(
-                    date: systemsMidnight,
+                    date: systemsNextDay,
                     content: .card(
                         WidgetCard(
                             way: CardWay(cardID: new.id, way: .frontFirst), isNew: true, side: .front,

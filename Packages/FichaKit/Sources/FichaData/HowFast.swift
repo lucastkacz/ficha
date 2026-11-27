@@ -258,7 +258,8 @@ extension CardsWindowState.HowFast {
                 let finish = last.flatMap {
                     paced.finishDate(of: $0, first: first, in: cards, now: now, calendar: calendar)
                 }
-                return PaceOption(pace: pace, finish: finish, wording: finish?.wording(now: now, calendar: calendar))
+                let wording = finish?.wording(now: now, dayStartsAtHour: settings.dayStartsAtHour, calendar: calendar)
+                return PaceOption(pace: pace, finish: finish, wording: wording)
             }
         }
         // The decks ahead of the deck where it is, and those still ahead

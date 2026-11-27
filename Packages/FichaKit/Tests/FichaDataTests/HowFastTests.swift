@@ -60,7 +60,9 @@ final class HowFastTests {
         let preview = try await ficha.previewImport(of: historiaFile)
         try ficha.importCards(preview, choosing: ImportChoices())
         let whereItIs = try Pace.allCases.map { try finish(of: "Historia", at: $0, in: engine) }
-        let wordings = whereItIs.map { $0?.wording(now: time.now, calendar: calendar) }
+        let wordings = whereItIs.map {
+            $0?.wording(now: time.now, dayStartsAtHour: settings.dayStartsAtHour, calendar: calendar)
+        }
 
         let asked = try #require(window.howFast)
         window.putHowFastFirst(true)
@@ -294,6 +296,26 @@ final class HowFastTests {
         #expect(window.question == nil)
         #expect(try engine.progressSettings().newCardsPerDay == Pace.chill.newCardsPerDay)
         #expect(try engine.queue(settings).map(\.deck) == ["Arte", "Botánica", "Zoología"])
+    }
+
+    // At 2:00 on Thursday the 15th, Ficha's day is still Wednesday's, whose
+    // active hours, 9 to 22, are over: Historia's three cards start coming on
+    // Thursday, from 4:00, all that day at Faster if it has appearances, or
+    // by Friday.
+    @Test(
+        "How fast? at 2:00 counts days from 4:00: at Faster, a deck that comes in then is all met tomorrow, not today",
+        .bug(id: 562))
+    func howFastCountsDaysFromFour() async throws {
+        time.move(to: try #require(calendar.date(from: DateComponents(year: 2026, month: 10, day: 15, hour: 2))))
+        let historiaFile = try write("Historia.txt", historia)
+        var window = openWindow()
+
+        await window.importThroughTheSheet(historiaFile)
+
+        let faster = try #require(window.howFast?.paces.first { $0.pace == .faster })
+        let friday = calendar.startOfDay(for: try morning(of: 16, in: calendar))
+        #expect(faster.wording == .dayOrNext(.tomorrow, .weekday(friday)))
+        #expect(faster.wording?.startsToday == false)
     }
 
     /// The window as it opens, on All cards, with the cards read.

@@ -858,7 +858,7 @@ func progressSettingsModel() throws -> AppModel {
             description: "The sample's scheduling settings break the scheduler's rules: fix progressSettingsModel().")
     }
     try engine.saveProgressSettings(
-        ProgressSettings(scheduler: scheduler, newCardsPerDay: 8, forgottenOftenAfter: 6),
+        ProgressSettings(scheduler: scheduler, newCardsPerDay: 8, dayStartsAtHour: 4, forgottenOftenAfter: 6),
         changedFrom: ReviewSettings.defaults.progress)
     return try AppModel(engine: engine)
 }

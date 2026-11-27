@@ -180,6 +180,19 @@ const noSteps = { ...SCHEDULER, learningSteps: [] };
   check('at Steady, the finish dates are 1 to 2 days away and 3 to 5', days(steady) === '1-2,3-5', days(steady));
   check('at Faster, they are today and 1 to 2 days away', days(faster) === '0-0,1-2', days(faster));
 }
+// FichasDayTests.aNewCardAnsweredAfterMidnightCountsTowardTheNight,
+// theDayTurnsAtFour and theDayTurnsAtTheHourItStartsAt: Ficha's day starts
+// at 4:00, or at the hour it's set to (ADR 0045).
+{
+  const sameDay = (a, b, s) => E.startOfDay(a, s) === E.startOfDay(b, s);
+  const six = { ...E.SETTINGS, dayStartsAtHour: 6 };
+  check('with the day at 4:00, 23:59 and 0:00 are one day, and 3:59 and 4:00 two',
+    sameDay(at(14, 23, 59), at(15, 0)) && !sameDay(at(15, 3, 59), at(15, 4)),
+    [at(14, 23, 59), at(15, 0), at(15, 3, 59), at(15, 4)].map((t) => E.startOfDay(t)));
+  check('with the day at 6:00, 4:00 and 5:59 are the day before, and 6:00 the next',
+    sameDay(at(15, 4), at(14, 21), six) && sameDay(at(15, 5, 59), at(14, 21), six) && !sameDay(at(15, 6), at(14, 21), six),
+    [at(15, 4), at(15, 5, 59), at(15, 6)].map((t) => E.startOfDay(t, six)));
+}
 // NightHoursTests.appearancesComeFromTwentyToThree: active hours from 20 to
 // 3 cross midnight.
 {

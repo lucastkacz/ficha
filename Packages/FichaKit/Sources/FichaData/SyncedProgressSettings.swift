@@ -266,8 +266,10 @@ private struct StoredProgressSettings {
         guard newCardsPerDay >= 0, (forgottenOftenAfter ?? 1) >= 1 else {
             throw unreadable("The settings that decide progress have a count below its least")
         }
+        // A stub for #562's tests: the hour isn't kept yet.
         return ProgressSettings(
-            scheduler: scheduler, newCardsPerDay: newCardsPerDay, forgottenOftenAfter: forgottenOftenAfter)
+            scheduler: scheduler, newCardsPerDay: newCardsPerDay,
+            dayStartsAtHour: ReviewSettings.defaults.dayStartsAtHour, forgottenOftenAfter: forgottenOftenAfter)
     }
 }
 

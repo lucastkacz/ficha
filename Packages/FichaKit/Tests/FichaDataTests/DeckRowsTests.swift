@@ -183,10 +183,11 @@ struct DeckRowsTests {
         window.read(with: scheduler)
         let overForToday = window.deckRows.first { $0.id == "Arte" }?.line
         let queued = try #require(try engine.queue(settings).first?.finish)
+        let queuedWording = queued.wording(now: time.now, dayStartsAtHour: settings.dayStartsAtHour, calendar: calendar)
 
         window.read(with: scheduler, activeHours: ReviewSettings.defaults.activeHours)
 
-        #expect(overForToday == .first(met: 0, of: 1, finish: queued.wording(now: time.now, calendar: calendar)))
+        #expect(overForToday == .first(met: 0, of: 1, finish: queuedWording))
         #expect(overForToday != .first(met: 0, of: 1, finish: .day(.today)))
         #expect(window.deckRows.first { $0.id == "Arte" }?.line == .first(met: 0, of: 1, finish: .day(.today)))
     }
@@ -228,7 +229,8 @@ struct DeckRowsTests {
 
     /// How the finish date from `soonest` to `latest` reads now.
     private func wording(_ soonest: Date, _ latest: Date) -> FinishDate.Wording {
-        FinishDate(soonest: soonest, latest: latest).wording(now: time.now, calendar: calendar)
+        FinishDate(soonest: soonest, latest: latest).wording(
+            now: time.now, dayStartsAtHour: ReviewSettings.defaults.dayStartsAtHour, calendar: calendar)
     }
 
     /// The start of the day `day` of the month `month` of `year`, in Buenos
