@@ -57,9 +57,9 @@ final class CardsWindow: NSWindow {
     /// Gives the window its content, with Lucas's cards as they are now, as
     /// it opens: the app opens it on screen, and `make render` offscreen. The
     /// content is made each time the window opens, so it starts on the first
-    /// deck Your Decks lists, with nothing selected or searched, and stops
-    /// reading the cards once it closes. `make render` may give it a state to
-    /// open with instead, partway through an import.
+    /// deck of the queue new cards come from, with nothing selected or
+    /// searched, and stops reading the cards once it closes. `make render`
+    /// may give it a state to open with instead, partway through an import.
     func makeContent(opening state: CardsWindowState? = nil) {
         // Once SwiftUI lays it out, a window's hosting view sets the window's
         // minimum whatever contentMinSize says: from its content's least size

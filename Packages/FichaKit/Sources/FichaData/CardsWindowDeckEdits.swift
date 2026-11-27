@@ -234,9 +234,9 @@ extension CardsWindowState {
     /// it closed, the deck the card form holds, and the one Show Card set
     /// aside, the editor's, and the one the last card was added to. A deck
     /// deleted lets go: the sidebar chooses nothing, until the read chooses
-    /// the first deck Your Decks lists, the forms' decks go to the deck a new
-    /// card starts in, and the editor's and the one the last card was added
-    /// to, to Default.
+    /// the deck the window opens on (`deckToOpenOn`), the forms' decks go to
+    /// the deck a new card starts in, and the editor's and the one the last
+    /// card was added to, to Default.
     mutating func follow(_ changes: DeckChangesSince) {
         lastDeckChangeFollowed = changes.last
         guard !changes.new.isEmpty else { return }

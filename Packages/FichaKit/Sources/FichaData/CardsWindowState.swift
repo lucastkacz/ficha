@@ -2,8 +2,9 @@ import FichaCore
 import Foundation
 
 /// The Cards window while it's open: what its sidebar chose, the first deck
-/// Your Decks lists as it opens, or nothing while it lists none, what Lucas
-/// looks for and what he selected, what the grid lists, a tile for each card
+/// of the queue new cards come from as it opens (`deckToOpenOn`), or nothing
+/// while Your Decks lists none, what Lucas looks for and what he selected,
+/// what the grid lists, a tile for each card
 /// (`CardsWindowGrid.swift`), read from his cards with the scheduling
 /// settings in Settings, and so what the detail shows, a card in words, with
 /// its numbers under Details (`CardWording.swift`), and what Lucas can do
@@ -431,9 +432,10 @@ public struct CardsWindowState: Sendable {
         case readFichaDeck(FichaDeck)
     }
 
-    /// What the sidebar chose: the first deck Your Decks lists, as the window
-    /// opens, until Lucas picks another, or a tag, a type, the inbox, All
-    /// Tags or one of Ficha's decks; or nothing, while Your Decks lists no
+    /// What the sidebar chose: the deck the window opens on (`deckToOpenOn`),
+    /// the first of the queue new cards come from, until Lucas picks another,
+    /// or a tag, a type, the inbox, All Tags or one of Ficha's decks; or
+    /// nothing, while Your Decks lists no
     /// deck and Lucas picked nothing else, as before the window first reads
     /// the cards, and when a new user opens it.
     public internal(set) var sidebarItem: SidebarItem?
@@ -1139,11 +1141,11 @@ public struct CardsWindowState: Sendable {
     /// and the review log of the card the detail shows.
     /// It follows each deck renamed or deleted since it last read, whoever
     /// did it (`follow(_:)`). While the sidebar chose nothing, as the window
-    /// opens, it chooses the first deck Your Decks lists, as soon as it lists
-    /// one. When the chosen deck is gone, as Default once its last card moved
+    /// opens, it chooses the deck it opens on (`deckToOpenOn`), as soon as
+    /// Your Decks lists one. When the chosen deck is gone, as Default once its last card moved
     /// out, or the chosen tag is gone, because its last card was edited or
     /// deleted while it has nothing of its own, the sidebar goes back to that
-    /// first deck, or to nothing while Your Decks lists none, and so it does
+    /// deck, or to nothing while Your Decks lists none, and so it does
     /// when No Type is gone, once every card that isn't buried has a type,
     /// and when the chosen user type is deleted; and when the tag whose cards
     /// All Tags lists is gone, All Tags lists its tree again, as after Back.
@@ -1153,8 +1155,8 @@ public struct CardsWindowState: Sendable {
     /// chosen, and the deck lists all its cards again. It finds which of
     /// Ficha's decks the user has added, as `Engine.hasAdded(_:)` says, and
     /// when the one the sidebar chose is added, by Start or meanwhile from
-    /// another device, the sidebar chooses the deck, or the first deck while
-    /// Your Decks doesn't list it.
+    /// another device, the sidebar chooses the deck, or the deck the window
+    /// opens on while Your Decks doesn't list it.
     /// Then, while nothing's open, it asks How fast? for the one of Ficha's
     /// decks the review panel asked for meanwhile, which chooses it in the
     /// sidebar (`askForTheFichaDeckAskedToAdd()`). This is the app's read,
@@ -1206,9 +1208,9 @@ public struct CardsWindowState: Sendable {
                 sidebarItem = listedDeck(deck.name) != nil ? .cards(.deck(deck.name)) : nil
             }
             if sidebarItem == nil {
-                // As the window opens, and once what it chose is gone: the
-                // first deck, as soon as Your Decks lists one.
-                sidebarItem = deckRows.first?.item
+                // As the window opens, and once what it chose is gone, as
+                // soon as Your Decks lists a deck.
+                sidebarItem = deckToOpenOn?.item
             }
             try readDeckTags()
             if let shown = tagShownFromAllTags, !offers(.tag(shown)) {
@@ -1278,11 +1280,12 @@ private struct CardReviewLog: Sendable {
 }
 
 extension Engine {
-    /// Opens the Cards window, which chooses the first deck Your Decks lists
-    /// once it reads the cards, with nothing searched or selected, for
-    /// Lucas's cards standing by `scheduler`, the settings in
-    /// Settings, which it reads once the window asks, with `activeHours`,
-    /// Settings' too, or Ficha's own while it's given none, remembering
+    /// Opens the Cards window, which chooses the deck it opens on, the first
+    /// of the queue new cards come from, once it reads the cards, with
+    /// nothing searched or selected, for Lucas's cards standing by
+    /// `scheduler`, the settings in Settings, which it reads once the window
+    /// asks, with `activeHours`, Settings' too, or Ficha's own while it's
+    /// given none, remembering
     /// `lastDeckAddedTo`, the deck he last added a card to, as this device's
     /// preferences keep it: Default when they keep none.
     public func openCardsWindow(

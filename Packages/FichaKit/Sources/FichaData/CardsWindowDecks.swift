@@ -221,6 +221,19 @@ extension CardsWindowState {
         return rows.indices.sorted { rank(of: $0) < rank(of: $1) }.map { rows[$0] }
     }
 
+    /// The deck the window opens on, and goes back to once what the sidebar
+    /// chose is gone, as the desktop mock opens on the first of its Your
+    /// Decks: the first deck of the queue new cards come from that Your
+    /// Decks lists, the one the user is meeting, in the order
+    /// `CardsInReviews.topDecksInQueueOrder` gives, Default too when it's
+    /// first there; or else, while no deck holds cards in the user's
+    /// reviews, the first deck Your Decks lists; or nil while it lists none.
+    var deckToOpenOn: DeckRow? {
+        let rows = deckRows
+        let inQueue = placedTopDecks.lazy.compactMap { deck in rows.first { $0.deck.name == deck } }
+        return inQueue.first ?? rows.first
+    }
+
     /// Whether the sidebar's deck `deck` is open, showing the decks inside
     /// it. Each starts open.
     public func isDeckOpen(_ deck: String) -> Bool {

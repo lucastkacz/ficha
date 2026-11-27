@@ -314,32 +314,47 @@ struct CardsWindowDecksTests {
         #expect(try engine.decks().isEmpty)
     }
 
-    // The window opens on the first deck Your Decks lists, as the desktop
-    // mock does (`mockups/desktop/index.html`): here Historia, whose card came
-    // in a minute before Arte's, so it goes first in the queue though Arte
-    // comes first alphabetically. While Your Decks lists no deck, as when the
-    // user has no cards, it opens on nothing, here with none of Ficha's decks
-    // offered either.
+    // The window opens on the first deck of the queue new cards come from
+    // that Your Decks lists, the one the user is meeting, as the desktop mock
+    // opens on the first of its Your Decks (`mockups/desktop/index.html`).
+    // While Your Decks lists no deck, as when the user has no cards, it opens
+    // on nothing, here with none of Ficha's decks offered either. Música,
+    // made with no card, puts no deck in the queue, so the window opens on
+    // the first deck Your Decks lists. Then petricor comes into Default, a
+    // minute before Coliseo into Historia, and a minute after it La Gioconda
+    // into Arte, so the queue is Default, Historia and Arte, and the window
+    // opens on Default. Once Arte is put first in the queue, it opens on
+    // Arte, though Your Decks lists Default first, as it does while Default
+    // holds cards.
     @Test(
-        "the Cards window opens on the first deck Your Decks lists, listing that deck's cards alone, and on nothing while it lists none; choosing another deck lists its cards",
+        "the Cards window opens on the first deck of the queue new cards come from that Your Decks lists, Default too when it's first there, listing that deck's cards alone; on the first deck Your Decks lists while none is in the queue; and on nothing while it lists none",
         .bug(id: 536))
-    func theWindowOpensOnTheFirstDeck() throws {
+    func theWindowOpensOnTheFirstDeckOfTheQueue() throws {
         let empty = openWindow()
+        try engine.makeDeck(named: "Música")
+        let noneInTheQueue = openWindow()
+        let petricor = try engine.create(card(nil, front: "petricor", back: "El olor de la lluvia."))
+        time.advance(by: minutes(1))
         let coliseo = try engine.create(card(nil, front: "Coliseo", back: "En Roma."), deck: "Historia")
         time.advance(by: minutes(1))
         let gioconda = try engine.create(card(nil, front: "La Gioconda", back: "De Leonardo."), deck: "Arte")
+        let defaultFirst = openWindow()
+        try engine.moveInQueue(deck: "Arte", to: .first)
 
         var window = openWindow()
         let openedOn = window.selectedDeck
         let listedOnOpening = window.listedCardIDs
-        window.choose(.cards(.deck("Arte")))
+        window.choose(.cards(.deck("Historia")))
 
         #expect(empty.selectedDeck == nil)
-        #expect(window.deckRows.map(\.id) == ["Historia", "Arte"])
-        #expect(openedOn == "Historia")
-        #expect(listedOnOpening == [coliseo.id])
-        #expect(window.selectedDeck == "Arte")
-        #expect(window.listedCardIDs == [gioconda.id])
+        #expect(noneInTheQueue.selectedDeck == "Música")
+        #expect(defaultFirst.selectedDeck == Deck.defaultName)
+        #expect(defaultFirst.listedCardIDs == [petricor.id])
+        #expect(window.deckRows.map(\.id) == [Deck.defaultName, "Arte", "Historia", "Música"])
+        #expect(openedOn == "Arte")
+        #expect(listedOnOpening == [gioconda.id])
+        #expect(window.selectedDeck == "Historia")
+        #expect(window.listedCardIDs == [coliseo.id])
     }
 
     // Each group of cards the sidebar offers is a deck: no All cards, New,
