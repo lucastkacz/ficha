@@ -651,6 +651,43 @@ struct CardsWindowStateTests {
         #expect(try engine.reviewNow(settings).map(\.card.id) == [serendipia.id])
         #expect(window.failure == nil)
     }
+
+    // ubuntu, met at 9:00 and rated good at 10:00, is due at 14:00. Flagged,
+    // it waits out of the reviews, listed in its deck with its flag, until
+    // an edit fixes it, as saving a flagged card's edit does.
+    @Test(
+        "flagging a card in the Cards window takes it out of the reviews and lists it in its deck with its note, and fixing it brings it back as it stood",
+        .bug(id: 540))
+    func aFlaggedCardIsListedInItsDeckUntilItsFixed() throws {
+        let settings = ReviewSettings.defaults
+        let ubuntu = try engine.create(card(nil, front: "ubuntu", back: "Soy porque somos."), deck: "Lenguaje")
+        try engine.climb(ubuntu, goods: 1, movingForward: time)
+        let standing = try engine.standing(of: ubuntu.id, with: scheduler)
+        var window = openWindow()
+        window.choose(.cards(.deck("Lenguaje")))
+        window.select([ubuntu.id])
+
+        window.askToFlag()
+        let flaggedAt = time.now
+        window.flag(note: try note("Falta un ejemplo"))
+        // As the window does once the engine says the cards changed.
+        window.read(with: scheduler)
+        time.move(to: try #require(standing.due))
+        let inTheReviews = try engine.reviewNow(settings).map(\.card.id)
+        let listed = window.listedCardRows
+        window.startEditing()
+        window.saveCard(
+            try card(nil, front: "ubuntu", back: "Soy porque somos: una persona es persona a través de las otras."))
+        window.read(with: scheduler)
+
+        #expect(inTheReviews == [])
+        #expect(listed?.map(\.id) == [ubuntu.id])
+        #expect(listed?.map(\.card.flag) == [Flag(note: "Falta un ejemplo", flaggedAt: flaggedAt)])
+        #expect(try engine.reviewNow(settings).map(\.card.id) == [ubuntu.id])
+        #expect(try engine.standing(of: ubuntu.id, with: scheduler) == standing)
+        #expect(window.listedCardRows?.map(\.card.flag) == [nil])
+        #expect(window.failure == nil)
+    }
 }
 
 extension CardsWindowState {

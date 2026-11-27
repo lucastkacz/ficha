@@ -64,6 +64,68 @@ struct SourceWordsTests {
             again. \(SourceHit.list(hits))
             """)
     }
+
+    // The words, in comments and strings too, since a comment or a help that
+    // speaks of a capture or the inbox speaks of what's gone: "capture" and
+    // its forms, alone or in a name, such as `CaptureContent`,
+    // `capturesInInbox` and `capturedAs`; "inbox" and "inboxes", alone or in
+    // a name, such as `InboxRow` and `inInbox`; "expansion" and
+    // "expansions", alone or in a name, such as `approveExpansion`; and
+    // "follow-up", "follow up" and "followUp" and their forms, such as
+    // `FollowUp` and `followsUpCardID`. Not "expand", which also names a
+    // disclosure's state, such as SwiftUI's `isExpanded`, nor "follow" alone.
+    // The sources: every Swift file of the apps, the CLI, the SVG drawer,
+    // FichaKit and the scripts, the tests left out, since a test of sync may
+    // still make the captures sync carries, and this one names the words.
+    // Exempt, as #540 and its replanteo say: the database's migrations,
+    // `Schema.swift`, which made the capture table and keep it; and sync's
+    // files, which carry the captures the database keeps, unread (ADR 0042):
+    // `Capture.swift`, the capture's row type, which stays as long as sync
+    // needs it; `SyncedTable.swift`, `SyncedRecords.swift`,
+    // `SyncedDeletions.swift` and `ChangesToSync.swift`, which sync a capture
+    // as a record of its own; `SyncedRestore.swift` and `SelectiveSync.swift`,
+    // which restore and choose the records to sync, captures among them;
+    // `Sync.swift` and `ICloudSyncEngine.swift`, which run sync; and
+    // FichaICloud, sync's side of CloudKit. Not exempt: `Deleting.swift`,
+    // whose unlinking of a deleted card from the captures kept about it can
+    // go to `Capture.swift`, with the row type.
+    @Test(
+        "no source names Capture, the inbox, an expansion or a follow-up, but the database's migrations and sync's files",
+        .bug(id: 540))
+    func noSourceNamesCaptureOrTheInbox() throws {
+        let exempt: Set<String> = [
+            "Packages/FichaKit/Sources/FichaData/Schema.swift",
+            "Packages/FichaKit/Sources/FichaData/Capture.swift",
+            "Packages/FichaKit/Sources/FichaData/SyncedTable.swift",
+            "Packages/FichaKit/Sources/FichaData/SyncedRecords.swift",
+            "Packages/FichaKit/Sources/FichaData/SyncedDeletions.swift",
+            "Packages/FichaKit/Sources/FichaData/ChangesToSync.swift",
+            "Packages/FichaKit/Sources/FichaData/SyncedRestore.swift",
+            "Packages/FichaKit/Sources/FichaData/SelectiveSync.swift",
+            "Packages/FichaKit/Sources/FichaData/Sync.swift",
+            "Packages/FichaKit/Sources/FichaData/ICloudSyncEngine.swift",
+        ]
+        let sources = try SourceFile.swift(
+            in: ["App", "CLI", "Packages/FichaKit/Sources", "SVGDrawer", "Widget", "iPhone", "scripts"])
+        let files = sources.filter { file in
+            !exempt.contains(file.path) && !file.path.hasPrefix("Packages/FichaKit/Sources/FichaICloud/")
+        }
+        let hits = try SourceFile.hits(
+            of: [
+                #"(?<![A-Za-z])[Cc]aptur(e|es|ed|ing)(?![a-z])|(?<=[a-z])Captur(e|es|ed|ing)(?![a-z])"#,
+                #"(?<![A-Za-z])[Ii]nbox(es)?(?![a-z])|(?<=[a-z])Inbox(es)?(?![a-z])"#,
+                #"(?<![A-Za-z])[Ee]xpansions?(?![a-z])|(?<=[a-z])Expansions?(?![a-z])"#,
+                #"[Ff]ollow(s|ing|ed)?[ -]?[Uu]ps?(?![a-z])"#,
+            ],
+            in: files, codeOnly: false)
+        #expect(
+            hits.isEmpty,
+            """
+            A source still names Capture, the inbox, an expansion or a follow-up, which leave the app (#540): the \
+            database keeps its captures, unread, and only its migrations and sync's files name them. Take them out, \
+            or say it as a flagged card in its deck does, and run the test again. \(SourceHit.list(hits))
+            """)
+    }
 }
 
 /// A Swift file of the repo, by its path from the repo's folder, with its
@@ -79,9 +141,12 @@ struct SourceFile {
 
     /// The Swift files in `folders`, each a path from the repo's folder, every
     /// level down but inside hidden folders, such as `.build`, in their paths'
-    /// order. A folder that isn't there throws, as a list gone stale.
+    /// order. A folder that isn't there throws, as a list gone stale. A link
+    /// to another of the repo's folders, such as the render script's to the
+    /// app's, is left to that folder's own place in the list.
     static func swift(in folders: [String]) throws -> [SourceFile] {
-        try folders.flatMap { folder throws -> [SourceFile] in
+        let repoComponents = StringCatalog.repo.resolvingSymlinksInPath().pathComponents
+        return try folders.flatMap { folder throws -> [SourceFile] in
             let base = StringCatalog.repo.appending(path: folder, directoryHint: .isDirectory)
             var isFolder: ObjCBool = false
             guard FileManager.default.fileExists(atPath: base.path(percentEncoded: false), isDirectory: &isFolder),
@@ -96,6 +161,9 @@ struct SourceFile {
             for case let url as URL in found where url.pathExtension == "swift" {
                 let components = url.resolvingSymlinksInPath().pathComponents
                 guard components.starts(with: baseComponents) else {
+                    if components.starts(with: repoComponents) {
+                        continue
+                    }
                     throw MissingFolder(path: folder)
                 }
                 let path = ([folder] + components.dropFirst(baseComponents.count)).joined(separator: "/")
