@@ -48,7 +48,8 @@ No build step: React 18.3.1 from cdnjs and htm 3.1.1 from jsDelivr, pinned, so c
 | `ReviewPanelView` | `App/ReviewPanelView.swift`, placed as `ReviewPanelWindow` places it: centered, 40 points under the menu bar; its `face` 'new' is the app's since #489, 'today' the app's before it |
 | `CaptureView` | `App/CaptureView.swift` |
 | `WelcomePage`, in `desktop/` | `App/WelcomePage.swift`, with #467's steps |
-| `CardsWindow` and `HowFast`, in `desktop/` | `App/CardsWindow.swift`'s decks, and #491's How fast? |
+| `CardsWindow` and `HowFast`, in `desktop/` | `App/Cards/CardsView.swift`'s deck rows and `App/Cards/HowFastSheet.swift`, since #491 |
+| `formatFinish` and `metBy`, a finish date's words | FichaData's `FinishDate.wording(now:calendar:)`, as `App/Cards/HowFastSheet.swift` writes it, since #491 |
 | `SettingsWindow`, in `desktop/` | `App/SettingsTabViewController.swift` and `App/SettingsTabViews.swift`, in #492's five tabs |
 
 ### What the toy engine copies
@@ -64,12 +65,6 @@ No build step: React 18.3.1 from cdnjs and htm 3.1.1 from jsDelivr, pinned, so c
 - The review panel's two buttons, its ⋯ menu and its keys, as `App/ReviewPanelView.swift` has them since #489: `FACES`' 'new' and `MoreMenu` in `kit/ui.js`, where keys 1 to 4 record Anki's four ratings in either face. And how an interval reads, as `App/IntervalText.swift` writes it (`formatInterval`).
 - The card size (`CardSize`): ⌘+, ⌘− and ⌘0, in `CardSize`'s steps. The card's text grows, the review panel widens with it and its buttons keep their size, as `CardSize` sets them; the review panel grows up to `ReviewPanelWindow.maximumShareOfScreen` of the screen's free height, and a taller card scrolls between its top line and its buttons.
 - The suppressions a mock can act out, as `AppearancePlanner.swift` names them: a meeting, a video, an app in full screen.
-
-### What it acts out ahead of the app
-
-What ADRs 0033 and 0034 decided and their issues build in the app, so a mock shows Ficha as it will be. `tools/check-engine.js` checks only the toy engine against FichaKit's tests, so it can't check these.
-
-- How a finish date reads: `formatFinish` in `kit/ui.js` says it as "Wednesday or Thursday" or "mid-December" (#491).
 
 ### Sizes
 

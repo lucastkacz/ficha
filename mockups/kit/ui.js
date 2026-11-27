@@ -465,7 +465,7 @@
     return html`<div className="met-all">
       ${ids.map((id) => {
         const d = app.deck(id);
-        return html`<div key=${id} className="met-title">${d.emoji} You've met them all: ${d.name}</div>`;
+        return html`<div key=${id} className="met-title">You've met them all: ${d.emoji} ${d.name}</div>`;
       })}
       ${next
         ? html`<div className="muted">Next in the queue: ${next.emoji} ${next.name}. Its first card comes with the next new one.</div>`
