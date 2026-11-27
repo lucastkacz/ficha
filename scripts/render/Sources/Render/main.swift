@@ -180,6 +180,11 @@ enum Window: String, CaseIterable {
     /// first in the queue new cards come from, was met: "You've met them
     /// all", with the sample's deck next in the queue.
     case panelMetThemAll = "panel-met-them-all"
+    /// The same on a Mac whose only cards are Arte's one, so nothing waits in
+    /// the queue once it's met: "Nothing waits in the queue. Another of
+    /// Ficha's decks?", with a button for Palabras lindas, the first of them,
+    /// which the panel reads from the repo's `App/FichaDecks/`.
+    case panelMetThemAllOffer = "panel-met-them-all-offer"
     /// The Cards window with a sample card that goes both ways selected, its
     /// back-first way rated Again and then Good, its detail scrolled to its
     /// end, below both ways' interval, due time, stability, difficulty and
@@ -1378,8 +1383,9 @@ func hours(_ count: Int) -> TimeInterval {
     TimeInterval(count * 60 * 60)
 }
 
-/// The app's model for `name`'s window: on the sample cards in memory, and
-/// for Settings' Backups tab and Sync tab, and the menu while iCloud is full,
+/// The app's model for `name`'s window: on the sample cards in memory, or on
+/// none for `cards-empty` and `panel-met-them-all-offer`, and for Settings'
+/// Backups tab and Sync tab, and the menu while iCloud is full,
 /// in `renderDataFolder`, with copies to list, and files to weigh.
 func model(for name: Window) throws -> AppModel {
     switch name {
@@ -1387,7 +1393,7 @@ func model(for name: Window) throws -> AppModel {
         .cardsFichaDeckWords, .cardsFichaDeckPicture, .cardsFichaDeckFlower, .about, .general, .capture, .welcome,
         .welcomeOneButton, .panelCard, .panelMetThemAll:
         return try AppModel(engine: try sampleEngine(at: .inMemory).engine)
-    case .cardsEmpty:
+    case .cardsEmpty, .panelMetThemAllOffer:
         return try AppModel(engine: try Engine(location: .inMemory, time: SystemTimeSource()))
     case .cardsDecks, .cardsDeckTag, .cardsDeleteDeck:
         let engine = try sampleEngine(at: .inMemory).engine
@@ -1659,6 +1665,7 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
             .review($0)
         }
     case .panelMetThemAll: return try metThemAllPanelWindow(model: model)
+    case .panelMetThemAllOffer: return try metThemAllPanelWindow(model: model, offersFichaDeck: true)
     case .cardsBothWays:
         return try cardsWindow(
             of: model, selectingFirst: { $0.backFirst != nil },
@@ -1763,9 +1770,14 @@ func panelWindow(
 }
 
 /// The review panel as `panel` shows it, on a gradient in a window, as
-/// `panelWindow(model:on:as:)` draws it.
-func panelWindow(showing panel: Result<ReviewPanelModel, EngineError>) -> NSWindow {
-    let content = ReviewPanelView(model: panel, player: SoundPlayer()) {}
+/// `panelWindow(model:on:as:)` draws it. When it asks for Ficha's decks, it
+/// reads them as `fichaDecks` holds them, as the app gives it those of its
+/// bundle; none while that's nil, since the tool's own bundle has none.
+func panelWindow(
+    showing panel: Result<ReviewPanelModel, EngineError>,
+    readingFichaDecks fichaDecks: [FichaDeck: Result<FichaDeckFile, EngineError>]? = nil
+) -> NSWindow {
+    let content = ReviewPanelView(model: panel, player: SoundPlayer(), closeWindow: {}, readFichaDecks: { fichaDecks })
         .padding(32)
         .background(LinearGradient(colors: [.teal, .indigo], startPoint: .topLeading, endPoint: .bottomTrailing))
     let window = AppWindow(title: "Review", content: content)
@@ -1776,10 +1788,14 @@ func panelWindow(showing panel: Result<ReviewPanelModel, EngineError>) -> NSWind
 }
 
 /// The review panel done, as `panelWindow(model:on:as:)` draws it, once its
-/// one card, the only one of Arte, a deck the tool adds to the sample cards,
+/// one card, the only one of Arte, a deck the tool adds to `model`'s cards,
 /// with an emoji, and puts first in the queue new cards come from, was met:
-/// "You've met them all", with the sample's deck next in the queue.
-func metThemAllPanelWindow(model: AppModel) throws -> NSWindow {
+/// "You've met them all", with the sample's deck next in the queue; or, when
+/// `offersFichaDeck`, on a Mac with no other cards, with nothing waiting in
+/// the queue and one of Ficha's decks to add, which the panel reads from the
+/// repo (`fichaDecksInTheRepo(readBy:)`) as the app reads them from its
+/// bundle.
+func metThemAllPanelWindow(model: AppModel, offersFichaDeck: Bool = false) throws -> NSWindow {
     guard
         let content = CardContent(
             type: nil, front: "La Gioconda", back: "De Leonardo da Vinci, en el Louvre.", tags: [], source: nil)
@@ -1796,11 +1812,21 @@ func metThemAllPanelWindow(model: AppModel) throws -> NSWindow {
             description: "The review panel didn't open on Arte's card: \(panel). Fix metThemAllPanelWindow(model:).")
     }
     try opened.state.answer(.review(.good), responseTime: .seconds(4))
-    guard opened.state.metThemAll?.nextInQueue != nil else {
-        throw RenderError(
-            description: "Meeting Arte's card didn't say it met Arte, with the next deck: fix sampleEngine(at:).")
+    guard offersFichaDeck else {
+        guard opened.state.metThemAll?.nextInQueue != nil else {
+            throw RenderError(
+                description: "Meeting Arte's card didn't say it met Arte, with the next deck: fix sampleEngine(at:).")
+        }
+        return panelWindow(showing: panel)
     }
-    return panelWindow(showing: panel)
+    guard opened.state.asksForFichaDecks else {
+        throw RenderError(
+            description: """
+                Meeting Arte's card didn't ask for Ficha's decks, with nothing waiting in the queue: it says \
+                \(String(describing: opened.state.metThemAll)). Fix model(for:), so that Arte holds the only cards.
+                """)
+    }
+    return panelWindow(showing: panel, readingFichaDecks: try fichaDecksInTheRepo(readBy: model.engine))
 }
 
 /// The menu under Ficha's icon, its content in a window, as SwiftUI lays it
