@@ -47,11 +47,11 @@ struct SettingsTabContent: View {
     }
 
     /// Scrolls to the form's foot when `scroll` asked last for one of the
-    /// tab's sections, unless the tab followed that request already. The foot
-    /// shows the section only when it's one of Advanced's last, Backups, the
-    /// copies or Diagnostics, the only ones Settings is asked for, which
-    /// Advanced, as tall as Interruptions, shows there with Backups' heading.
-    /// Our own: the foot in place of the section, since a grouped form on
+    /// tab's sections, unless the tab followed that request already. In
+    /// Advanced, the one tab that scrolls, the foot shows the section only
+    /// when it's one of its last, Backups, the copies or Diagnostics; Settings
+    /// is asked only for Backups and Diagnostics, which Advanced, as tall as
+    /// Interruptions, shows there with Backups' heading. Our own: the foot in place of the section, since a grouped form on
     /// macOS 26 scrolls to no row's or section's `id`, with
     /// `ScrollViewReader` or `ScrollPosition`, as `make render`'s pictures
     /// showed, though it scrolls to an edge.
@@ -59,10 +59,10 @@ struct SettingsTabContent: View {
         guard scroll.requests > followedRequests else { return }
         followedRequests = scroll.requests
         guard let section = scroll.section, tab.sections.contains(section) else { return }
-        // A turn later, once the form has its rows and the window its
-        // toolbar: as Settings opens, the form is first asked only for its
-        // size, before it has any, and the toolbar, as it comes in, moves the
-        // form's offset, which undid a scroll made before in `make render`.
+        // A turn later, once the form has its rows: as Settings opens, the
+        // form is first asked only for its size, before it has any. The
+        // toolbar, as it comes in, moves the form's offset, which undid a
+        // scroll to a y in `make render`, but not one to an edge.
         Task {
             position.scrollTo(edge: .bottom)
         }
