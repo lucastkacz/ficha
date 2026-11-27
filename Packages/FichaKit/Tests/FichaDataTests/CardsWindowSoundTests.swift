@@ -68,7 +68,9 @@ final class CardsWindowSoundTests {
         #expect(withoutSound.draft.front.sound == nil)
     }
 
-    @Test("Add saves the sounds on the form's sides, which Ficha keeps from then on, and clears them for the next card")
+    @Test(
+        "Add saves the sounds on the form's sides, which Ficha keeps from then on, and clears them for the next card",
+        .bug(id: 536))
     func addSavesTheSoundsOnTheSides() async throws {
         var window = openWindow()
         window.openNewCardForm()

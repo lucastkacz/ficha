@@ -39,7 +39,9 @@ struct CardsWindowImageTests {
         #expect(withoutImage.draft.front.image == nil)
     }
 
-    @Test("Add saves the images on the form's sides, which Ficha keeps from then on, and clears them for the next card")
+    @Test(
+        "Add saves the images on the form's sides, which Ficha keeps from then on, and clears them for the next card",
+        .bug(id: 536))
     func addSavesTheImagesOnTheSides() throws {
         var window = openWindow()
         window.openNewCardForm()

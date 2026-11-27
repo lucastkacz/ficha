@@ -323,8 +323,8 @@ struct CardFormTests {
 
     // So that what was typed isn't lost.
     @Test(
-        "showing the card a front repeats sets the form aside and selects the card in its deck, scrolled to, and New Card brings the form back as it was"
-    )
+        "showing the card a front repeats sets the form aside and selects the card in its deck, scrolled to, and New Card brings the form back as it was",
+        .bug(id: 536))
     func showingTheRepeatedCardSelectsIt() throws {
         let serendipia = try approveInDeck("serendipia", deck: "Palabras", in: engine)
         let ataraxia = try approveCard("ataraxia", in: engine)

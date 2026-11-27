@@ -50,8 +50,8 @@ struct CardsWindowDecksTests {
     }
 
     @Test(
-        "choosing a deck lists its cards and those of the decks inside it; once Default holds none, the sidebar goes back to the first deck"
-    )
+        "choosing a deck lists its cards and those of the decks inside it; once Default holds none, the sidebar goes back to the first deck of the queue new cards come from",
+        .bug(id: 536))
     func choosingADeck() throws {
         let gioconda = try engine.create(card(.concept, front: "La Gioconda", back: "De Leonardo."))
         let pieta = try engine.create(card(.concept, front: "La Piedad", back: "De Miguel Ángel."))
