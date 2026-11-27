@@ -104,6 +104,10 @@ enum Window: String, CaseIterable {
     /// and its back the painting's title, painter, year and museum, and its
     /// credit.
     case cardsFichaDeckPicture = "cards-ficha-deck-picture"
+    /// The same on Flores de Buenos Aires, whose first card's front is a
+    /// photo of a rose alone, with no text, and its back the flower's name, a
+    /// line about it and the photo's credit.
+    case cardsFichaDeckFlower = "cards-ficha-deck-flower"
     /// Settings, on its Backups tab.
     case backups
     /// Settings, on its Backups tab, once a backup failed.
@@ -1375,7 +1379,8 @@ func hours(_ count: Int) -> TimeInterval {
 func model(for name: Window) throws -> AppModel {
     switch name {
     case .cards, .cardsNewDeck, .cardsImport, .cardsImportAnki, .cardsHowFast, .cardsFichaDeckWords,
-        .cardsFichaDeckPicture, .about, .general, .capture, .welcome, .welcomeOneButton, .panelCard, .panelMetThemAll:
+        .cardsFichaDeckPicture, .cardsFichaDeckFlower, .about, .general, .capture, .welcome, .welcomeOneButton,
+        .panelCard, .panelMetThemAll:
         return try AppModel(engine: try sampleEngine(at: .inMemory).engine)
     case .cardsEmpty:
         return try AppModel(engine: try Engine(location: .inMemory, time: SystemTimeSource()))
@@ -1514,10 +1519,16 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         let window = CardsWindow(model: model)
         window.makeContent(opening: try howFastState(of: model))
         return window
-    case .cardsFichaDeckWords, .cardsFichaDeckPicture:
+    case .cardsFichaDeckWords, .cardsFichaDeckPicture, .cardsFichaDeckFlower:
+        let deck: FichaDeck =
+            switch name {
+            case .cardsFichaDeckWords: .palabrasLindas
+            case .cardsFichaDeckPicture: .arteArgentino
+            default: .floresDeBuenosAires
+            }
         var state = model.openCardsWindow()
         state.offerFichaDecks(try fichaDecksInTheRepo(readBy: model.engine))
-        state.choose(.fichaDeck(name == .cardsFichaDeckWords ? .palabrasLindas : .arteArgentino))
+        state.choose(.fichaDeck(deck))
         guard state.shownFichaDeck?.firstCard != nil else {
             throw RenderError(description: "The Cards window shows none of Ficha's decks: fix offerFichaDecks(_:).")
         }
