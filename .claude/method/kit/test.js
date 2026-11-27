@@ -382,7 +382,7 @@ function docs() {
   if (!project) { console.log(`skip ${name}: no PLIEGO.md titled "# Pliego of <project>" at the repo's root. Where the project's CLAUDE.md names another pliego, search the kit's files for the project's name with git grep.`); return; }
   const word = new RegExp(`(^|[^\\p{L}\\p{N}])${project.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}\\p{N}])`, 'u');
   const named = fs.readdirSync(kitDir).filter((f) => word.test(read(f)));
-  check(name, named.length ? `${named.join(', ')} name(s) "${project}", the project's name in its pliego: the kit and its examples serve any project, so give them a generic example (.claude/method/method.md).` : null);
+  check(name, named.length ? `${named.join(', ')} name(s) "${project}", the project's name in its pliego: the kit serves any project, so take the name out, and give pieces.html's examples the topic its README names (${README}, Changing the kit).` : null);
 }
 
 (async () => {
