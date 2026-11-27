@@ -50,6 +50,7 @@ struct HowFastSheet: View {
     let start: () -> Void
     /// Cancel.
     let cancel: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -163,8 +164,9 @@ struct HowFastSheet: View {
 
     /// A pace as a tile, which a click chooses: its radio, its name, its new
     /// cards a day, and, at the trailing side, when the deck's new cards are
-    /// all met at it, when they are, which wraps; the chosen one filled and
-    /// outlined in the accent, as the mock's `.pace-row` is.
+    /// all met at it, when they are, which wraps; the chosen one filled with
+    /// the mock's `--selection`, the accent at 16% in light mode and 30% in
+    /// dark, and outlined in the accent, as the mock's `.pace-row` is.
     private func paceTile(_ option: CardsWindowState.HowFast.PaceOption) -> some View {
         let isChosen = option.pace == howFast.pace
         return Button {
@@ -193,10 +195,10 @@ struct HowFastSheet: View {
             .background {
                 if isChosen {
                     RoundedRectangle(cornerRadius: 10)
-                        .fill(Color.accentColor.opacity(0.16))
+                        .fill(.tint.opacity(colorScheme == .dark ? 0.3 : 0.16))
                         .overlay {
                             RoundedRectangle(cornerRadius: 10)
-                                .strokeBorder(Color.accentColor, lineWidth: 1)
+                                .strokeBorder(.tint, lineWidth: 1)
                         }
                 } else {
                     RoundedRectangle(cornerRadius: 10)
@@ -215,7 +217,7 @@ struct HowFastSheet: View {
     private func radio(_ isChosen: Bool) -> some View {
         if isChosen {
             Circle()
-                .strokeBorder(Color.accentColor, lineWidth: 4.5)
+                .strokeBorder(.tint, lineWidth: 4.5)
                 .frame(width: 14, height: 14)
         } else {
             Circle()
