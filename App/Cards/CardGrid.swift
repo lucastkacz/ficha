@@ -51,7 +51,7 @@ struct CardGrid: View {
                         spacing: Self.spacing
                     ) {
                         ForEach(tiles) { tile in
-                            tileView(tile, among: tiles)
+                            tileView(tile)
                         }
                     }
                     .onGeometryChange(for: CGFloat.self) { geometry in
@@ -67,7 +67,7 @@ struct CardGrid: View {
                 .contentShape(.rect)
                 .onTapGesture {
                     isFocused.wrappedValue = true
-                    state.select([])
+                    state.clickBetweenTiles()
                 }
                 // The card Show Card selected, or the arrow keys moved to,
                 // which may be far down the grid.
@@ -88,9 +88,9 @@ struct CardGrid: View {
         }
     }
 
-    /// The tile of `tile`, among the grid's `tiles`, which a click selects,
-    /// as the keys held down say, and Lucas drags onto a deck.
-    private func tileView(_ tile: CardsWindowState.Tile, among tiles: [CardsWindowState.Tile]) -> some View {
+    /// The tile of `tile`, which a click selects, as the keys held down say,
+    /// and Lucas drags onto a deck, with what the state says it drags.
+    private func tileView(_ tile: CardsWindowState.Tile) -> some View {
         let isSelected = state.selection.contains(tile.id)
         let images = state.tileImages
         return CardTile(tile: tile, isSelected: isSelected, thumbnails: thumbnails, images: images, readAt: state.now)
@@ -102,7 +102,7 @@ struct CardGrid: View {
                 isFocused.wrappedValue = true
                 state.clickTile(tile.id, .alone)
             }
-            .draggable(SidebarDrag(dragged: dragged(from: tile.id, among: tiles)))
+            .draggable(SidebarDrag(dragged: state.draggedCards(from: tile.id)))
     }
 
     /// Selects the tile of the card `id` as a click with the keys Lucas
@@ -113,15 +113,6 @@ struct CardGrid: View {
             keys.contains(.shift) ? .extending : keys.contains(.command) ? .adding : .alone
         isFocused.wrappedValue = true
         state.clickTile(id, click)
-    }
-
-    /// What dragging the tile of the card `id` drags: the selected tiles, in
-    /// the grid's order, when it's one of them, or else itself.
-    private func dragged(from id: CardRow.ID, among tiles: [CardsWindowState.Tile]) -> [CardsWindowState.Dragged] {
-        guard state.selection.contains(id) else {
-            return [.card(id)]
-        }
-        return tiles.filter { state.selection.contains($0.id) }.map { .card($0.id) }
     }
 
     /// Where the arrow key `key` moves the selection: up and down by a row,

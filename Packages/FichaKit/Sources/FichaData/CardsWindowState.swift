@@ -474,10 +474,12 @@ public struct CardsWindowState: Sendable {
     public private(set) var selection: Set<CardRow.ID> = []
     /// The card Shift-click, and Shift with an arrow key, extend the grid's
     /// selection from: the last one clicked, alone or with ⌘, or moved to
-    /// with an arrow key alone, or selected alone (`CardsWindowGrid.swift`).
+    /// with an arrow key alone, or selected alone, and none once a click
+    /// between the tiles selects none (`CardsWindowGrid.swift`).
     var anchorCard: CardRow.ID?
     /// The card the arrow keys move the grid's selection from: the last one
-    /// clicked, moved to or selected alone.
+    /// clicked, moved to or selected alone, and none once a click between
+    /// the tiles selects none.
     var currentCard: CardRow.ID?
     /// The row Lucas selected in the inbox, one at a time, which its table
     /// may no longer list, as with the cards.
@@ -807,11 +809,15 @@ public struct CardsWindowState: Sendable {
 
     /// Selects the cards in `selection`, in a group of cards. A card selected
     /// alone is where a Shift-click and the arrow keys go from, as a click
-    /// on it would make it (`CardsWindowGrid.swift`).
+    /// on it would make it, and none selected leaves them nothing to go
+    /// from, so they start afresh (`CardsWindowGrid.swift`).
     public mutating func select(_ selection: Set<CardRow.ID>) {
         if selection.count == 1 {
             anchorCard = selection.first
             currentCard = selection.first
+        } else if selection.isEmpty {
+            anchorCard = nil
+            currentCard = nil
         }
         guard selection != self.selection else { return }
         self.selection = selection

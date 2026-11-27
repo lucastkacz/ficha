@@ -9,11 +9,12 @@ import Foundation
 // while it's new, whose tile is dimmed. What a tile shows is the window's
 // decision, so FichaData works it out here, and the app's grid
 // (`App/Cards/CardGrid.swift`) draws it, reading each tile's picture as the
-// tile appears (`TileImages`). Lucas selects tiles as in Photos and
-// the Finder: a click selects one, a ⌘-click adds one or takes it out, a
-// Shift-click selects the run from the last one clicked, the arrow keys move
-// the selection, Shift extending the run with them, and Select All selects
-// every tile.
+// tile appears (`TileImages`). Lucas selects tiles as in Photos and the
+// Finder: a click selects one, a ⌘-click adds one or takes it out, a
+// Shift-click selects the run from the last one clicked, a click between the
+// tiles selects none, the arrow keys move the selection, Shift extending the
+// run with them, and Select All selects every tile. Dragging a tile drags it
+// with the other selected ones when it's one of them.
 
 extension CardsWindowState {
     /// A card as a tile of the grid shows it.
@@ -167,22 +168,34 @@ extension CardsWindowState {
         currentCard = id
     }
 
+    /// Selects no tile, as a click between the tiles does, as in the Finder,
+    /// so that a Shift-click or an arrow key after it has nothing to go from,
+    /// as `select(_:)` says.
+    public mutating func clickBetweenTiles() {
+        select([])
+    }
+
     /// Moves the grid's selection as an arrow key does, as `move` says, in a
-    /// grid of `tilesPerRow` tiles a row, as the app lays it out: from the
-    /// last tile clicked or moved to, to the next one that way, which the
-    /// grid scrolls to, selected alone, or with Shift, when `extending` says
-    /// so, the run from the last tile clicked to it. While no tile listed is
-    /// selected, any arrow selects the first. At an edge it stays where it
-    /// is.
+    /// grid of `tilesPerRow` tiles a row, as the app lays it out, to the next
+    /// tile that way, which the grid scrolls to, selected alone, or with
+    /// Shift, when `extending` says so, the run from the last tile clicked to
+    /// it. It moves from the last tile clicked or moved to, though a ⌘-click
+    /// took that one out of the selection, or else from the first selected
+    /// tile the grid lists. While the grid lists no selected tile, any arrow,
+    /// with Shift or not, selects the first alone. At an edge it stays where
+    /// it is.
     public mutating func moveSelection(_ move: TileMove, tilesPerRow: Int, extending: Bool) {
         let listed = gridCardIDs
-        guard !listed.isEmpty else { return }
-        let target: CardRow.ID
-        if let current = currentCard, selection.contains(current), let index = listed.firstIndex(of: current) {
-            target = listed[Self.index(after: move, from: index, among: listed.count, perRow: max(tilesPerRow, 1))]
-        } else {
-            target = listed[0]
+        guard let first = listed.first else { return }
+        guard let firstSelected = listed.firstIndex(where: { selection.contains($0) }) else {
+            anchorCard = first
+            setSelection([first])
+            currentCard = first
+            cardToReveal = first
+            return
         }
+        let from = currentCard.flatMap { listed.firstIndex(of: $0) } ?? firstSelected
+        let target = listed[Self.index(after: move, from: from, among: listed.count, perRow: max(tilesPerRow, 1))]
         if extending, let anchor = anchorCard, let run = Self.run(from: anchor, to: target, in: listed) {
             setSelection(run)
         } else {
@@ -198,6 +211,17 @@ extension CardsWindowState {
         let listed = gridCardIDs
         guard !listed.isEmpty else { return }
         setSelection(Set(listed))
+    }
+
+    /// What dragging the tile of the card `id` onto a deck in the sidebar
+    /// drags, all in one drag, as in the Finder: every selected tile the
+    /// grid lists, in its order, when it's one of them, or else that tile
+    /// alone, which leaves the selection as it is.
+    public func draggedCards(from id: CardRow.ID) -> [Dragged] {
+        guard selection.contains(id) else {
+            return [.card(id)]
+        }
+        return gridCardIDs.filter { selection.contains($0) }.map { .card($0) }
     }
 
     /// Selects `selection`, reading the review log of the card the detail
