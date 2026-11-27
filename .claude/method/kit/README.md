@@ -64,7 +64,7 @@ With the Artifact tool: the page as `file_path`, and in `files` the kit, `{"kit/
 
 ## Changing the kit
 
-A change to a piece changes `pieces.html` with it. A saving rule or an inspection check the change adds gets a case in `test.js`, with generic examples, and a failure whose words the change rewrites changes its case's.
+A change to a piece changes `pieces.html` with it. Its examples are about a neighborhood garden, a topic no project of ours has, so a project's decisions never make them old: a new piece's example is about the garden too. A saving rule or an inspection check the change adds gets a case in `test.js`, with generic examples, and a failure whose words the change rewrites changes its case's.
 
 Before the change's reviews, it passes the inspection on `pieces.html` and on [`../map.html`](../map.html), and the kit's test, from the repo's folder, on the machine the pliego's Where it runs gives the inspection of the method's pages:
 
