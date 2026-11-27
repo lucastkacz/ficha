@@ -81,9 +81,9 @@ struct RenameDeckCommand: EngineCommand {
         discussion: """
             A new name with "::" moves the deck inside another, and one without moves it to the top. Every card \
             in it, or in a deck inside it, moves along, on every device, keeping its progress, its review log and its \
-            tags, and the deck keeps its switch, color, emoji, choice to sync and place in the queue. Onto a deck \
-            that exists, the two join, and the deck there keeps what it had of its own. Default is never renamed, \
-            and no deck moves inside itself. For example:
+            tags, and the deck keeps its switch, color, emoji, description, choice to sync and place in the queue. \
+            Onto a deck that exists, the two join, and the deck there keeps what it had of its own. Default is never \
+            renamed, and no deck moves inside itself. For example:
 
               ficha deck rename Idiomas::Inglés Inglés
             """
@@ -111,10 +111,10 @@ struct DeleteDeckCommand: EngineCommand {
             Every card in it, or in a deck inside it, buried ones too, is deleted with its review log, on every \
             device, whether or not it syncs, as in Anki; its expansions and follow-ups stay in the inbox. A card \
             another device holds in it that wasn't in it here, and that doesn't sync, moves to Default there. The \
-            decks' switches, colors, emoji and choices to sync go too. Nothing undoes it, but the daily backups \
-            keep what it deleted, and `ficha restore` brings one back. Default is never deleted: to keep a deck's \
-            cards, move them first with `ficha change-deck`. It prints the deck in "deck", the decks inside it \
-            that went with it in "decksInside", and how many cards it deleted in "cards".
+            decks' switches, colors, emoji, descriptions and choices to sync go too. Nothing undoes it, but the \
+            daily backups keep what it deleted, and `ficha restore` brings one back. Default is never deleted: to \
+            keep a deck's cards, move them first with `ficha change-deck`. It prints the deck in "deck", the decks \
+            inside it that went with it in "decksInside", and how many cards it deleted in "cards".
             """
     )
 

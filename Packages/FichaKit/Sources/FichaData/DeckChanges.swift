@@ -455,8 +455,8 @@ extension Deck {
     /// The deck with what it has of its own, under the name `name`.
     fileprivate func named(_ name: String) -> Deck {
         Deck(
-            name: name, switchedOn: switchedOn, color: color, emoji: emoji, chosenToSync: chosenToSync,
-            queuePlace: queuePlace)
+            name: name, switchedOn: switchedOn, color: color, emoji: emoji, description: description,
+            chosenToSync: chosenToSync, queuePlace: queuePlace)
     }
 
     /// Takes `fields` of what `other` has of its own, or throws for a field a
@@ -467,6 +467,7 @@ extension Deck {
             case .switchedOn: switchedOn = other.switchedOn
             case .color: color = other.color
             case .emoji: emoji = other.emoji
+            case .deckDescription: description = other.description
             case .chosenToSync: chosenToSync = other.chosenToSync
             case .queuePlace: queuePlace = other.queuePlace
             default: throw unreadable("A deck's row holds when a field a deck doesn't have changed")
@@ -481,6 +482,7 @@ extension Deck {
         if switchedOn != other.switchedOn { fields.append(.switchedOn) }
         if color != other.color { fields.append(.color) }
         if emoji != other.emoji { fields.append(.emoji) }
+        if description != other.description { fields.append(.deckDescription) }
         if chosenToSync != other.chosenToSync { fields.append(.chosenToSync) }
         if queuePlace != other.queuePlace { fields.append(.queuePlace) }
         return fields

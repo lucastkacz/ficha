@@ -1012,6 +1012,10 @@
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },
+    "A deck's description can't be longer than 160 characters, so nothing changed. Shorten it." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual"
+    },
     "A higher retention means shorter intervals and more reviews a day. A change applies from each card's next review." : {
       "comment" : "Settings, under Scheduling: below the desired retention and the longest interval, as Anki's manual says it; a change never moves a card's due time."
     },

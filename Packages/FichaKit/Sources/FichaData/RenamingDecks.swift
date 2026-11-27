@@ -19,16 +19,17 @@ extension Engine {
     /// it, in one write: each card that lives in one moves to its new name,
     /// keeping its progress, its review log and its tags, and each row of the
     /// `deck` table moves to the new name with what it has of its own, its
-    /// switch, color, emoji, choice to sync and place in the queue, made on
-    /// this device. Onto a name that exists, as a row has it, a card lives in
-    /// it or a deck inside it exists, the two join, as in Anki: the deck there
-    /// keeps exactly what it had of its own, which may be nothing, as the moved
-    /// deck's row is dropped; and so for each deck inside the renamed one. The
-    /// rename reaches every card on the user's other devices, those that don't
-    /// sync too, as a change to the deck. Returns the deck's new name; renaming
-    /// it to its own name changes nothing. Refuses renaming Default, or a deck
-    /// that isn't there, a name `makeDeck(named:)` refuses, and moving the deck
-    /// inside itself or inside a deck inside it.
+    /// switch, color, emoji, description, choice to sync and place in the
+    /// queue, made on this device. Onto a name that exists, as a row has it,
+    /// a card lives in it or a deck inside it exists, the two join, as in
+    /// Anki: the deck there keeps exactly what it had of its own, which may be
+    /// nothing, as the moved deck's row is dropped; and so for each deck
+    /// inside the renamed one. The rename reaches every card on the user's
+    /// other devices, those that don't sync too, as a change to the deck.
+    /// Returns the deck's new name; renaming it to its own name changes
+    /// nothing. Refuses renaming Default, or a deck that isn't there, a name
+    /// `makeDeck(named:)` refuses, and moving the deck inside itself or inside
+    /// a deck inside it.
     @discardableResult
     public func renameDeck(_ deck: String, to newName: String) throws(EngineError) -> String {
         let name = try checkedDeckName(renaming: deck, to: newName)

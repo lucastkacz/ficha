@@ -12,6 +12,10 @@
       "comment" : "A message of an error of Ficha's engine, EngineError, which the iPhone app shows. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },
+    "A deck's description can't be longer than 160 characters, so nothing changed. Shorten it." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the iPhone app shows. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual"
+    },
     "A newer version of Ficha changed the database, and this version won't open it, so as not to damage your cards. Open it with the version that changed it, or a newer one." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the iPhone app shows. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
