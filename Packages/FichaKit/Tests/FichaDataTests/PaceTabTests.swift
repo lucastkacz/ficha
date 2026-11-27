@@ -38,7 +38,7 @@ struct PaceTabTests {
         #expect(tab.pace == .steady)
         #expect(tab.paces.map(\.pace) == [.chill, .steady, .faster])
         #expect(tab.paces.map(\.finish) == finishes)
-        #expect(tab.paces.map(\.wording) == finishes.map { $0?.wording(now: time.now, calendar: calendar) })
+        #expect(tab.paces.map(\.wording) == finishes.map { wording(of: $0) })
         #expect(finishes.allSatisfy { $0 != nil })
         #expect(tab.queueMet == tab.paces[1].wording)
         #expect(tab.unreadable == nil)
@@ -67,7 +67,7 @@ struct PaceTabTests {
         #expect(tab.queue.map(\.deck.name) == queue.map(\.deck))
         #expect(tab.queue.map(\.newCards) == queue.map(\.newCards))
         #expect(tab.queue.map(\.finish) == queue.map(\.finish))
-        #expect(tab.queue.map(\.wording) == queue.map { $0.finish?.wording(now: time.now, calendar: calendar) })
+        #expect(tab.queue.map(\.wording) == queue.map { wording(of: $0.finish) })
         #expect(tab.queue.map(\.deck.shownEmoji) == [nil, "🎨", nil])
         #expect(tab.queue.map(\.isNow) == [true, false, false])
         #expect(tab.queue.map(\.offersPutItFirst) == [false, false, true])
@@ -140,6 +140,11 @@ struct PaceTabTests {
         try approveInDeck("Las Meninas", deck: "Arte", in: engine)
         try approveInDeck("El Grito", deck: "Arte", in: engine)
         try engine.meet(gioconda)
+    }
+
+    /// How the app says `finish` now, with the settings' Ficha's day.
+    private func wording(of finish: FinishDate?) -> FinishDate.Wording? {
+        finish?.wording(now: time.now, dayStartsAtHour: settings.dayStartsAtHour, calendar: calendar)
     }
 
     /// When the last deck in the engine's queue is all met at `pace`, now,

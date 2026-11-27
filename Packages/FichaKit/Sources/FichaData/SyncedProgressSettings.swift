@@ -3,8 +3,9 @@ import Foundation
 internal import GRDB
 
 // The settings that decide a card's progress, in the database (#315): the
-// scheduler's settings (#404), the new cards a day and the forgotten-often
-// count, in one row, which syncs as one record named by its type (ADR 0017).
+// scheduler's settings (#404), the new cards a day, the hour Ficha's day
+// starts at (ADR 0045) and the forgotten-often count, in one row, which syncs
+// as one record named by its type (ADR 0017).
 // Each setting keeps its latest change, as a tag's color does, so a change on
 // one device and another on a second one both survive: each of the
 // scheduler's too, the learning steps, the relearning steps, the desired
@@ -79,7 +80,7 @@ extension Engine {
 /// it last changed. Each is the key of its value in the settings' record too,
 /// and the name of the column that holds it.
 private let progressFields: [SyncedField] = [
-    .newCardsPerDay, .forgottenOftenAfter, .learningSteps, .relearningSteps, .desiredRetention,
+    .newCardsPerDay, .dayStartsAtHour, .forgottenOftenAfter, .learningSteps, .relearningSteps, .desiredRetention,
     .longestIntervalInDays, .fsrsParameters,
 ]
 
@@ -110,6 +111,7 @@ func applyProgressSettings(_ record: ICloudRecord, in db: Database) throws -> Bo
             }
         }
         take(.newCardsPerDay, \.newCardsPerDay)
+        take(.dayStartsAtHour, \.dayStartsAtHour)
         take(.forgottenOftenAfter, \.forgottenOftenAfter)
         take(.learningSteps, \.learningSteps)
         take(.relearningSteps, \.relearningSteps)
@@ -166,6 +168,8 @@ private func storeProgressSettings(_ settings: ProgressSettings, in db: Database
 /// settings' record keep them, each under its field's name.
 private struct StoredProgressSettings {
     var newCardsPerDay: Int
+    /// From 0 to 23.
+    var dayStartsAtHour: Int
     /// Nil when the review panel never offers to flag a card.
     var forgottenOftenAfter: Int?
     /// Each learning step's interval in whole seconds, from the first, as a
@@ -184,6 +188,7 @@ private struct StoredProgressSettings {
     /// `settings`, as they're kept.
     init(_ settings: ProgressSettings) throws {
         newCardsPerDay = settings.newCardsPerDay
+        dayStartsAtHour = settings.dayStartsAtHour
         forgottenOftenAfter = settings.forgottenOftenAfter
         learningSteps = try jsonText(settings.scheduler.learningSteps.map(\.components.seconds))
         relearningSteps = try jsonText(settings.scheduler.relearningSteps.map(\.components.seconds))
@@ -196,6 +201,7 @@ private struct StoredProgressSettings {
     /// The settings the database's row holds.
     init(row: Row) throws {
         newCardsPerDay = try row.decode(forColumn: SyncedField.newCardsPerDay.rawValue)
+        dayStartsAtHour = try row.decode(forColumn: SyncedField.dayStartsAtHour.rawValue)
         forgottenOftenAfter = try row.decode(forColumn: SyncedField.forgottenOftenAfter.rawValue)
         learningSteps = try row.decode(forColumn: SyncedField.learningSteps.rawValue)
         relearningSteps = try row.decode(forColumn: SyncedField.relearningSteps.rawValue)
@@ -205,12 +211,14 @@ private struct StoredProgressSettings {
     }
 
     /// The settings `record`, from iCloud, holds. A record from a version of
-    /// Ficha before the scheduler's settings holds none of them, nor when
-    /// they changed: it reads as holding Ficha's, which never win over the
-    /// device's own (`FieldChange`).
+    /// Ficha before the scheduler's settings, or before Ficha's day, holds
+    /// none of them, nor when they changed: it reads as holding Ficha's,
+    /// which never win over the device's own (`FieldChange`).
     init(record: ICloudRecord) throws {
         let fichas = try StoredProgressSettings(ReviewSettings.defaults.progress)
         newCardsPerDay = try record.integer(SyncedField.newCardsPerDay.rawValue)
+        dayStartsAtHour =
+            try record.optionalInteger(SyncedField.dayStartsAtHour.rawValue) ?? fichas.dayStartsAtHour
         forgottenOftenAfter = try record.optionalInteger(SyncedField.forgottenOftenAfter.rawValue)
         learningSteps = try record.optionalText(SyncedField.learningSteps.rawValue) ?? fichas.learningSteps
         relearningSteps = try record.optionalText(SyncedField.relearningSteps.rawValue) ?? fichas.relearningSteps
@@ -226,7 +234,8 @@ private struct StoredProgressSettings {
     /// from the same pairs.
     var columnValues: [(field: SyncedField, value: (any DatabaseValueConvertible)?)] {
         [
-            (.newCardsPerDay, newCardsPerDay), (.forgottenOftenAfter, forgottenOftenAfter),
+            (.newCardsPerDay, newCardsPerDay), (.dayStartsAtHour, dayStartsAtHour),
+            (.forgottenOftenAfter, forgottenOftenAfter),
             (.learningSteps, learningSteps), (.relearningSteps, relearningSteps),
             (.desiredRetention, desiredRetention), (.longestIntervalInDays, longestIntervalInDays),
             (.fsrsParameters, fsrsParameters),
@@ -237,6 +246,7 @@ private struct StoredProgressSettings {
     var recordValues: [String: ICloudValue?] {
         [
             SyncedField.newCardsPerDay.rawValue: .int(Int64(newCardsPerDay)),
+            SyncedField.dayStartsAtHour.rawValue: .int(Int64(dayStartsAtHour)),
             SyncedField.forgottenOftenAfter.rawValue: forgottenOftenAfter.map { .int(Int64($0)) },
             SyncedField.learningSteps.rawValue: .string(learningSteps),
             SyncedField.relearningSteps.rawValue: .string(relearningSteps),
@@ -251,7 +261,8 @@ private struct StoredProgressSettings {
     /// rules, steps from 10 minutes to less than a day, each longer than the
     /// one before, or none, a desired retention from 0.70 to 0.99, a longest
     /// interval from 1 to 36,500 days, and 21 parameters or none; at least 0
-    /// new cards a day; and a forgotten-often count of 1 at least, or none.
+    /// new cards a day; an hour from 0 to 23 for Ficha's day to start at; and
+    /// a forgotten-often count of 1 at least, or none.
     func checked() throws -> ProgressSettings {
         let parameters = try JSONDecoder().decode([Double].self, from: Data(fsrsParameters.utf8))
         guard
@@ -266,8 +277,12 @@ private struct StoredProgressSettings {
         guard newCardsPerDay >= 0, (forgottenOftenAfter ?? 1) >= 1 else {
             throw unreadable("The settings that decide progress have a count below its least")
         }
+        guard (0...23).contains(dayStartsAtHour) else {
+            throw unreadable("The settings that decide progress have an hour for Ficha's day to start at past 0 to 23")
+        }
         return ProgressSettings(
-            scheduler: scheduler, newCardsPerDay: newCardsPerDay, forgottenOftenAfter: forgottenOftenAfter)
+            scheduler: scheduler, newCardsPerDay: newCardsPerDay, dayStartsAtHour: dayStartsAtHour,
+            forgottenOftenAfter: forgottenOftenAfter)
     }
 }
 

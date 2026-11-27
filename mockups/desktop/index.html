@@ -216,7 +216,8 @@
   const {
     html, Icon, useStore, useClock, useTheme, useScreen, Stage, MenuBar, Menu, MenuContent,
     ReviewPanelView, CaptureView, DocumentWindow, CallWindow, VideoWindow, Dock, DOCK, Window, Button, Capsule, Divider,
-    DeskToast, MockControls, HudGroup, HudChoice, CardPicture, formatDay, formatTime, formatFinish, metBy,
+    DeskToast, MockControls, HudGroup, HudChoice, CardPicture, formatDay, formatTime, sameCalendarDay, formatFinish,
+    metBy,
   } = FichaUI;
   const E = FichaEngine;
   const listFmt = new Intl.ListFormat('en', { type: 'conjunction' });
@@ -377,7 +378,7 @@
     if (!total) return { line: 'No cards yet', share: 0, empty: true };
     if (d.setAside) return { line: `Set aside · ${met} of ${total} met`, share: met / total };
     if (!app.newLeft(d.id)) {
-      // Calendar days, counting the day it came in and the day its last card was met.
+      // Ficha's days, counting the day it came in and the day its last card was met.
       const days = d.metAllAt && d.addedAt ? Math.round((E.startOfDay(d.metAllAt) - E.startOfDay(d.addedAt)) / E.DAY) + 1 : null;
       return { line: `Met them all${days ? ` · ${total} cards in ${days} day${days > 1 ? 's' : ''}` : ''}`, share: 1, done: true };
     }
@@ -389,7 +390,7 @@
   function nextReview(c, now) {
     if (c.state === 'new') return 'New';
     if (c.due <= now) return 'Due';
-    return E.startOfDay(c.due) === E.startOfDay(now) ? formatTime(c.due) : formatDay(c.due);
+    return sameCalendarDay(c.due, now) ? formatTime(c.due) : formatDay(c.due);
   }
 
   function CardsWindow({ app, state, request, ...win }) {
