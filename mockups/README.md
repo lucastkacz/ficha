@@ -15,7 +15,7 @@ No step of `make check` builds or reads this folder: the pages run in a browser,
 
 | Mock | Artifact | What it explores |
 |---|---|---|
-| `desktop/` | [Ficha Desktop Mock](https://claude.ai/artifact/D9dTXwJWK5gNsFp36y2XrU) | Ficha as ADRs 0033 to 0035 decided it: the review panel's card alone with Forgot and Got it (#489), and its four buttons before as a variant; the Welcome page with Ficha's decks (#467, #458); the Cards window's decks in their queue, and How fast? as a deck comes in (#491); Settings in five tabs, each row where Lucas approved it on 2026-11-25 and marked with the tab it was in (#492). As before: the panel over a working day on a fast clock, a meeting, a video or a full-screen app that holds an appearance back, the menu, Capture and the card size, on a Mac's real screen sizes. It starts at the first launch, or twelve days in. |
+| `desktop/` | [Ficha Desktop Mock](https://claude.ai/artifact/D9dTXwJWK5gNsFp36y2XrU) | Ficha as ADRs 0033 to 0035 and 0039 decided it: the review panel's card alone with Forgot, a yellow Kind of and Got it (#489, #517), and its four buttons before as a variant; the Welcome page with Ficha's decks (#467, #458); the Cards window's decks in their queue, and How fast? as a deck comes in (#491); Settings in five tabs, each row where Lucas approved it on 2026-11-25 and marked with the tab it was in (#492). As before: the panel over a working day on a fast clock, a meeting, a video or a full-screen app that holds an appearance back, the menu, Capture and the card size, on a Mac's real screen sizes. It starts at the first launch, or twelve days in. |
 | `lab/` | [Ficha Lab](https://claude.ai/artifact/9frTfAJnYsNJukGgK8E1jd) | Not a screen: four or twelve weeks of Ficha in a made-up working life, A against B, Ficha as decided against Ficha before the decision to start with. What a setting costs (appearances and minutes a weekday, meetings it waits out) and what it gives (cards met, each deck's day all met, graduated, how often a review is remembered), day by day. |
 
 ## How it's built
@@ -40,12 +40,12 @@ No build step: React 18.3.1 from cdnjs and htm 3.1.1 from jsDelivr, pinned, so c
 | `--accent` | `.tint` |
 | `.glass` with `--radius-panel` (24) | `.glassEffect(.regular, in: .rect(cornerRadius: 24, style: .continuous))` |
 | `--text-title2` semibold, `--text-body`, `--text-caption` | `.title2.weight(.semibold)`, `.body`, `.caption` (`CardTextStyle`) |
-| `Button` / `Button prominent` | `.buttonStyle(.bordered)` / `.borderedProminent` |
+| `Button` / `Button prominent` / `Button yellow` | `.buttonStyle(.bordered)` / `.borderedProminent` / `.borderedProminent` with `.tint(.yellow)` and a black title while the panel has the keyboard |
 | `IconButton` | `.labelStyle(.iconOnly)`, `.buttonStyle(.borderless)` |
 | `KeyLabel`, `Capsule` | `KeyLabel`, `TagCapsule` |
 | `Segmented` | `Picker` with `.pickerStyle(.segmented)` |
 | `MenuContent` | `App/MenuContent.swift` |
-| `ReviewPanelView` | `App/ReviewPanelView.swift`, placed as `ReviewPanelWindow` places it: centered, 40 points under the menu bar; its `face` 'new' is the app's since #489, 'today' the app's before it |
+| `ReviewPanelView` | `App/ReviewPanelView.swift`, placed as `ReviewPanelWindow` places it: centered, 40 points under the menu bar; its `face` 'new' is the app's since #489, with #517's three buttons, and 'today' the app's before #489 |
 | `CaptureView` | `App/CaptureView.swift` |
 | `WelcomePage`, in `desktop/` | `App/WelcomePage.swift`, with #467's steps |
 | `CardsWindow` and `HowFast`, in `desktop/` | `App/CardsWindow.swift`'s decks, and #491's How fast? |
@@ -61,7 +61,7 @@ No build step: React 18.3.1 from cdnjs and htm 3.1.1 from jsDelivr, pinned, so c
 - The finish date, as a range, as FichaCore's `DeckQueue.swift` works it out: `finishDays` gives each deck's days, the soonest if every day has appearances and the latest if five days in seven do, and `ToyFicha`'s `finishDates` places them on the calendar.
 - 85% desired retention on a new install, `Scheduler.newInstall`: `NEW_INSTALL_RETENTION`; `SCHEDULER` keeps `Scheduler.standard`'s 90%, which `tools/check-engine.js`'s scheduling cases use.
 - `tools/check-engine.js` runs cases copied from FichaFSRS's and FichaCore's tests (`FSRSTests`, `SchedulerIntervalsTests`, `SchedulerStepsTests`, and FichaData's `PaceAndQueueTests`, in `Packages/FichaKit/Tests`) against the toy engine. Run it, from the repo's folder, after any change to `kit/engine.js`, and after a change to those tests or to the scheduling they test: `node mockups/tools/check-engine.js`.
-- The review panel's two buttons, its ⋯ menu and its keys, as `App/ReviewPanelView.swift` has them since #489: `FACES`' 'new' and `MoreMenu` in `kit/ui.js`, where keys 1 to 4 record Anki's four ratings in either face. And how an interval reads, as `App/IntervalText.swift` writes it (`formatInterval`).
+- The review panel's three buttons, its ⋯ menu and its keys, as `App/ReviewPanelView.swift` has them since #517: `FACES`' 'new' and `MoreMenu` in `kit/ui.js`, where keys 1, 2 and 3 record Again, Hard and Good, and 4 nothing, as `AnswerButton` maps them; 'today', the panel before #489, keeps Anki's four buttons on keys 1 to 4. And how an interval reads, as `App/IntervalText.swift` writes it (`formatInterval`).
 - The card size (`CardSize`): ⌘+, ⌘− and ⌘0, in `CardSize`'s steps. The card's text grows, the review panel widens with it and its buttons keep their size, as `CardSize` sets them; the review panel grows up to `ReviewPanelWindow.maximumShareOfScreen` of the screen's free height, and a taller card scrolls between its top line and its buttons.
 - The suppressions a mock can act out, as `AppearancePlanner.swift` names them: a meeting, a video, an app in full screen.
 

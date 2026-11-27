@@ -971,17 +971,6 @@
     "Allow it in System Settings, in Login Items." : {
 
     },
-    "Also %@ Hard and %@ Easy, as in Anki" : {
-      "comment" : "Under the review panel's two buttons, Forgot and Got it: keys 2 and 4 still rate the card Hard and Easy, Anki's names for its second and fourth buttons, which the panel doesn't show.",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Also %1$@ Hard and %2$@ Easy, as in Anki"
-          }
-        }
-      }
-    },
     "Also review it back first: its back, then its front once you flip it." : {
       "comment" : "In the Cards window, under a card's Both ways checkbox."
     },
@@ -2113,6 +2102,9 @@
     },
     "Kind" : {
       "comment" : "A column of the Cards window's inbox: whether a row is a capture, an expansion, a follow-up or a card.\nSettings, under Backups: the column of each copy's kind."
+    },
+    "Kind of" : {
+      "comment" : "The review panel's yellow button in the middle, once a card is turned over, a new card's first turn included, for a card the user remembered with effort: it records Anki's Hard. Its key is 2."
     },
     "Knew it" : {
       "comment" : "The review panel's Got it button on a new card's first turn, for a card the user already knew: it records Anki's Good. Its keys are Space and 3."
