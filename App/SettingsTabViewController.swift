@@ -52,8 +52,8 @@ extension SettingsTab {
 
 /// Where a tab of Settings scrolls to, as Settings is asked to show one of
 /// its sections, such as Advanced's Backups, which "Last backup failed" in
-/// the menu opens: each request scrolls once, even to the section asked for
-/// before.
+/// the menu opens, at Advanced's foot (`SettingsTabContent`): each request
+/// scrolls once, even to the section asked for before.
 @Observable
 final class SettingsScroll {
     /// The section asked for last, or nil while none was.
@@ -61,7 +61,7 @@ final class SettingsScroll {
     /// How many times a section was asked for, so a tab scrolls each time.
     private(set) var requests = 0
 
-    /// Asks the tab that holds `section` to scroll to it.
+    /// Asks the tab that holds `section` to scroll to where it shows.
     func scroll(to section: SettingsSection) {
         self.section = section
         requests += 1

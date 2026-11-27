@@ -26,42 +26,42 @@ struct SettingsTabContent: View {
     /// How many of `scroll`'s requests the tab followed, so it follows each
     /// once, and not again each time Lucas picks the tab.
     @State private var followedRequests = 0
+    /// Where the form is scrolled to.
+    @State private var position = ScrollPosition()
 
     var body: some View {
-        ScrollViewReader { proxy in
-            Form {
-                ForEach(tab.sections, id: \.self) { section in
-                    SettingsSectionView(
-                        section: section, model: model, captureShortcut: captureShortcut, width: width,
-                        openDiagnostics: openDiagnostics)
-                }
+        Form {
+            ForEach(tab.sections, id: \.self) { section in
+                SettingsSectionView(
+                    section: section, model: model, captureShortcut: captureShortcut, width: width,
+                    openDiagnostics: openDiagnostics)
             }
-            .formStyle(.grouped)
-            .onChange(of: scroll.requests, initial: true) {
-                follow(scroll, with: proxy)
-            }
+        }
+        .formStyle(.grouped)
+        .scrollPosition($position)
+        .onChange(of: scroll.requests, initial: true) {
+            follow(scroll)
         }
         .settingsTabActions(tab, model: model, closeReviewPanel: closeReviewPanel)
     }
 
-    /// Where a section's first row lands as the tab scrolls to it: a tenth of
-    /// the way down, so the section's heading shows above it, since SwiftUI
-    /// scrolls to a row and a heading isn't one.
-    private static let sectionAnchor = UnitPoint(x: 0.5, y: 0.1)
-
-    /// Scrolls to the section `scroll` asked for last, when it's one of the
-    /// tab's, with its heading near the top, unless the tab followed that
-    /// request already.
-    private func follow(_ scroll: SettingsScroll, with proxy: ScrollViewProxy) {
+    /// Shows the section `scroll` asked for last, when it's one of the tab's,
+    /// unless the tab followed that request already, by scrolling to the
+    /// form's foot: the sections Settings is asked for, Backups and
+    /// Diagnostics, are Advanced's last, and Advanced, as tall as
+    /// Interruptions, shows both there, with Backups' heading. Our own: a
+    /// grouped form on macOS 26 scrolls to no row's or section's `id`, with
+    /// `ScrollViewReader` or `ScrollPosition`, as `make render`'s pictures
+    /// showed, though it scrolls to an edge.
+    private func follow(_ scroll: SettingsScroll) {
         guard scroll.requests > followedRequests else { return }
         followedRequests = scroll.requests
-        guard let section = scroll.section, tab.sections.contains(section), let row = section.rows.first else {
-            return
-        }
-        // A turn later, once the form has its rows: as Settings opens, the
-        // form is first asked only for its size, before it has any.
+        guard let section = scroll.section, tab.sections.contains(section) else { return }
+        // A turn later, once the form has its rows and the window its
+        // toolbar: as Settings opens, the form is first asked only for its
+        // size, before it has any.
         Task {
-            proxy.scrollTo(row, anchor: Self.sectionAnchor)
+            position.scrollTo(edge: .bottom)
         }
     }
 }
@@ -315,16 +315,12 @@ private struct SettingsSectionView: View {
         }
     }
 
-    /// The section's rows, in their order, each with its own identity, for
-    /// the tab to scroll to: a grouped form scrolls to an `id` it was given,
-    /// not to its `ForEach`'s.
+    /// The section's rows, in their order.
     private var rows: some View {
         ForEach(section.rows, id: \.self) { row in
             SettingsRowView(
                 row: row, model: model, captureShortcut: captureShortcut, width: width,
-                openDiagnostics: openDiagnostics
-            )
-            .id(row)
+                openDiagnostics: openDiagnostics)
         }
     }
 }
