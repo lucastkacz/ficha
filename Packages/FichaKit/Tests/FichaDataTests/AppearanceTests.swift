@@ -181,27 +181,36 @@ struct AppearanceTests {
         #expect(try appearance() == .show([.new(ockham)]))
     }
 
-    // 21:00 in Buenos Aires is already the next day in UTC, and 9:00 on the
-    // 15th is past 4:00, when Ficha's day starts there.
-    @Test("the day's new cards start over as Ficha's day does, by the Mac's clock", .bug(id: 562))
+    // Active hours all day. 0:30 in Buenos Aires is 3:30 in UTC, so by UTC's
+    // clock Ficha's day would turn at 1:00 there, and the night's new cards,
+    // met at 0:30, would leave room for another at 1:30.
+    @Test(
+        "the day's new cards start over at 4:00 by the Mac's clock, as Ficha's day does, and not by UTC's",
+        .bug(id: 562))
     func newCardsStartOverAsFichasDayDoes() throws {
-        time.move(to: try at(21, 0))
+        var allDay = settings
+        allDay.activeHours = try #require(ActiveHours(from: 0, to: 24))
         let met = try ["ubuntu", "petricor", "serendipia", "Schadenfreude", "navaja de Ockham"].map {
             try approveCard($0, in: engine)
         }
         let sunkCost = try approveCard("costo hundido", in: engine)
+        time.move(to: try at(0, 30, day: 15))
         for card in met {
             try engine.meet(card)
         }
 
-        time.move(to: try at(21, 30))
-        #expect(try appearance() == .notNow(.nothingDue))
-
-        time.move(to: try at(9, 0, day: 15))
+        time.move(to: try at(1, 30, day: 15))
         for card in met {
             try engine.review(card, .good)
         }
-        #expect(try appearance() == .show([.new(sunkCost)]))
+        let atHalfPastOne = try engine.checkAppearance(allDay, mac: FakeMac())
+        time.move(to: try at(3, 59, day: 15))
+        let atThreeFiftyNine = try engine.checkAppearance(allDay, mac: FakeMac())
+        time.move(to: try at(4, 0, day: 15))
+
+        #expect(atHalfPastOne == .notNow(.nothingDue))
+        #expect(atThreeFiftyNine == .notNow(.nothingDue))
+        #expect(try engine.checkAppearance(allDay, mac: FakeMac()) == .show([.new(sunkCost)]))
     }
 
     @Test("every appearance and review now goes into the appearance log, with its trigger, times and outcome")

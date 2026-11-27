@@ -37,12 +37,6 @@ extension Calendar {
         startOfDay(for: startOfFichasDay(for: time, startingAt: hour))
     }
 
-    /// Whether `time` and `other` are in the same Ficha's day, for a day that
-    /// starts at the hour `hour`.
-    public func isDate(_ time: Date, inSameFichasDayAs other: Date, startingAt hour: Int) -> Bool {
-        startOfFichasDay(for: time, startingAt: hour) == startOfFichasDay(for: other, startingAt: hour)
-    }
-
     /// The hour `hour` of the calendar day that starts at `day`, by this
     /// calendar's clock.
     private func date(atHour hour: Int, of day: Date) -> Date {

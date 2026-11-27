@@ -119,6 +119,24 @@ struct FichasDayTests {
                 == .dayOrNext(.tomorrow, .weekday(friday)))
     }
 
+    // Ubuntu and petricor, tonight's two new cards, were met at 21:00, easy,
+    // so nothing is due for days: the next appearance waits for Ficha's next
+    // day, from 4:00, and then for active hours, from 20:00. A next day from
+    // midnight, still tonight by Ficha's day, would make it wait for the
+    // midnight after, a night later.
+    @Test(
+        "with active hours from 20 to 3, the iPhone's planned appearances bring the next new card at 20:00 the next night, once tonight's two were met",
+        .bug(id: 562))
+    func plannedAppearancesWaitForTheNextNight() throws {
+        var night = ReviewSettings.defaults
+        night.activeHours = try #require(ActiveHours(from: 20, to: 3))
+        let serendipia = try meetTheDaysTwo(at: try at(21, 0))
+
+        let next = try engine.upcomingAppearances(night).first
+
+        #expect(next == UpcomingAppearance(time: try at(20, 0, day: 15), cards: [.new(serendipia)]))
+    }
+
     /// Approves ubuntu, petricor and serendipia, and meets the first two at
     /// `time`, answered easy, so they're the day's two new cards at Steady,
     /// due again days later; and returns serendipia, still new.
