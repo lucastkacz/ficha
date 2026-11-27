@@ -327,6 +327,7 @@
             order: i,
             front: c.front,
             back: c.back,
+            picture: Boolean(c.picture),
             source: c.source || null,
             tags: c.tags || [],
             state: 'new',
@@ -587,16 +588,15 @@
       this.changed();
       this.emit();
     }
-    /** Adds a deck at the end of the queue, or first when asked. */
+    /** Adds a deck at the end of the queue, or first when asked, as `putFirst` puts it. */
     addDeck(id, { first = false } = {}) {
       const d = this.deck(id);
       const s = this.state;
       d.added = true;
       d.setAside = false;
       d.addedAt = d.addedAt ?? s.now;
-      s.queue = s.queue.filter((x) => x !== id);
-      if (first) s.queue.unshift(id);
-      else s.queue.push(id);
+      s.queue = [...s.queue.filter((x) => x !== id), id];
+      if (first) this.moveFirst(id);
       this.log(`Added ${d.name}, ${first ? 'first' : 'last'} in the queue`, 'deck');
       this.changed();
       this.emit();
@@ -608,12 +608,31 @@
       s.decks.push({ id, name, emoji: '🗂️', ficha: false, added: false, addedAt: null, metAllAt: null, setAside: false });
       return id;
     }
+    /** Puts a deck first in the queue, as `moveFirst` moves it. */
     putFirst(id) {
-      const s = this.state;
-      s.queue = [id, ...s.queue.filter((x) => x !== id)];
+      this.moveFirst(id);
       this.log(`${this.deck(id).name} goes first`, 'deck');
       this.changed();
       this.emit();
+    }
+    /**
+     * Moves a deck to the first place in the queue held by a deck with
+     * cards not met, not set aside, as FichaCore's
+     * `places(putting:at:now:)` does: the decks it passes move down into
+     * each other's places, and a deck met in full or set aside keeps its
+     * own, so one ahead of them stays ahead of it. A deck not in the queue
+     * yet comes in last before it moves, as `addDeck` puts it.
+     */
+    moveFirst(id) {
+      const s = this.state;
+      const queue = s.queue.includes(id) ? [...s.queue] : [...s.queue, id];
+      const moves = (x) => x === id || (!this.deck(x).setAside && this.newLeft(x) > 0);
+      const places = queue.flatMap((x, i) => (moves(x) ? [i] : []));
+      const order = [id, ...places.map((i) => queue[i]).filter((x) => x !== id)];
+      places.forEach((place, k) => {
+        queue[place] = order[k];
+      });
+      s.queue = queue;
     }
     /**
      * Sets a deck aside, out of the queue, or brings it back to its place,

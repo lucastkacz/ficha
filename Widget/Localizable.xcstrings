@@ -262,6 +262,10 @@
     "This build isn't signed with its App Group, whose folder holds its cards. Install Ficha from TestFlight, or build Ficha Dev with make run, with your team's ID in iPhone/Local.xcconfig, as docs/development.md says." : {
       "comment" : "An alert at launch, which only a build made by hand without the developer's team shows. TestFlight is Apple's app, make run a command, iPhone/Local.xcconfig a file and docs/development.md a document, whose names stay as they are."
     },
+    "This copy of Ficha is missing the deck “%@”, so it can't be added. Install Ficha again, then add it." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual"
+    },
     "You already have a type named “%@”, so nothing changed. Pick that type, or write another name." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"

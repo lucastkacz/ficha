@@ -126,7 +126,7 @@ extension CardsWindowState {
             return false
         }
         followUp(&self)
-        read(with: scheduler)
+        readAgain()
         return true
     }
 
@@ -239,7 +239,7 @@ extension CardsWindowState {
             return false
         }
         follow([.rename(tag, to: renamed)])
-        read(with: scheduler)
+        readAgain()
         return true
     }
 

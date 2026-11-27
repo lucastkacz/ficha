@@ -75,12 +75,12 @@
     background: linear-gradient(#fdfdfd, #e6e1d6); color: #4a3f2e; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
   }
   .welcome h3 { font-size: var(--text-headline); font-weight: 600; }
-  .deck-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .deck-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .deck-tile {
-    display: grid; grid-template-columns: 30px 1fr; grid-template-rows: auto auto; column-gap: 8px;
+    display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
     padding: 10px 12px; border: 0; border-radius: 12px; background: var(--fill); text-align: left; cursor: default;
   }
-  .deck-tile .emoji { grid-row: 1 / 3; font-size: 24px; align-self: center; }
+  .deck-tile .emoji { font-size: 24px; }
   .deck-tile .name { font-weight: 600; }
   .deck-tile .count { color: var(--secondary-label); font-size: var(--text-callout); }
   .deck-tile[aria-checked='true'] { background: var(--selection); box-shadow: inset 0 0 0 1px var(--accent); }
@@ -108,7 +108,8 @@
   .cards .side-row:hover { background: var(--fill); }
   .cards .side-row[aria-selected='true'] { background: var(--selection); }
   .cards .side-row .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .cards .side-row small { grid-column: 2; color: var(--secondary-label); font-size: var(--text-subheadline); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* A deck's line, on up to two lines, as the app's row: its finish date is what it's for. */
+  .cards .side-row small { grid-column: 2; color: var(--secondary-label); font-size: var(--text-subheadline); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
   .cards .side-row.aside .name { color: var(--secondary-label); }
   .cards .detail { min-width: 0; padding: 6px 22px 18px; display: flex; flex-direction: column; gap: 12px; overflow: auto; }
   .cards .row-actions { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -116,7 +117,10 @@
   .cards table { width: 100%; border-collapse: collapse; font-size: var(--text-callout); }
   .cards th { text-align: left; font-weight: 500; color: var(--secondary-label); padding: 4px 8px 4px 0; border-bottom: 1px solid var(--separator); }
   .cards td { padding: 5px 8px 5px 0; border-bottom: 1px solid var(--separator); vertical-align: top; }
-  .cards td.back { color: var(--secondary-label); }
+  .cards td.back { color: var(--secondary-label); white-space: pre-line; }
+  .cards .one-card { display: flex; flex-direction: column; gap: 8px; max-width: 420px; padding: 14px 16px; border-radius: 12px; background: var(--fill); }
+  .cards .one-card .front { font-size: var(--text-title3); font-weight: 600; }
+  .cards .one-card .back { color: var(--secondary-label); white-space: pre-line; }
   .cards td.when { white-space: nowrap; font-variant-numeric: tabular-nums; }
   .sheet-cover { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.12); z-index: 5; display: flex; justify-content: center; }
   .sheet {
@@ -202,14 +206,19 @@
    * decks (#458) and the Welcome page that offers them (#467); Settings in
    * five tabs, with where each of today's rows went (#492). And, as before,
    * the panel over a working day on a fast clock, and what holds it back.
-   * New here, not in the app yet: WelcomePage's steps, HowFast, the Cards
-   * window's deck rows, and SettingsWindow's five tabs.
+   * New here, not in the app yet: WelcomePage's steps and SettingsWindow's
+   * five tabs. Ahead of the app too, in CardsWindow: a deck's bar, with Put
+   * it first and Set aside, where the app has Set Aside in the deck's menu
+   * and Put it first in How fast? alone; and the sidebar's "Your Own"
+   * section, with New Deck… and Import an Anki file…, which the app keeps
+   * elsewhere: New Deck… in a deck's menu and the Your Decks title's, and
+   * Import… in the toolbar, on ⇧⌘I.
    */
   const { useState, useEffect, useRef, createContext, useContext } = React;
   const {
     html, Icon, useStore, useClock, useTheme, useScreen, Stage, MenuBar, Menu, MenuContent,
     ReviewPanelView, CaptureView, DocumentWindow, CallWindow, VideoWindow, Dock, DOCK, Window, Button, Capsule, Divider,
-    DeskToast, MockControls, HudGroup, HudChoice, formatDay, formatTime, formatFinish, metBy,
+    DeskToast, MockControls, HudGroup, HudChoice, CardPicture, formatDay, formatTime, formatFinish, metBy,
   } = FichaUI;
   const E = FichaEngine;
   const listFmt = new Intl.ListFormat('en', { type: 'conjunction' });
@@ -219,8 +228,8 @@
   // ---------------------------------------------------------------------
   /**
    * 'welcome': a Mac where Ficha just opened for the first time, with no
-   * decks, at 9:40. 'week': twelve days in at Steady, Famous paintings all
-   * met, the eight-thousanders under way, Types of clouds next; Ficha quiet
+   * decks, at 9:40. 'weeks': 25 days in at Steady, Flores de Buenos Aires
+   * all met, Palabras lindas under way, Arte argentino next; Ficha quiet
    * until its next appearance.
    */
   function makeApp(scenario) {
@@ -231,12 +240,12 @@
       app.log('Ficha opens for the first time', 'deck');
       return app;
     }
-    const app = new E.ToyFicha({ decks: FichaDecks, now: morning.getTime() - 12 * E.DAY, speed: 60 });
-    ['paintings', 'mountains', 'clouds'].forEach((id) => app.addDeck(id));
+    const app = new E.ToyFicha({ decks: FichaDecks, now: morning.getTime() - 25 * E.DAY, speed: 60 });
+    ['flores-de-buenos-aires', 'palabras-lindas', 'arte-argentino'].forEach((id) => app.addDeck(id));
     app.fastForward(morning.getTime());
     const next = app.nextAppearance();
     if (next && next.at - 20 * E.MINUTE > app.state.now) app.state.now = next.at - 20 * E.MINUTE;
-    app.log('Twelve days in, at Steady', 'deck');
+    app.log('25 days in, at Steady', 'deck');
     return app;
   }
 
@@ -386,7 +395,11 @@
   }
 
   function CardsWindow({ app, state, request, ...win }) {
-    const yours = [...app.state.queue.map((id) => app.deck(id)).filter((d) => !d.setAside), ...state.decks.filter((d) => d.added && d.setAside)];
+    // The queue's decks with cards, in its order, then the decks with none
+    // yet, by name, then those set aside, as the app's Your Decks lists them.
+    const queued = app.state.queue.map((id) => app.deck(id)).filter((d) => !d.setAside);
+    const empty = queued.filter((d) => !cardsIn(app, d.id)).sort((a, b) => a.name.localeCompare(b.name));
+    const yours = [...queued.filter((d) => cardsIn(app, d.id)), ...empty, ...state.decks.filter((d) => d.added && d.setAside).sort((a, b) => a.name.localeCompare(b.name))];
     const toAdd = state.decks.filter((d) => d.ficha && !d.added);
     const anki = state.decks.find((d) => !d.ficha && !d.added);
     const [selected, setSelected] = useState((yours[0] || toAdd[0]).id);
@@ -433,9 +446,9 @@
     return html`<${Window} title="Cards" onClose=${win.onClose} ...${win}>
       <div className="cards">
         <nav className="sidebar" aria-label="Decks">
-          ${yours.length ? html`<div className="side-title">Your decks</div>${yours.map(row)}` : null}
-          ${toAdd.length ? html`<div className="side-title">Ficha's decks</div>${toAdd.map(row)}` : null}
-          <div className="side-title">Your own</div>
+          ${yours.length ? html`<div className="side-title">Your Decks</div>${yours.map(row)}` : null}
+          ${toAdd.length ? html`<div className="side-title">Ficha's Decks</div>${toAdd.map(row)}` : null}
+          <div className="side-title">Your Own</div>
           <button type="button" className="side-row" aria-selected=${making} onClick=${() => setSelected(NEW)}>
             <span>🗂️</span><span className="name">New Deck…</span><small>Empty, for your own cards</small></button>
           ${anki && html`<button type="button" className="side-row" aria-selected=${selected === anki.id} onClick=${() => setSelected(anki.id)}>
@@ -454,12 +467,16 @@
                   onClick=${() => app.setAside(deck.id, !deck.setAside)} />`}
               </div>
               ${status.empty ? html`<p className="sub">Add cards with Capture, from the menu bar. Each new card waits its turn in the queue.</p>` : html`<table><thead><tr><th>Front</th><th>Back</th><th>Next review</th></tr></thead>
-                <tbody>${cards.map((c) => html`<tr key=${c.id}><td>${c.front}</td><td className="back">${c.back}</td>
+                <tbody>${cards.map((c) => html`<tr key=${c.id}><td>${c.picture ? html`<span className="sub">Image</span>` : c.front}</td><td className="back">${c.back}</td>
                   <td className="when">${nextReview(c, state.now)}</td></tr>`)}</tbody></table>`}`
-            : html`<p className="sub">${deck.blurb}</p>
+            : deck.ficha
+              ? html`<div className="one-card">${cards[0].picture ? html`<${CardPicture} />` : html`<div className="front">${cards[0].front}</div>`}
+                  <${Divider} /><div className="back">${cards[0].back}</div></div>
+                <div className="row-actions"><${Button} prominent title="Add Deck…" onClick=${() => openSheet(deck.id)} /></div>`
+              : html`<p className="sub">${deck.blurb}</p>
               <div className="peek">${cards.slice(0, 5).map((c) => html`<${Capsule} key=${c.id}>${c.front}</${Capsule}>`)}
                 ${cards.length > 5 && html`<${Capsule}>+${cards.length - 5} more</${Capsule}>`}</div>
-              <div className="row-actions"><${Button} prominent title=${making ? 'New Deck…' : deck.ficha ? 'Add Deck…' : 'Import…'}
+              <div className="row-actions"><${Button} prominent title=${making ? 'New Deck…' : 'Import…'}
                 onClick=${() => openSheet(deck.id)} /></div>`}
         </div>
         ${sheetDeck && html`<div className="sheet-cover"><div className="sheet" role="dialog" aria-label="How fast?">
@@ -771,8 +788,8 @@
       <li>The pace, one for all decks: Chill, Steady or Faster, 1, 2 or 4 new cards a day. New cards come from the first
         deck in the queue until you've met them all, then from the next. A finish date is a range: the soonest if every
         day has appearances, the latest if five days in seven do. 85% desired retention.</li>
-      <li>Ficha's decks, in English, offered at the Welcome page and in the Cards window; the first card comes a minute
-        after the Welcome page. "I have Anki" stands for the Import sheet with a made-up file.</li>
+      <li>Ficha's three decks, in Spanish for now, offered at the Welcome page and in the Cards window; the first card
+        comes a minute after the Welcome page. "I have Anki" stands for the Import sheet with a made-up file.</li>
       <li>Settings in five tabs, as Lucas approved them. "Settings: Show where from" marks each row with the tab it
         was in today.</li>
     </ul>
@@ -809,7 +826,7 @@
     const restart = (which) => (setScenario(which), setApp(makeApp(which)), setPrefs(PREFS), setGeneration(generation + 1));
     const variants = html`<${HudGroup} label="Start">
         <${HudChoice} label="Start" value=${scenario} onChange=${restart}
-          options=${[{ value: 'welcome', label: 'First launch' }, { value: 'week', label: 'Twelve days in' }]} />
+          options=${[{ value: 'welcome', label: 'First launch' }, { value: 'weeks', label: '25 days in' }]} />
       </${HudGroup}>
       <${HudGroup} label="Panel">
         <${HudChoice} label="Panel" value=${face} onChange=${setFace}

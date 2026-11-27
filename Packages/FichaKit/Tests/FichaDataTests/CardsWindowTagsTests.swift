@@ -34,7 +34,7 @@ struct CardsWindowTagsTests {
     }
 
     // Every card has a type, so the Types section has no No Type, and lives
-    // in Default, which the Decks section lists alone.
+    // in Default, which the Your Decks section lists alone.
     @Test(
         "the sidebar lists the card groups, then Inbox, then the decks, then the pinned tags in their order and All Tags, then the card types"
     )

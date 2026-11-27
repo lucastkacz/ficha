@@ -7,28 +7,31 @@ import SwiftUI
 /// once flipped, its lower side under it, the card alone, with no deck, tags
 /// or intervals (ADR 0033). A card shows front first, or, when it goes both
 /// ways, back first too, with the back on top and a "Back first" mark, and a
-/// review ahead is marked "Ahead". Every action has a key: Space flips a
-/// card, and then three buttons answer it, Forgot, on 1, a yellow Kind of, on
-/// 2, and Got it, on Space and 3, named New to me, Kind of and Knew it on a
-/// new way's first review (`AnswerButton`). A ⋯ menu in the corner offers the
-/// rest, each also on its key: A asks a question about the card, which waits
-/// in the inbox as a follow-up, M flags it with a note, E buries it
-/// (`CardAction`), ⌘Z undoes the last thing Lucas did, and Esc closes the
-/// panel, which snoozes an appearance. A side with a sound has a ▶ under its
-/// text, which plays it and shows ■ while it plays, and R plays or stops the
-/// lower side's sound once it shows, or else the upper side's. When 1 makes a
-/// card forgotten often, the panel offers to flag it, its note written: Enter
-/// flags it, and Esc leaves it in his reviews. Once Lucas went through every
-/// card, the panel stays open until he closes it, and offers more cards if
-/// there are any, which Enter brings; review now with nothing due offers to
-/// review ahead the same way. A card taller than the panel's maximum height
-/// scrolls between the line at its top and what's under it, which stay in
-/// view. A card's text and images show at the card size, which ⌘+, ⌘− and ⌘0
-/// change (`ReviewPanelWindow`), and above 100% the panel widens with them;
-/// its buttons, a sound's ▶, the note's and the question's fields and its
-/// messages stay their size, as Anki's bottom bar does. `ReviewPanelState`
-/// decides what the panel shows and what happens when Lucas acts, and the
-/// view draws it.
+/// review ahead is marked "Ahead". Every action on a card has a key: Space
+/// flips a card, and then three buttons answer it, Forgot, on 1, a yellow
+/// Kind of, on 2, and Got it, on Space and 3, named New to me, Kind of and
+/// Knew it on a new way's first review (`AnswerButton`). A ⋯ menu in the
+/// corner offers the rest, each also on its key: A asks a question about the
+/// card, which waits in the inbox as a follow-up, M flags it with a note, E
+/// buries it (`CardAction`), ⌘Z undoes the last thing Lucas did, and Esc
+/// closes the panel, which snoozes an appearance. A side with a sound has a ▶
+/// under its text, which plays it and shows ■ while it plays, and R plays or
+/// stops the lower side's sound once it shows, or else the upper side's. When
+/// 1 makes a card forgotten often, the panel offers to flag it, its note
+/// written: Enter flags it, and Esc leaves it in his reviews. Once Lucas went
+/// through every card, the panel stays open until he closes it, says "You've
+/// met them all" for each deck whose last new card he met in it, with the
+/// next deck in the queue, or, while nothing waits there, a button for one of
+/// Ficha's decks, which opens the Cards window to add it, and offers more
+/// cards if there are any, which Enter brings; review now with nothing due
+/// offers to review ahead the same way. A card taller than the panel's
+/// maximum height scrolls between the line at its top and what's under it,
+/// which stay in view. A card's text and images show at the card size, which
+/// ⌘+, ⌘− and ⌘0 change (`ReviewPanelWindow`), and above 100% the panel
+/// widens with them; its buttons, a sound's ▶, the note's and the question's
+/// fields and its messages stay their size, as Anki's bottom bar does.
+/// `ReviewPanelState` decides what the panel shows and what happens when
+/// Lucas acts, and the view draws it.
 struct ReviewPanelView: View {
     /// The corner radius of the panel's glass, with continuous corners. The
     /// panel's window clips its content to it, which matches the glass while
@@ -70,6 +73,14 @@ struct ReviewPanelView: View {
     /// The tallest the panel grows, which its window sets by the screen it
     /// shows on: a card taller than that scrolls.
     var maximumHeight = CGFloat.infinity
+    /// Reads Ficha's decks from the app, once "You've met them all" asks for
+    /// them, to offer one while nothing waits in the queue, each deck's file
+    /// or why it couldn't be read: nil until the window gives the panel a
+    /// way to, or when the render tool reads none.
+    var readFichaDecks: () async -> [FichaDeck: Result<FichaDeckFile, EngineError>]? = { nil }
+    /// Opens the Cards window on one of Ficha's decks with How fast?, as its
+    /// Add Deck… does, as the panel closes.
+    var addFichaDeck: (FichaDeck) -> Void = { _ in }
     /// The tallest a side's image shows.
     private var imageHeight: CGFloat { cardSize.imageHeightLimit(panelTallest: maximumHeight) }
     /// The widest the answer buttons and the writing fields show, the inside of
@@ -131,6 +142,12 @@ struct ReviewPanelView: View {
             .onChange(of: playingSound) { _, playing in
                 play(playing)
             }
+            .task(id: asksForFichaDecks) {
+                guard asksForFichaDecks, case .success(let panel) = model else { return }
+                if let read = await readFichaDecks() {
+                    panel.state.offerFichaDecks(read)
+                }
+            }
             .padding(20)
             .frame(width: cardSize.panelWidth, alignment: .leading)
         }
@@ -141,6 +158,13 @@ struct ReviewPanelView: View {
     private var playingSound: ReviewPanelState.PlayingSound? {
         guard case .success(let panel) = model else { return nil }
         return panel.state.playingSound
+    }
+
+    /// Whether the panel asks for Ficha's decks, to offer one in "You've met
+    /// them all".
+    private var asksForFichaDecks: Bool {
+        guard case .success(let panel) = model else { return false }
+        return panel.state.asksForFichaDecks
     }
 
     /// Plays `playing`, the sound the panel says plays, from the start, or
@@ -252,6 +276,7 @@ struct ReviewPanelView: View {
             .background {
                 menuKeys(of: panel)
             }
+            metThemAll(of: panel)
             enterButton(Text("See more")) {
                 panel.state.seeMore()
             }
@@ -265,10 +290,103 @@ struct ReviewPanelView: View {
             .background {
                 menuKeys(of: panel)
             }
+            metThemAll(of: panel)
             enterButton(
                 Text("Done", comment: "A button that closes the review panel once every card was gone through."),
                 action: closeByLucas)
         }
+    }
+
+    /// What the done panel says it met in full, under its title (ADR 0034,
+    /// #491), as the state says it: "You've met them all", for each deck an
+    /// answer in it met in full, and then the next deck in the queue new
+    /// cards come from, or that nothing waits there, with a button for one
+    /// of Ficha's decks the user hasn't added, which closes the panel and
+    /// opens the Cards window on it, with How fast? (#458), on the same row
+    /// as the line while they fit, and under it otherwise. All in a filled
+    /// rounded box, as the mock's `MetThemAll` is. Nothing while it met
+    /// none.
+    @ViewBuilder
+    private func metThemAll(of panel: ReviewPanelModel) -> some View {
+        if let met = panel.state.metThemAll {
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(met.decks, id: \.name) { deck in
+                    Text(
+                        "You've met them all: \(deck.title)",
+                        comment: """
+                            In the review panel, once it went through its cards, for each deck whose last new card \
+                            an answer in it met, with the deck's emoji and name.
+                            """
+                    )
+                    .fontWeight(.semibold)
+                }
+                if let next = met.nextInQueue {
+                    Text(
+                        "Next in the queue: \(next.title). Its first card comes with the next new one.",
+                        comment: """
+                            In the review panel, under the decks it met in full: the deck new cards come from \
+                            now, with its emoji and name.
+                            """
+                    )
+                    .foregroundStyle(.secondary)
+                } else if let deck = met.fichaDeck {
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 10) {
+                            anotherFichaDeck
+                            Spacer(minLength: 0)
+                            fichaDeckButton(deck, of: panel)
+                        }
+                        VStack(alignment: .leading, spacing: 6) {
+                            anotherFichaDeck
+                            fichaDeckButton(deck, of: panel)
+                        }
+                    }
+                } else {
+                    Text(
+                        "Nothing waits in the queue.",
+                        comment: "In the review panel, under the decks it met in full: no deck has new cards."
+                    )
+                    .foregroundStyle(.secondary)
+                }
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.vertical, 12)
+            .padding(.horizontal, 14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.fill.quaternary, in: .rect(cornerRadius: 14))
+        }
+    }
+
+    /// What "You've met them all" says while nothing waits in the queue and
+    /// it offers one of Ficha's decks.
+    private var anotherFichaDeck: some View {
+        Text(
+            "Nothing waits in the queue. Another of Ficha's decks?",
+            comment: """
+                In the review panel, under the decks it met in full: no deck has new cards, and a \
+                button beside it, or under it, adds one of the decks that come with Ficha.
+                """
+        )
+        .foregroundStyle(.secondary)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// The button for `deck`, one of Ficha's decks the user hasn't added,
+    /// which closes the panel and opens the Cards window on it, with How
+    /// fast?.
+    private func fichaDeckButton(_ deck: FichaDeck, of panel: ReviewPanelModel) -> some View {
+        Button {
+            addFichaDeck(deck)
+            panel.state.close(.byLucas)
+        } label: {
+            Text(
+                "\(deck.emoji) \(deck.name)…",
+                comment: """
+                    A button in the review panel, once nothing waits in the queue, with the emoji and the \
+                    name of one of Ficha's decks: it opens the Cards window to add it.
+                    """)
+        }
+        .fixedSize()
     }
 
     /// The panel's main button, at its bottom trailing corner, which Enter
@@ -929,10 +1047,11 @@ private struct HeightUpTo: Layout {
     }
 }
 
-/// A button's title, followed by the key that does the same, small. The key
-/// shows as it's given: a symbol, a digit, or a key's name, like Space's,
-/// which the caller takes from the String Catalog.
-private struct KeyLabel: View {
+/// A button's title, followed by the key that does the same, small, as the
+/// review panel's buttons and How fast?'s show them. The key shows as it's
+/// given: a symbol, a digit, or a key's name, like Space's, which the caller
+/// takes from the String Catalog.
+struct KeyLabel: View {
     let title: Text
     let key: String
 
@@ -972,7 +1091,7 @@ extension EngineError {
             .copyNotFound, .copyMigratedByNewerVersion, .backupsFolder, .notAnImage, .notASound, .soundConversion,
             .unreadableFileForSide, .noSuchFile, .fileNotInDownloads, .fileNotAnImage, .fileNotASound,
             .notAnImageOrSound, .noFileNamed,
-            .imagesFolder, .soundsFolder, .unreadableFile, .unwritableFile:
+            .imagesFolder, .soundsFolder, .unreadableFile, .unwritableFile, .fichaDeckMissing:
             localizedDescription
         }
     }

@@ -106,6 +106,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         cardsWindowMadeIfNeeded()?.open()
     }
 
+    /// Opens the Cards window on `deck`, one of Ficha's decks, with How
+    /// fast? for it, as its Add Deck… does: what the review panel's "You've
+    /// met them all" asks for.
+    private func openCards(addingFichaDeck deck: FichaDeck) {
+        model?.fichaDeckToAdd = deck
+        openCards()
+    }
+
     /// The Cards window, made the first time it's asked for, or nil without
     /// a model.
     private func cardsWindowMadeIfNeeded() -> CardsWindow? {
@@ -258,6 +266,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let widgetReloads = WidgetReloads(model: model)
             panel.whenOpened = { widgetReloads.panelOpened() }
             panel.whenClosed = { widgetReloads.panelClosed() }
+            panel.whenAddingFichaDeck = { [weak self] in self?.openCards(addingFichaDeck: $0) }
             self.mac = mac
             self.panel = panel
             self.appearances = appearances

@@ -190,6 +190,10 @@ public enum EngineError: Error, Equatable {
     /// The file with this name couldn't be written, so the cards weren't
     /// exported to it. The engine logs why.
     case unwritableFile(String)
+    /// The file of the one of Ficha's decks with this name isn't in the app,
+    /// which comes with it, so it can't be added: the copy of the app is
+    /// damaged, and installing it again brings the file back.
+    case fichaDeckMissing(String)
 }
 
 extension EngineError: LocalizedError {
@@ -555,6 +559,13 @@ extension EngineError: LocalizedError {
                 """
                 Ficha couldn't save “\(name)”. Check that the disk has room and that you can save in that \
                 folder, or choose another one, and try again.
+                """
+            )
+        case .fichaDeckMissing(let name):
+            LocalizedStringResource(
+                """
+                This copy of Ficha is missing the deck “\(name)”, so it can't be added. Install Ficha again, then \
+                add it.
                 """
             )
         }

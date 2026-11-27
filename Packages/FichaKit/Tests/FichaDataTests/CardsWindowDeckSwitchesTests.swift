@@ -65,8 +65,9 @@ struct CardsWindowDeckSwitchesTests {
         window.chooseSetAside(onDeck: "Arte")
         window.chooseSetAside(onDeck: Deck.defaultName)
 
-        #expect(setAside == ["Default 1", "Arte 0 grayed", "  Pintura 0 grayed", "Historia 1"])
-        #expect(defaultSetAside == ["Default 0 grayed", "Arte 0 grayed", "  Pintura 0 grayed", "Historia 1"])
+        // A deck set aside goes last, and Default stays first (#491).
+        #expect(setAside == ["Default 1", "Historia 1", "Arte 0 grayed", "  Pintura 0 grayed"])
+        #expect(defaultSetAside == ["Default 0 grayed", "Historia 1", "Arte 0 grayed", "  Pintura 0 grayed"])
         #expect(window.deckRows.outline == ["Default 1", "Arte 2", "  Pintura 1", "Historia 1"])
         #expect(try engine.decks().map(\.switchedOn) == [nil, nil, nil, nil])
         #expect(window.failure == nil)

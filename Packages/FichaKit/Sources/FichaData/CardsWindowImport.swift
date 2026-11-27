@@ -55,6 +55,18 @@ extension CardsWindowState {
         public fileprivate(set) var bringsProgress = true
         /// What couldn't be done, while the sheet says so.
         public fileprivate(set) var failure: ImportFailure?
+        /// The decks at the top of the tree the import made, once it's
+        /// done: How fast? asks about them as Done closes the sheet (#491).
+        fileprivate var decksMade: DecksMade?
+
+        /// The decks at the top of the tree an import made, those the cards
+        /// that came in new came into and the user didn't have, by their
+        /// whole names, in the order a tree lists them, with the name of the
+        /// file the cards came from, which How fast? says.
+        struct DecksMade: Sendable, Equatable {
+            let names: [String]
+            let fileName: String
+        }
 
         /// The preview of the file chosen, while the sheet shows it.
         public var preview: ImportPreview? {
@@ -374,7 +386,7 @@ extension CardsWindowState {
     /// leaves alone.
     public mutating func finishImportWork(_ done: ImportWork.Done) {
         if case .imported(.success) = done.result {
-            read(with: scheduler)
+            readAgain()
         }
         guard importing?.awaitedWork == done.id else { return }
         importing?.busy = nil
@@ -385,8 +397,12 @@ extension CardsWindowState {
                 step: .preview(preview), tagFields: preview.proposedTags.map { TagField(proposed: $0, name: $0) })
         case .preview(.failure(let error)):
             importing?.failure = ImportFailure(action: .preview, error: error)
-        case .imported(.success(let outcome)):
-            importing?.step = .done(outcome)
+        case .imported(.success(let imported)):
+            // The sheet shows the preview the cards came from until now.
+            if let preview = importing?.preview {
+                importing?.decksMade = Importing.DecksMade(names: imported.newDecks, fileName: preview.fileName)
+            }
+            importing?.step = .done(imported.outcome)
         case .imported(.failure(let error)):
             importing?.failure = ImportFailure(action: .importCards, error: error)
         }
@@ -398,9 +414,17 @@ extension CardsWindowState {
         importing?.failure = nil
     }
 
-    /// Closes the Import sheet.
+    /// Closes the Import sheet: after an import that made decks, with Done,
+    /// How fast? then asks about those at the top of the tree, which the
+    /// new cards came into (`HowFast.swift`); not about a deck the user
+    /// had, which keeps its place in the queue and the pace there is.
     public mutating func closeImport() {
+        let made = importing?.decksMade
         importing = nil
+        if let made {
+            askHowFast(about: made.names, cameInFrom: .anImport(fileName: made.fileName))
+        }
+        askForTheFichaDeckAskedToAdd()
     }
 }
 
@@ -418,7 +442,7 @@ public struct ImportWork: Sendable {
     public struct Done: Sendable {
         fileprivate enum Result: Sendable {
             case preview(Swift.Result<ImportPreview, EngineError>)
-            case imported(Swift.Result<ImportOutcome, EngineError>)
+            case imported(Swift.Result<(outcome: ImportOutcome, newDecks: [String]), EngineError>)
         }
 
         fileprivate let id: UUID
@@ -442,7 +466,9 @@ public struct ImportWork: Sendable {
             return Done(
                 id: id,
                 result: .imported(
-                    Result { () throws(EngineError) in try engine.importCards(preview, choosing: choices) }))
+                    Result { () throws(EngineError) in
+                        try engine.importCardsAndTheirDecks(preview, choosing: choices)
+                    }))
         }
     }
 }

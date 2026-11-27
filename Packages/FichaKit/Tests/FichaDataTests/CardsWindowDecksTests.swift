@@ -4,9 +4,9 @@ import Foundation
 import GRDB
 import Testing
 
-/// Tests on the Cards window's decks (ADR 0024): the sidebar's Decks section,
-/// choosing a deck, and Change Deck… with its sheet and New Deck…, on the
-/// default scheduler. They start at 9 in the morning in Buenos Aires, when
+/// Tests on the Cards window's decks (ADR 0024): the sidebar's Your Decks
+/// section, choosing a deck, and Change Deck… with its sheet and New Deck…, on
+/// the default scheduler. They start at 9 in the morning in Buenos Aires, when
 /// active hours start.
 struct CardsWindowDecksTests {
     let time: ManualTimeSource
@@ -22,7 +22,7 @@ struct CardsWindowDecksTests {
     // Each card met the day before is due, and guernica, buried, counts in
     // no deck: Música::Tango has no card.
     @Test(
-        "the Decks section, after Inbox and before Tags, lists every deck as a tree, Default first while it holds cards, each with its due cards, those inside it counted"
+        "the Your Decks section, after Inbox and before Tags, lists every deck as a tree, Default first while it holds cards, each with its due cards, those inside it counted"
     )
     func theDecksSection() throws {
         let gioconda = try engine.create(card(.concept, front: "La Gioconda", back: "De Leonardo."))
@@ -207,8 +207,8 @@ struct CardsWindowDecksTests {
     }
 
     @Test(
-        "New Deck… in the sidebar refuses Default's name, OK makes a deck with no card at the top, not inside any deck, and A::B makes B inside A; Cancel makes none"
-    )
+        "New Deck… in the sidebar refuses Default's name, OK makes a deck with no card at the top, not inside any deck, and A::B makes B inside A, each OK followed by How fast?, whose Cancel leaves the deck made; Cancel makes none",
+        .bug(id: 491))
     func newDeckFromTheSidebar() throws {
         let petricor = try engine.create(card(.word, front: "petricor", back: "El olor de la lluvia."))
         var window = openWindow()
@@ -225,9 +225,12 @@ struct CardsWindowDecksTests {
         let afterRefusal = window.question
         window.chooseNewDeck(" Arte ")
         let afterFirst = window.deckRows.outline
-        let afterFirstQuestion = window.question
+        let afterFirstHowFast = window.howFast?.subject
+        window.cancelQuestion()
         window.askToMakeDeck()
         window.chooseNewDeck("Idiomas :: Inglés")
+        let afterSecondHowFast = window.howFast?.subject
+        window.cancelQuestion()
 
         #expect(afterCancel == [Deck.defaultName])
         #expect(asked == .makeDeck)
@@ -235,7 +238,9 @@ struct CardsWindowDecksTests {
         #expect(defaultsName == .refused(.defaultDeckName("default")))
         #expect(afterRefusal == .makeDeck)
         #expect(afterFirst == ["Default 0", "Arte 0"])
-        #expect(afterFirstQuestion == nil)
+        // How fast? asks for the deck at the queue's top level (#491).
+        #expect(afterFirstHowFast == .deck("Arte"))
+        #expect(afterSecondHowFast == .deck("Idiomas"))
         #expect(window.question == nil)
         #expect(window.failure == nil)
         #expect(window.deckRows.outline == ["Default 0", "Arte 0", "Idiomas 0", "  Inglés 0"])
@@ -246,7 +251,7 @@ struct CardsWindowDecksTests {
         #expect(try engine.cards().map(\.deck) == [Deck.defaultName])
     }
 
-    @Test("New Deck… from the Decks title makes the first deck of a window that lists none")
+    @Test("New Deck… from the Your Decks title makes the first deck of a window that lists none")
     func newDeckFromTheTitleWithNoDeck() throws {
         var window = openWindow()
         let before = window.sidebarSections.contains(.decks([]))

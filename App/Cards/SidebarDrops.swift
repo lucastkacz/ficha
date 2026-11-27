@@ -5,11 +5,11 @@ import UniformTypeIdentifiers
 // Dragging in the Cards window onto its sidebar's decks (ADR 0024): cards
 // from the card list, which move to the deck they're dropped on, as Change
 // Deck moves them, and a deck's row, which goes inside the deck it's dropped
-// on, or to the top on the Decks section's title. `CardsWindowState` decides
-// which drops it takes (`CardsWindowDeckEdits.swift`); this file carries
-// what's dragged, hands what's dropped to it as it came, and draws where it
-// lands. Tags are dragged in All Tags alone, as text, with an outline of
-// their own (`AllTagsOutline.swift`).
+// on, or to the top on the Your Decks section's title. `CardsWindowState`
+// decides which drops it takes (`CardsWindowDeckEdits.swift`); this file
+// carries what's dragged, hands what's dropped to it as it came, and draws
+// where it lands. Tags are dragged in All Tags alone, as text, with an outline
+// of their own (`AllTagsOutline.swift`).
 
 /// What Lucas drags onto the sidebar's decks, as the window's state names
 /// it: a card of the card list, each of the selected ones when he drags one
@@ -33,7 +33,7 @@ extension UTType {
 }
 
 /// Where Lucas drops cards or a deck in the sidebar, a deck's row or the
-/// Decks section's title, as wide as the list, highlighted while he holds
+/// Your Decks section's title, as wide as the list, highlighted while he holds
 /// them over it. `drop` takes what's dropped, and says whether it took it:
 /// when it doesn't, it goes back where it came from.
 private struct SidebarDropTarget: ViewModifier {
@@ -64,8 +64,8 @@ extension View {
     }
 
     /// The view, which Lucas drags as `dragged`, a card onto a deck's row, or
-    /// a deck onto another's row or the Decks section's title; or as it is,
-    /// when `dragged` is nil, as for Default, which stays where it is.
+    /// a deck onto another's row or the Your Decks section's title; or as it
+    /// is, when `dragged` is nil, as for Default, which stays where it is.
     @ViewBuilder
     func dragging(_ dragged: CardsWindowState.Dragged?) -> some View {
         if let dragged {

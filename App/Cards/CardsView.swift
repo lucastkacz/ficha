@@ -7,55 +7,66 @@ import UniformTypeIdentifiers
 /// sidebar to choose a group of cards, the inbox, a deck or All Tags, a table
 /// with one row per card in it, or per capture and flagged card in the inbox,
 /// narrowed by the toolbar's search field, and the selected row whole beside
-/// it, with what Lucas can do with it at its foot. The sidebar's Decks
-/// section lists every deck as a tree, Default first while it holds cards or
-/// has a switch on, each with how many of its cards are due, grayed while
-/// its cards are out of Lucas's reviews, and with its emoji and color; a
-/// deck's context menu, and the Actions menu above the card list while the
-/// sidebar chose it (`DeckMenu.swift`), set it aside or prioritize it, give
-/// it a color and an emoji, rename it, in the rename sheet, which moves it
-/// too, and delete it, with its cards, asking first; and under that menu the
-/// deck's tags narrow the card list to one of them (`DeckTagsRow.swift`).
-/// Change Deck… moves the selected cards to the deck Lucas picks in its
-/// sheet, or names there with New Deck… (`ChangeDeckSheet.swift`), and so
-/// does dragging them onto a deck in the sidebar, where a deck dragged onto
-/// another goes inside it, or onto the Decks title to the top
-/// (`SidebarDrops.swift`). The card form and the editor have a
-/// Deck field, whose New Deck… names a deck in the New Deck sheet
-/// (`NewDeckSheet.swift`), which New Deck… in a deck's menu or the Decks
-/// title's opens too, to make the deck. The sidebar's Tags section
-/// lists the tags he pins, in the order he drags them into, and ends with All
-/// Tags…, which lists every tag where the table was, as a tree with columns
-/// and a checkbox (`AllTagsOutline.swift`, ADR 0022), and a tag's cards in
-/// its place, with Back. A tag's context menu, in either place, and the
-/// detail's Actions menu beside All Tags, act on the tags selected there:
-/// they pin them to the sidebar or unpin them, give them a color and an
-/// emoji, which the sidebar and the table's
-/// Tags column show, rename one, in the rename sheet (`RenameSheet.swift`),
-/// and delete them, asking first; and in All Tags Lucas drags tags into the
-/// sidebar to pin them there, onto another to move them inside, or between
-/// two rows to move them to that level. The sidebar's Types section lists
-/// the four types Ficha comes with, then the user's, each with its emoji,
-/// whose context menu renames it, gives it an emoji, in the same sheets, and
-/// deletes it, asking first; New Type…, in a card's type picker, in the
-/// context menu of any row of that section or of its title, makes one, in
-/// the New Type sheet (`NewTypeSheet.swift`).
-/// The cards' table opens with the columns Lucas showed and the order he
-/// sorted it by, which he changes in its headers, each column at a width that
-/// fits its pane. He edits a card or a capture right there, in fields that
-/// take the detail's place while the sidebar and the table wait. He selects
-/// several cards with
-/// ⌘ or Shift, as in Finder, and then the detail says how many, with what he
-/// can do with all of them. New Card in the toolbar, or ⌘N, and Convert to
-/// Card on a capture open the card form, a sheet of its own
-/// (`CardFormSheet.swift`), Import… in the toolbar opens the Import sheet
-/// (`ImportSheet.swift`), which imports a text file of cards, and Export…
-/// opens the Export sheet (`ExportSheet.swift`), which saves cards to one.
-/// `CardsWindowState` decides what the window lists, shows, offers and asks,
-/// and what happens when Lucas acts, and the view draws it. It reads the cards
-/// again whenever
-/// the engine says they changed, from the app or the `ficha` CLI, when Lucas
-/// changes the scheduling settings, and every minute, since cards come due as
+/// it, with what Lucas can do with it at its foot. The sidebar's Your Decks
+/// section lists every deck as a tree, in the order the state lists them
+/// (`CardsWindowDecks.swift`): Default first while it holds cards or has a
+/// switch on, then those at the top of the tree with cards in Lucas's
+/// reviews in the order of the queue new cards come from, a deck listed
+/// first for its priority cards alone first and one met in full at its
+/// place, then the rest alphabetically, and those set aside last; each with
+/// how many of its cards are due, grayed while its cards are out of Lucas's
+/// reviews, and with its emoji and color, and each at the top of the tree
+/// with a line under its title, in up to two lines, of how far it is and when
+/// it's all met (#491); a deck's context menu, and the Actions menu above the
+/// card list while the sidebar chose it (`DeckMenu.swift`), set it aside or
+/// prioritize it, give it a color and an emoji, rename it, in the rename sheet,
+/// which moves it too, and delete it, with its cards, asking first; and under
+/// that menu the deck's tags narrow the card list to one of them
+/// (`DeckTagsRow.swift`). Change
+/// Deck… moves the selected cards to the deck Lucas picks in its sheet, or
+/// names there with New Deck… (`ChangeDeckSheet.swift`), and so does dragging
+/// them onto a deck in the sidebar, where a deck dragged onto another goes
+/// inside it, or onto the Your Decks title to the top (`SidebarDrops.swift`).
+/// The card form and the editor have a Deck field, whose New Deck… names a
+/// deck in the New Deck sheet (`NewDeckSheet.swift`), which New Deck… in a
+/// deck's menu or the Your Decks title's opens too, to make the deck. As a
+/// deck comes in, made there or brought by an import, How fast? asks for the
+/// pace and where the deck goes in the queue new cards come from
+/// (`HowFastSheet.swift`). The sidebar's Ficha's Decks section, after Your
+/// Decks, lists the decks that come with Ficha that Lucas hasn't added, each
+/// with how many cards it brings, which the window reads from the app as it
+/// opens: one chosen shows in the table's place, with Add Deck…, which asks
+/// How fast? before Start adds it, and its first card, front and back, in the
+/// detail's (#458). The sidebar's Tags section lists the tags he pins, in the
+/// order he drags them into, and ends with All Tags…, which lists every tag
+/// where the table was, as a tree with columns and a checkbox
+/// (`AllTagsOutline.swift`, ADR 0022), and a tag's cards in its place, with
+/// Back. A tag's context menu, in either place, and the detail's Actions menu
+/// beside All Tags, act on the tags selected there: they pin them to the
+/// sidebar or unpin them, give them a color and an emoji, which the sidebar
+/// and the table's Tags column show, rename one, in the rename sheet
+/// (`RenameSheet.swift`), and delete them, asking first; and in All Tags Lucas
+/// drags tags into the sidebar to pin them there, onto another to move them
+/// inside, or between two rows to move them to that level. The sidebar's Types
+/// section lists the four types Ficha comes with, then the user's, each with
+/// its emoji, whose context menu renames it, gives it an emoji, in the same
+/// sheets, and deletes it, asking first; New Type…, in a card's type picker,
+/// in the context menu of any row of that section or of its title, makes one,
+/// in the New Type sheet (`NewTypeSheet.swift`). The cards' table opens with
+/// the columns Lucas showed and the order he sorted it by, which he changes in
+/// its headers, each column at a width that fits its pane. He edits a card or
+/// a capture right there, in fields that take the detail's place while the
+/// sidebar and the table wait. He selects several cards with ⌘ or Shift, as in
+/// Finder, and then the detail says how many, with what he can do with all of
+/// them. New Card in the toolbar, or ⌘N, and Convert to Card on a capture open
+/// the card form, a sheet of its own (`CardFormSheet.swift`), Import… in the
+/// toolbar opens the Import sheet (`ImportSheet.swift`), which imports a text
+/// file of cards, and Export… opens the Export sheet (`ExportSheet.swift`),
+/// which saves cards to one. `CardsWindowState` decides what the window lists,
+/// shows, offers and asks, and what happens when Lucas acts, and the view
+/// draws it. It reads the cards again whenever the engine says they changed,
+/// from the app or the `ficha` CLI, when Lucas changes the scheduling
+/// settings or the active hours, and every minute, since cards come due as
 /// time passes, or at once when Ficha Dev's debug menu moves the time.
 struct CardsView: View {
     let model: AppModel
@@ -94,6 +105,7 @@ struct CardsView: View {
         askingAboutDecks(askingAboutTags(askingAboutTypes(panes)))
             .creatingCards($state, failure: failure(overSheet: true), newTypeFailure: failure(over: .newTypeSheet))
             .changeDeckSheet($state, failure: failure(overSheet: true))
+            .howFastSheet($state, failure: failure(overSheet: true))
             // The card form's opens over the form.
             .newDeckSheet(for: .editor, $state)
             .sheet(item: Binding(get: { cardToFlag }, set: { if $0 == nil { state.cancelQuestion() } })) { row in
@@ -158,7 +170,25 @@ struct CardsView: View {
                     readCards()
                 }
             }
+            .task {
+                // Away from the main actor, since reading them takes a while:
+                // nil when `make render` gives the window its own.
+                if let read = await model.readFichaDecks() {
+                    state.offerFichaDecks(read)
+                }
+            }
+            // The review panel's "You've met them all" asks for one of
+            // Ficha's decks as it opens the window, or while it's open.
+            .onChange(of: model.fichaDeckToAdd, initial: true) {
+                if let deck = model.fichaDeckToAdd {
+                    model.fichaDeckToAdd = nil
+                    state.askToAddFichaDeck(deck)
+                }
+            }
             .onChange(of: model.settings.scheduler) {
+                readCards()
+            }
+            .onChange(of: model.settings.activeHours) {
                 readCards()
             }
             .onChange(of: model.debugTools?.timeShift) {
@@ -491,10 +521,10 @@ struct CardsView: View {
         .help(Text("Back to All Tags (⌘[)", comment: "The tooltip of the Cards window's Back button."))
     }
 
-    /// Reads Lucas's cards, as they are now, with the scheduling settings he
-    /// set.
+    /// Reads Lucas's cards, as they are now, with the scheduling settings and
+    /// the active hours he set.
     private func readCards() {
-        state.read(with: model.settings.scheduler)
+        state.read(with: model.settings.scheduler, activeHours: model.settings.activeHours)
     }
 
     /// Plays `playing`, the sound the window says plays, from the start, or
@@ -567,10 +597,10 @@ struct CardsView: View {
 
     /// Where the alert shows now: over the New Type sheet while a card's type
     /// picker opened it; over the flag sheet, the emoji sheet, the rename
-    /// sheet, the Change Deck sheet, the card form, the Export sheet or the
-    /// New Deck or New Type sheet the sidebar opened while one is open, since
-    /// the window's own alert can't show over its sheet; and over the window
-    /// otherwise.
+    /// sheet, the Change Deck sheet, the card form, the Export sheet, How
+    /// fast? or the New Deck or New Type sheet the sidebar opened while one
+    /// is open, since the window's own alert can't show over its sheet; and
+    /// over the window otherwise.
     private var alertPlace: AlertPlace {
         if case .newType = state.question {
             return .newTypeSheet
@@ -578,7 +608,7 @@ struct CardsView: View {
         let isSheetOpen =
             cardToFlag != nil || emojiSubject != nil || renameSubject != nil || state.deckChange != nil
             || state.cardForm != nil || state.exporting != nil || state.question == .makeDeck
-            || state.question == .makeType
+            || state.question == .makeType || state.howFast != nil
         return isSheetOpen ? .sheet : .window
     }
 
@@ -772,7 +802,7 @@ struct CardsView: View {
                     "Couldn't move “\(Deck.shownName(deck))”",
                     comment: """
                         An alert's title in the Cards window, after dragging a deck in the sidebar onto another or \
-                        onto the Decks section's title, with the deck's whole name.
+                        onto the Your Decks section's title, with the deck's whole name.
                         """),
                 error: error)
         case .deleteDeck(let deck):
@@ -868,6 +898,13 @@ struct CardsView: View {
                         "An alert's title in the Cards window's New Deck sheet, after New Deck… in the sidebar and OK."
                 ),
                 error: error)
+        case .startHowFast:
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't save the pace or the deck's place in the queue",
+                    comment: "An alert's title over How fast?, the Cards window's sheet as a deck comes in, on Start."
+                ),
+                error: error)
         case .makeType:
             return Failure(
                 title: LocalizedStringResource(
@@ -892,6 +929,24 @@ struct CardsView: View {
                     "Couldn't delete the type “\(name)”",
                     comment: "An alert's title in the Cards window, after Delete… in a card type's menu, with its name."
                 ),
+                error: error)
+        case .addFichaDeck(let deck):
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't add “\(deck.name)”",
+                    comment: """
+                        An alert's title in the Cards window, after Add Deck… or How fast?'s Start on one of Ficha's \
+                        decks, with its name.
+                        """),
+                error: error)
+        case .readFichaDeck(let deck):
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't read Ficha's deck “\(deck.name)”",
+                    comment: """
+                        An alert's title in the Cards window as it opens, when the file of one of the decks that \
+                        come with Ficha couldn't be read, with the deck's name.
+                        """),
                 error: error)
         }
     }
@@ -929,7 +984,8 @@ struct CardsView: View {
     /// The sidebar's section `section`: the cards by where they stand; the
     /// inbox, with how many things wait in it, as the menu counts them; the
     /// decks as a tree, each parent open or closed as Lucas left it, each
-    /// deck with how many of its cards are due; the
+    /// deck with how many of its cards are due; Ficha's decks he hasn't
+    /// added, each with how many cards it brings; the
     /// cards of each pinned tag, in Lucas's order, each with its context
     /// menu, which he drags into another order, or tags from All Tags in
     /// among them to pin them, then All Tags…, which pins tags dropped on it
@@ -962,12 +1018,26 @@ struct CardsView: View {
                     DeckBranch(row: row, state: $state)
                 }
             } header: {
-                Text("Decks", comment: "A section of the Cards window's sidebar: the decks, as a tree.")
+                Text("Your Decks", comment: "A section of the Cards window's sidebar: the user's decks, as a tree.")
                     // A deck dropped here goes to the top.
                     .takingSidebarDrops { state.dropOnDecksTitle($0) }
                     .contextMenu {
                         NewDeckItem(state: $state)
                     }
+            }
+        case .fichaDecks(let files):
+            Section {
+                ForEach(files, id: \.deck) { file in
+                    FichaDeckRow(file: file)
+                        .tag(SidebarItem.fichaDeck(file.deck))
+                }
+            } header: {
+                Text(
+                    "Ficha's Decks",
+                    comment: """
+                        A section of the Cards window's sidebar, after Your Decks: the decks that come with Ficha, \
+                        which the user hasn't added.
+                        """)
             }
         case .tags(let pinned):
             Section {
@@ -1019,7 +1089,7 @@ struct CardsView: View {
             } header: {
                 Text("Types", comment: "A section of the Cards window's sidebar: the card types.")
                     // The title's whole row takes the right click, as the
-                    // Decks title's does.
+                    // Your Decks title's does.
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(.rect)
                     .contextMenu {
@@ -1271,9 +1341,60 @@ struct CardsView: View {
         if case .success(.allTags) = state.listing { true } else { false }
     }
 
-    /// What the table's pane lists, the cards' table with `cardColumns`.
+    /// What the table's pane lists, the cards' table with `cardColumns`, or
+    /// the one of Ficha's decks the sidebar chose, in its place.
     @ViewBuilder
     private func table(cardColumns: CardTableColumns) -> some View {
+        if let file = state.shownFichaDeck {
+            fichaDeckHead(file)
+        } else {
+            listing(cardColumns: cardColumns)
+        }
+    }
+
+    /// One of Ficha's decks, in the table's place while the sidebar chose it,
+    /// as the mock draws it: its emoji and name, with "40 cards · one of
+    /// Ficha's decks" under them, and Add Deck…, on Return while the search
+    /// field doesn't have it, which asks How fast? for the deck before it
+    /// comes in. The detail shows its first card.
+    private func fichaDeckHead(_ file: FichaDeckFile) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 12) {
+                Text(verbatim: file.deck.emoji)
+                    .font(.system(size: 32))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(verbatim: file.deck.name)
+                        .font(.title3)
+                        .fontWeight(.semibold)
+                    Text(verbatim: CardsWindowState.HowFast.Line.fichaDeck(cardCount: file.cardCount).text)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Button {
+                state.askToAddFichaDeck()
+            } label: {
+                Text(
+                    "Add Deck…",
+                    comment: """
+                        A button of the Cards window, beside one of Ficha's decks the user hasn't added: it asks how \
+                        fast new cards come, and Start adds the deck.
+                        """)
+            }
+            .buttonStyle(.borderedProminent)
+            .keyboardShortcut(isSearchFocused ? nil : .defaultAction)
+            .help(
+                Text(
+                    "Add Deck… (↩)",
+                    comment: "The tooltip of the Cards window's button that adds one of Ficha's decks."))
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    /// What the table's pane lists, the cards' table with `cardColumns`, as
+    /// the state lists it.
+    @ViewBuilder
+    private func listing(cardColumns: CardTableColumns) -> some View {
         switch state.listing {
         case .success(.cards(let rows)):
             VStack(spacing: 0) {
@@ -1574,7 +1695,11 @@ struct CardsView: View {
                             comment: "In the Cards window's detail, when nothing in the inbox is selected."),
                         systemImage: "tray")
                 case .noCardSelected:
-                    ContentUnavailableView("No card selected", systemImage: "rectangle.on.rectangle")
+                    if let card = state.shownFichaDeck?.firstCard {
+                        FichaDeckCard(card: card, images: state.images)
+                    } else {
+                        ContentUnavailableView("No card selected", systemImage: "rectangle.on.rectangle")
+                    }
                 case .allTags(let selected):
                     tagsDetail(selected)
                 }
@@ -1995,10 +2120,11 @@ private typealias SidebarItem = CardsWindowState.SidebarItem
 /// its color, with how many of its cards are
 /// due, grayed while its cards are out of Lucas's reviews, as it's set aside
 /// on its own or sits inside a deck that is, with the deck's menu on a right
-/// click; and the decks inside it under a disclosure triangle, open or closed
-/// as the window remembers it. Lucas drags it, unless it's Default, onto
-/// another deck's row, and drops cards and decks on it, as the state takes
-/// them.
+/// click, and, at the top of the tree, a line under its title that says how
+/// far it is and when it's all met (#491); and the decks inside it under a
+/// disclosure triangle, open or closed as the window remembers it. Lucas
+/// drags it, unless it's Default, onto another deck's row, and drops cards
+/// and decks on it, as the state takes them.
 private struct DeckBranch: View {
     let row: CardsWindowState.DeckRow
     @Binding var state: CardsWindowState
@@ -2021,10 +2147,23 @@ private struct DeckBranch: View {
 
     /// Its own row, which choosing lists its cards: its emoji before its
     /// title, and its symbol in its color, its own or else the decks' it sits
-    /// inside, as a pinned tag's row shows a tag's.
+    /// inside, as a pinned tag's row shows a tag's, and, for a deck at the
+    /// top of the tree, its line under its title, smaller and secondary, on
+    /// up to two lines.
     private var label: some View {
         Label {
-            Text(verbatim: row.shownTitle)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(verbatim: row.shownTitle)
+                if let line = row.line {
+                    // Its finish date is what the line is for: a second line,
+                    // not an ellipsis, in a narrow sidebar.
+                    Text(verbatim: line.text)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
         } icon: {
             row.deck.symbol
         }
@@ -2037,6 +2176,117 @@ private struct DeckBranch: View {
             if let menu = state.menu(forDeck: row.id) {
                 DeckMenuItems(menu: menu, state: $state)
             }
+        }
+    }
+}
+
+extension CardsWindowState.DeckRow.Line {
+    /// What a deck's row says under its title in the sidebar, as the state
+    /// words it, and as the mock's `deckStatus` does: "9 of 14 · on track for
+    /// early December", "Next · on track for mid-December", "Met them all ·
+    /// 14 cards in 9 days".
+    var text: String {
+        switch self {
+        case .noCards:
+            Deck.noCardsYet
+        case .setAside(let met, let total):
+            String(
+                localized: "Set aside · \(met) of \(total) met",
+                comment: "Under a set-aside deck's name in the Cards window's sidebar: how many of its cards are met.")
+        case .metThemAll(let cards, let days?):
+            String(
+                localized: "Met them all · \(cards) cards in \(days) days",
+                comment: """
+                    Under a deck's name in the Cards window's sidebar: every card of the deck is met, with how many \
+                    cards it has, and in how many days, from the day its first card came in to the day its last was \
+                    met.
+                    """)
+        case .metThemAll(_, nil):
+            String(
+                localized: "Met them all",
+                comment: "Under a deck's name in the Cards window's sidebar: every card of the deck is met.")
+        case .first(let met, let total, let finish):
+            String(
+                localized: "\(met) of \(total) · on track for \(finish.text)",
+                comment: """
+                    Under the name of the deck new cards come from now, in the Cards window's sidebar: how many of \
+                    its cards are met, and when they'll all be.
+                    """)
+        case .next(let finish):
+            String(
+                localized: "Next · on track for \(finish.text)",
+                comment: """
+                    Under the name of a deck that waits its turn in the queue of new cards, in the Cards window's \
+                    sidebar: when its cards will all be met.
+                    """)
+        case .progress(let met, let total):
+            String(
+                localized: "\(met) of \(total)",
+                comment: "Under a deck's name in the Cards window's sidebar: how many of its cards are met.")
+        }
+    }
+}
+
+/// The row of one of Ficha's decks in the sidebar's Ficha's Decks section:
+/// its emoji before its name, and the deck symbol, as a deck's row in Your
+/// Decks, with how many cards it brings under its name, smaller and secondary.
+private struct FichaDeckRow: View {
+    let file: FichaDeckFile
+
+    var body: some View {
+        Label {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(verbatim: "\(file.deck.emoji) \(file.deck.name)")
+                Text(
+                    "\(file.cardCount) cards",
+                    comment: """
+                        Under the name of one of Ficha's decks in the Cards window's sidebar: how many cards it \
+                        brings.
+                        """
+                )
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            }
+        } icon: {
+            Image(systemName: CardGroup.deck(file.deck.name).symbol)
+        }
+    }
+}
+
+/// The first card of one of Ficha's decks, in the detail's place while the
+/// window shows the deck, as the mock draws it, in a box of its own: its
+/// front, its image above its text when it has both, then a line, and its
+/// back the same way, at the card size.
+private struct FichaDeckCard: View {
+    let card: CardContent
+    /// The images the window shows, the card's among them.
+    let images: ShownImages
+    @Environment(\.cardSize) private var cardSize
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 8) {
+                if let image = card.frontImage {
+                    SideImage(image: images[image], maximumHeight: cardSize.scaled(320))
+                }
+                if !card.front.isEmpty {
+                    TextAsItReads(card.front)
+                        .cardFont(.title3)
+                }
+                Divider()
+                if let image = card.backImage {
+                    SideImage(image: images[image], maximumHeight: cardSize.scaled(320))
+                }
+                TextAsItReads(card.back)
+                    .cardFont(.body)
+                    .foregroundStyle(.secondary)
+            }
+            .textSelection(.enabled)
+            .padding(.vertical, 14)
+            .padding(.horizontal, 16)
+            .background(.fill.quaternary, in: .rect(cornerRadius: 12))
+            .padding(20)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }

@@ -64,15 +64,51 @@ extension ReviewSettings {
     /// without appearances move it later. With no new cards a day, it has
     /// none.
     public func queue(of cards: CardsInReviews, now: Date, calendar: Calendar) -> [QueuedDeck] {
-        let metToday = cards.firstReviews(onTheDayOf: now, calendar: calendar).count
-        let leftToday =
-            calendar.component(.hour, from: now) < activeHours.upperBound ? max(0, newCardsPerDay - metToday) : 0
+        let leftToday = newCardsLeftToday(in: cards, now: now, calendar: calendar)
         let today = calendar.startOfDay(for: now)
         return cards.decksWithNewWays().map { deck in
             QueuedDeck(
                 deck: deck.deck, newCards: deck.newWays,
                 finish: finishDate(after: deck.through, leftToday: leftToday, from: today, calendar: calendar))
         }
+    }
+
+    /// When the user will have met every new card of `deck`, a deck at the
+    /// top of the tree, out of `cards`, at `now`, by `calendar`, as
+    /// `queue(of:now:calendar:)` says it (ADR 0034): where the deck is in the
+    /// queue, or, when `first`, once it's first, at the places
+    /// `CardsInReviews.places(putting:at:now:)` gives it and the decks it
+    /// passes, as `Engine.moveInQueue(deck:to:)` saves them, with the decks
+    /// the move doesn't count where they were. Nil when the deck has no new
+    /// card, or with no new cards a day. How fast? reads it at each pace, for
+    /// a deck as it comes in, and for one of Ficha's decks before it comes
+    /// in, with `cards` holding its cards as they'd come in (#458).
+    public func finishDate(
+        of deck: String, first: Bool, in cards: CardsInReviews, now: Date, calendar: Calendar
+    ) -> FinishDate? {
+        let decks = first ? cards.decksWithNewWays(putting: deck, at: .first, now: now) : cards.decksWithNewWays()
+        guard let through = decks.first(where: { $0.deck == deck })?.through else {
+            return nil
+        }
+        return finishDate(after: through, in: cards, now: now, calendar: calendar)
+    }
+
+    /// How many new ways today may still bring at `now`, by `calendar`, out
+    /// of `cards`: none once `activeHours` are over, and none past the day's
+    /// limit, which the first reviews of new ways on `now`'s day count
+    /// against.
+    private func newCardsLeftToday(in cards: CardsInReviews, now: Date, calendar: Calendar) -> Int {
+        let metToday = cards.firstReviews(onTheDayOf: now, calendar: calendar).count
+        return calendar.component(.hour, from: now) < activeHours.upperBound ? max(0, newCardsPerDay - metToday) : 0
+    }
+
+    /// When the new way at `slot`, counting from 1, the first to come, has
+    /// come, out of `cards`, at `now`, by `calendar`, as
+    /// `queue(of:now:calendar:)` counts it.
+    private func finishDate(after slot: Int, in cards: CardsInReviews, now: Date, calendar: Calendar) -> FinishDate? {
+        finishDate(
+            after: slot, leftToday: newCardsLeftToday(in: cards, now: now, calendar: calendar),
+            from: calendar.startOfDay(for: now), calendar: calendar)
     }
 
     /// When the new way at `slot`, counting from 1, the first to come, has
@@ -101,6 +137,72 @@ extension CardsInReviews {
     /// beside its front-first one, as the new cards a day count them, and how
     /// many new ways come up to its last, its own and those ahead of it.
     func decksWithNewWays() -> [(deck: String, newWays: Int, through: Int)] {
+        decksWithNewWays(queuedAs: queue)
+    }
+
+    /// The decks at the top of the tree that have new ways, as
+    /// `decksWithNewWays()` lists them, once `deck`, a deck at the top of the
+    /// tree, is at `position` in the queue, at the places
+    /// `places(putting:at:now:)` gives it and the decks it passes or parts, as
+    /// `Engine.moveInQueue(deck:to:)` saves them, and the other decks at
+    /// theirs.
+    func decksWithNewWays(
+        putting deck: String, at position: QueuePosition, now: Date
+    ) -> [(deck: String, newWays: Int, through: Int)] {
+        let moved = places(putting: deck, at: position, now: now)
+        return decksWithNewWays(
+            queuedAs: queue.map { PlacedDeck(deck: $0.deck, place: moved[$0.deck] ?? $0.place) }.sorted())
+    }
+
+    /// The decks of the queue new cards come from, by their whole names, in
+    /// its order, as `ReviewSettings.queue(of:now:calendar:)` lists them,
+    /// once `deck`, a deck at the top of the tree, is at `position`, as
+    /// `Engine.moveInQueue(deck:to:)` puts it at `now`. A deck listed first
+    /// for its priority cards stays ahead of it, so How fast? tells the
+    /// decks Put it first passes from those still ahead (#491).
+    public func decksInQueue(putting deck: String, at position: QueuePosition, now: Date) -> [String] {
+        decksWithNewWays(putting: deck, at: position, now: now).map(\.deck)
+    }
+
+    /// The decks at the top of the tree met in full: those that hold cards in
+    /// Lucas's reviews but no new way, as he met every new way they had
+    /// there, so the queue new cards come from no longer lists them
+    /// (ADR 0034). A card buried, flagged or set aside with a deck inside
+    /// one leaves its ways out, and a card that goes both ways brings its
+    /// back-first way once it's met. The review panel says "You've met them
+    /// all" for a deck an answer puts here, and the Cards window's row of a
+    /// deck here says "Met them all".
+    public var decksMetInFull: Set<String> {
+        Set(queue.map(\.deck)).subtracting(newWays.compactMap { topDecks[$0.cardID] })
+    }
+
+    /// The decks at the top of the tree that hold cards in Lucas's reviews,
+    /// by their whole names, or `""` for Default, in the queue's order
+    /// (ADR 0034): first those listed first for their priority cards alone,
+    /// as `ReviewSettings.queue(of:now:calendar:)` lists them, and then the
+    /// others in the order of their places, those met in full too, which
+    /// keep theirs though the queue no longer lists them. So every deck with
+    /// new cards comes where the queue lists it, and a deck met in full at
+    /// its place among them. The Cards window's Your Decks lists its decks
+    /// at the top of the tree in this order (#491).
+    public var topDecksInQueueOrder: [String] {
+        let withOtherNewWays = decksWithOtherNewWays
+        let firstForPriority = decksWithNewWays().map(\.deck).filter { !withOtherNewWays.contains($0) }
+        return firstForPriority + queue.map(\.deck).filter { !firstForPriority.contains($0) }
+    }
+
+    /// The decks at the top of the tree with new ways of cards that aren't
+    /// priority cards: every deck with new ways but those listed first for
+    /// their priority cards alone, whose new ways come first wherever the
+    /// deck is.
+    private var decksWithOtherNewWays: Set<String> {
+        Set(splitByPriority(newWays).others.compactMap { topDecks[$0.cardID] })
+    }
+
+    /// The decks at the top of the tree that have new ways, as
+    /// `decksWithNewWays()` lists them, with the decks in `queue`'s order,
+    /// the queue's places.
+    private func decksWithNewWays(queuedAs queue: [PlacedDeck]) -> [(deck: String, newWays: Int, through: Int)] {
         let new = splitByPriority(newWays)
         let ranks = Dictionary(uniqueKeysWithValues: queue.enumerated().map { ($0.element.deck, $0.offset) })
         // `ways` in the order of their decks in the queue, each deck's in
@@ -115,13 +217,20 @@ extension CardsInReviews {
         var through: [String: Int] = [:]
         var total = 0
         for (way, deck) in byDeck(new.priority) + byDeck(new.others) {
-            let count = way.way == .frontFirst && backFirstWaysToCome.contains(way.cardID) ? 2 : 1
+            let count = countedAsNewCards(way)
             total += count
             counts[deck, default: 0] += count
             through[deck] = total
         }
         return through.sorted { $0.value < $1.value }
             .map { (deck: $0.key, newWays: counts[$0.key] ?? 0, through: $0.value) }
+    }
+
+    /// How many new cards `way`, a new way, counts as, as the new cards a day
+    /// count them: a card's front-first way two, with its back-first way
+    /// still to come, and any other way one.
+    private func countedAsNewCards(_ way: CardWay) -> Int {
+        way.way == .frontFirst && backFirstWaysToCome.contains(way.cardID) ? 2 : 1
     }
 
     /// The places that put `deck`, a deck at the top of the tree, at
@@ -153,7 +262,7 @@ extension CardsInReviews {
         case .at(let index):
             order.insert(deck, at: min(max(index, 0), order.count))
         }
-        let withOtherNewWays = Set(splitByPriority(newWays).others.compactMap { topDecks[$0.cardID] })
+        let withOtherNewWays = decksWithOtherNewWays
         order = order.filter { $0 == deck || withOtherNewWays.contains($0) }
         // The same decks in the order their places put them now; the move
         // passes those between the first and the last that it changes.

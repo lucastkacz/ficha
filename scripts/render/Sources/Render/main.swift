@@ -24,8 +24,9 @@ import SwiftUI
 /// usage lists.
 enum Window: String, CaseIterable {
     case cards
-    /// The Cards window with no cards at all, as a new user's opens, which
-    /// offers New Card and Import… in plain sight.
+    /// The Cards window with no cards at all, as a new user's opens: it
+    /// offers New Card and Import… in plain sight, and its sidebar's Ficha's
+    /// Decks section lists the three, read from the repo's `App/FichaDecks/`.
     case cardsEmpty = "cards-empty"
     /// The Cards window on ciencia, once the sample's tags sit inside tags
     /// and five are pinned, in an order of their own, its sidebar scrolled to
@@ -38,15 +39,16 @@ enum Window: String, CaseIterable {
     /// first, and economía selected, which `--key return` lists the cards
     /// of, in All Tags' place, and `--key cmd+delete` asks whether to delete.
     case cardsAllTags = "cards-all-tags"
-    /// The Cards window on Idiomas, one of the decks the sample's cards sit
-    /// in, with its sidebar's Decks section: Default first, then every deck
-    /// as a tree, each with how many of its cards are due, Idiomas and
-    /// Ciencias with a color and an emoji, which the decks inside them show
-    /// too, Ciencias and Humanidades closed, so that Sociedad shows, set
-    /// aside, grayed with the deck inside it; the bar above the card list,
-    /// with Idiomas's name, its Actions menu and its cards' tags; and two of
-    /// Idiomas's cards selected, which `--key cmd+d` asks to move in the
-    /// Change Deck sheet.
+    /// The Cards window on Idiomas, one of the decks the sample's cards sit in,
+    /// with its sidebar's Your Decks section: Default first, then every deck as
+    /// a tree, those at the top with cards in the reviews in the order of the
+    /// queue new cards come from, the rest after them and those set aside last,
+    /// each with how many of its cards are due, Idiomas and Ciencias with a
+    /// color and an emoji, which the decks inside them show too, Ciencias,
+    /// Humanidades and Idiomas › Español closed, so that Sociedad shows, set
+    /// aside and grayed; the bar above the card list, with Idiomas's name, its
+    /// Actions menu and its cards' tags; and two of Idiomas's cards selected,
+    /// which `--key cmd+d` asks to move in the Change Deck sheet.
     case cardsDecks = "cards-decks"
     /// The same on Idiomas › Español, with historia, one of its
     /// tags, chosen above the card list, which lists only the deck's cards
@@ -86,6 +88,33 @@ enum Window: String, CaseIterable {
     /// of cards whose images weigh 240 MB, while sync is on, which says they
     /// go up to iCloud.
     case cardsImportHeavy = "cards-import-heavy"
+    /// The Cards window with How fast? over it, once Done closed the Import
+    /// sheet after a file brought three cards into Arte, a deck the sample
+    /// cards don't have, which comes in last, behind the decks they're
+    /// meeting: each pace with when Arte's all met, where it goes in the
+    /// queue, and Put it first.
+    case cardsHowFast = "cards-how-fast"
+    /// The Cards window with How fast? over it, once New Deck… in the
+    /// sidebar made Música, a deck the sample cards don't have, with no
+    /// cards: "No cards yet", the paces alone, with their new cards a day,
+    /// and Create.
+    case cardsHowFastNewDeck = "cards-how-fast-new-deck"
+    /// The Cards window on Palabras lindas, one of Ficha's decks, which its
+    /// sidebar's Ficha's Decks section lists after Your Decks with the other
+    /// two, all three read from the repo's `App/FichaDecks/`, its sidebar
+    /// scrolled to the deck's row: its emoji, its name and how many cards it
+    /// brings in the table's place, with Add Deck…, which `--key return` asks
+    /// How fast? for, and its first card, a word, front and back, in the
+    /// detail's.
+    case cardsFichaDeckWords = "cards-ficha-deck-words"
+    /// The same on Arte argentino, whose first card's front is a painting,
+    /// and its back the painting's title, painter, year and museum, and its
+    /// credit.
+    case cardsFichaDeckPicture = "cards-ficha-deck-picture"
+    /// The same on Flores de Buenos Aires, whose first card's front is a
+    /// photo of a rose alone, with no text, and its back the flower's name, a
+    /// line about it and the photo's credit.
+    case cardsFichaDeckFlower = "cards-ficha-deck-flower"
     /// Settings, on its Backups tab.
     case backups
     /// Settings, on its Backups tab, once a backup failed.
@@ -149,6 +178,16 @@ enum Window: String, CaseIterable {
     /// due, which `--key space` flips, showing its three buttons, Forgot, Kind
     /// of and Got it.
     case panelReview = "panel-review"
+    /// The review panel done, as `panel-card` draws it, once its one card,
+    /// the only one of Arte, a deck the tool adds to the sample and puts
+    /// first in the queue new cards come from, was met: "You've met them
+    /// all", with the sample's deck next in the queue.
+    case panelMetThemAll = "panel-met-them-all"
+    /// The same on a Mac whose only cards are Arte's one, so nothing waits in
+    /// the queue once it's met: "Nothing waits in the queue. Another of
+    /// Ficha's decks?", with a button for Palabras lindas, the first of them,
+    /// which the panel reads from the repo's `App/FichaDecks/`.
+    case panelMetThemAllOffer = "panel-met-them-all-offer"
     /// The Cards window with a sample card that goes both ways selected, its
     /// back-first way rated Again and then Good, its detail scrolled to its
     /// end, below both ways' interval, due time, stability, difficulty and
@@ -697,6 +736,62 @@ func previewImportAtOnce(of file: URL, in state: inout CardsWindowState) throws 
     }
 }
 
+/// The Cards window's state once the Import sheet's Done closed it after a
+/// file the tool writes in its scratch home brought three cards into Arte, a
+/// deck the sample cards don't have, which comes in last, behind the decks
+/// they're meeting: How fast? asks about it, with Put it first. The file goes
+/// once it's read.
+func howFastState(of model: AppModel) throws -> CardsWindowState {
+    let file = URL.documentsDirectory.appending(path: "Arte.txt")
+    let lines = [
+        "#separator:tab",
+        "#html:false",
+        "#columns:Front\tBack\tDeck",
+        "La Gioconda\tDe Leonardo da Vinci, en el Louvre.\tArte",
+        "Las Meninas\tDe Diego Velázquez, en el Prado.\tArte",
+        "La noche estrellada\tDe Vincent van Gogh, en el MoMA.\tArte",
+    ]
+    try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try Data(lines.joined(separator: "\n").utf8).write(to: file)
+    defer { try? FileManager.default.removeItem(at: file) }
+    var state = model.openCardsWindow()
+    state.startImport()
+    try previewImportAtOnce(of: file, in: &state)
+    if let work = state.importCards() {
+        state.finishImportWork(try waitFor { await work.run() })
+    }
+    state.closeImport()
+    guard state.howFast?.offersPutItFirst == true else {
+        throw RenderError(
+            description: """
+                How fast? didn't offer to put Arte first: it says \(String(describing: state.howFast)). Fix \
+                howFastState(of:), so that Arte comes in behind decks the sample cards are meeting.
+                """)
+    }
+    return state
+}
+
+/// Ficha's decks as `engine` reads their files in the repo's
+/// `App/FichaDecks/`, found from this file's path, as the app reads those it
+/// bundles and gives its windows: the tool's own bundle has none
+/// (`AppModel.readsFichaDecks`).
+func fichaDecksInTheRepo(readBy engine: Engine) throws -> [FichaDeck: Result<FichaDeckFile, EngineError>] {
+    let folder = URL(filePath: #filePath)
+        .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        .deletingLastPathComponent().deletingLastPathComponent()
+        .appending(path: "App/FichaDecks", directoryHint: .isDirectory)
+    var read: [FichaDeck: Result<FichaDeckFile, EngineError>] = [:]
+    for deck in FichaDeck.allCases {
+        let file = folder.appending(path: "\(deck.fileName).zip")
+        guard FileManager.default.fileExists(atPath: file.path(percentEncoded: false)) else {
+            throw RenderError(
+                description: "App/FichaDecks/\(deck.fileName).zip isn't in the repo: add the file of \(deck.name).")
+        }
+        read[deck] = .success(try waitFor { try await engine.readFichaDeck(deck, at: file) })
+    }
+    return read
+}
+
 /// The Cards window's state partway through importing an Anki package, as
 /// the Import sheet shows it once the user chose one: the preview of a deck
 /// of medicine the tool writes in its scratch home, with two subdecks and
@@ -889,13 +984,15 @@ func giveSampleDecksLooks(in engine: Engine) throws {
 }
 
 /// The Cards window of `model` on the sample cards' deck `deck`, its cards
-/// read, with Ciencias and Humanidades closed in the sidebar, as
-/// `cards-decks`, `cards-deck-tag` and `cards-delete-deck` start.
+/// read, with Ciencias, Humanidades and Idiomas › Español closed in the
+/// sidebar, as `cards-decks`, `cards-deck-tag` and `cards-delete-deck`
+/// start, so that Sociedad shows below the top decks' lines.
 func cardsWindow(onSampleDeck deck: String, of model: AppModel) -> CardsWindowState {
     var state = model.openCardsWindow()
     state.read(with: state.scheduler)
     state.setDeckOpen(false, "Ciencias")
     state.setDeckOpen(false, "Humanidades")
+    state.setDeckOpen(false, "Idiomas::Español")
     state.choose(.cards(.deck(deck)))
     return state
 }
@@ -961,6 +1058,25 @@ func scrollSidebarToEnd(of window: NSWindow) throws {
             description: "The Cards window shows no sidebar with rows to scroll: fix scrollSidebarToEnd(of:).")
     }
     sidebar.scrollRowToVisible(sidebar.numberOfRows - 1)
+}
+
+/// Scrolls the sidebar of the Cards window `window`, once it shows, to its
+/// selected row, for the same reason as `scrollSidebarToEnd(of:)`. While
+/// that row is out of sight, below Your Decks, the outline view selects no
+/// row, so it scrolls to the end first, which Ficha's Decks are near, and
+/// then, once the outline view selects the row, to it.
+func scrollSidebarToSelection(of window: NSWindow) throws {
+    try scrollSidebarToEnd(of: window)
+    try wait(0.5)
+    let sidebar = outlineViews(in: window.contentView).min { isNearerLeadingSide($0, than: $1, in: window) }
+    guard let sidebar, sidebar.selectedRow >= 0 else {
+        throw RenderError(
+            description: """
+                The Cards window's sidebar selects none of Ficha's decks, even scrolled to its end: fix \
+                scrollSidebarToSelection(of:), or the window's case in window(_:model:), which chooses it.
+                """)
+    }
+    sidebar.scrollRowToVisible(sidebar.selectedRow)
 }
 
 /// Whether `view` starts nearer the leading side of `window` than `other`:
@@ -1291,15 +1407,17 @@ func hours(_ count: Int) -> TimeInterval {
     TimeInterval(count * 60 * 60)
 }
 
-/// The app's model for `name`'s window: on the sample cards in memory, and
-/// for Settings' Backups tab and Sync tab, and the menu while iCloud is full,
+/// The app's model for `name`'s window: on the sample cards in memory, or on
+/// none for `cards-empty` and `panel-met-them-all-offer`, and for Settings'
+/// Backups tab and Sync tab, and the menu while iCloud is full,
 /// in `renderDataFolder`, with copies to list, and files to weigh.
 func model(for name: Window) throws -> AppModel {
     switch name {
-    case .cards, .cardsNewDeck, .cardsImport, .cardsImportAnki, .about, .general, .capture, .welcome,
-        .welcomeOneButton, .panelCard:
+    case .cards, .cardsNewDeck, .cardsImport, .cardsImportAnki, .cardsHowFast, .cardsHowFastNewDeck,
+        .cardsFichaDeckWords, .cardsFichaDeckPicture, .cardsFichaDeckFlower, .about, .general, .capture, .welcome,
+        .welcomeOneButton, .panelCard, .panelMetThemAll:
         return try AppModel(engine: try sampleEngine(at: .inMemory).engine)
-    case .cardsEmpty:
+    case .cardsEmpty, .panelMetThemAllOffer:
         return try AppModel(engine: try Engine(location: .inMemory, time: SystemTimeSource()))
     case .cardsDecks, .cardsDeckTag, .cardsDeleteDeck:
         let engine = try sampleEngine(at: .inMemory).engine
@@ -1412,9 +1530,15 @@ func model(for name: Window) throws -> AppModel {
 /// opens at.
 func window(_ name: Window, model: AppModel) throws -> NSWindow {
     switch name {
-    case .cards, .cardsEmpty:
+    case .cards:
         let window = CardsWindow(model: model)
         window.makeContent()
+        return window
+    case .cardsEmpty:
+        var state = model.openCardsWindow()
+        state.offerFichaDecks(try fichaDecksInTheRepo(readBy: model.engine))
+        let window = CardsWindow(model: model)
+        window.makeContent(opening: state)
         return window
     case .cardsImport:
         let window = CardsWindow(model: model)
@@ -1431,6 +1555,40 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
     case .cardsImportHeavy:
         let window = CardsWindow(model: model)
         window.makeContent(opening: try heavyImportingState(of: model))
+        return window
+    case .cardsHowFast:
+        let window = CardsWindow(model: model)
+        window.makeContent(opening: try howFastState(of: model))
+        return window
+    case .cardsHowFastNewDeck:
+        var state = model.openCardsWindow()
+        state.askToMakeDeck()
+        state.chooseNewDeck("Música")
+        guard state.howFast?.line == .noCards else {
+            throw RenderError(
+                description: """
+                    New Deck… didn't ask How fast? about Música: it says \(String(describing: state.howFast)). Fix \
+                    the window's case in window(_:model:), with a name no deck of the sample cards has at the top.
+                    """)
+        }
+        let window = CardsWindow(model: model)
+        window.makeContent(opening: state)
+        return window
+    case .cardsFichaDeckWords, .cardsFichaDeckPicture, .cardsFichaDeckFlower:
+        let deck: FichaDeck =
+            switch name {
+            case .cardsFichaDeckWords: .palabrasLindas
+            case .cardsFichaDeckPicture: .arteArgentino
+            default: .floresDeBuenosAires
+            }
+        var state = model.openCardsWindow()
+        state.offerFichaDecks(try fichaDecksInTheRepo(readBy: model.engine))
+        state.choose(.fichaDeck(deck))
+        guard state.shownFichaDeck?.firstCard != nil else {
+            throw RenderError(description: "The Cards window shows none of Ficha's decks: fix offerFichaDecks(_:).")
+        }
+        let window = CardsWindow(model: model)
+        window.makeContent(opening: state)
         return window
     case .cardsTags:
         var state = model.openCardsWindow()
@@ -1536,6 +1694,8 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         return try panelWindow(model: model, on: try longestWaitingSampleCard(in: model.engine).row.card.front) {
             .review($0)
         }
+    case .panelMetThemAll: return try metThemAllPanelWindow(model: model)
+    case .panelMetThemAllOffer: return try metThemAllPanelWindow(model: model, offersFichaDeck: true)
     case .cardsBothWays:
         return try cardsWindow(
             of: model, selectingFirst: { $0.backFirst != nil },
@@ -1629,17 +1789,28 @@ func bothWaysModel() throws -> AppModel {
 /// The review panel on the sample's card whose front is `front`, as an
 /// appearance brings it, new unless `panelCard` says otherwise, on a gradient
 /// in a window, so that its Liquid Glass has something to show through, as
-/// the README's pictures draw it. Its controls draw as in the key window
-/// (`appearsActive`), which `actAsKey` doesn't reach: Flip and Got it in the
-/// accent color and Kind of in yellow, as with the keyboard.
+/// the README's pictures draw it.
 func panelWindow(
     model: AppModel, on front: String, as panelCard: (Card) -> PanelCard = { .new($0) }
 ) throws -> NSWindow {
     guard let card = try model.engine.cards().first(where: { $0.front == front }) else {
         throw RenderError(description: "No sample card's front is “\(front)”: fix SampleCards.swift.")
     }
-    let panel = model.startAppearance(with: [panelCard(card)])
-    let content = ReviewPanelView(model: panel, player: SoundPlayer()) {}
+    return panelWindow(showing: model.startAppearance(with: [panelCard(card)]))
+}
+
+/// The review panel as `panel` shows it, on a gradient in a window, as
+/// `panelWindow(model:on:as:)` draws it. When it asks for Ficha's decks, it
+/// reads them as `fichaDecks` holds them, as the app gives it those of its
+/// bundle; none while that's nil, since the tool's own bundle has none. Its
+/// controls draw as in the key window (`appearsActive`), which `actAsKey`
+/// doesn't reach: Flip, Got it and the done panel's See more or Done in the
+/// accent color and Kind of in yellow, as with the keyboard.
+func panelWindow(
+    showing panel: Result<ReviewPanelModel, EngineError>,
+    readingFichaDecks fichaDecks: [FichaDeck: Result<FichaDeckFile, EngineError>]? = nil
+) -> NSWindow {
+    let content = ReviewPanelView(model: panel, player: SoundPlayer(), closeWindow: {}, readFichaDecks: { fichaDecks })
         .environment(\.appearsActive, true)
         .padding(32)
         .background(LinearGradient(colors: [.teal, .indigo], startPoint: .topLeading, endPoint: .bottomTrailing))
@@ -1648,6 +1819,54 @@ func panelWindow(
         window.setContentSize(view.fittingSize)
     }
     return window
+}
+
+/// The review panel done, as `panelWindow(model:on:as:)` draws it, once its
+/// one card, the only one of Arte, a deck the tool adds to `model`'s cards,
+/// with an emoji, and puts first in the queue new cards come from, was met:
+/// "You've met them all", with the sample's deck next in the queue; or, when
+/// `offersFichaDeck`, on a Mac with no other cards, with nothing waiting in
+/// the queue and one of Ficha's decks to add, which the panel reads from the
+/// repo (`fichaDecksInTheRepo(readBy:)`) as the app reads them from its
+/// bundle.
+func metThemAllPanelWindow(model: AppModel, offersFichaDeck: Bool = false) throws -> NSWindow {
+    guard
+        let content = CardContent(
+            type: nil, front: "La Gioconda", back: "De Leonardo da Vinci, en el Louvre.", tags: [], source: nil)
+    else {
+        throw RenderError(
+            description: """
+                The card the tool adds to Arte has a blank front or back: fix \
+                metThemAllPanelWindow(model:offersFichaDeck:).
+                """)
+    }
+    let card = try model.engine.create(content, deck: "Arte")
+    try model.engine.setEmoji(try Emoji("🎨"), ofDeck: "Arte")
+    try model.engine.moveInQueue(deck: "Arte", to: .first)
+    let panel = model.startAppearance(with: [.new(card)])
+    guard case .success(let opened) = panel else {
+        throw RenderError(
+            description: """
+                The review panel didn't open on Arte's card: \(panel). Fix \
+                metThemAllPanelWindow(model:offersFichaDeck:).
+                """)
+    }
+    try opened.state.answer(.review(.good), responseTime: .seconds(4))
+    guard offersFichaDeck else {
+        guard opened.state.metThemAll?.nextInQueue != nil else {
+            throw RenderError(
+                description: "Meeting Arte's card didn't say it met Arte, with the next deck: fix sampleEngine(at:).")
+        }
+        return panelWindow(showing: panel)
+    }
+    guard opened.state.asksForFichaDecks else {
+        throw RenderError(
+            description: """
+                Meeting Arte's card didn't ask for Ficha's decks, with nothing waiting in the queue: it says \
+                \(String(describing: opened.state.metThemAll)). Fix model(for:), so that Arte holds the only cards.
+                """)
+    }
+    return panelWindow(showing: panel, readingFichaDecks: try fichaDecksInTheRepo(readBy: model.engine))
 }
 
 /// The menu under Ficha's icon, its content in a window, as SwiftUI lays it
@@ -2080,6 +2299,9 @@ do {
     let copiedSound = URL.temporaryDirectory.appending(path: "RenderSound-\(UUID().uuidString).wav")
     defer { try? FileManager.default.removeItem(at: copiedSound) }
     let model = try model(for: name)
+    // The tool has no bundle with Ficha's decks: a window that shows them
+    // reads them from the repo itself, so every other picture shows none.
+    model.readsFichaDecks = false
     let window = try window(name, model: model)
     window.level = belowDesktop
     window.ignoresMouseEvents = true
@@ -2091,6 +2313,12 @@ do {
     // which a click in the sidebar can't reach there.
     if [.cardsTags, .cardsTypes].contains(name) {
         try scrollSidebarToEnd(of: window)
+        try wait(0.5)
+    }
+    // The chosen one of Ficha's decks, in its sidebar's Ficha's Decks
+    // section, below Your Decks.
+    if [.cardsFichaDeckWords, .cardsFichaDeckPicture, .cardsFichaDeckFlower].contains(name) {
+        try scrollSidebarToSelection(of: window)
         try wait(0.5)
     }
     if name == .cardsBothWays {

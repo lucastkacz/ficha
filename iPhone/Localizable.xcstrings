@@ -233,6 +233,10 @@
       "comment" : "A message of an error of Ficha's engine, EngineError, which the iPhone app shows. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },
+    "This copy of Ficha is missing the deck “%@”, so it can't be added. Install Ficha again, then add it." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the iPhone app shows. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual"
+    },
     "You already have a type named “%@”, so nothing changed. Pick that type, or write another name." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the iPhone app shows. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"

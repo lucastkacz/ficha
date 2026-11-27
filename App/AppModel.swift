@@ -72,6 +72,17 @@ final class AppModel {
     /// What the menu's Prioritize submenu offers, as the engine reads it, or
     /// nil when it couldn't be read (the engine logs why).
     private(set) var prioritizeMenu: PrioritizeMenu?
+    /// The one of Ficha's decks the review panel's "You've met them all"
+    /// asked to add, until the Cards window, which it opens, takes it, at
+    /// once, for its state to ask How fast? for it as soon as nothing's open
+    /// there (`CardsWindowState.askToAddFichaDeck(_:)`, #458): nil while
+    /// none waits.
+    var fichaDeckToAdd: FichaDeck?
+    /// Whether `readFichaDecks()` reads Ficha's decks from the app's
+    /// resources: always in the app. `make render`, whose app has no bundle
+    /// of its own, turns it off, and gives a picture's windows the decks
+    /// itself, read from the repo, so each picture shows the same.
+    var readsFichaDecks = true
 
     /// The real Ficha's way into Lucas's cards, through `engine`, or why the
     /// settings that decide a card's progress couldn't be read.
@@ -180,14 +191,16 @@ final class AppModel {
     }
 
     /// Opens the Cards window on Lucas's cards as they are now, with the
-    /// scheduling settings he set, remembering the deck he last added a card to, as
-    /// this Mac's preferences keep it: what he does in it goes through the
-    /// state. It reads them before the window's first layout, so the table
-    /// is there for it: the split view opens the table's pane at its ideal
-    /// width only then, and at its least otherwise (#391). The window reads
-    /// them again as it starts listening for changes.
+    /// scheduling settings and the active hours he set, remembering the deck
+    /// he last added a card to, as this Mac's preferences keep it: what he
+    /// does in it goes through the state. It reads them before the window's
+    /// first layout, so the table is there for it: the split view opens the
+    /// table's pane at its ideal width only then, and at its least otherwise
+    /// (#391). The window reads them again as it starts listening for
+    /// changes.
     func openCardsWindow() -> CardsWindowState {
-        var state = engine.openCardsWindow(with: settings.scheduler, lastDeckAddedTo: Preferences.lastDeckAddedTo)
+        var state = engine.openCardsWindow(
+            with: settings.scheduler, activeHours: settings.activeHours, lastDeckAddedTo: Preferences.lastDeckAddedTo)
         state.read(with: settings.scheduler)
         return state
     }
@@ -196,6 +209,27 @@ final class AppModel {
     /// `ficha` CLI, for a window that shows them to read them again.
     func changes() -> AsyncStream<Void> {
         engine.changes()
+    }
+
+    /// Ficha's decks, each as its file in the app's resources holds it, or
+    /// why it couldn't be read, such as a file missing from a damaged copy
+    /// of the app (ADR 0040), which the windows that offer them take as they
+    /// are, to decide what they list and say: read away from the main
+    /// actor, since reading them takes a while. Reading one imports nothing.
+    /// Nil while `readsFichaDecks` is off, when the render tool gives the
+    /// windows the decks itself.
+    func readFichaDecks() async -> [FichaDeck: Result<FichaDeckFile, EngineError>]? {
+        guard readsFichaDecks else { return nil }
+        let files = FichaDeck.allCases.map { deck in (deck: deck, file: Self.fileOfFichaDeck(deck)) }
+        return await readAwayFromTheMainActor(files, with: engine)
+    }
+
+    /// Where the file of `deck` is in the app's resources, where `project.yml`
+    /// puts every file of `App/` without its folders; or, when they lack it,
+    /// where it would be, for the engine to say it's missing.
+    private static func fileOfFichaDeck(_ deck: FichaDeck) -> URL {
+        Bundle.main.url(forResource: deck.fileName, withExtension: "zip")
+            ?? (Bundle.main.resourceURL ?? Bundle.main.bundleURL).appending(path: "\(deck.fileName).zip")
     }
 
     /// The engine's time: the system's, or, in Ficha Dev, the time its debug
@@ -279,4 +313,23 @@ final class AppModel {
         try engine.moveInProgressSettings { Preferences.progressSettingsBeforeSync() }
         return try engine.progressSettings()
     }
+}
+
+/// Each of Ficha's decks in `files` as `engine` reads its file, or why it
+/// couldn't, by deck, away from the main actor: reading the files' pictures
+/// takes a while, while the windows go on answering.
+@concurrent
+private func readAwayFromTheMainActor(_ files: [(deck: FichaDeck, file: URL)], with engine: Engine) async
+    -> [FichaDeck: Result<FichaDeckFile, EngineError>]
+{
+    var read: [FichaDeck: Result<FichaDeckFile, EngineError>] = [:]
+    for (deck, file) in files {
+        do throws(EngineError) {
+            let deckFile = try await engine.readFichaDeck(deck, at: file)
+            read[deck] = .success(deckFile)
+        } catch {
+            read[deck] = .failure(error)
+        }
+    }
+    return read
 }

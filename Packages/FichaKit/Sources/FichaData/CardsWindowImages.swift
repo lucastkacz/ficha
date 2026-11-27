@@ -42,10 +42,13 @@ public struct SideImages: Sendable, Equatable {
 
 /// The images a window shows, by name, each read from where Ficha keeps
 /// them, or why it couldn't be, or held as it came in, dragged or pasted,
-/// until a card that has it is saved.
+/// until a card that has it is saved, or as the file of one of Ficha's decks
+/// holds it, while the window shows the deck.
 public struct ShownImages: Sendable, Equatable {
     private var images: [ImageName: Result<Data, EngineError>] = [:]
-    /// The images that came in and aren't kept yet.
+    /// The images that came in and aren't kept yet, and those of the first
+    /// card of the one of Ficha's decks the window shows, as its file holds
+    /// them.
     private var held: [ImageName: Data] = [:]
 
     /// The image named `name`, as a JPEG or a PNG, or why it couldn't be
@@ -55,7 +58,8 @@ public struct ShownImages: Sendable, Equatable {
         held[name].map(Result.success) ?? images[name]
     }
 
-    /// Holds `image`, which came in, until a card that has it is saved.
+    /// Holds `image`, which came in, until a card that has it is saved, or
+    /// one of Ficha's decks' files holds, while the window shows the deck.
     mutating func hold(_ image: CardImage) {
         held[image.name] = image.data
     }
@@ -237,12 +241,17 @@ extension CardsWindowState {
     }
 
     /// Shows the images and sounds of the card the detail shows, of the card
-    /// the user edits and of the card the form makes, and lets go of the
-    /// others.
+    /// the user edits, of the card the form makes, and of the first card of
+    /// the one of Ficha's decks the window shows, held as its file holds
+    /// them, and lets go of the others.
     mutating func showFiles() {
         var names = Set<ImageName>()
         if case .card(let row, _) = detail {
             names.formUnion(row.card.images)
+        }
+        for image in shownFichaDeck?.firstCardImages ?? [] {
+            images.hold(image)
+            names.insert(image.name)
         }
         if case .card = editing {
             names.formUnion(editedImages.all)

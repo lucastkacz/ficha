@@ -32,15 +32,26 @@ import Foundation
 /// with its Deck field and the editor's (`CardsWindowDeckField.swift`), runs
 /// the Import sheet, from a file's preview, with the decks its cards go to,
 /// to what the import did (`CardsWindowImport.swift`), and the Export sheet,
-/// from what it offers to export to the file it writes.
+/// from what it offers to export to the file it writes. As a deck at the top
+/// of the tree comes in, made by New Deck… in the sidebar, with the deck it
+/// names or one inside it, or by an import, it asks How fast? new cards
+/// come, and where the deck goes in the queue new cards come from
+/// (`HowFast.swift`), and each deck at the top of the tree says under its
+/// title how far it is and when it's all met (`CardsWindowDecks.swift`). It
+/// offers Ficha's decks the user hasn't added, each with its first card, which
+/// Add Deck… adds after How fast? (`CardsWindowFichaDecks.swift`).
 public struct CardsWindowState: Sendable {
     /// What the sidebar offers, one at a time: a group of cards, the inbox,
-    /// or All Tags.
+    /// All Tags, or one of Ficha's decks.
     public enum SidebarItem: Sendable, Hashable {
         case cards(CardGroup)
         case inbox
         /// Every tag, pinned or not (ADR 0022).
         case allTags
+        /// One of Ficha's decks the user hasn't added, which the window shows
+        /// in the table's and the detail's place, with Add Deck…:
+        /// `CardsWindowFichaDecks.swift`.
+        case fichaDeck(FichaDeck)
     }
 
     /// A section of the sidebar, as `sidebarSections` lists them, with what
@@ -51,9 +62,12 @@ public struct CardsWindowState: Sendable {
         case cardGroups([CardGroup])
         /// The inbox.
         case inbox
-        /// The Decks section: every deck as a tree, as `deckRows` lists them
-        /// (`CardsWindowDecks.swift`).
+        /// The Your Decks section: every deck as a tree, as `deckRows` lists
+        /// them (`CardsWindowDecks.swift`).
         case decks([DeckRow])
+        /// The Ficha's Decks section: the decks of Ficha's the user hasn't
+        /// added, in `FichaDeck`'s order (`CardsWindowFichaDecks.swift`).
+        case fichaDecks([FichaDeckFile])
         /// The Tags section: the pinned tags, as `pinnedTags` lists them,
         /// then All Tags….
         case tags(pinned: [PinnedTagRow])
@@ -65,6 +79,7 @@ public struct CardsWindowState: Sendable {
             case cardGroups
             case inbox
             case decks
+            case fichaDecks
             case tags
             case types
         }
@@ -74,6 +89,7 @@ public struct CardsWindowState: Sendable {
             case .cardGroups: .cardGroups
             case .inbox: .inbox
             case .decks: .decks
+            case .fichaDecks: .fichaDecks
             case .tags: .tags
             case .types: .types
             }
@@ -85,13 +101,15 @@ public struct CardsWindowState: Sendable {
             case .cardGroups(let groups), .types(let groups): groups.map(SidebarItem.cards)
             case .inbox: [.inbox]
             case .decks(let rows): rows.flatMap(\.flattened).map(\.item)
+            case .fichaDecks(let files): files.map(\.deck).map(SidebarItem.fichaDeck)
             case .tags(let pinned): pinned.map(\.item) + [.allTags]
             }
         }
     }
 
     /// What the table lists: the cards of a group, what waits in the inbox,
-    /// or All Tags' every tag, as a tree (`CardsWindowAllTags.swift`).
+    /// or All Tags' every tag, as a tree (`CardsWindowAllTags.swift`); no
+    /// card while one of Ficha's decks shows in its place.
     public enum Listing: Sendable, Equatable {
         case cards([CardRow])
         case inbox([InboxRow])
@@ -265,6 +283,9 @@ public struct CardsWindowState: Sendable {
         case deleteTags(TagDeletion)
         /// Whether to clear these unused tags, which no card carries.
         case clearUnusedTags([String])
+        /// How fast new cards come, and where a deck goes in the queue, as
+        /// it comes in: `HowFast.swift`.
+        case howFast(HowFast)
     }
 
     /// What OK in the emoji sheet, or in the New Type sheet, makes of what an
@@ -353,7 +374,7 @@ public struct CardsWindowState: Sendable {
         /// He renamed this deck, in the rename sheet.
         case renameDeck(deck: String)
         /// He dragged this deck, in the sidebar, onto another or onto the
-        /// Decks section's title, to move it.
+        /// Your Decks section's title, to move it.
         case moveDeck(deck: String)
         /// He deleted this deck, or chose Delete… on it, which counts what
         /// goes first.
@@ -387,6 +408,9 @@ public struct CardsWindowState: Sendable {
         /// He made a deck, in the New Deck sheet, after New Deck… in the
         /// sidebar.
         case makeDeck
+        /// He chose Start in How fast?, which saves the pace and, when Put it
+        /// first is ticked, puts the deck first in the queue.
+        case startHowFast
         /// He made a type, in the New Type sheet.
         case makeType
         /// He renamed the user type with this name, in the rename sheet.
@@ -399,10 +423,16 @@ public struct CardsWindowState: Sendable {
         case deleteType(name: String)
         /// He exported cards, which couldn't be read or saved to the file.
         case export
+        /// He chose Add Deck… on this one of Ficha's decks, which reads the
+        /// queue for How fast?, or Start in How fast?, which adds it.
+        case addFichaDeck(FichaDeck)
+        /// He opened the window, which reads Ficha's decks from the app, and
+        /// the file of this one couldn't be read.
+        case readFichaDeck(FichaDeck)
     }
 
     /// What the sidebar chose: All cards, until Lucas picks another group,
-    /// the inbox or All Tags.
+    /// the inbox, All Tags or one of Ficha's decks.
     public internal(set) var sidebarItem = SidebarItem.cards(.all)
     /// What Lucas looks for in what the sidebar chose, from the search field.
     public internal(set) var search = ""
@@ -458,10 +488,19 @@ public struct CardsWindowState: Sendable {
     /// cards, buried ones too, those with something of their own, and every
     /// tag they sit inside, in the order a tree lists them.
     public private(set) var tags: [CardTag] = []
-    /// Every deck the sidebar's Decks section lists, with what each has of
+    /// Every deck the sidebar's Your Decks section lists, with what each has of
     /// its own and its counts, in the order a tree lists them, Default first
     /// while it holds cards or has a switch on: `CardsWindowDecks.swift`.
     public private(set) var decks: [CountedDeck] = []
+    /// What the row of each of those decks at the top of the tree says under
+    /// its title, by its whole name, read with them (#491).
+    var deckLines: [String: DeckRow.Line] = [:]
+    /// The decks at the top of the tree that hold cards in the user's
+    /// reviews, by their whole names, in the order of the queue new cards
+    /// come from, as `CardsInReviews.topDecksInQueueOrder` gives them, those
+    /// met in full at their places, read with them, which the sidebar lists
+    /// in that order (#491).
+    var placedTopDecks: [String] = []
     /// The sidebar's decks Lucas closed, which each start open, and the
     /// window remembers while it's open.
     var closedDecks: Set<String> = []
@@ -491,6 +530,10 @@ public struct CardsWindowState: Sendable {
     /// The scheduling settings in Settings, which the cards stand by, and
     /// which give the intervals of a card's review log.
     public private(set) var scheduler: Scheduler
+    /// The active hours in Settings, this device's own, which the queue new
+    /// cards come from counts today's new cards by, as the review panel's
+    /// settings count them: the decks' finish dates and How fast?'s.
+    public private(set) var activeHours: Range<Int>
     /// What Lucas edits, until he saves or cancels.
     public private(set) var editing: Editing?
     /// The form that creates cards, while it's open: `CardForm.swift`.
@@ -549,24 +592,40 @@ public struct CardsWindowState: Sendable {
     /// The Export sheet, while it's open, which `CardsWindowExport.swift`
     /// runs.
     public internal(set) var exporting: Exporting?
+    /// Ficha's decks as the app read them from its bundle, in `FichaDeck`'s
+    /// order: none until it gives them (`CardsWindowFichaDecks.swift`).
+    var fichaDeckFiles: [FichaDeckFile] = []
+    /// Those of them the user hasn't added, as last read, which the sidebar's
+    /// Ficha's Decks section lists.
+    var fichaDecksNotAdded: [FichaDeckFile] = []
+    /// The one of Ficha's decks the review panel asked to add, while the
+    /// window waits to ask How fast? for it: until the app gives it Ficha's
+    /// decks, and until what's open closes
+    /// (`askForTheFichaDeckAskedToAdd()`).
+    var fichaDeckAskedToAdd: FichaDeck?
     /// Internal, for the window's parts in files of their own.
     let engine: Engine
 
-    init(engine: Engine, scheduler: Scheduler, lastDeckAddedTo: String) {
+    init(engine: Engine, scheduler: Scheduler, activeHours: Range<Int>, lastDeckAddedTo: String) {
         self.engine = engine
         self.scheduler = scheduler
+        self.activeHours = activeHours
         self.lastDeckAddedTo = lastDeckAddedTo
         now = engine.now
     }
 
     /// The sidebar's sections, in its order: the cards by where they stand,
-    /// the inbox, the decks as a tree, the pinned tags with All Tags… after
-    /// them, and the type groups.
+    /// the inbox, the decks as a tree, Ficha's decks the user hasn't added,
+    /// while there are some, the pinned tags with All Tags… after them, and
+    /// the type groups.
     public var sidebarSections: [SidebarSection] {
-        [
+        var sections: [SidebarSection] = [
             .cardGroups([.all, .new, .due, .learned, .flagged, .buried]), .inbox, .decks(deckRows),
-            .tags(pinned: pinnedTags), .types(typeGroups),
         ]
+        if !fichaDecksNotAdded.isEmpty {
+            sections.append(.fichaDecks(fichaDecksNotAdded))
+        }
+        return sections + [.tags(pinned: pinnedTags), .types(typeGroups)]
     }
 
     /// Whether Lucas is looking for something, which narrows the table: a
@@ -643,7 +702,7 @@ public struct CardsWindowState: Sendable {
         switch sidebarItem {
         case .inbox: return .nothingSelectedInInbox
         case .allTags where tagShownFromAllTags == nil: return .allTags(selected: selectedListedTags)
-        case .allTags, .cards: return .noCardSelected
+        case .allTags, .cards, .fichaDeck: return .noCardSelected
         }
     }
 
@@ -706,7 +765,7 @@ public struct CardsWindowState: Sendable {
         sidebarItem = item
         tagShownFromAllTags = nil
         chosenDeckTag = nil
-        read(with: scheduler)
+        readAgain()
     }
 
     /// Narrows what the table lists to what mentions `search`. A blank search
@@ -717,7 +776,7 @@ public struct CardsWindowState: Sendable {
         if sidebarItem == .allTags, tagShownFromAllTags == nil {
             tagsClosedInSearch = []
         }
-        read(with: scheduler)
+        readAgain()
     }
 
     /// Selects the cards in `selection`, in a group of cards.
@@ -788,7 +847,8 @@ public struct CardsWindowState: Sendable {
         }
         if saved {
             endEditing()
-            read(with: scheduler)
+            readAgain()
+            askForTheFichaDeckAskedToAdd()
         }
     }
 
@@ -804,7 +864,8 @@ public struct CardsWindowState: Sendable {
         }
         if saved {
             editing = nil
-            read(with: scheduler)
+            readAgain()
+            askForTheFichaDeckAskedToAdd()
         }
     }
 
@@ -813,6 +874,7 @@ public struct CardsWindowState: Sendable {
     public mutating func cancelEditing() {
         endEditing()
         showFiles()
+        askForTheFichaDeckAskedToAdd()
     }
 
     /// Ends the edit, with the images and sounds it put on the card, and the
@@ -842,6 +904,7 @@ public struct CardsWindowState: Sendable {
         let flagged = perform(.flag) { engine throws(EngineError) in try engine.flag(row.id, note: note) }
         if flagged {
             question = nil
+            askForTheFichaDeckAskedToAdd()
         }
     }
 
@@ -885,7 +948,7 @@ public struct CardsWindowState: Sendable {
             bothWays ? .turnOnBothWays(cardCount: cardIDs.count) : .turnOffBothWays(cardCount: cardIDs.count)
         let done = perform(action) { engine throws(EngineError) in try engine.setBothWays(bothWays, of: cardIDs) }
         if done {
-            read(with: scheduler)
+            readAgain()
         }
     }
 
@@ -904,6 +967,7 @@ public struct CardsWindowState: Sendable {
         question = nil
         let cardIDs = Set(rows.map(\.id))
         perform(.delete(cardCount: cardIDs.count)) { engine throws(EngineError) in try engine.delete(cardIDs) }
+        askForTheFichaDeckAskedToAdd()
     }
 
     /// Asks whether to discard the capture, the expansion or the follow-up
@@ -919,6 +983,7 @@ public struct CardsWindowState: Sendable {
     public mutating func discard(_ capture: Capture) {
         question = nil
         perform(.discard) { engine throws(EngineError) in try engine.discard(capture.id) }
+        askForTheFichaDeckAskedToAdd()
     }
 
     /// What OK in the emoji sheet, or in the New Type sheet, makes of `text`,
@@ -952,6 +1017,7 @@ public struct CardsWindowState: Sendable {
         }
         if done {
             question = nil
+            askForTheFichaDeckAskedToAdd()
         }
     }
 
@@ -992,12 +1058,14 @@ public struct CardsWindowState: Sendable {
         }
         if done {
             question = nil
+            askForTheFichaDeckAskedToAdd()
         }
     }
 
     /// Drops what the window asks, which Lucas cancelled.
     public mutating func cancelQuestion() {
         question = nil
+        askForTheFichaDeckAskedToAdd()
     }
 
     /// Clears what failed, once the window said so and Lucas closed it.
@@ -1024,9 +1092,10 @@ public struct CardsWindowState: Sendable {
         failure = Failure(action: action, error: error)
     }
 
-    /// Reads the decks, the tags and what the sidebar chose, as they are now,
-    /// with `scheduler`, the settings in Settings, which may have changed
-    /// since the last read, and the review log of the card the detail shows.
+    /// Reads the decks, with what each one's row says under its title, the
+    /// tags and what the sidebar chose, as they are now, with `scheduler`,
+    /// the settings in Settings, which may have changed since the last read,
+    /// and the review log of the card the detail shows.
     /// It follows each deck renamed or deleted since it last read, whoever
     /// did it (`follow(_:)`). When the chosen deck is gone, as Default once
     /// its last card moved out,
@@ -1039,8 +1108,35 @@ public struct CardsWindowState: Sendable {
     /// stays chosen. All Tags' selection keeps only the tags there are. A
     /// tag chosen among the chosen deck's tags that none of its cards carries
     /// anymore is no longer chosen, and the deck lists all its cards again.
+    /// It finds which of Ficha's decks the user has added, as
+    /// `Engine.hasAdded(_:)` says, and when the one the sidebar chose is
+    /// added, by Start or meanwhile from another device, the sidebar chooses
+    /// the deck, or All cards while Your Decks doesn't list it.
+    /// Then, while nothing's open, it asks How fast? for the one of Ficha's
+    /// decks the review panel asked for meanwhile, which chooses it in the
+    /// sidebar (`askForTheFichaDeckAskedToAdd()`). This is the app's read,
+    /// as the cards change and every minute: the window's own operations
+    /// read with `readAgain()`, which asks nothing, so the ask never comes
+    /// partway through one, and each asks once it's over, all but Show Card,
+    /// which leaves the window on the card it shows, so that this read asks.
     public mutating func read(with scheduler: Scheduler) {
+        read(with: scheduler, activeHours: activeHours)
+    }
+
+    /// Reads the window as `read(with:)` does, with `activeHours` too,
+    /// Settings', which may have changed since the last read.
+    public mutating func read(with scheduler: Scheduler, activeHours: Range<Int>) {
+        self.activeHours = activeHours
         self.scheduler = scheduler
+        readAgain()
+        askForTheFichaDeckAskedToAdd()
+    }
+
+    /// Reads the window as `read(with:)` does, with the settings it last
+    /// read with, but asks nothing for one of Ficha's decks: how the
+    /// window's own operations read the cards again, partway through, so
+    /// that the sidebar stays where they leave it.
+    mutating func readAgain() {
         now = engine.now
         offersFirstCards = false
         do throws(EngineError) {
@@ -1055,11 +1151,16 @@ public struct CardsWindowState: Sendable {
             }
             pinnedTags = tags.pinnedInOrder.map(PinnedTagRow.init(tag:))
             decks = try engine.countedDecks(with: scheduler)
+            try readDeckLines()
             follow(deckChanges)
             typeGroups = try engine.sidebarTypeGroups()
             followUserTypes()
             if case .cards(let group) = sidebarItem, !offers(group) {
                 sidebarItem = .cards(.all)
+            }
+            fichaDecksNotAdded = try fichaDeckFiles.isEmpty ? [] : engine.fichaDecks(among: fichaDeckFiles)
+            if case .fichaDeck(let deck) = sidebarItem, !fichaDecksNotAdded.contains(where: { $0.deck == deck }) {
+                sidebarItem = .cards(listedDeck(deck.name) != nil ? .deck(deck.name) : .all)
             }
             try readDeckTags()
             if let shown = tagShownFromAllTags, !offers(.tag(shown)) {
@@ -1077,6 +1178,9 @@ public struct CardsWindowState: Sendable {
             } else if let counted {
                 listing = .success(.allTags(allTagsRows(of: counted)))
                 unusedTags = try engine.unusedTags()
+            } else if case .fichaDeck = sidebarItem {
+                // The deck shows in the table's place (`shownFichaDeck`).
+                listing = .success(.cards([]))
             } else {
                 listing = .success(.inbox(try engine.inboxRows(matching: search, with: scheduler)))
             }
@@ -1088,9 +1192,9 @@ public struct CardsWindowState: Sendable {
     }
 
     /// Whether the sidebar offers `group`, as last read: a deck while the
-    /// Decks section lists it, a tag while All Tags lists it, pinned or not,
-    /// No Type while some card has none, a user type while it lists it, and
-    /// every other group always.
+    /// Your Decks section lists it, a tag while All Tags lists it, pinned or
+    /// not, No Type while some card has none, a user type while it lists it,
+    /// and every other group always.
     private func offers(_ group: CardGroup) -> Bool {
         switch group {
         case .deck(let deck): listedDeck(deck) != nil
@@ -1125,12 +1229,15 @@ private struct CardReviewLog: Sendable {
 extension Engine {
     /// Opens the Cards window on All cards, with nothing searched or
     /// selected, for Lucas's cards standing by `scheduler`, the settings in
-    /// Settings, which it reads once the window asks, remembering
+    /// Settings, which it reads once the window asks, with `activeHours`,
+    /// Settings' too, or Ficha's own while it's given none, remembering
     /// `lastDeckAddedTo`, the deck he last added a card to, as this device's
     /// preferences keep it: Default when they keep none.
-    public func openCardsWindow(with scheduler: Scheduler, lastDeckAddedTo: String = Deck.defaultName)
-        -> CardsWindowState
-    {
-        CardsWindowState(engine: self, scheduler: scheduler, lastDeckAddedTo: lastDeckAddedTo)
+    public func openCardsWindow(
+        with scheduler: Scheduler, activeHours: Range<Int> = ReviewSettings.defaults.activeHours,
+        lastDeckAddedTo: String = Deck.defaultName
+    ) -> CardsWindowState {
+        CardsWindowState(
+            engine: self, scheduler: scheduler, activeHours: activeHours, lastDeckAddedTo: lastDeckAddedTo)
     }
 }

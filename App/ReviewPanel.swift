@@ -12,6 +12,9 @@ final class ReviewPanel {
     /// the widget's reloads wait for it.
     var whenOpened: () -> Void = {}
     var whenClosed: () -> Void = {}
+    /// What to do when "You've met them all" asks to add one of Ficha's
+    /// decks: open the Cards window on it, with How fast?.
+    var whenAddingFichaDeck: (FichaDeck) -> Void = { _ in }
 
     init(model: AppModel, mac: SystemMacSignals) {
         self.model = model
@@ -70,6 +73,7 @@ final class ReviewPanel {
     /// once it closed.
     private func opened(_ window: ReviewPanelWindow) {
         window.whenClosed = { [weak self] in self?.whenClosed() }
+        window.whenAddingFichaDeck = { [weak self] in self?.whenAddingFichaDeck($0) }
         self.window = window
         whenOpened()
     }

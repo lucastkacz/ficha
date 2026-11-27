@@ -33,6 +33,12 @@ final class SecondDevice {
             await thisMac.afterSending { await iCloud.fetchNow() }
             await iCloud.run()
         }
+        // Its review panel's "You've met them all" opens its own Cards
+        // window on one of Ficha's decks, with How fast?.
+        panel.whenAddingFichaDeck = { [weak self] deck in
+            self?.model.fichaDeckToAdd = deck
+            self?.openCards()
+        }
     }
 
     /// Opens its Cards window, apart from this Mac's, or brings it forward.

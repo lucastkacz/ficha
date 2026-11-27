@@ -24,7 +24,7 @@ public struct CardsInReviews: Sendable, Equatable {
     /// card's (ADR 0034).
     let topDecks: [Int64: String]
     /// The decks at the top of the tree that hold cards in Lucas's reviews,
-    /// in the queue's order, each with its place in it.
+    /// in their places' order, each with its place in the queue.
     let queue: [PlacedDeck]
     /// The whole review log, in the order it was written.
     let log: [ReviewLogEntry]
@@ -53,7 +53,7 @@ public struct CardsInReviews: Sendable, Equatable {
         log: [ReviewLogEntry]
     ) {
         let inReviews = cards.filter { $0.standing == .inReviews }
-        let metFrontFirst = Set(log.filter { $0.way == .frontFirst }.map(\.cardID))
+        let metFrontFirst = Self.metCards(in: log)
         ways = inReviews.flatMap { card in
             let frontFirst = CardWay(cardID: card.id, way: .frontFirst)
             guard card.bothWays, metFrontFirst.contains(card.id) else {
@@ -76,7 +76,7 @@ public struct CardsInReviews: Sendable, Equatable {
         }
         queue = Set(topDecks.values)
             .map { PlacedDeck(deck: $0, place: queuePlaces[$0] ?? firstCameIn[$0] ?? .distantFuture) }
-            .sorted { ($0.place, $0.deck) < ($1.place, $1.deck) }
+            .sorted()
         self.log = log
     }
 
@@ -133,6 +133,15 @@ public struct CardsInReviews: Sendable, Equatable {
         return ways.filter { !started.contains($0) }
     }
 
+    /// The cards met, by id, out of `log`, the whole review log: those whose
+    /// front-first way has any entry, its first review or a placement
+    /// (ADR 0016), as a card that goes both ways brings its back-first way
+    /// once it's met. The Cards window's deck rows count these too: "9 of
+    /// 14".
+    public static func metCards(in log: [ReviewLogEntry]) -> Set<Int64> {
+        Set(log.filter { $0.way == .frontFirst }.map(\.cardID))
+    }
+
     /// The first reviews of new ways Lucas had on `now`'s day, by
     /// `calendar`, in the order they were written: the new cards a day
     /// count these.
@@ -143,9 +152,16 @@ public struct CardsInReviews: Sendable, Equatable {
 
 /// A deck at the top of the tree in the queue new ways come from, at its
 /// place (ADR 0034).
-struct PlacedDeck: Sendable, Equatable {
+struct PlacedDeck: Sendable, Comparable {
     /// The deck's whole name, or `""` for Default.
     let deck: String
     /// Its place: the queue goes from the earliest to the latest.
     let place: Date
+
+    /// Whether `first` goes before `second` in the queue: at an earlier
+    /// place, or at the same one, such as two decks an import brought, by
+    /// name, as on every device.
+    static func < (first: PlacedDeck, second: PlacedDeck) -> Bool {
+        (first.place, first.deck) < (second.place, second.deck)
+    }
 }

@@ -254,7 +254,7 @@ extension CardsWindowState {
         cardForm?.draft.back = CardForm.Side()
         // A blank front repeats no card.
         cardForm?.frontWarning = nil
-        read(with: scheduler)
+        readAgain()
     }
 
     /// Shows the card the front repeats, while the form warns about one: the
@@ -262,7 +262,9 @@ extension CardsWindowState {
     /// sides, until it's opened the same way again, and the window selects
     /// the card in All cards, or in Buried when it's buried, with no search,
     /// and scrolls to it. A capture the form came from stays in the inbox
-    /// meanwhile.
+    /// meanwhile, and one of Ficha's decks the review panel asked for
+    /// meanwhile waits for the window's next read (`read(with:)`), so the
+    /// window stays on the card.
     public mutating func showRepeatedCard() {
         guard case .repeats(let card)? = cardForm?.frontWarning else { return }
         setAsideCardForm = cardForm
@@ -288,6 +290,7 @@ extension CardsWindowState {
         cardForm = nil
         frontsInUse = nil
         finishClosing(form)
+        askForTheFichaDeckAskedToAdd()
     }
 
     /// Closes `form` for good, once it's no longer open, as Close does.
@@ -296,7 +299,7 @@ extension CardsWindowState {
         showFiles()
         if form.approvesCaptureOnClose, let capture = form.capture {
             perform(.approveCapture) { engine throws(EngineError) in try engine.approve(capture.id) }
-            read(with: scheduler)
+            readAgain()
         }
     }
 }

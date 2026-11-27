@@ -43,7 +43,7 @@ for (const [name, over] of Object.entries(scenarios)) {
   if ('life' in over && !isObject(over.life)) reject(`The scenario "${name}" gives life as something other than an object`);
   const unknownLife = Object.keys(over.life || {}).filter((k) => !(k in DEFAULTS.life));
   if (unknownLife.length) reject(`The scenario "${name}" changes life's ${unknownLife.join(', ')}, which DEFAULTS.life doesn't have; its keys are ${Object.keys(DEFAULTS.life).join(', ')}`);
-  if ('decks' in over && !Array.isArray(over.decks)) reject(`The scenario "${name}" gives decks as something other than an array, such as [{ "id": "clouds" }, { "id": "big", "cards": 120 }]`);
+  if ('decks' in over && !Array.isArray(over.decks)) reject(`The scenario "${name}" gives decks as something other than an array, such as [{ "id": "flores-de-buenos-aires" }, { "id": "big", "cards": 120 }]`);
 }
 
 const start = globalThis.FichaLab.nextMonday(Date.now());

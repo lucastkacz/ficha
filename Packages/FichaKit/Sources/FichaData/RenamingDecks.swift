@@ -43,13 +43,13 @@ extension Engine {
 
     /// Moves the deck `deck` inside the deck `parent`, or to the top when
     /// it's nil, as dropping it on a deck in the Cards window's sidebar, or
-    /// on the Decks section's title, does: it's renamed `<parent>::<its last
-    /// level>`, or its last level at the top, as `renameDeck(_:to:)` renames
-    /// it, with every deck inside it, joining a deck of that name if there's
-    /// one. Returns its new name, which is its name when it's right inside
-    /// `parent` already, or at the top, which changes nothing. Refuses what
-    /// `renameDeck(_:to:)` refuses, and moving a deck inside Default, which
-    /// no deck sits inside.
+    /// on the Your Decks section's title, does: it's renamed
+    /// `<parent>::<its last level>`, or its last level at the top, as
+    /// `renameDeck(_:to:)` renames it, with every deck inside it, joining a
+    /// deck of that name if there's one. Returns its new name, which is its
+    /// name when it's right inside `parent` already, or at the top, which
+    /// changes nothing. Refuses what `renameDeck(_:to:)` refuses, and moving a
+    /// deck inside Default, which no deck sits inside.
     @discardableResult
     public func moveDeck(_ deck: String, into parent: String?) throws(EngineError) -> String {
         guard parent != Deck.defaultName else {

@@ -13,6 +13,10 @@ extension EnvironmentValues {
 enum CardTextStyle {
     /// A card's upper side, or a capture's text: its largest.
     case title
+    /// The upper side of the first card of one of Ficha's decks, which the
+    /// Cards window shows before the deck comes in: a size below a card's,
+    /// as the mock's `.one-card .front` is.
+    case title3
     /// A card's lower side, or a capture's note and source.
     case body
     /// A card's source in the Cards window.
@@ -25,6 +29,7 @@ enum CardTextStyle {
     fileprivate var normalFont: Font? {
         switch self {
         case .title: .title2.weight(.semibold)
+        case .title3: .title3.weight(.semibold)
         case .body: nil
         case .callout: .callout
         case .caption: .caption
@@ -36,13 +41,14 @@ enum CardTextStyle {
         let style: NSFont.TextStyle =
             switch self {
             case .title: .title2
+            case .title3: .title3
             case .body: .body
             case .callout: .callout
             case .caption: .caption1
             }
         return .system(
             size: size.scaled(NSFont.preferredFont(forTextStyle: style).pointSize),
-            weight: self == .title ? .semibold : .regular)
+            weight: self == .title || self == .title3 ? .semibold : .regular)
     }
 }
 

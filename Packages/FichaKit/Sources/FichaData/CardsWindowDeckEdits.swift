@@ -9,7 +9,7 @@ import Foundation
 // does, and Delete…, which asks first, saying how many cards and decks it
 // deletes; Default's offers neither. In the sidebar, cards dropped on a deck
 // move there, as Change Deck moves them, and a deck dropped on another goes
-// inside it, or to the top when it's dropped on the Decks section's title.
+// inside it, or to the top when it's dropped on the Your Decks section's title.
 // The window follows a deck it holds by name to its new one: the deck the
 // sidebar chose, the decks it closed, the deck the card form and the editor
 // hold, and the one the last card was added to; and lets go of one deleted.
@@ -29,7 +29,7 @@ extension CardsWindowState.DeckMenu {
 
 extension CardsWindowState.DeckRow {
     /// Whether Lucas can drag its row, to drop it on another deck or on the
-    /// Decks section's title: every deck but Default.
+    /// Your Decks section's title: every deck but Default.
     public var isDraggable: Bool {
         !deck.isDefault
     }
@@ -63,7 +63,7 @@ extension CardsWindowState {
             try engine.renameDeck(deck, to: name)
         }
         if done {
-            read(with: scheduler)
+            readAgain()
         }
         return done
     }
@@ -94,8 +94,9 @@ extension CardsWindowState {
             try engine.deleteDeck(deletion.deck)
         }
         if done {
-            read(with: scheduler)
+            readAgain()
         }
+        askForTheFichaDeckAskedToAdd()
     }
 
     /// What Lucas drags onto the sidebar's decks: a card of the card list, by
@@ -120,7 +121,7 @@ extension CardsWindowState {
         }
     }
 
-    /// Drops `dragged`, what Lucas drags, on the Decks section's title: a
+    /// Drops `dragged`, what Lucas drags, on the Your Decks section's title: a
     /// deck goes to the top. Whether it took the drop, as
     /// `dropDeckOnDecksTitle(_:)` says, and never for cards, which go in no
     /// deck there, nor for a drop `drop(_:onDeck:)` refuses.
@@ -174,7 +175,7 @@ extension CardsWindowState {
             try engine.changeDeck(of: moving, to: deck)
         }
         if done {
-            read(with: scheduler)
+            readAgain()
         }
         return done
     }
@@ -197,8 +198,8 @@ extension CardsWindowState {
         return moveDeck(deck, into: target)
     }
 
-    /// Drops the sidebar's deck `deck` on the Decks section's title: it moves
-    /// to the top, as `dropDeck(_:onDeck:)` moves a deck inside another.
+    /// Drops the sidebar's deck `deck` on the Your Decks section's title: it
+    /// moves to the top, as `dropDeck(_:onDeck:)` moves a deck inside another.
     /// Whether it took the drop: never for Default, nor for a deck at the top
     /// already, nor when the engine couldn't move it, which it records.
     private mutating func dropDeckOnDecksTitle(_ deck: String) -> Bool {
@@ -222,7 +223,7 @@ extension CardsWindowState {
         if let parent {
             closedDecks.subtract(TagPath.lineage(of: parent))
         }
-        read(with: scheduler)
+        readAgain()
         return true
     }
 
