@@ -61,10 +61,10 @@ final class FichaDecksTests {
         let imported = try await cardsAsTheImportBringsThem(from: shipped)
         let file = try await engine.readFichaDeck(deck, at: shipped)
 
-        let added = try engine.add(file)
+        let added = try engine.addFichaDeck(file)
         let cards = try engine.cards()
         let fileAgain = try await engine.readFichaDeck(deck, at: shipped)
-        let addedAgain = try engine.add(fileAgain)
+        let addedAgain = try engine.addFichaDeck(fileAgain)
 
         let hasPictures = deck != .palabrasLindas
         #expect(file.cardCount == cardCount)
@@ -222,7 +222,7 @@ final class FichaDecksTests {
     private func addArte(from shipped: URL, in data: URL) async throws -> (cards: [Card], log: [ReviewLogEntry]) {
         let ficha = try Engine(location: .folder(data), time: time, ids: CountingIDSource(), calendar: calendar)
         let file = try await ficha.readFichaDeck(.arteArgentino, at: shipped)
-        try ficha.add(file)
+        try ficha.addFichaDeck(file)
         let cards = try ficha.cards()
         try #require(cards.count == 50)
         try ficha.meet(cards[0])

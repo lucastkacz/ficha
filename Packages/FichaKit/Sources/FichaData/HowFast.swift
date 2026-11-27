@@ -138,8 +138,8 @@ extension CardsWindowState {
     }
 
     /// Chooses Start in How fast?: for one of Ficha's decks, adds it first
-    /// (`Engine.add(_:)`), and the sidebar then chooses the deck; saves the
-    /// pace chosen, when it changed, through
+    /// (`Engine.addFichaDeck(_:)`), and the sidebar then chooses the deck;
+    /// saves the pace chosen, when it changed, through
     /// `Engine.saveProgressSettings(_:changedFrom:)`, as `ficha pace` does,
     /// puts the deck first through `Engine.moveInQueue(deck:to:)`, as `ficha
     /// deck queue --first` does, when Put it first is ticked, and reads the

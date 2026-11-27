@@ -49,7 +49,7 @@ public struct FichaDeckFile: Sendable, Equatable {
     /// The deck.
     public let deck: FichaDeck
     /// What importing the file would do, as the import read it, with the
-    /// images its cards refer to, which `Engine.add(_:)` imports.
+    /// images its cards refer to, which `Engine.addFichaDeck(_:)` imports.
     let preview: ImportPreview
 
     /// How many cards the file holds: "40 cards".
@@ -131,7 +131,7 @@ extension Engine {
     /// gives one, when it came in new: the user had no deck by its name, and
     /// cards came into it. Returns what the import did.
     @discardableResult
-    public func add(_ file: FichaDeckFile) throws(EngineError) -> ImportOutcome {
+    public func addFichaDeck(_ file: FichaDeckFile) throws(EngineError) -> ImportOutcome {
         let name = file.deck.name
         let hadDeck = try read { db in
             try deckWithRow(name, in: db) != nil || allCards(in: db).contains { $0.deck == name }

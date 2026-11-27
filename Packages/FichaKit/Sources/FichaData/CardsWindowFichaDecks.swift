@@ -81,15 +81,15 @@ extension CardsWindowState {
     }
 
     /// Adds `deck`, one of Ficha's decks, as How fast?'s Start does before it
-    /// saves the pace (`Engine.add(_:)`), and has the sidebar choose it in
-    /// Decks once the window reads the cards again; or records why it
+    /// saves the pace (`Engine.addFichaDeck(_:)`), and has the sidebar choose
+    /// it in Decks once the window reads the cards again; or records why it
     /// couldn't: whether it did.
     mutating func addFichaDeck(_ deck: FichaDeck) -> Bool {
         guard let file = fichaDeckFiles.first(where: { $0.deck == deck }) else {
             record(.fichaDeckMissing(deck.name), for: .addFichaDeck(deck))
             return false
         }
-        guard perform(.addFichaDeck(deck), { engine throws(EngineError) in _ = try engine.add(file) }) else {
+        guard perform(.addFichaDeck(deck), { engine throws(EngineError) in _ = try engine.addFichaDeck(file) }) else {
             return false
         }
         sidebarItem = .cards(.deck(deck.name))
