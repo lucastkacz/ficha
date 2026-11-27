@@ -286,13 +286,13 @@ on-main: ## Fail unless this checkout is on main, with nothing uncommitted, as G
 # neither the repo nor CI holds a secret. ExportOptions.plist keeps the build
 # to TestFlight's internal testers, and its number as the Makefile sets it.
 # Archiving and exporting with xcodebuild is Apple's documented way. The
-# archive builds from nothing, in derived data of its own inside $(UPLOAD),
-# which each upload deletes first: the derived data the other builds share
-# can keep what an earlier build left there, such as the folders of languages
-# Ficha no longer comes in, which an archive built from it could carry
-# (#518). Before the export, scripts/english-alone.sh checks that the
-# archive's app holds English alone, and stops the upload when it doesn't;
-# that check is our own. The archive holds a Ficha.app, which a widget's click
+# archive builds the app and its packages again, in derived data of its own
+# inside $(UPLOAD), which each upload deletes first, with the XCFramework
+# `make fsrs` keeps: the derived data the other builds share can keep what an
+# earlier build left there, such as the folders of languages Ficha no longer
+# comes in, which an archive built from it could carry (#518). Before the
+# export, scripts/english-alone.sh checks that the archive's app holds English
+# alone, and stops the upload when it doesn't; that check is our own. The archive holds a Ficha.app, which a widget's click
 # or a ficha:// link must never open in place of the installed one, on Lucas's
 # cards, so the other copies go first, also when the check then stops.
 # Once the build is up, it lists what changed the cards' data since the last
@@ -307,7 +307,7 @@ APP_VERSION = $(or $(shell sed -n 's/^[[:space:]]*MARKETING_VERSION:[[:space:]]*
 UPLOAD_TAG = v$(APP_VERSION)-$(BUILD_NUMBER)
 
 .PHONY: upload
-upload: on-main team project ## From main: archive the real Ficha from nothing, stop unless it holds English alone, upload it to TestFlight, for its internal testers alone, list what changed the cards' data since the last upload, and tag its commit.
+upload: on-main team project ## From main: archive the real Ficha in derived data of its own, stop unless it holds English alone, upload it to TestFlight, for its internal testers alone, list what changed the cards' data since the last upload, and tag its commit.
 	rm -rf $(UPLOAD)
 	$(XCODEBUILD_MAC) -derivedDataPath $(UPLOAD)/DerivedData -configuration Release \
 		-destination 'generic/platform=macOS' -archivePath $(UPLOAD)/Ficha.xcarchive $(SIGNING) archive
