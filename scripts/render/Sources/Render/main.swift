@@ -746,7 +746,10 @@ func howFastState(of model: AppModel) throws -> CardsWindowState {
     state.closeImport()
     guard state.howFast?.offersPutItFirst == true else {
         throw RenderError(
-            description: "How fast? didn't offer to put Arte first: \(String(describing: state.howFast))")
+            description: """
+                How fast? didn't offer to put Arte first: it says \(String(describing: state.howFast)). Fix \
+                howFastState(of:), so that Arte comes in behind decks the sample cards are meeting.
+                """)
     }
     return state
 }
@@ -763,6 +766,10 @@ func fichaDecksInTheRepo(readBy engine: Engine) throws -> [FichaDeck: Result<Fic
     var read: [FichaDeck: Result<FichaDeckFile, EngineError>] = [:]
     for deck in FichaDeck.allCases {
         let file = folder.appending(path: "\(deck.fileName).zip")
+        guard FileManager.default.fileExists(atPath: file.path(percentEncoded: false)) else {
+            throw RenderError(
+                description: "App/FichaDecks/\(deck.fileName).zip isn't in the repo: add the file of \(deck.name).")
+        }
         read[deck] = .success(try waitFor { try await engine.readFichaDeck(deck, at: file) })
     }
     return read
@@ -1747,14 +1754,16 @@ func metThemAllPanelWindow(model: AppModel) throws -> NSWindow {
         let content = CardContent(
             type: nil, front: "La Gioconda", back: "De Leonardo da Vinci, en el Louvre.", tags: [], source: nil)
     else {
-        throw RenderError(description: "The card the tool adds to Arte has a blank front or back.")
+        throw RenderError(
+            description: "The card the tool adds to Arte has a blank front or back: fix metThemAllPanelWindow(model:).")
     }
     let card = try model.engine.create(content, deck: "Arte")
     try model.engine.setEmoji(try Emoji("🎨"), ofDeck: "Arte")
     try model.engine.moveInQueue(deck: "Arte", to: .first)
     let panel = model.startAppearance(with: [.new(card)])
     guard case .success(let opened) = panel else {
-        throw RenderError(description: "The review panel didn't open on Arte's card: \(panel)")
+        throw RenderError(
+            description: "The review panel didn't open on Arte's card: \(panel). Fix metThemAllPanelWindow(model:).")
     }
     try opened.state.answer(.review(.good), responseTime: .seconds(4))
     guard opened.state.metThemAll?.nextInQueue != nil else {
