@@ -31,7 +31,9 @@ public struct Engine: Sendable {
     /// unique across devices: random ones, except in tests and the render
     /// tool.
     let ids: any IDSource
-    /// The Mac's calendar, whose days the new cards are counted by.
+    /// The device's calendar, by whose clock Ficha's days are counted, from
+    /// the hour the settings say (ADR 0045), and a backup's days and weeks,
+    /// from midnight.
     let calendar: Calendar
     /// Where the images on cards are kept: the Images folder beside the
     /// database, or memory with it.
@@ -49,17 +51,18 @@ public struct Engine: Sendable {
 
     /// Opens the database at `location`, creating it if it doesn't exist yet,
     /// and migrates it to this version's schema. Before migrating a database
-    /// that an older version of Ficha left, it saves a copy before an update
-    /// in the Backups folder, where it first moves those that versions before
+    /// that an older version of Ficha left, it saves a copy before an update in
+    /// the Backups folder, where it first moves those that versions before
     /// backups left next to the database. A database that a newer version
     /// migrated is refused, and left as it was. The review log's entries it
-    /// writes get their IDs from `ids`, random ones except in tests. Days start
-    /// at midnight by `calendar`: the Mac's, except in tests. The files the
-    /// `ficha` CLI puts on cards come from `downloads` alone, the Downloads
-    /// folder, when it's given, and from anywhere when it isn't. An import
-    /// draws its SVGs with a drawer `newSVGDrawer` makes, in the app its XPC
-    /// service, and without one, as in the CLI and on the iPhone, which don't
-    /// import, it draws none.
+    /// writes get their IDs from `ids`, random ones except in tests. Ficha's
+    /// days start at the hour the settings say (ADR 0045), and a backup's days
+    /// and weeks at midnight, by `calendar`: the device's, except in tests and
+    /// the render tool. The files the `ficha` CLI puts on cards come from
+    /// `downloads` alone, the Downloads folder, when it's given, and from
+    /// anywhere when it isn't. An import draws its SVGs with a drawer
+    /// `newSVGDrawer` makes, in the app its XPC service, and without one, as in
+    /// the CLI and on the iPhone, which don't import, it draws none.
     public init(
         location: DatabaseLocation,
         time: any TimeSource,
@@ -102,13 +105,14 @@ public struct Engine: Sendable {
         }
     }
 
-    /// Opens the database in the data folder `folder` to read it alone, as
-    /// the widget's extension does (#171), beside the app and the CLI, which
-    /// write it: it never creates, migrates or writes it, and a write through
-    /// it fails. So it's nil while there's no database there yet, or while
-    /// its schema is older than this version's, until the app or the CLI
-    /// opens it, and a database a newer version migrated is refused. Days
-    /// start at midnight by `calendar`: the Mac's, except in tests.
+    /// Opens the database in the data folder `folder` to read it alone, as the
+    /// widget's extension does (#171), beside the app and the CLI, which write
+    /// it: it never creates, migrates or writes it, and a write through it
+    /// fails. So it's nil while there's no database there yet, or while its
+    /// schema is older than this version's, until the app or the CLI opens it,
+    /// and a database a newer version migrated is refused. Ficha's days start
+    /// at the hour the settings say (ADR 0045), by `calendar`: the device's,
+    /// except in tests.
     public init?(
         readingOnlyIn folder: URL,
         time: any TimeSource,

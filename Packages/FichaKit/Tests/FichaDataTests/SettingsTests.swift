@@ -114,7 +114,7 @@ struct SettingsTests {
     @Test("appearances happen within the settings' active hours, as far apart as their separation says")
     func activeHoursAndTheSeparationComeFromTheSettings() throws {
         var settings = ReviewSettings.defaults
-        settings.activeHours = 10..<23
+        settings.activeHours = try #require(ActiveHours(from: 10, to: 23))
         settings.separation = .seconds(minutes(10))
         let serendipia = try approveCard("serendipia", in: engine)
 
