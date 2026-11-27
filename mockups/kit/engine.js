@@ -268,13 +268,17 @@
     d.setHours(hour, 0, 0, 0);
     return d.getTime();
   };
-  /** The first moment at or after t inside active hours. */
+  /**
+   * The first moment at or after t inside active hours, which cross
+   * midnight when they end before they start, as from 20 to 3 they do
+   * (ADR 0045).
+   */
   function intoActiveHours(t, s = SETTINGS) {
     const h = new Date(t).getHours();
     const [from, to] = s.activeHours;
-    if (h < from) return atHour(t, from);
-    if (h >= to) return atHour(t + DAY, from);
-    return t;
+    const inside = from < to ? h >= from && h < to : h >= from || h < to;
+    if (inside) return t;
+    return h < from ? atHour(t, from) : atHour(t + DAY, from);
   }
   const inActiveHours = (t, s = SETTINGS) => intoActiveHours(t, s) === t;
 
@@ -647,9 +651,12 @@
       this.changed();
       this.emit();
     }
-    /** Whether a new card can still come today, before active hours end. */
+    /**
+     * Whether a new card can still come today: while active hours inside
+     * today's Ficha day aren't over, as DeckQueue's newCardsLeftToday says.
+     */
     canMeetToday(at = this.state.now) {
-      return new Date(at).getHours() < this.settings.activeHours[1];
+      return intoActiveHours(at, this.settings) < startOfDay(at, this.settings) + DAY;
     }
     /**
      * Each queued deck's finish date (ADR 0034): when the user will have met

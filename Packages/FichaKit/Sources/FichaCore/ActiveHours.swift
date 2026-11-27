@@ -15,10 +15,11 @@ public struct ActiveHours: Sendable, Hashable {
         end < start
     }
 
-    /// Whether `hour`, an hour of the day from 0 to 23, is one of them.
+    /// Whether `hour`, an hour of the day from 0 to 23, is one of them: from
+    /// `start` on, and before `end` on the same day or, when they cross
+    /// midnight, the next.
     public func contains(_ hour: Int) -> Bool {
-        // A stub for #564's tests: hours that cross midnight hold none.
-        start <= hour && hour < end
+        crossMidnight ? start <= hour || hour < end : start <= hour && hour < end
     }
 }
 

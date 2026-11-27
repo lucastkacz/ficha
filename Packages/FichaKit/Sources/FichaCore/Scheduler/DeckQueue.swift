@@ -56,11 +56,11 @@ extension ReviewSettings {
     /// first, and a deck with one inside it where its other new ways come.
     /// A card that goes both ways counts its back-first way, still to come,
     /// beside its front-first one.
-    /// Each deck's finish date counts, from the calendar day Ficha's day
-    /// `now` is in started on (ADR 0045), by `calendar`, the days
-    /// `newCardsPerDay` takes to bring its last new way and those ahead of
-    /// it, but for those today may still bring: none once `activeHours` are
-    /// over, and none past the day's limit. Soonest if every day has
+    /// Each deck's finish date counts, from the calendar day Ficha's day `now`
+    /// is in started on (ADR 0045), by `calendar`, the days `newCardsPerDay`
+    /// takes to bring its last new way and those ahead of it, but for those
+    /// today may still bring: none once the `activeHours` inside that Ficha's
+    /// day are over, and none past the day's limit. Soonest if every day has
     /// appearances, latest if five days in seven do; so days without
     /// appearances move it later. With no new cards a day, it has none.
     public func queue(of cards: CardsInReviews, now: Date, calendar: Calendar) -> [QueuedDeck] {
@@ -94,15 +94,21 @@ extension ReviewSettings {
     }
 
     /// How many new ways today may still bring at `now`, by `calendar`, out
-    /// of `cards`: none once `activeHours` are over, and none past the day's
-    /// limit, which the first reviews of new ways in the Ficha's day `now` is
-    /// in count against.
+    /// of `cards`: none once the `activeHours` inside the Ficha's day `now`
+    /// is in are over, so none outside them unless they start again before
+    /// that day ends (ADR 0045), and none past the day's limit, which the
+    /// first reviews of new ways in that day count against.
     private func newCardsLeftToday(in cards: CardsInReviews, now: Date, calendar: Calendar) -> Int {
+        let endOfToday = calendar.startOfNextFichasDay(after: now, startingAt: dayStartsAtHour)
+        let activeHoursLeft =
+            activeHours.contains(calendar.component(.hour, from: now))
+            || (startOfActiveHours(after: now, calendar: calendar).map { $0 < endOfToday } ?? false)
+        guard activeHoursLeft else {
+            return 0
+        }
         let metToday =
             cards.firstReviews(onTheFichasDayOf: now, startingAt: dayStartsAtHour, calendar: calendar).count
-        // A stub for #564's tests: active hours that cross midnight are over at
-        // midnight.
-        return calendar.component(.hour, from: now) < activeHours.end ? max(0, newCardsPerDay - metToday) : 0
+        return max(0, newCardsPerDay - metToday)
     }
 
     /// When the new way at `slot`, counting from 1, the first to come, has

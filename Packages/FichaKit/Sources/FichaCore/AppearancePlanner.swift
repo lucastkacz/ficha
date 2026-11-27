@@ -210,7 +210,7 @@ extension ReviewSettings {
     /// When active hours start after `time`, a time outside them: the start
     /// of the next hour within them, by `calendar`'s clock, or nil when none
     /// of a day's hours is.
-    private func startOfActiveHours(after time: Date, calendar: Calendar) -> Date? {
+    func startOfActiveHours(after time: Date, calendar: Calendar) -> Date? {
         var hour = time
         // A day has 25 hours at most, on the day the clock goes back.
         for _ in 0..<25 {

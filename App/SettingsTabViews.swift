@@ -737,7 +737,7 @@ private struct InterruptionRow: View {
         switch setting {
         case .activeHoursStart:
             Picker(selection: activeHoursStart) {
-                ForEach(0..<model.settings.activeHours.upperBound, id: \.self) { hour in
+                ForEach(0..<model.settings.activeHours.end, id: \.self) { hour in
                     Text(hourOfDay(hour)).tag(hour)
                 }
             } label: {
@@ -745,7 +745,7 @@ private struct InterruptionRow: View {
             }
         case .activeHoursEnd:
             Picker(selection: activeHoursEnd) {
-                ForEach((model.settings.activeHours.lowerBound + 1)...24, id: \.self) { hour in
+                ForEach((model.settings.activeHours.start + 1)...24, id: \.self) { hour in
                     Text(hourOfDay(hour)).tag(hour)
                 }
             } label: {
@@ -805,18 +805,27 @@ private struct InterruptionRow: View {
         }
     }
 
-    /// The hour active hours start at, which stays before the one they end at.
+    /// The hour active hours start at, which stays before the one they end at:
+    /// hours that cross midnight are #565's.
     private var activeHoursStart: Binding<Int> {
         Binding(
-            get: { model.settings.activeHours.lowerBound },
-            set: { model.settings.activeHours = $0..<model.settings.activeHours.upperBound })
+            get: { model.settings.activeHours.start },
+            set: { start in
+                if let hours = ActiveHours(from: start, to: model.settings.activeHours.end) {
+                    model.settings.activeHours = hours
+                }
+            })
     }
 
     /// The hour active hours end at, which stays after the one they start at.
     private var activeHoursEnd: Binding<Int> {
         Binding(
-            get: { model.settings.activeHours.upperBound },
-            set: { model.settings.activeHours = model.settings.activeHours.lowerBound..<$0 })
+            get: { model.settings.activeHours.end },
+            set: { end in
+                if let hours = ActiveHours(from: model.settings.activeHours.start, to: end) {
+                    model.settings.activeHours = hours
+                }
+            })
     }
 
     /// Whether `suppression` holds appearances back.
