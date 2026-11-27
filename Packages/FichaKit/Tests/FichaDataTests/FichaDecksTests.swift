@@ -25,9 +25,9 @@ private let painters: [String: Int] = [
 
 /// Tests on Ficha's decks (ADR 0040, #458), the three zips of cards in the
 /// repo's `App/FichaDecks/`, which the app bundles: how each comes in, what
-/// their pictures credit, how an update of the app leaves one the user
-/// added, how the Cards window offers them, and what How fast? says of one
-/// before it comes in (#491). They start at 9 in the morning in Buenos
+/// their pictures credit, what each says it holds, how an update of the app
+/// leaves one the user added, how the Cards window offers them, and what How
+/// fast? says of one before it comes in (#491). They start at 9 in the morning in Buenos
 /// Aires, when active hours start, on a new install, at Steady, with engines
 /// in memory, or, for an update, on a database in a folder of the test's
 /// own. Each fails while a file it reads isn't in the repo.
@@ -117,6 +117,29 @@ final class FichaDecksTests {
         #expect(painters.values.allSatisfy { $0 < 1956 })
         #expect(byOthers == [])
         #expect(fromLater == [])
+    }
+
+    // A deck's sentence is in its cards' language, such as "50 pinturas de
+    // 15 artistas argentinos, de 1839 a 1930, …", and a painting's back says
+    // its painter on its second line and its year first on its third.
+    @Test(
+        "each of Ficha's decks says what it holds in a sentence that starts with its file's number of cards, and Arte argentino's says how many painters its paintings are by and the years they span",
+        .bug(id: 458))
+    func eachDeckSaysWhatItHolds() async throws {
+        var cardCounts: [FichaDeck: Int] = [:]
+        for deck in FichaDeck.allCases {
+            cardCounts[deck] = try await engine.readFichaDeck(deck, at: try fileInTheRepo(of: deck)).cardCount
+        }
+        let paintings = try await cardsAsTheImportBringsThem(from: try fileInTheRepo(of: .arteArgentino))
+
+        let lines = paintings.map { $0.back.components(separatedBy: "\n") }
+        let painterCount = Set(lines.compactMap { $0.count > 1 ? $0[1] : nil }).count
+        let years = lines.compactMap { $0.count > 2 ? Int($0[2].prefix(while: \.isNumber)) : nil }
+        let miscounted = FichaDeck.allCases.filter { !$0.about.hasPrefix("\(cardCounts[$0] ?? 0) ") }
+        #expect(miscounted == [])
+        #expect(years.count == 50)
+        #expect(FichaDeck.arteArgentino.about.contains("de \(painterCount) artistas"))
+        #expect(FichaDeck.arteArgentino.about.contains("de \(years.min() ?? 0) a \(years.max() ?? 0)"))
     }
 
     // The user added Arte argentino and reviewed two of its cards. Then an
