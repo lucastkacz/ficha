@@ -44,8 +44,13 @@ struct SettingsTabContent: View {
         .settingsTabActions(tab, model: model, closeReviewPanel: closeReviewPanel)
     }
 
+    /// Where a section's first row lands as the tab scrolls to it: a tenth of
+    /// the way down, so the section's heading shows above it, since SwiftUI
+    /// scrolls to a row and a heading isn't one.
+    private static let sectionAnchor = UnitPoint(x: 0.5, y: 0.1)
+
     /// Scrolls to the section `scroll` asked for last, when it's one of the
-    /// tab's, with its first row at the top, unless the tab followed that
+    /// tab's, with its heading near the top, unless the tab followed that
     /// request already.
     private func follow(_ scroll: SettingsScroll, with proxy: ScrollViewProxy) {
         guard scroll.requests > followedRequests else { return }
@@ -53,7 +58,7 @@ struct SettingsTabContent: View {
         guard let section = scroll.section, tab.sections.contains(section), let row = section.rows.first else {
             return
         }
-        proxy.scrollTo(row, anchor: .top)
+        proxy.scrollTo(row, anchor: Self.sectionAnchor)
     }
 }
 
@@ -347,11 +352,19 @@ private struct SettingsRowView: View {
             PaceRows(model: model)
         case .queue:
             QueueRows(model: model)
-        case .activeHoursStart, .activeHoursEnd, .separation, .cardsPerAppearance, .lookAhead, .waitAfterWaking,
-            .meetings, .videos, .fullScreenApps, .waitAfterSuppression:
-            InterruptionRow(row: row, model: model)
-        case .takeTheKeyboard, .idleBeforeTakingTheKeyboard, .closeWhenUntouched:
-            ReviewPanelRow(row: row, model: model)
+        case .activeHoursStart: InterruptionRow(setting: .activeHoursStart, model: model)
+        case .activeHoursEnd: InterruptionRow(setting: .activeHoursEnd, model: model)
+        case .separation: InterruptionRow(setting: .separation, model: model)
+        case .cardsPerAppearance: InterruptionRow(setting: .cardsPerAppearance, model: model)
+        case .lookAhead: InterruptionRow(setting: .lookAhead, model: model)
+        case .waitAfterWaking: InterruptionRow(setting: .waitAfterWaking, model: model)
+        case .meetings: InterruptionRow(setting: .meetings, model: model)
+        case .videos: InterruptionRow(setting: .videos, model: model)
+        case .fullScreenApps: InterruptionRow(setting: .fullScreenApps, model: model)
+        case .waitAfterSuppression: InterruptionRow(setting: .waitAfterSuppression, model: model)
+        case .takeTheKeyboard: ReviewPanelRow(setting: .takeTheKeyboard, model: model)
+        case .idleBeforeTakingTheKeyboard: ReviewPanelRow(setting: .idleBeforeTakingTheKeyboard, model: model)
+        case .closeWhenUntouched: ReviewPanelRow(setting: .closeWhenUntouched, model: model)
         case .syncWithICloud:
             SyncSwitchRow(model: model)
         case .cardsToSync:
@@ -366,8 +379,8 @@ private struct SettingsRowView: View {
             DesiredRetentionRow(scheduler: $model.settings.scheduler)
         case .longestInterval:
             LongestIntervalRow(scheduler: $model.settings.scheduler)
-        case .offerToFlag, .forgottenOftenAfter:
-            ForgottenOftenRow(row: row, model: model)
+        case .offerToFlag: ForgottenOftenRow(setting: .offerToFlag, model: model)
+        case .forgottenOftenAfter: ForgottenOftenRow(setting: .forgottenOftenAfter, model: model)
         case .backupsFolder:
             BackupsFolderRow(model: model)
         case .backupFrequency:
@@ -703,11 +716,18 @@ private struct QueueRows: View {
 /// during: when the review panel shows up on its own, and what holds it
 /// back.
 private struct InterruptionRow: View {
-    let row: SettingsRow
+    /// The rows it draws, each named by its `SettingsRow`, so a row sent
+    /// here that it doesn't draw fails to compile, not to show.
+    enum Setting {
+        case activeHoursStart, activeHoursEnd, separation, cardsPerAppearance, lookAhead, waitAfterWaking, meetings,
+            videos, fullScreenApps, waitAfterSuppression
+    }
+
+    let setting: Setting
     @Bindable var model: AppModel
 
     var body: some View {
-        switch row {
+        switch setting {
         case .activeHoursStart:
             Picker(selection: activeHoursStart) {
                 ForEach(0..<model.settings.activeHours.upperBound, id: \.self) { hour in
@@ -775,8 +795,6 @@ private struct InterruptionRow: View {
                         "Settings, under Hold appearances back during: how long an appearance waits once a meeting, a video, a full-screen app or a Focus ends."
                 )
             }
-        default:
-            EmptyView()
         }
     }
 
@@ -811,11 +829,17 @@ private struct InterruptionRow: View {
 /// A row of Interruptions' The review panel: how the panel behaves when it
 /// shows up on its own.
 private struct ReviewPanelRow: View {
-    let row: SettingsRow
+    /// The rows it draws, each named by its `SettingsRow`, as
+    /// `InterruptionRow`'s are.
+    enum Setting {
+        case takeTheKeyboard, idleBeforeTakingTheKeyboard, closeWhenUntouched
+    }
+
+    let setting: Setting
     @Bindable var model: AppModel
 
     var body: some View {
-        switch row {
+        switch setting {
         case .takeTheKeyboard:
             Picker(selection: $model.settings.focusMode) {
                 Text("Never", comment: "Settings: the review panel never takes the keyboard on its own.")
@@ -857,8 +881,6 @@ private struct ReviewPanelRow: View {
                         closes on its own.
                         """)
             }
-        default:
-            EmptyView()
         }
     }
 }
@@ -868,11 +890,17 @@ private struct ReviewPanelRow: View {
 /// a “Forgot”, Anki's Again, while the card is out of its learning and
 /// relearning steps.
 private struct ForgottenOftenRow: View {
-    let row: SettingsRow
+    /// The rows it draws, each named by its `SettingsRow`, as
+    /// `InterruptionRow`'s are.
+    enum Setting {
+        case offerToFlag, forgottenOftenAfter
+    }
+
+    let setting: Setting
     @Bindable var model: AppModel
 
     var body: some View {
-        switch row {
+        switch setting {
         case .offerToFlag:
             Toggle(isOn: offersToFlag) {
                 Text(
@@ -895,8 +923,6 @@ private struct ForgottenOftenRow: View {
                     )
                 }
             }
-        default:
-            EmptyView()
         }
     }
 

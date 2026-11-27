@@ -1894,8 +1894,13 @@ func menuWindow(model: AppModel) -> NSWindow {
 }
 
 /// Settings, at the size it opens at, on `tab`, scrolled to `section` when
-/// it's one of the tab's.
+/// it's one of the tab's, with its five tabs, as in a build signed for
+/// iCloud, such as Lucas's: a model with no Sync tab gets one, on sync as
+/// the sample's engine has it, off.
 func settingsTabWindow(model: AppModel, openingOn tab: SettingsTab, at section: SettingsSection? = nil) -> NSWindow {
+    if model.sync == nil {
+        model.sync = model.engine.openSyncTab()
+    }
     let window = AppWindow(
         tabs: SettingsTabViewController(
             model: model, captureShortcut: CaptureShortcutRegistration(), closeReviewPanel: {}, openDiagnostics: {},
