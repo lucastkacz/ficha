@@ -14,7 +14,7 @@ Ficha is built by agents with Lucas's own method, whose seven commands are below
 - Nothing runs on its own: no scheduled tasks, routines, loops or agents working without Lucas; he starts every session. Two exceptions: Dependabot, which only opens monthly update PRs that Lucas merges; and a cloud session's check-in on its own round (Shipping), which wakes only that session, inside the node Lucas started.
 - Build only what Lucas asked for or a Feature, Bug or Task issue describes.
 - Prefer standard, documented practices, and say which parts are our own.
-- `CODING_STANDARDS.md` binds Swift; the failure messages of the scripts, the hooks, the `Makefile` and CI; any change that renames a file or changes what it covers or does; and the documents agents read.
+- `CODING_STANDARDS.md` binds Swift; the clock of a test of behavior, in Node too; the failure messages of the scripts, the hooks, the `Makefile` and CI; any change that renames a file or changes what it covers or does; and the documents agents read.
 
 ## The method: Claude suggests, Lucas types
 
