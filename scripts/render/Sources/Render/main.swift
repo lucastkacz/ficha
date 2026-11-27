@@ -42,8 +42,8 @@ enum Window: String, CaseIterable {
     /// The Cards window on Idiomas, one of the decks the sample's cards sit
     /// in, with its sidebar's Your Decks section: Default first, then every
     /// deck as a tree, those at the top with cards in the reviews in the
-    /// order of the queue new cards come from, one met in full at its place
-    /// among them, the rest after them and those set aside last, each with how
+    /// order of the queue new cards come from, the rest after them and those
+    /// set aside last, each with how
     /// many of its cards are due, Idiomas and Ciencias with a color and an
     /// emoji, which the decks inside them show too, Ciencias and Humanidades
     /// closed, so that Sociedad shows, set aside, grayed with the deck inside
@@ -102,7 +102,8 @@ enum Window: String, CaseIterable {
     case cardsHowFastNewDeck = "cards-how-fast-new-deck"
     /// The Cards window on Palabras lindas, one of Ficha's decks, which its
     /// sidebar's Ficha's Decks section lists after Your Decks with the other
-    /// two, read from the repo's `App/FichaDecks/`: its emoji, its name and
+    /// two, scrolled to its row, read from the repo's `App/FichaDecks/`: its
+    /// emoji, its name and
     /// how many cards it brings in the table's place, with Add Deck…, which
     /// `--key return` asks How fast? for, and its first card, a word, front
     /// and back, in the detail's.
@@ -1056,6 +1057,16 @@ func scrollSidebarToEnd(of window: NSWindow) throws {
             description: "The Cards window shows no sidebar with rows to scroll: fix scrollSidebarToEnd(of:).")
     }
     sidebar.scrollRowToVisible(sidebar.numberOfRows - 1)
+}
+
+/// Scrolls the sidebar of the Cards window `window`, once it shows, to its
+/// selected row, for the same reason as `scrollSidebarToEnd(of:)`.
+func scrollSidebarToSelection(of window: NSWindow) throws {
+    let sidebar = outlineViews(in: window.contentView).min { isNearerLeadingSide($0, than: $1, in: window) }
+    guard let sidebar, sidebar.selectedRow >= 0 else {
+        throw RenderError(description: "The Cards window's sidebar selects no row: fix scrollSidebarToSelection(of:).")
+    }
+    sidebar.scrollRowToVisible(sidebar.selectedRow)
 }
 
 /// Whether `view` starts nearer the leading side of `window` than `other`:
@@ -2292,6 +2303,12 @@ do {
     // which a click in the sidebar can't reach there.
     if [.cardsTags, .cardsTypes].contains(name) {
         try scrollSidebarToEnd(of: window)
+        try wait(0.5)
+    }
+    // The chosen one of Ficha's decks, in its sidebar's Ficha's Decks
+    // section, below Your Decks.
+    if [.cardsFichaDeckWords, .cardsFichaDeckPicture, .cardsFichaDeckFlower].contains(name) {
+        try scrollSidebarToSelection(of: window)
         try wait(0.5)
     }
     if name == .cardsBothWays {
