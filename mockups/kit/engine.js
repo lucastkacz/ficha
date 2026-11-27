@@ -611,6 +611,22 @@
       s.decks.push({ id, name, emoji: '🗂️', ficha: false, added: false, addedAt: null, metAllAt: null, setAside: false });
       return id;
     }
+    /**
+     * A card the user adds in the card form, new, last in its deck, as the
+     * app's Add puts it (#538): with no tags, which the form no longer has.
+     */
+    addCard(deckId, { front, back, source = null, bothWays = false }) {
+      const s = this.state;
+      const order = this.deckCards(deckId).length;
+      s.cards = [
+        ...s.cards,
+        { id: `${deckId}-${order}`, deckId, order, front, back, picture: false, source, bothWays, tags: [], state: 'new',
+          step: 0, mem: null, due: null, last: null, reviewLog: [] },
+      ];
+      this.log(`Added “${front}” to ${this.deck(deckId).name}`, 'deck');
+      this.changed();
+      this.emit();
+    }
     /** Puts a deck first in the queue, as `moveFirst` moves it. */
     putFirst(id) {
       this.moveFirst(id);

@@ -168,6 +168,22 @@
     background: var(--window-bg); box-shadow: var(--window-shadow); display: flex; flex-direction: column; gap: 12px;
     max-height: calc(100% - 20px); overflow: auto; animation: panel-in 0.2s ease-out;
   }
+  /* The card form, as New Card opens it (#538): no tags and no type. */
+  .card-form { width: min(460px, calc(100% - 40px)); }
+  .card-form h3 { font-size: var(--text-headline); font-weight: 600; }
+  .card-form .form-grid { display: grid; grid-template-columns: max-content 1fr; gap: 10px 12px; align-items: baseline; }
+  .card-form .form-grid > label { text-align: right; }
+  .card-form .form-grid .popup { justify-self: start; }
+  .card-form .side-fields { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .card-form .field { box-sizing: border-box; }
+  .card-form .well {
+    min-height: 30px; display: grid; place-items: center; border: 1.5px dashed var(--tertiary-label); border-radius: 6px;
+    color: var(--secondary-label); font-size: var(--text-callout);
+  }
+  .card-form .note { color: var(--secondary-label); font-size: var(--text-caption); }
+  .card-form .check { margin-left: 0; }
+  .card-form .added { margin-right: auto; align-self: center; color: var(--secondary-label); font-size: var(--text-callout); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card-form .added::before { content: '✓ '; color: var(--green); font-weight: 700; }
 
   /* ---------- Settings in five tabs (#492) ---------- */
   .settings { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--form-bg); }
@@ -242,7 +258,8 @@
    * yellow Kind of and Got it (#489, #517); the pace, the queue of decks
    * and the finish date, in How fast? and the Cards window (#491); Ficha's
    * decks (#458) and the Welcome page that offers them (#467); Settings in
-   * five tabs, with where each of today's rows went (#492). And, as before,
+   * five tabs, with where each of today's rows went (#492); the card form,
+   * with no tags and no type (#538). And, as before,
    * the panel over a working day on a fast clock, and what holds it back.
    * New here, not in the app yet: WelcomePage's steps and SettingsWindow's
    * five tabs. Ahead of the app too, in CardsWindow: a deck's bar, with Put
@@ -411,7 +428,8 @@
   // CardsWindow: the decks, in their queue, and Ficha's decks to add; a
   // deck's cards as a grid, each its front's picture or its text (#536);
   // and the selected card's detail, which says in words when it's back and
-  // how many times it was seen, with its numbers under Details (#537).
+  // how many times it was seen, with its numbers under Details (#537); and
+  // the card form, with no tags and no type (#538).
   // ---------------------------------------------------------------------
   /** A deck's line, as its row says it (#491). */
   function deckStatus(app, state, d) {
@@ -476,6 +494,68 @@
         : html`<p className="sub">No reviews yet</p>`}`;
   }
 
+  /**
+   * The card form, a sheet over the window, as New Card opens it (#538): the
+   * deck, which starts at the one the sidebar chose; a front and a back, each
+   * with a place for its picture and one for its sound; the source; and Both
+   * ways. No tags and no type: ADR 0041 takes both off the app's face, and
+   * the database keeps a card's own. Add puts the card in its deck, new,
+   * clears the front and the back for the next one and stays open, as Anki's
+   * Add window does; Return adds too, and Escape closes it.
+   */
+  function CardForm({ app, decks, deckId, onClose }) {
+    const [deck, setDeck] = useState(deckId);
+    const [front, setFront] = useState('');
+    const [back, setBack] = useState('');
+    const [source, setSource] = useState('');
+    const [bothWays, setBothWays] = useState(false);
+    const [added, setAdded] = useState(null);
+    const first = useRef(null);
+    useEffect(() => first.current && first.current.focus(), [added]);
+    const canAdd = front.trim() !== '' && back.trim() !== '';
+    const add = () => {
+      if (!canAdd) return;
+      app.addCard(deck, { front: front.trim(), back: back.trim(), source: source.trim() || null, bothWays });
+      setAdded(front.trim());
+      setFront('');
+      setBack('');
+    };
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'Enter' && !e.altKey) (e.preventDefault(), add());
+    };
+    const side = (id, label, text, setText, rows) => html`<label htmlFor=${id}>${label}</label>
+      <div className="side-fields">
+        <textarea ref=${id === 'form-front' ? first : null} id=${id} className="field" rows=${rows} value=${text}
+          onChange=${(e) => setText(e.target.value)} />
+        <div className="well">Drop or paste an image</div>
+        <div className="well">Drop or paste a sound</div>
+      </div>`;
+    return html`<div className="sheet-cover"><div className="sheet card-form" role="dialog" aria-label="New Card" onKeyDown=${onKeyDown}>
+      <h3>New Card</h3>
+      <div className="form-grid">
+        <label>Deck</label>
+        <${Popup} label="Deck" value=${deck} onChange=${setDeck}
+          options=${decks.map((d) => ({ value: d.id, label: `${d.emoji} ${d.name}` }))} />
+        ${side('form-front', 'Front', front, setFront, 1)}
+        ${side('form-back', 'Back', back, setBack, 3)}
+        <label htmlFor="form-source">Source</label>
+        <input id="form-source" className="field" placeholder="A book, a podcast…" value=${source}
+          onChange=${(e) => setSource(e.target.value)} />
+        <label>Review</label>
+        <div className="side-fields">
+          <label className="check"><input type="checkbox" checked=${bothWays} onChange=${(e) => setBothWays(e.target.checked)} />Both ways</label>
+          <span className="note">Also review it back first: its back, then its front once you flip it.</span>
+        </div>
+      </div>
+      <div className="actions">
+        ${added && html`<span className="added">Added “${added}”</span>`}
+        <${Button} title="Close" k="esc" onClick=${onClose} />
+        <${Button} prominent title="Add" k="↩" disabled=${!canAdd} onClick=${add} />
+      </div>
+    </div></div>`;
+  }
+
   function CardsWindow({ app, state, request, ...win }) {
     // The queue's decks with cards, in its order, then the decks with none
     // yet, by name, then those set aside, as the app's Your Decks lists them.
@@ -486,6 +566,8 @@
     const anki = state.decks.find((d) => !d.ficha && !d.added);
     const [selected, setSelected] = useState((yours[0] || toAdd[0]).id);
     const [sheet, setSheet] = useState(null);
+    // Whether the card form is open, over the window (#538).
+    const [form, setForm] = useState(false);
     const [cardId, setCardId] = useState(null);
     useEffect(() => setCardId(null), [selected]);
     // Whether the card's Details are open: closed as the window opens, and
@@ -557,7 +639,7 @@
                   onClick=${() => app.setAside(deck.id, !deck.setAside)} />`}
               </div>
               <div className="tools"><span className="search">Search</span>
-                <${Button} title="New Card" onClick=${() => app.log('New Card: a front, a back, a picture and its deck, as today', 'deck')} /></div>
+                <${Button} title="New Card" onClick=${() => setForm(true)} /></div>
               ${status.empty ? html`<p className="sub">Add cards with Capture, from the menu bar. Each new card waits its turn in the queue.</p>` : html`
               <div className="legend"><span><i className="met" />Met</span><span><i className="due" />Due</span>
                 <span><i className="new" />New: waits its turn</span></div>
@@ -596,6 +678,7 @@
           <div className="actions"><${Button} title="Cancel" k="esc" onClick=${() => setSheet(null)} />
             <${Button} prominent title=${sheet === NEW ? 'Create' : 'Start'} k="↩" onClick=${start} /></div>
         </div></div>`}
+        ${form && html`<${CardForm} app=${app} decks=${yours} deckId=${deck.id} onClose=${() => setForm(false)} />`}
       </div>
     </${Window}>`;
   }
@@ -909,7 +992,9 @@
       <li>Ficha's three decks, in Spanish for now, offered at the Welcome page and in the Cards window; the first card
         comes a minute after the Welcome page. "I have Anki" stands for the Import sheet with a made-up file.</li>
       <li>The Cards window, ADR 0041's: the decks alone in the sidebar, each with its row, and the chosen deck's cards
-        as a grid, each its front's picture or its text, a dot for met or due. Click one for its front and back, in the detail beside the grid.</li>
+        as a grid, each its front's picture or its text, a dot for met or due. Click one for its front and back, in the detail beside the grid.
+        New Card opens the card form: the deck, a front and a back, each with its picture and its sound, the source
+        and Both ways, with no tags and no type.</li>
       <li>Settings in five tabs, as Lucas approved them. "Settings: Show where from" marks each row with the tab it
         was in today.</li>
     </ul>
