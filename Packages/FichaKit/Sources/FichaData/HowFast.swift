@@ -177,10 +177,11 @@ extension CardsWindowState {
         }
         if done {
             question = nil
-            read(with: scheduler)
+            readAgain()
+            askForTheFichaDeckAskedToAdd()
         } else if case .fichaDeck = howFast.subject {
             // It came in all the same, which the window lists.
-            read(with: scheduler)
+            readAgain()
         }
     }
 
@@ -200,11 +201,6 @@ extension CardsWindowState {
                 case .newDeck: .noCards
                 case .anImport(let fileName): .imported(cardCount: cards.cardCount, fileName: fileName)
                 }
-            // One of Ficha's decks the review panel asked for, which the read
-            // before asked about, waits again, until this one closes.
-            if case .howFast(let asked) = question, case .fichaDeck(let deck) = asked.subject {
-                fichaDeckAskedToAdd = deck
-            }
             question = .howFast(
                 HowFast(
                     about: names, line: line, amongTopDecks: listedTopDecks, cards: cards.inReviews,

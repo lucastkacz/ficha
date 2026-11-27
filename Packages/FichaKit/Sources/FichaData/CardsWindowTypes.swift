@@ -117,7 +117,8 @@ extension CardsWindowState {
         case .newType(.editor): setTypeInEditor(.user(made))
         default: break
         }
-        read(with: scheduler)
+        readAgain()
+        askForTheFichaDeckAskedToAdd()
     }
 
     /// Asks which name the user type with the ID `id` gets, in the rename
@@ -159,8 +160,9 @@ extension CardsWindowState {
             try engine.deleteUserType(type.id)
         }
         if done {
-            read(with: scheduler)
+            readAgain()
         }
+        askForTheFichaDeckAskedToAdd()
     }
 
     /// Renames `type`, the user type the window asks about, `name`, a name
@@ -171,7 +173,7 @@ extension CardsWindowState {
             try engine.renameUserType(type.id, to: name)
         }
         if done {
-            read(with: scheduler)
+            readAgain()
         }
         return done
     }
@@ -184,7 +186,7 @@ extension CardsWindowState {
             try engine.setEmoji(emoji, ofUserType: type.id)
         }
         if done {
-            read(with: scheduler)
+            readAgain()
         }
         return done
     }

@@ -63,7 +63,7 @@ extension CardsWindowState {
             try engine.renameDeck(deck, to: name)
         }
         if done {
-            read(with: scheduler)
+            readAgain()
         }
         return done
     }
@@ -94,8 +94,9 @@ extension CardsWindowState {
             try engine.deleteDeck(deletion.deck)
         }
         if done {
-            read(with: scheduler)
+            readAgain()
         }
+        askForTheFichaDeckAskedToAdd()
     }
 
     /// What Lucas drags onto the sidebar's decks: a card of the card list, by
@@ -174,7 +175,7 @@ extension CardsWindowState {
             try engine.changeDeck(of: moving, to: deck)
         }
         if done {
-            read(with: scheduler)
+            readAgain()
         }
         return done
     }
@@ -222,7 +223,7 @@ extension CardsWindowState {
         if let parent {
             closedDecks.subtract(TagPath.lineage(of: parent))
         }
-        read(with: scheduler)
+        readAgain()
         return true
     }
 

@@ -763,7 +763,7 @@ public struct CardsWindowState: Sendable {
         sidebarItem = item
         tagShownFromAllTags = nil
         chosenDeckTag = nil
-        read(with: scheduler)
+        readAgain()
     }
 
     /// Narrows what the table lists to what mentions `search`. A blank search
@@ -774,7 +774,7 @@ public struct CardsWindowState: Sendable {
         if sidebarItem == .allTags, tagShownFromAllTags == nil {
             tagsClosedInSearch = []
         }
-        read(with: scheduler)
+        readAgain()
     }
 
     /// Selects the cards in `selection`, in a group of cards.
@@ -845,7 +845,8 @@ public struct CardsWindowState: Sendable {
         }
         if saved {
             endEditing()
-            read(with: scheduler)
+            readAgain()
+            askForTheFichaDeckAskedToAdd()
         }
     }
 
@@ -861,7 +862,8 @@ public struct CardsWindowState: Sendable {
         }
         if saved {
             editing = nil
-            read(with: scheduler)
+            readAgain()
+            askForTheFichaDeckAskedToAdd()
         }
     }
 
@@ -900,6 +902,7 @@ public struct CardsWindowState: Sendable {
         let flagged = perform(.flag) { engine throws(EngineError) in try engine.flag(row.id, note: note) }
         if flagged {
             question = nil
+            askForTheFichaDeckAskedToAdd()
         }
     }
 
@@ -943,7 +946,7 @@ public struct CardsWindowState: Sendable {
             bothWays ? .turnOnBothWays(cardCount: cardIDs.count) : .turnOffBothWays(cardCount: cardIDs.count)
         let done = perform(action) { engine throws(EngineError) in try engine.setBothWays(bothWays, of: cardIDs) }
         if done {
-            read(with: scheduler)
+            readAgain()
         }
     }
 
@@ -962,6 +965,7 @@ public struct CardsWindowState: Sendable {
         question = nil
         let cardIDs = Set(rows.map(\.id))
         perform(.delete(cardCount: cardIDs.count)) { engine throws(EngineError) in try engine.delete(cardIDs) }
+        askForTheFichaDeckAskedToAdd()
     }
 
     /// Asks whether to discard the capture, the expansion or the follow-up
@@ -977,6 +981,7 @@ public struct CardsWindowState: Sendable {
     public mutating func discard(_ capture: Capture) {
         question = nil
         perform(.discard) { engine throws(EngineError) in try engine.discard(capture.id) }
+        askForTheFichaDeckAskedToAdd()
     }
 
     /// What OK in the emoji sheet, or in the New Type sheet, makes of `text`,
@@ -1010,6 +1015,7 @@ public struct CardsWindowState: Sendable {
         }
         if done {
             question = nil
+            askForTheFichaDeckAskedToAdd()
         }
     }
 
@@ -1050,6 +1056,7 @@ public struct CardsWindowState: Sendable {
         }
         if done {
             question = nil
+            askForTheFichaDeckAskedToAdd()
         }
     }
 
@@ -1103,6 +1110,12 @@ public struct CardsWindowState: Sendable {
     /// `Engine.hasAdded(_:)` says, and when the one the sidebar chose is
     /// added, by Start or meanwhile from another device, the sidebar chooses
     /// the deck, or All cards while Your Decks doesn't list it.
+    /// Then, while nothing's open, it asks How fast? for the one of Ficha's
+    /// decks the review panel asked for meanwhile, which chooses it in the
+    /// sidebar (`askForTheFichaDeckAskedToAdd()`). This is the app's read,
+    /// as the cards change and every minute: the window's own operations
+    /// read with `readAgain()`, which asks nothing, so the ask never comes
+    /// partway through one, and they ask once they're over.
     public mutating func read(with scheduler: Scheduler) {
         read(with: scheduler, activeHours: activeHours)
     }
@@ -1112,6 +1125,15 @@ public struct CardsWindowState: Sendable {
     public mutating func read(with scheduler: Scheduler, activeHours: Range<Int>) {
         self.activeHours = activeHours
         self.scheduler = scheduler
+        readAgain()
+        askForTheFichaDeckAskedToAdd()
+    }
+
+    /// Reads the window as `read(with:)` does, with the settings it last
+    /// read with, but asks nothing for one of Ficha's decks: how the
+    /// window's own operations read the cards again, partway through, so
+    /// that the sidebar stays where they leave it.
+    mutating func readAgain() {
         now = engine.now
         offersFirstCards = false
         do throws(EngineError) {
@@ -1164,7 +1186,6 @@ public struct CardsWindowState: Sendable {
         }
         readFrontsInUse()
         readReviewLog()
-        askForTheFichaDeckAskedToAdd()
     }
 
     /// Whether the sidebar offers `group`, as last read: a deck while the

@@ -386,7 +386,7 @@ extension CardsWindowState {
     /// leaves alone.
     public mutating func finishImportWork(_ done: ImportWork.Done) {
         if case .imported(.success) = done.result {
-            read(with: scheduler)
+            readAgain()
         }
         guard importing?.awaitedWork == done.id else { return }
         importing?.busy = nil

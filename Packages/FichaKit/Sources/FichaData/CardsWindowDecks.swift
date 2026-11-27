@@ -316,7 +316,7 @@ extension CardsWindowState {
         -> Bool
     {
         guard perform(action, work) else { return false }
-        read(with: scheduler)
+        readAgain()
         return true
     }
 
@@ -439,6 +439,7 @@ extension CardsWindowState {
             importing?.chosenDeck = name
             importing?.isNamingNewDeck = false
         }
+        askForTheFichaDeckAskedToAdd()
     }
 
     /// Makes the deck `name`, a name OK takes, with no card, which the sidebar
@@ -446,7 +447,10 @@ extension CardsWindowState {
     /// sidebar where it was, and reads the cards again, and How fast? then
     /// asks about the deck at the top of the tree it made, the deck or one
     /// it sits inside, while the sidebar didn't list it before
-    /// (`HowFast.swift`); or records why it couldn't and goes on asking.
+    /// (`HowFast.swift`); or records why it couldn't and goes on asking. One
+    /// of Ficha's decks the review panel asked for meanwhile waits until the
+    /// deck is made, as `chooseNewDeck(_:)` asks for it then, and, while How
+    /// fast? asks, until it closes.
     private mutating func makeDeck(named name: String) {
         let top = TagPath.top(of: name)
         let isNewAtTheTop = listedDeck(top) == nil
@@ -456,7 +460,7 @@ extension CardsWindowState {
         guard done else { return }
         question = nil
         closedDecks.subtract(TagPath.ancestors(of: name))
-        read(with: scheduler)
+        readAgain()
         if isNewAtTheTop {
             askHowFast(about: [top], cameInFrom: .newDeck)
         }
@@ -485,8 +489,9 @@ extension CardsWindowState {
         }
         if done {
             question = nil
-            read(with: scheduler)
+            readAgain()
         }
+        askForTheFichaDeckAskedToAdd()
     }
 
     /// Reads what the row of each deck at the top of the tree the sidebar

@@ -18,14 +18,15 @@ extension CardsWindowState {
     /// lists while the user hasn't added them, in `FichaDeck`'s order, and
     /// leaves out once all are, as each read of the cards finds them; and
     /// asks How fast? for the one the review panel asked for meanwhile
-    /// (`askToAddFichaDeck(_:)`), while it's offered, as the read of the
-    /// cards does. A deck whose file couldn't be read, such as one missing
-    /// from a damaged copy of the app, isn't listed: the window says why the
-    /// first couldn't until Lucas closes it, and the log says each.
+    /// (`askToAddFichaDeck(_:)`), while it's offered, as the app's read of
+    /// the cards does. A deck whose file couldn't be read, such as one
+    /// missing from a damaged copy of the app, isn't listed: the window says
+    /// why the first couldn't until Lucas closes it, and the log says each.
     public mutating func offerFichaDecks(_ read: [FichaDeck: Result<FichaDeckFile, EngineError>]) {
         let (files, failures) = FichaDeck.files(in: read)
         fichaDeckFiles = files
-        self.read(with: scheduler)
+        readAgain()
+        askForTheFichaDeckAskedToAdd()
         if let failed = failures.first {
             record(failed.error, for: .readFichaDeck(failed.deck))
         }
@@ -79,10 +80,12 @@ extension CardsWindowState {
     /// Asks How fast? for the one of Ficha's decks the review panel asked
     /// for (`askToAddFichaDeck(_:)`), as soon as the window can: once the
     /// app gave it the deck's file, and while it asks nothing else, Lucas
-    /// edits nothing, and no sheet of its own is open. The read of the cards
-    /// calls it, and so does each way out of a question, an edit, the card
-    /// form or a sheet that reads nothing. It forgets the deck once it asks,
-    /// or once the user has added it meanwhile.
+    /// edits nothing, and no sheet of its own is open. The app's read of the
+    /// cards calls it (`read(with:)`), and so does the end of each way out
+    /// of a question, an edit, the card form or a sheet, once it's over,
+    /// never a read partway through one (`readAgain()`), so the sidebar stays
+    /// where that leaves it. It forgets the deck once it asks, or once the
+    /// user has added it meanwhile.
     mutating func askForTheFichaDeckAskedToAdd() {
         guard let deck = fichaDeckAskedToAdd, fichaDeckFiles.contains(where: { $0.deck == deck }),
             question == nil, editing == nil, cardForm == nil, importing == nil, exporting == nil

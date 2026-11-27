@@ -212,9 +212,10 @@ final class FichaDecksTests {
 
     // The review panel asks for Arte argentino twice while the window asks
     // for a new deck's name: once Lucas cancels it, and once its OK makes
-    // Historia, which How fast? asks about first.
+    // Historia, which How fast? asks about first, with the sidebar on All
+    // cards, where it was.
     @Test(
-        "the review panel's ask for one of Ficha's decks waits while the Cards window asks something else, and How fast? asks for it as soon as that closes, after a new deck's own How fast?",
+        "the review panel's ask for one of Ficha's decks waits while the Cards window asks something else, and How fast? asks for it as soon as that closes, after a new deck's own How fast?, with the sidebar where it was meanwhile",
         .bug(id: 458))
     func anAskForOneOfFichasDecksWaits() async throws {
         let arte = try await engine.readFichaDeck(.arteArgentino, at: try fileInTheRepo(of: .arteArgentino))
@@ -229,17 +230,51 @@ final class FichaDecksTests {
         window.cancelQuestion()
         let afterCancel = window.howFast?.subject
         window.cancelQuestion()
+        window.choose(.cards(.all))
         window.askToMakeDeck()
         window.askToAddFichaDeck(.arteArgentino)
         window.chooseNewDeck("Historia")
-        let forTheNewDeck = window.howFast?.subject
+        let forTheNewDeck = (window.howFast?.subject, window.sidebarItem)
         window.startHowFast()
         let afterStart = window.howFast?.subject
 
         #expect(whileNaming == .makeDeck)
         #expect(afterCancel == .fichaDeck(.arteArgentino))
-        #expect(forTheNewDeck == .deck("Historia"))
+        #expect(forTheNewDeck.0 == .deck("Historia"))
+        #expect(forTheNewDeck.1 == .cards(.all))
         #expect(afterStart == .fichaDeck(.arteArgentino))
+        #expect(window.sidebarItem == .fichaDeck(.arteArgentino))
+    }
+
+    // Lenguaje has serendipia, which the card form's front repeats, while
+    // the sidebar lists the new cards; the review panel asks for Arte
+    // argentino meanwhile.
+    @Test(
+        "the review panel's ask for one of Ficha's decks waits while the card form is open, so Show Card shows the card the front repeats, and How fast? asks for it at the window's next read",
+        .bug(id: 458))
+    func anAskForOneOfFichasDecksWaitsForShowCard() async throws {
+        let arte = try await engine.readFichaDeck(.arteArgentino, at: try fileInTheRepo(of: .arteArgentino))
+        let serendipia = try approveInDeck("serendipia", deck: "Lenguaje", in: engine)
+        var window = engine.openCardsWindow(with: scheduler)
+        window.read(with: scheduler)
+        window.offerFichaDecks([.arteArgentino: .success(arte)])
+        window.choose(.cards(.new))
+        window.openNewCardForm()
+        var draft = try #require(window.cardForm?.draft)
+        draft.front.text = "Serendipia"
+        window.changeDraft(draft)
+        window.askToAddFichaDeck(.arteArgentino)
+
+        window.showRepeatedCard()
+        let shown = (window.sidebarItem, window.selectedRows.map(\.id), window.cardToReveal, window.question)
+        window.cardRevealed()
+        window.read(with: scheduler)
+
+        #expect(shown.0 == .cards(.all))
+        #expect(shown.1 == [serendipia.id])
+        #expect(shown.2 == serendipia.id)
+        #expect(shown.3 == nil)
+        #expect(window.howFast?.subject == .fichaDeck(.arteArgentino))
         #expect(window.sidebarItem == .fichaDeck(.arteArgentino))
     }
 

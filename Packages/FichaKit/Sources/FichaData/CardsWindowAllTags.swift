@@ -207,7 +207,7 @@ extension CardsWindowState {
         let sort = AllTagsSort(column: column, isAscending: isAscending)
         guard sort != allTagsSort else { return }
         allTagsSort = sort
-        read(with: scheduler)
+        readAgain()
     }
 
     /// Whether All Tags' tag named `tag` shows the tags inside it: once Lucas
@@ -262,7 +262,7 @@ extension CardsWindowState {
         allTagsSearch = search
         search = ""
         tagShownFromAllTags = tag
-        read(with: scheduler)
+        readAgain()
     }
 
     /// Lists the cards of the one tag selected in All Tags, in its place, as
@@ -279,7 +279,7 @@ extension CardsWindowState {
         guard canGoBack else { return }
         tagShownFromAllTags = nil
         search = allTagsSearch
-        read(with: scheduler)
+        readAgain()
     }
 
     /// Asks whether to delete `tags`, those of them the window offers, each
@@ -314,6 +314,7 @@ extension CardsWindowState {
         change(deletion.tags, as: FailedAction.deleteTags(tag:)) { engine throws(EngineError) in
             try engine.deleteTags(deletion.tags)
         }
+        askForTheFichaDeckAskedToAdd()
     }
 
     /// Asks whether to clear the unused tags, saying how many, while Clear
@@ -325,7 +326,7 @@ extension CardsWindowState {
         guard counted else { return }
         if unused.isEmpty {
             // A card got one meanwhile: no longer offered.
-            read(with: scheduler)
+            readAgain()
         } else {
             question = .clearUnusedTags(unused)
         }
@@ -338,8 +339,9 @@ extension CardsWindowState {
         question = nil
         let done = perform(.clearUnusedTags) { engine throws(EngineError) in try engine.clearUnusedTags() }
         if done {
-            read(with: scheduler)
+            readAgain()
         }
+        askForTheFichaDeckAskedToAdd()
     }
 
     /// Whether All Tags takes the tags Lucas drags from it (`draggedTags`)
@@ -385,7 +387,7 @@ extension CardsWindowState {
             openTags.formUnion(TagPath.lineage(of: parent))
             tagsClosedInSearch.subtract(TagPath.lineage(of: parent))
         }
-        read(with: scheduler)
+        readAgain()
         return true
     }
 }
