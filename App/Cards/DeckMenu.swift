@@ -122,11 +122,9 @@ struct DeckMenuItems: View {
 /// The bar above the grid while the sidebar chose a deck, Default too:
 /// the deck's whole name, after its emoji and its symbol in its color, and
 /// the Actions menu, which holds the deck's menu, as its row's context menu
-/// in the sidebar does; and under them, while its cards carry tags, the
-/// deck's tags (`DeckTagsRow`). It's the keyboard's way to that menu and to
-/// those tags: the arrow keys choose the deck in the sidebar, Tab goes on to
-/// the Actions menu and to each tag while Keyboard navigation is on in
-/// System Settings, and Space opens the menu or chooses the tag.
+/// in the sidebar does. It's the keyboard's way to that menu: the arrow keys
+/// choose the deck in the sidebar, Tab goes on to the Actions menu while
+/// Keyboard navigation is on in System Settings, and Space opens it.
 struct DeckBar: View {
     let menu: CardsWindowState.DeckMenu
     @Binding var state: CardsWindowState
@@ -158,11 +156,6 @@ struct DeckBar: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
-            if !state.deckTags.isEmpty {
-                DeckTagsRow(state: $state)
-                    .padding(.horizontal, 12)
-                    .padding(.bottom, 6)
-            }
             Divider()
         }
         .background(.bar)

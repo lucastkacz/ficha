@@ -361,22 +361,14 @@ final class DatabaseFileTests {
         try saveDatabaseBeforeTagsInsideTags(
             at: folder.appending(path: "Ficha.sqlite"),
             tagging: [["::historia"], ["economía::"], ["economía :: Argentina"], ["economía::mundial"]], at: time.now)
-        let scheduler = ReviewSettings.defaults.scheduler
 
         let engine = try Engine(location: .folder(folder), time: time)
-        var window = engine.openCardsWindow(with: scheduler)
-        window.read(with: scheduler)
-        window.choose(.allTags)
 
         #expect(
             try engine.allTags().map(\.name) == [
                 "::historia", "economía", "economía::mundial", "economía :: Argentina", "economía::",
             ])
-        #expect(
-            window.allTagsRows?.outline == [
-                "::historia", "economía", "  mundial", "economía :: Argentina", "economía::",
-            ])
-        #expect(try engine.cardRows(in: .tag("economía"), with: scheduler).map(\.card.front) == ["economía::mundial"])
+        #expect(try engine.cards().filter { $0.hasTag(within: "economía") }.map(\.front) == ["economía::mundial"])
     }
 
     // A card's type column kept the four's raw values; a user type's ID goes

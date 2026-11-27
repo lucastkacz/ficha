@@ -98,7 +98,7 @@ struct NewDeckName: View {
             // button.
             .onSubmit(submit)
             // Once the view is up, after the update that showed it, as the
-            // New Type sheet's field takes it.
+            // Change Deck sheet's tree takes it.
             .task {
                 isNameFocused = true
             }

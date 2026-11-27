@@ -6,9 +6,6 @@ internal import GRDB
 /// reviews and in the scheduler each way, and when he last saw it.
 public struct CardRow: Sendable, Equatable, Identifiable {
     public let card: Card
-    /// The card's tags, in its order, each with what it has of its own, as
-    /// the detail shows them.
-    public let tags: [CardTag]
     /// Where the card stands: in Lucas's reviews, waiting in the inbox to be
     /// fixed, or set aside, on its own, which the engine keeps as its burial,
     /// or with its deck.
@@ -163,9 +160,11 @@ public struct ReviewLogRow: Sendable, Equatable {
     public let interval: Duration
 }
 
-/// A group of cards the engine lists: a deck, a tag or a type the Cards
-/// window's sidebar offers, which the window lists one at a time, or every
-/// card or the flagged ones, which the sidebar doesn't offer.
+/// A group of cards the engine lists: a deck the Cards window's sidebar
+/// offers, which the window lists one at a time, or every card or the flagged
+/// ones, which the sidebar doesn't offer. No group of a tag or a type: the
+/// database keeps the cards' tags and types, which the window doesn't show
+/// (#538).
 public enum CardGroup: Sendable, Hashable {
     /// Every card that isn't set aside on its own, which the engine keeps as
     /// its burial, flagged ones and those set aside with their decks too,
@@ -181,15 +180,6 @@ public enum CardGroup: Sendable, Hashable {
     /// (`Engine.countedDecks`) (#539): Default's, by `Deck.defaultName`, are
     /// those that live in Default alone.
     case deck(String)
-    /// The cards with this tag, or a tag inside it, that aren't buried,
-    /// set-aside ones too.
-    case tag(String)
-    /// The cards of this type that aren't buried: a user type's by its ID,
-    /// whatever its name now.
-    case type(CardType)
-    /// The cards with no type that aren't buried, which the sidebar offers
-    /// only while there are some.
-    case noType
 }
 
 /// Something that waits in the inbox, as the Cards window lists it, with when
@@ -304,20 +294,6 @@ extension Engine {
         }
     }
 
-    /// The type groups the Cards window's sidebar lists: one for each of the
-    /// four types Ficha comes with, in their order, then one for each of the
-    /// user's types, in alphabetical order, also while no card has it, and No
-    /// Type after them while a card that isn't buried has no type.
-    func sidebarTypeGroups() throws(EngineError) -> [CardGroup] {
-        try read { db in
-            let someCardHasNoType = try allCards(in: db).contains { card in
-                card.type == nil && card.standing.isInAllCards
-            }
-            let userTypes = try UserTypes(in: db).sorted.map(CardType.user)
-            return (CardType.builtIn + userTypes).map(CardGroup.type) + (someCardHasNoType ? [.noType] : [])
-        }
-    }
-
     /// A card's review log as the Cards window shows it under the card's
     /// Details, oldest first, also when it joins two devices' entries, which
     /// come in any order: each review and placement, either way, in the
@@ -367,9 +343,8 @@ func everyCardRow(
     in db: Database
 ) throws -> [CardRow] {
     let entries = Dictionary(grouping: try logEntries(in: db), by: \.cardID)
-    let ownTags = try OwnTags(in: db)
     return try allCards(in: db).filter { $0.matches(search) }.map { card in
-        try CardRow(card: card, tags: ownTags, after: entries[card.id] ?? [], with: scheduler, at: now)
+        try CardRow(card: card, after: entries[card.id] ?? [], with: scheduler, at: now)
     }
 }
 
@@ -398,18 +373,15 @@ extension CardGroup {
             case .inReviews, .buried, .setAside: false
             }
         case .deck(let deck): TagPath.isTag(row.card.deck, within: deck)
-        case .tag(let tag): row.card.hasTag(within: tag) && row.cardStanding.isInAllCards
-        case .type(let type): row.card.type?.isSameType(as: type) == true && row.cardStanding.isInAllCards
-        case .noType: row.card.type == nil && row.cardStanding.isInAllCards
         }
     }
 }
 
 extension CardStanding {
-    /// Whether the group of every card holds a card standing here, as each
-    /// tag and type do for theirs: unless it's set aside on its own, which
+    /// Whether the group of every card, which each tag's counts come from,
+    /// holds a card standing here: unless it's set aside on its own, which
     /// the engine keeps as its burial. Like flagged cards, cards set aside
-    /// with their decks are there. A deck holds every card in it.
+    /// with their decks are there. A deck holds every card in it (#539).
     var isInAllCards: Bool {
         switch self {
         case .inReviews, .inInbox, .setAside: true
@@ -419,16 +391,15 @@ extension CardStanding {
 }
 
 extension CardRow {
-    /// The row of `card`, whose tags have what `ownTags` says of their own,
-    /// after `entries`, its review log's, in any order: last seen either way,
-    /// when Lucas last answered it, how many times he did, and each way
-    /// standing as `scheduler` replays its log, with its memory at `now`, its
-    /// back-first way only while the card goes both ways.
+    /// The row of `card` after `entries`, its review log's, in any order:
+    /// last seen either way, when Lucas last answered it, how many times he
+    /// did, and each way standing as `scheduler` replays its log, with its
+    /// memory at `now`, its back-first way only while the card goes both
+    /// ways.
     fileprivate init(
-        card: Card, tags ownTags: OwnTags, after entries: [ReviewLogEntry], with scheduler: Scheduler, at now: Date
+        card: Card, after entries: [ReviewLogEntry], with scheduler: Scheduler, at now: Date
     ) throws(SchedulingError) {
         self.card = card
-        tags = card.tags.map(ownTags.tag)
         cardStanding = card.standing
         frontFirst = try WayProgress(.frontFirst, of: card, after: entries, with: scheduler, at: now)
         backFirst =

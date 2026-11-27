@@ -112,8 +112,6 @@ extension CardsWindowState {
             return false
         }
         sidebarItem = .cards(.deck(deck.name))
-        tagShownFromAllTags = nil
-        chosenDeckTag = nil
         return true
     }
 }

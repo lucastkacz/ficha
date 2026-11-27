@@ -71,8 +71,8 @@ extension Engine {
         }
     }
 
-    /// How many cards have `type`, buried ones too, as the Cards window asks
-    /// before it deletes a user type, and `ficha types` prints for each.
+    /// How many cards have `type`, buried ones too, as `ficha types` prints
+    /// for each, and `ficha type delete` for the one it deletes.
     public func cardCount(of type: CardType) throws(EngineError) -> Int {
         try read { db in
             guard
@@ -135,8 +135,7 @@ struct UserTypes: Sendable {
 /// `types`, the user's in alphabetical order, the one with the ID `renamed`
 /// aside, if any: or an error when it's blank, a name of one of the four
 /// Ficha comes with, or another user type's, ignoring case and accents
-/// (`UserType.isSameName(_:as:)`). The engine checks it as it saves a type,
-/// and the Cards window's sheets before OK, among the types the window read.
+/// (`UserType.isSameName(_:as:)`). The engine checks it as it saves a type.
 func checkedTypeName(_ name: String, renaming renamed: UUID? = nil, among types: [UserType]) throws(EngineError)
     -> String
 {
@@ -205,7 +204,7 @@ struct CardTypesByName {
 
 extension CardType {
     /// The type Ficha comes with that `name` names, by its raw value or its
-    /// name as the app shows it (`builtInNames`), as
+    /// name as the app showed it (`builtInNames`), as
     /// `UserType.isSameName(_:as:)` compares them, or nil when none does:
     /// the one lookup of the four by name, as a file, a refine session, a
     /// new user type's name or the `ficha` CLI's type commands give it.
@@ -221,15 +220,16 @@ extension CardType {
     }
 
     /// The names a type Ficha comes with goes by: its raw value, and its name
-    /// as the app's `CardType.name` writes it, whose
-    /// keys of the app's String Catalog these are; none for a user type.
+    /// as the app showed it, in English, until types left the app's face
+    /// (#538), which a file or the `ficha` CLI may still give; none for a
+    /// user type.
     var builtInNames: [String] {
         let name: String? =
             switch self {
-            case .word: String(localized: "Word", comment: "A card type.")
-            case .concept: String(localized: "Concept", comment: "A card type.")
-            case .quote: String(localized: "Quote", comment: "A card type.")
-            case .question: String(localized: "Question", comment: "A card type.")
+            case .word: "Word"
+            case .concept: "Concept"
+            case .quote: "Quote"
+            case .question: "Question"
             case .user: nil
             }
         return [builtInName, name].compactMap(\.self)
@@ -260,16 +260,6 @@ extension CardType {
             return nil
         }
         self = .user(type)
-    }
-
-    /// Whether it's `other`, whatever their names and emoji now: one of the
-    /// four is itself, and a user type the one with its ID, also once
-    /// renamed.
-    func isSameType(as other: CardType) -> Bool {
-        switch (self, other) {
-        case (.user(let type), .user(let otherType)): type.id == otherType.id
-        default: self == other
-        }
     }
 }
 

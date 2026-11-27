@@ -11,7 +11,7 @@ One small thing the user wants to remember, with a front and a back. Each side h
 _Avoid_: flashcard, note, item
 
 **Card type**:
-What a card holds, if it has one: a word, a concept, a quote or a question, the four Ficha comes with, or one the user makes, with a name and an emoji of their choice.
+What a card holds, if it has one: a word, a concept, a quote or a question, the four Ficha comes with, or one the user makes, with a name and an emoji of their choice. The database keeps a card's type, which a file or the `ficha` CLI gives it, and the app no longer shows it anywhere: a card shows its deck alone.
 _Avoid_: kind, category, note type
 
 **Front**:
@@ -58,7 +58,7 @@ A deck as one file, named after it with `.ficha`: its cards, their images and so
 _Avoid_: package, zip, bundle
 
 **Tag**:
-A label a card carries, which can cross decks, like "Renaissance" or "inflación"; a card can have several, or none. A tag can sit inside another, its parent, as "Argentina" does in "países › Argentina".
+A label a card carries, which can cross decks, like "Renaissance" or "inflación"; a card can have several, or none. A tag can sit inside another, its parent, as "Argentina" does in "países › Argentina". The database keeps a card's tags, which a file or the `ficha` CLI gives it, and the app no longer shows them anywhere: a card shows its deck alone.
 _Avoid_: topic, category, deck, subtag, nested tag
 
 **Priority deck**:
@@ -68,10 +68,6 @@ _Avoid_: focus, exam mode, filter, priority tag
 **Set aside**:
 Taking a card out of the user's reviews for now, and out of the inbox if it's flagged, as when they no longer want to see it; or every card of a deck, and of every deck inside it, also those that move in later, as when they're done with a subject. Nothing is deleted: a card keeps its progress and its review log, and its deck still lists it, a card set aside on its own dimmed. Putting it back, in the Cards window or through the `ficha` CLI, puts each card where it would stand without it, so a card stays set aside while it, or its deck, still is.
 _Avoid_: bury, pause, suspend, archive, hide, inactive
-
-**Pinned tag**:
-A tag the user chose to keep in the Cards window's sidebar, in an order of their own, so the labels they use most are always at hand. Which tags are pinned, and in what order, is one choice for all their devices.
-_Avoid_: favorite tag, starred tag, sidebar tag
 
 **Source**:
 Where the user came across what a capture or a card holds, like a book or a podcast.
@@ -165,16 +161,12 @@ _Avoid_: status, state
 The window where the user sees their decks, each deck's cards as cards, with their fronts, and everything in the inbox, creates cards, and acts on them.
 _Avoid_: browser, card list
 
-**All Tags**:
-The place in the Cards window that holds every tag, pinned or not, as a tree.
-_Avoid_: tags page, tag manager, tag browser
-
 **Edit**:
 Changing the content of a card or a capture. A card keeps its progress and its review log.
 _Avoid_: modify, update
 
 **Delete**:
-Taking a card out of Ficha for good, with its review log, which setting it aside keeps. An expansion attached to it, or a follow-up tied to it, stays in the inbox as a capture. Deleting a deck deletes every card in it and in the decks inside it, as Anki does. Deleting a tag, or a card type, deletes no card: it only comes off the cards that carry it, a tag with every tag inside it.
+Taking a card out of Ficha for good, with its review log, which setting it aside keeps. An expansion attached to it, or a follow-up tied to it, stays in the inbox as a capture. Deleting a deck deletes every card in it and in the decks inside it, as Anki does. Deleting a tag, or a card type, which the `ficha` CLI does, deletes no card: it only comes off the cards that carry it, a tag with every tag inside it.
 _Avoid_: remove, erase
 
 **Import**:

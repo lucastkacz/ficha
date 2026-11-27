@@ -10,12 +10,9 @@ struct SourceWordsTests {
     // `IntervalColumn` and `dueColumn`, since a column is what the table had
     // and the grid has none. In the code alone: a comment that still says what
     // a column was is the docs' to keep up (`CODING_STANDARDS.md`, Docs).
-    // Exempt: All Tags' columns, which go with All Tags in #538, whose own
-    // test covers that file once it's gone.
     @Test("the Cards window's state keeps nothing for a table's columns, since the grid has none", .bug(id: 536))
     func theCardsWindowsStateKeepsNoColumns() throws {
         let files = try SourceFile.cardsWindowState()
-            .filter { $0.name != "CardsWindowAllTags.swift" }
         let hits = try SourceFile.hits(
             of: [#"(?<![A-Za-z])[Cc]olumns?(?![a-z])|(?<=[a-z])Columns?(?![a-z])"#], in: files, codeOnly: true)
         #expect(

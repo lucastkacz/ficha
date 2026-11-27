@@ -19,10 +19,31 @@ extension Engine {
     public func edit(_ cardID: Int64, with content: CardContent, deck: String? = nil, bothWays: Bool? = nil)
         throws(EngineError) -> Card
     {
+        try edit(cardID, deck: deck, bothWays: bothWays) { _ in content }
+    }
+
+    /// Edits a card as the Cards window saves it, as
+    /// `edit(_:with:deck:bothWays:)` does, but keeping its type and its tags
+    /// as they are in the write that saves it, whatever `content` holds: the
+    /// window shows neither, and the database keeps both (#538).
+    @discardableResult
+    func editFromTheCardsWindow(_ cardID: Int64, with content: CardContent, deck: String, bothWays: Bool)
+        throws(EngineError) -> Card
+    {
+        try edit(cardID, deck: deck, bothWays: bothWays) { card in
+            content.keeping(type: card.type, tags: card.tags)
+        }
+    }
+
+    /// Edits a card, as `edit(_:with:deck:bothWays:)` does, with the content
+    /// `newContent` makes of the card as it is, in the write that saves it.
+    private func edit(
+        _ cardID: Int64, deck: String?, bothWays: Bool?, changingContentWith newContent: (Card) -> CardContent
+    ) throws(EngineError) -> Card {
         let editedAt = time.now
         let (before, edited) = try write { db in
             let before = try existingCard(cardID, in: db)
-            _ = try change(before, to: content, deck: deck, bothWays: bothWays, at: editedAt, in: db)
+            _ = try change(before, to: newContent(before), deck: deck, bothWays: bothWays, at: editedAt, in: db)
             return (before, try takeFlagOff(cardID, in: db))
         }
         removeFilesNoCardUses(before: before, after: edited)

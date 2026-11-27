@@ -5,13 +5,12 @@ import Testing
 
 /// Tests on tags inside tags (ADR 0021): a tag's name carries the tags it
 /// sits inside, `economía::Argentina`, and a tag's color and emoji show on the
-/// tags inside it that have none, with the default settings. They start at 9 in the morning in Buenos Aires, when
-/// active hours start.
+/// tags inside it that have none. They start at 9 in the morning in Buenos
+/// Aires, when active hours start.
 struct TagsInsideTagsTests {
     let calendar: Calendar
     let time: ManualTimeSource
     let engine: Engine
-    let settings = ReviewSettings.defaults
 
     init() throws {
         calendar = try buenosAiresCalendar()
@@ -19,7 +18,7 @@ struct TagsInsideTagsTests {
         engine = try Engine(location: .inMemory, time: time, calendar: calendar)
     }
 
-    // As a refine session or the card form might write them.
+    // As a refine session or a file might write them.
     @Test("a tag's levels lose the spaces around them, and an empty level goes, wherever a card comes from")
     func aTagsLevelsAreCleanedUp() throws {
         let inflacion = try approveCard("inflación", tags: [" economía :: Argentina ", "economía::::mundial", ":: "])
@@ -41,8 +40,6 @@ struct TagsInsideTagsTests {
             name: "economía::Argentina", emoji: "🇦🇷", inheritedColor: .green, inheritedEmoji: "📈")
         let deuda = CardTag(name: "economía::Argentina::deuda", inheritedColor: .green, inheritedEmoji: "🇦🇷")
         #expect(try engine.allTags() == [economia, argentina, deuda, CardTag(name: "lenguaje")])
-        #expect(
-            try engine.cardRows(in: .all, with: settings.scheduler).map(\.tags) == [[deuda, CardTag(name: "lenguaje")]])
         let allTags = try engine.allTags()
         #expect(allTags.map(\.shownColor) == [.green, .green, .green, nil])
         #expect(allTags.map(\.shownEmoji) == ["📈", "🇦🇷", "🇦🇷", nil])

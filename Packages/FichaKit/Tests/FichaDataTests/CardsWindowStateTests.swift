@@ -63,23 +63,6 @@ struct CardsWindowStateTests {
         #expect(!window.offersFirstCards)
     }
 
-    @Test("a tag that loses its last card sends the sidebar back to the first deck")
-    func aTagThatLosesItsLastCardSendsTheSidebarBackToTheFirstDeck() throws {
-        let mayo = try approve(
-            card(.concept, front: "Revolución de Mayo", back: "1810.", tags: ["historia"]), in: engine)
-        let serendipia = try approveCard("serendipia", in: engine)
-        var window = openWindow()
-        window.choose(.cards(.tag("historia")))
-        #expect(window.listedCardIDs == [mayo.id])
-
-        try engine.delete([mayo.id])
-        window.read(with: scheduler)
-
-        #expect(window.sidebarItem == .cards(.deck(Deck.defaultName)))
-        #expect(window.tags.isEmpty)
-        #expect(window.listedCardIDs == [serendipia.id])
-    }
-
     // So that Lucas can undo it, and a card that moves in later is set aside
     // too.
     @Test("a set-aside deck stays listed without cards, and choosing it lists no cards rather than another deck's")
@@ -99,68 +82,45 @@ struct CardsWindowStateTests {
         #expect(window.listedCardIDs == [])
     }
 
-    @Test("the Color submenu offers None and Finder's seven colors, and ticks the tag's color, or None")
-    func theColorSubmenuTicksTheTagsColorOrNone() throws {
-        try approve(card(.word, front: "fotosíntesis", back: "Luz en azúcar.", tags: ["ciencia"]), in: engine)
-        var window = openWindow()
-        let colors: [TagColor?] = [nil, .red, .orange, .yellow, .green, .blue, .purple, .gray]
-        #expect(window.menu(for: ["ciencia"])?.colorItems.map(\.color) == colors)
-        #expect(window.menu(for: ["ciencia"])?.colorItems.filter(\.isTicked).map(\.color) == [nil])
-
-        window.chooseColor(.green, on: ["ciencia"])
-
-        #expect(window.menu(for: ["ciencia"])?.colorItems.filter(\.isTicked).map(\.color) == [.green])
-        #expect(window.tags == [CardTag(name: "ciencia", color: .green)])
-        window.chooseColor(nil, on: ["ciencia"])
-        #expect(window.menu(for: ["ciencia"])?.colorItems.filter(\.isTicked).map(\.color) == [nil])
-        #expect(window.tags == [CardTag(name: "ciencia")])
-    }
-
     // The sheet says why while OK refuses, so nothing fails.
-    @Test("the emoji sheet refuses what isn't one emoji, and takes an empty field as removing the tag's emoji")
+    @Test("the emoji sheet refuses what isn't one emoji, and takes a field of spaces as removing the deck's emoji")
     func theEmojiSheetRefusesWhatIsntOneEmoji() throws {
-        try approve(card(.concept, front: "Revolución de Mayo", back: "1810.", tags: ["argentina"]), in: engine)
+        try approveInDeck("Revolución de Mayo", deck: "Historia::Argentina", in: engine)
         var window = openWindow()
-        window.askForEmoji(on: "argentina")
-        #expect(window.question == .emoji(CardTag(name: "argentina")))
+        window.askForEmoji(onDeck: "Historia")
+        #expect(window.question == .deckEmoji(Deck(name: "Historia")))
         #expect(window.emojiEntry("argentina") == .refused(.notOneEmoji))
         #expect(window.emojiEntry("🇦🇷🇺🇾") == .refused(.notOneEmoji))
         #expect(window.emojiEntry(" ") == .removal)
         #expect(window.emojiEntry("🇦🇷") == .emoji(try Emoji("🇦🇷")))
 
-        window.chooseEmoji("argentina")
-        #expect(window.question == .emoji(CardTag(name: "argentina")))
-        #expect(window.failure == nil)
         window.chooseEmoji("🇦🇷")
         #expect(window.question == nil)
-        #expect(window.tags == [CardTag(name: "argentina", emoji: "🇦🇷")])
+        window.askForEmoji(onDeck: "Historia")
+        #expect(window.question == .deckEmoji(Deck(name: "Historia", emoji: "🇦🇷")))
+        window.chooseEmoji(" ")
 
-        window.askForEmoji(on: "argentina")
-        #expect(window.question == .emoji(CardTag(name: "argentina", emoji: "🇦🇷")))
-        window.chooseEmoji("")
         #expect(window.question == nil)
-        #expect(window.tags == [CardTag(name: "argentina")])
+        #expect(window.deckRows.map(\.deck.shownEmoji) == [nil])
+        #expect(window.failure == nil)
     }
 
     // A set-aside card won't show up, so its tile's dot never says it's due.
     @Test(
-        "a set-aside deck's group and a tag's hold its set-aside cards, whose tiles say they're met or new, never due",
+        "a set-aside deck's group holds its set-aside cards, whose tiles say they're met or new, never due",
         .bug(id: 536))
     func aSetAsideDecksCardsStayListed() throws {
         // eudaimonía gets learned, graduated to wait 21 days or more, and
         // comes due; ataraxia is new.
-        let eudaimonia = try approveInDeck("eudaimonía", deck: "Filosofía", tags: ["ética"], in: engine)
-        let ataraxia = try approveInDeck("ataraxia", deck: "Filosofía", tags: ["ética"], in: engine)
+        let eudaimonia = try approveInDeck("eudaimonía", deck: "Filosofía", in: engine)
+        let ataraxia = try approveInDeck("ataraxia", deck: "Filosofía", in: engine)
         try engine.climbUntilLearned(eudaimonia, movingForward: time)
         time.move(to: try #require(try engine.standing(of: eudaimonia.id, with: .standard).due))
         var window = openWindow()
         window.chooseSetAside(onDeck: "Filosofía")
 
-        window.choose(.cards(.tag("ética")))
-        let inTheTag = window.listedCardIDs
         window.choose(.cards(.deck("Filosofía")))
 
-        #expect(inTheTag == [eudaimonia.id, ataraxia.id])
         #expect(window.listedCardIDs == [eudaimonia.id, ataraxia.id])
         #expect(window.tiles.map(\.mark) == [.met, .new])
     }
@@ -527,43 +487,6 @@ struct CardsWindowStateTests {
         #expect(window.failure?.error == .cardNotFound(ubuntu.id))
     }
 
-    @Test("the No Type group lists exactly the cards with no type, flagged ones too but not the buried ones")
-    func theNoTypeGroupListsTheCardsWithNoType() throws {
-        try approveCard("serendipia", in: engine)
-        let petricor = try engine.create(card(nil, front: "petricor", back: "El olor de la lluvia."))
-        let ubuntu = try engine.create(card(nil, front: "ubuntu", back: "Soy porque somos."))
-        let ataraxia = try engine.create(card(nil, front: "ataraxia", back: "Serenidad."))
-        try engine.flag(ubuntu.id, note: note("Falta un ejemplo"))
-        try engine.bury(ataraxia.id)
-        var window = openWindow()
-
-        window.choose(.cards(.noType))
-
-        #expect(window.typeGroups == [.type(.word), .type(.concept), .type(.quote), .type(.question), .noType])
-        #expect(window.listedCardIDs == [petricor.id, ubuntu.id])
-    }
-
-    @Test(
-        "No Type isn't offered when every card has a type, and once it's gone the sidebar goes back to the first deck")
-    func noTypeIsNotOfferedWhenEveryCardHasAType() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
-        let buried = try engine.create(card(nil, front: "ataraxia", back: "Serenidad."))
-        try engine.bury(buried.id)
-        var window = openWindow()
-        #expect(window.typeGroups == [.type(.word), .type(.concept), .type(.quote), .type(.question)])
-        let petricor = try engine.create(card(nil, front: "petricor", back: "El olor de la lluvia."))
-        window.read(with: scheduler)
-        window.choose(.cards(.noType))
-
-        try engine.edit(petricor.id, with: card(.word, front: "petricor", back: "El olor de la lluvia."))
-        window.read(with: scheduler)
-
-        #expect(window.typeGroups == [.type(.word), .type(.concept), .type(.quote), .type(.question)])
-        #expect(window.sidebarItem == .cards(.deck(Deck.defaultName)))
-        // Default lists the set-aside card too (#539).
-        #expect(window.listedCardIDs == [serendipia.id, buried.id, petricor.id])
-    }
-
     @Test("saving an edit ends it, and the detail shows the card as saved at once")
     func savingAnEditShowsTheCardAsSavedAtOnce() throws {
         let serendipia = try approveCard("serendipia", in: engine)
@@ -577,6 +500,26 @@ struct CardsWindowStateTests {
         #expect(editing == .card(serendipia))
         #expect(window.editing == nil)
         #expect(window.shownCard?.row.card.back == "Un hallazgo valioso que se da por accidente.")
+    }
+
+    // The editor shows neither, and the database keeps both, unread (ADR
+    // 0041): whatever the content Save gets, the card keeps its own.
+    @Test("saving an edit keeps the card's tags and type, which the editor doesn't show", .bug(id: 538))
+    func savingAnEditKeepsTheCardsTagsAndType() throws {
+        let mayo = try approve(
+            card(.concept, front: "Revolución de Mayo", back: "1810.", tags: ["historia::Argentina", "política"]),
+            in: engine)
+        var window = openWindow()
+        window.select([mayo.id])
+
+        window.startEditing()
+        window.saveCard(try card(nil, front: "Revolución de Mayo", back: "El 25 de mayo de 1810."))
+
+        let saved = try #require(try engine.cards().first { $0.id == mayo.id })
+        #expect(saved.back == "El 25 de mayo de 1810.")
+        #expect(saved.type == .concept)
+        #expect(saved.tags == ["historia::Argentina", "política"])
+        #expect(window.failure == nil)
     }
 
     @Test("editing a card starts with its Both ways, and saving turns it on or off as the editor says")
@@ -617,12 +560,10 @@ struct CardsWindowStateTests {
 
         window.select([ubuntu.id])
         window.startEditing()
-        window.saveCard(try card(.concept, front: "ubuntu", back: "Soy porque somos."))
+        window.saveCard(try card(.word, front: "ubuntu", back: "Soy porque somos."))
         window.select([serendipia.id])
         window.startEditing()
-        window.saveCard(
-            try card(
-                .word, front: "serendipia", back: "Un hallazgo valioso que se da por accidente.", tags: ["lenguaje"]))
+        window.saveCard(try card(.word, front: "serendipia", back: "Un hallazgo valioso que se da por accidente."))
 
         let rows = try #require(window.listedCardRows)
         #expect(rows.map(\.card.front) == ["serendipia", "ubuntu", "petricor"])

@@ -39,17 +39,6 @@ enum Window: String, CaseIterable {
     /// offers New Card and Import… in plain sight, and its sidebar's Ficha's
     /// Decks section lists the three, read from the repo's `App/FichaDecks/`.
     case cardsEmpty = "cards-empty"
-    /// The Cards window on ciencia, once the sample's tags sit inside tags
-    /// and five are pinned, in an order of their own, its sidebar scrolled to
-    /// its end, below the decks, so that it shows the pinned tags, one inside
-    /// another named by its whole path, and All Tags… after them.
-    case cardsTags = "cards-tags"
-    /// The Cards window on All Tags, with the same tags and an unused one:
-    /// every tag as a tree, with its counts and its Pinned checkbox, ciencia,
-    /// economía and historia open, each level sorted by Cards, the most
-    /// first, and economía selected, which `--key return` lists the cards
-    /// of, in All Tags' place, and `--key cmd+delete` asks whether to delete.
-    case cardsAllTags = "cards-all-tags"
     /// The Cards window on Idiomas, one of the decks the sample's cards sit in,
     /// with its sidebar's Your Decks section: Default first, then every deck as
     /// a tree, those at the top with cards in the reviews in the order of the
@@ -57,35 +46,24 @@ enum Window: String, CaseIterable {
     /// each with how many of its cards are due, Idiomas and Ciencias with a
     /// color and an emoji, which the decks inside them show too, Ciencias,
     /// Humanidades and Idiomas › Español closed, so that Sociedad shows, set
-    /// aside and grayed; the bar above the grid, with Idiomas's name, its
-    /// Actions menu and its cards' tags; and two of Idiomas's cards selected,
-    /// which `--key cmd+d` asks to move in the Change Deck sheet.
+    /// aside and grayed; the bar above the grid, with Idiomas's name and its
+    /// Actions menu; and two of Idiomas's cards selected, which `--key cmd+d`
+    /// asks to move in the Change Deck sheet.
     case cardsDecks = "cards-decks"
-    /// The same on Idiomas › Español, with historia, one of its
-    /// tags, chosen above the grid, which lists only the deck's cards that
-    /// carry it.
-    case cardsDeckTag = "cards-deck-tag"
     /// The same on Idiomas, with the question Delete… in its menu asks,
     /// which the tool can't open, counting the cards it deletes and the
     /// decks inside it.
     case cardsDeleteDeck = "cards-delete-deck"
     /// The Cards window on Idiomas › Español with the card form on a new
+    /// card, which starts in that deck, the focus in its front: its Deck
+    /// field, front and back, source and Both ways, with no type and no tags
+    /// (#538).
+    case cardsNewCard = "cards-new-card"
+    /// The Cards window on Idiomas › Español with the card form on a new
     /// card, which starts in that deck, and the New Deck sheet that New Deck…
     /// in the form's Deck field opens, which the tool can't open, over it,
     /// the focus in its name field.
     case cardsNewDeck = "cards-new-deck"
-    /// The Cards window on Ley, one of the card types of the user's own the
-    /// tool gives the sample, with its card on Parkinson's law selected, its
-    /// sidebar scrolled to its end so that it shows its Types section.
-    case cardsTypes = "cards-types"
-    /// The Cards window with the card form on a new card, and the New Type
-    /// sheet that New Type… in the form's type picker opens, which the tool
-    /// can't open, over it, the focus in its name field.
-    case cardsNewType = "cards-new-type"
-    /// The Cards window editing a sample card, with the New Type sheet that
-    /// New Type… in the editor's type picker opens over it, the focus in its
-    /// name field.
-    case cardsNewTypeEditor = "cards-new-type-editor"
     /// The Cards window with its Import sheet showing the preview of a file,
     /// which the tool can't choose in the open panel.
     case cardsImport = "cards-import"
@@ -957,38 +935,6 @@ func syncModel(
     return model
 }
 
-/// Moves some of the sample's tags inside others, as Rename… in the Cards
-/// window does (ADR 0021): estadística and psicología inside ciencia, which
-/// is blue, argentina inside historia, which has an emoji, and trabajo inside
-/// economía.
-func nestSampleTags(in engine: Engine) throws {
-    let moves = [
-        ("estadística", "ciencia::estadística"), ("psicología", "ciencia::psicología"),
-        ("argentina", "historia::argentina"), ("trabajo", "economía::trabajo"),
-    ]
-    for (tag, name) in moves {
-        try engine.renameTag(tag, to: name)
-    }
-    try engine.setColor(.blue, of: "ciencia")
-    try engine.setEmoji(try Emoji("🏛️"), of: "historia")
-}
-
-/// Pins five of the sample's tags, once `nestSampleTags(in:)` moved some
-/// inside others, as Pin to Sidebar in the Cards window does (ADR 0022), in
-/// an order that isn't alphabetical: lenguaje, ciencia, ciencia ›
-/// psicología, historia, and literatura.
-func pinSampleTags(in engine: Engine) throws {
-    for tag in ["lenguaje", "ciencia", "ciencia::psicología", "historia", "literatura"] {
-        try engine.pin(tag)
-    }
-}
-
-/// Gives pendientes, a tag no card carries, the color red, so that All Tags
-/// offers Clear Unused Tags….
-func leaveUnusedSampleTag(in engine: Engine) throws {
-    try engine.setColor(.red, of: "pendientes")
-}
-
 /// Sets Sociedad aside, as Set Aside in a deck's menu does (ADR 0024), so
 /// that the sidebar grays it and Sociedad › Economía, the deck inside it.
 func setSampleDeckAside(in engine: Engine) throws {
@@ -1007,8 +953,8 @@ func giveSampleDecksLooks(in engine: Engine) throws {
 
 /// The Cards window of `model` on the sample cards' deck `deck`, its cards
 /// read, with Ciencias, Humanidades and Idiomas › Español closed in the
-/// sidebar, as `cards-decks`, `cards-deck-tag` and `cards-delete-deck`
-/// start, so that Sociedad shows below the top decks' lines.
+/// sidebar, as `cards-decks` and `cards-delete-deck` start, so that
+/// Sociedad shows below the top decks' lines.
 func cardsWindow(onSampleDeck deck: String, of model: AppModel) -> CardsWindowState {
     var state = model.openCardsWindow()
     state.read(with: state.scheduler)
@@ -1019,61 +965,13 @@ func cardsWindow(onSampleDeck deck: String, of model: AppModel) -> CardsWindowSt
     return state
 }
 
-/// Gives the sample card types of the user's own (#365): Ley, with an emoji,
-/// to La ley de Parkinson and El principio de Pareto; Efeméride, with an
-/// emoji, to the Moon landing's question; Sesgo, with none, to the two
-/// biases; and Fórmula, with an emoji, to no card.
-func giveSampleUserTypes(in engine: Engine) throws {
-    let law = try engine.makeUserType(named: "Ley", emoji: try Emoji("📜"))
-    let date = try engine.makeUserType(named: "Efeméride", emoji: try Emoji("📅"))
-    let bias = try engine.makeUserType(named: "Sesgo")
-    try engine.makeUserType(named: "Fórmula", emoji: try Emoji("🧪"))
-    let types = [
-        "La ley de Parkinson": law, "El principio de Pareto": law,
-        "¿En qué año llegó el ser humano a la Luna?": date, "El efecto Dunning-Kruger": bias,
-        "El sesgo de confirmación": bias,
-    ]
-    for card in try engine.cards() {
-        guard let type = types[card.front] else { continue }
-        guard
-            let content = CardContent(
-                type: .user(type), front: card.front, back: card.back, tags: card.tags, source: card.source,
-                frontImage: card.frontImage, backImage: card.backImage, frontSound: card.frontSound,
-                backSound: card.backSound)
-        else {
-            throw RenderError(description: "The sample's card “\(card.front)” has a blank side: fix sampleEngine(at:).")
-        }
-        try engine.edit(card.id, with: content)
-    }
-    guard try engine.cards().count(where: { $0.type?.userType != nil }) == types.count else {
-        throw RenderError(description: "Some of the sample's cards giveSampleUserTypes(in:) types are gone: fix it.")
-    }
-}
-
-/// Chooses the user type named `name` in the sidebar of the Cards window
-/// `state`, and selects its card fronted `front`.
-func chooseUserType(_ name: String, selecting front: String, in state: inout CardsWindowState) throws {
-    state.read(with: state.scheduler)
-    guard let type = state.pickerTypes.first(where: { $0.userType?.name == name }) else {
-        throw RenderError(
-            description: "The Cards window doesn't list the type “\(name)”: fix giveSampleUserTypes(in:).")
-    }
-    state.choose(.cards(.type(type)))
-    guard case .success(.cards(let rows)) = state.listing, let row = rows.first(where: { $0.card.front == front })
-    else {
-        throw RenderError(description: "The type “\(name)” doesn't list “\(front)”: fix giveSampleUserTypes(in:).")
-    }
-    state.select([row.id])
-}
-
 /// Scrolls the sidebar of the Cards window `window`, once it shows, to its
-/// last row, a type's. A click in the sidebar would scroll it as Finder's
+/// last row. A click in the sidebar would scroll it as Finder's
 /// does, but in a window opened on a state of its own, as
 /// `makeContent(opening:)` opens it, the tool's click stops it with an
 /// exception about an observer of the window it can't remove.
 func scrollSidebarToEnd(of window: NSWindow) throws {
-    // All Tags' tree is an outline view too: the sidebar is the one at the
-    // leading side.
+    // The sidebar is the outline view at the leading side.
     let sidebar = outlineViews(in: window.contentView).min { isNearerLeadingSide($0, than: $1, in: window) }
     guard let sidebar, sidebar.numberOfRows > 0 else {
         throw RenderError(
@@ -1433,13 +1331,13 @@ func hours(_ count: Int) -> TimeInterval {
 /// `renderDataFolder`, with copies to list, and files to weigh.
 func model(for name: Window) throws -> AppModel {
     switch name {
-    case .cards, .cardsCard, .cardsCardDetails, .cardsNewDeck, .cardsImport, .cardsImportAnki, .cardsHowFast,
-        .cardsHowFastNewDeck, .cardsFichaDeckWords, .cardsFichaDeckPicture, .cardsFichaDeckFlower, .general, .pace,
-        .interruptions, .capture, .welcome, .welcomeOneButton, .panelCard, .panelMetThemAll:
+    case .cards, .cardsCard, .cardsCardDetails, .cardsNewCard, .cardsNewDeck, .cardsImport, .cardsImportAnki,
+        .cardsHowFast, .cardsHowFastNewDeck, .cardsFichaDeckWords, .cardsFichaDeckPicture, .cardsFichaDeckFlower,
+        .general, .pace, .interruptions, .capture, .welcome, .welcomeOneButton, .panelCard, .panelMetThemAll:
         return try AppModel(engine: try sampleEngine(at: .inMemory).engine)
     case .cardsEmpty, .panelMetThemAllOffer:
         return try AppModel(engine: try Engine(location: .inMemory, time: SystemTimeSource()))
-    case .cardsDecks, .cardsDeckTag, .cardsDeleteDeck:
+    case .cardsDecks, .cardsDeleteDeck:
         let engine = try sampleEngine(at: .inMemory).engine
         try setSampleDeckAside(in: engine)
         try giveSampleDecksLooks(in: engine)
@@ -1454,18 +1352,6 @@ func model(for name: Window) throws -> AppModel {
     case .panelArabic, .cardsArabic:
         let engine = try sampleEngine(at: .inMemory).engine
         try addSampleArabicCard(in: engine)
-        return try AppModel(engine: engine)
-    case .cardsTags, .cardsAllTags:
-        let engine = try sampleEngine(at: .inMemory).engine
-        try nestSampleTags(in: engine)
-        try pinSampleTags(in: engine)
-        if name == .cardsAllTags {
-            try leaveUnusedSampleTag(in: engine)
-        }
-        return try AppModel(engine: engine)
-    case .cardsTypes, .cardsNewType, .cardsNewTypeEditor:
-        let engine = try sampleEngine(at: .inMemory).engine
-        try giveSampleUserTypes(in: engine)
         return try AppModel(engine: engine)
     case .cardsAnkiImported: return try ankiImportedModel()
     case .cardsImportHeavy:
@@ -1619,39 +1505,12 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         let window = CardsWindow(model: model)
         window.makeContent(opening: state)
         return window
-    case .cardsTags:
-        var state = model.openCardsWindow()
-        state.choose(.cards(.tag("ciencia")))
-        let window = CardsWindow(model: model)
-        window.makeContent(opening: state)
-        return window
-    case .cardsAllTags:
-        var state = model.openCardsWindow()
-        state.choose(.allTags)
-        for tag in ["ciencia", "economía", "historia"] {
-            state.setOpen(true, tag)
-        }
-        state.sortAllTags(by: .cards, ascending: false)
-        state.selectTags(["economía"])
-        let window = CardsWindow(model: model)
-        window.makeContent(opening: state)
-        return window
     case .cardsDecks:
         var state = cardsWindow(onSampleDeck: "Idiomas", of: model)
         guard case .success(.cards(let rows)) = state.listing else {
             throw RenderError(description: "The Cards window lists no cards in Idiomas: fix SampleCards.swift.")
         }
         state.select(Set(rows.filter { ["serendipia", "hygge"].contains($0.card.front) }.map(\.id)))
-        let window = CardsWindow(model: model)
-        window.makeContent(opening: state)
-        return window
-    case .cardsDeckTag:
-        var state = cardsWindow(onSampleDeck: "Idiomas::Español", of: model)
-        state.chooseDeckTag("historia")
-        guard state.chosenDeckTag == "historia" else {
-            throw RenderError(
-                description: "No card of Idiomas › Español carries historia: fix SampleCards.swift.")
-        }
         let window = CardsWindow(model: model)
         window.makeContent(opening: state)
         return window
@@ -1664,34 +1523,14 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         let window = CardsWindow(model: model)
         window.makeContent(opening: state)
         return window
-    case .cardsNewDeck:
+    case .cardsNewCard, .cardsNewDeck:
         var state = model.openCardsWindow()
         state.read(with: state.scheduler)
         state.choose(.cards(.deck("Idiomas::Español")))
         state.openNewCardForm()
-        state.askForNewDeck(in: .form)
-        let window = CardsWindow(model: model)
-        window.makeContent(opening: state)
-        return window
-    case .cardsTypes:
-        var state = model.openCardsWindow()
-        try chooseUserType("Ley", selecting: "La ley de Parkinson", in: &state)
-        let window = CardsWindow(model: model)
-        window.makeContent(opening: state)
-        return window
-    case .cardsNewType:
-        var state = model.openCardsWindow()
-        state.read(with: state.scheduler)
-        state.openNewCardForm()
-        state.askForNewType(in: .form)
-        let window = CardsWindow(model: model)
-        window.makeContent(opening: state)
-        return window
-    case .cardsNewTypeEditor:
-        var state = model.openCardsWindow()
-        try chooseUserType("Ley", selecting: "La ley de Parkinson", in: &state)
-        state.startEditing()
-        state.askForNewType(in: .editor)
+        if name == .cardsNewDeck {
+            state.askForNewDeck(in: .form)
+        }
         let window = CardsWindow(model: model)
         window.makeContent(opening: state)
         return window
@@ -2389,12 +2228,6 @@ do {
     try makeKeyWindowOfApp(window)
     window.orderFrontRegardless()
     try wait(1.5)
-    // Its sidebar's pinned tags, or its Types section, below the decks,
-    // which a click in the sidebar can't reach there.
-    if [.cardsTags, .cardsTypes].contains(name) {
-        try scrollSidebarToEnd(of: window)
-        try wait(0.5)
-    }
     // The chosen one of Ficha's decks, in its sidebar's Ficha's Decks
     // section, below Your Decks.
     if [.cardsFichaDeckWords, .cardsFichaDeckPicture, .cardsFichaDeckFlower].contains(name) {

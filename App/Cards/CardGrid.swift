@@ -102,31 +102,24 @@ struct CardGrid: View {
     }
 
     /// What VoiceOver names the grid: the cards of the deck the sidebar
-    /// chose, by its whole name, or else of what it chose instead.
+    /// chose, by its whole name. The grid lists a deck's cards alone, since
+    /// tags and types left the window (#538), so the sidebar always chose a
+    /// deck while it shows; Default's name stands for none.
     private var accessibilityName: String {
-        switch state.selectedDeck {
-        case Deck.defaultName?:
-            String(
+        guard let deck = state.selectedDeck, deck != Deck.defaultName else {
+            return String(
                 localized: "Cards in Default",
                 comment: """
                     What VoiceOver names the Cards window's grid while it lists Default's cards, the deck of cards \
                     with no other.
                     """)
-        case .some(let deck):
-            String(
-                localized: "Cards in \(TagPath.shown(deck))",
-                comment: """
-                    What VoiceOver names the Cards window's grid while it lists a deck's cards, those of the decks \
-                    inside it too, with the deck's whole name, like “Idiomas › Inglés”.
-                    """)
-        case nil:
-            String(
-                localized: "Listed cards",
-                comment: """
-                    What VoiceOver names the Cards window's grid while it lists cards of no deck, such as a tag's or a \
-                    type's.
-                    """)
         }
+        return String(
+            localized: "Cards in \(TagPath.shown(deck))",
+            comment: """
+                What VoiceOver names the Cards window's grid while it lists a deck's cards, those of the decks \
+                inside it too, with the deck's whole name, like “Idiomas › Inglés”.
+                """)
     }
 
     /// The tile of `tile`, which a click selects, as the keys held down say,

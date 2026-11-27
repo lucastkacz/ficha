@@ -310,9 +310,9 @@ final class TagChangesSyncTests {
         #expect(try iPhone.engine.cards().count == 2)
     }
 
-    // Only Filosofía syncs, so each device's cards stay on it. The Mac drags
-    // P › l2 › Y › l1 and Q › l2 into P at once, in All Tags, which moves
-    // them in that order: Q › l2 › Y › l1 becomes P › l2 › Y › l1, which the
+    // Only Filosofía syncs, so each device's cards stay on it. The Mac moves
+    // P › l2 › Y › l1 and Q › l2 into P at once, which moves them in that
+    // order: Q › l2 › Y › l1 becomes P › l2 › Y › l1, which the
     // first move no longer reaches. iCloud's engine promises no order, so the
     // iPhone hears the two moves in either order, in one fetch or in one each.
     @Test(

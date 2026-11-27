@@ -39,15 +39,13 @@ extension CardsWindowState {
         }
 
         /// What Add saves, checked as every card is, or nil while a side is
-        /// blank: it has neither text, an image nor a sound. Its tags are
-        /// those of the follow-up's card, as they are, while the Tags field
-        /// holds them as it started.
+        /// blank: it has neither text, an image nor a sound. A card the form
+        /// adds has no tags and no type, which the form doesn't show (#538).
         var content: CardContent? {
             CardContent(
-                type: draft.type, front: draft.front.text, back: draft.back.text,
-                tags: CardContent.tags(inField: draft.tags, startedWith: followUp?.card.tags ?? []),
-                source: draft.source, frontImage: draft.front.image, backImage: draft.back.image,
-                frontSound: draft.front.sound, backSound: draft.back.sound)
+                type: nil, front: draft.front.text, back: draft.back.text, tags: [], source: draft.source,
+                frontImage: draft.front.image, backImage: draft.back.image, frontSound: draft.front.sound,
+                backSound: draft.back.sound)
         }
 
         /// Whether Add is on: while both sides have text, an image or a
@@ -90,12 +88,8 @@ extension CardsWindowState.CardForm {
 extension CardsWindowState.CardForm {
     /// What the form's fields hold, as the user types them.
     public struct Draft: Sendable, Equatable {
-        /// The type, or nil for None, which the form starts at.
-        public var type: CardType?
         public var front = Side()
         public var back = Side()
-        /// The tags as the Tags field holds them, separated by commas.
-        public var tags = ""
         public var source = ""
         /// Whether the card goes both ways, which the form starts off.
         public var bothWays = false
@@ -105,7 +99,7 @@ extension CardsWindowState.CardForm {
         /// the user picks another, or names one with New Deck….
         public var deck = Deck.defaultName
 
-        /// Empty fields, the type None, Both ways off, and Default.
+        /// Empty fields, Both ways off, and Default.
         public init() {}
 
         /// The side `side` of the draft.
@@ -137,8 +131,8 @@ extension CardsWindowState.CardForm {
 }
 
 extension CardsWindowState {
-    /// Opens the form on a new card: every field empty, the type None, Both
-    /// ways off, and the deck a new card starts in
+    /// Opens the form on a new card: every field empty, Both ways off, and
+    /// the deck a new card starts in
     /// (`CardsWindowDeckField.swift`); or brings back the new card's form
     /// Show Card set aside, as it was.
     public mutating func openNewCardForm() {
@@ -151,9 +145,9 @@ extension CardsWindowState {
     /// Convert to Card: opens the form from the capture the detail shows,
     /// while it's offered, with the capture's source filled in, in the deck a
     /// new card starts in, or from the follow-up it shows, with its card
-    /// beside it and the card's deck and tags filled in, so the new cards
-    /// land next to it; or brings back the form from that capture or
-    /// follow-up Show Card set aside, as it was.
+    /// beside it and the card's deck filled in, so the new cards land next to
+    /// it; or brings back the form from that capture or follow-up Show Card
+    /// set aside, as it was.
     public mutating func convertToCard() {
         guard cardForm == nil, actions.contains(.convertToCard) else { return }
         var form: CardForm
@@ -164,8 +158,7 @@ extension CardsWindowState {
         case .followUp(let followUp):
             form = CardForm(openedBy: .followUp(followUp))
             form.draft.deck = followUp.card.deck
-            form.draft.tags = CardContent.tagsField(of: followUp.card.tags)
-        case .expansion, .card, .cards, .nothingSelectedInInbox, .noCardSelected, .allTags:
+        case .expansion, .card, .cards, .nothingSelectedInInbox, .noCardSelected:
             return
         }
         form.draft.source = form.capture?.source ?? ""
@@ -236,13 +229,13 @@ extension CardsWindowState {
     /// which becomes the deck the last card was added to. A card added from a
     /// capture keeps it as its capture, and the capture stays in the inbox
     /// until the form closes. Then it clears the front and the back, their
-    /// images and sounds too, and keeps the type, the deck, the tags, the
-    /// source and Both ways, for the next card. While the grid lists the
-    /// card, at its end, as it lists cards in the order they came in, the
-    /// window selects it and scrolls to it, unless Lucas is editing a card
-    /// meanwhile; a card that went to a deck the grid doesn't list leaves the
-    /// selection as it was. When the card can't be saved, it records why, and
-    /// the fields stay as they were.
+    /// images and sounds too, and keeps the deck, the source and Both ways,
+    /// for the next card. While the grid lists the card, at its end, as it
+    /// lists cards in the order they came in, the window selects it and
+    /// scrolls to it, unless Lucas is editing a card meanwhile; a card that
+    /// went to a deck the grid doesn't list leaves the selection as it was.
+    /// When the card can't be saved, it records why, and the fields stay as
+    /// they were.
     public mutating func addCard() {
         guard let form = cardForm, form.canAdd, let content = form.content else { return }
         var added: Card?

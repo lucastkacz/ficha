@@ -105,8 +105,8 @@ extension Card {
         bothWays = try row.decode(forColumn: "bothWays")
     }
 
-    /// Whether it carries the tag `tag`, or a tag inside it, as choosing the
-    /// tag in the Cards window's sidebar lists it.
+    /// Whether it carries the tag `tag`, or a tag inside it, as an export of
+    /// the tag takes it.
     func hasTag(within tag: String) -> Bool {
         tags.contains { TagPath.isTag($0, within: tag) }
     }

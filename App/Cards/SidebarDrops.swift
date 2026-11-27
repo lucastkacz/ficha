@@ -8,14 +8,12 @@ import UniformTypeIdentifiers
 // on, or to the top on the Your Decks section's title. `CardsWindowState`
 // decides which drops it takes (`CardsWindowDeckEdits.swift`); this file
 // carries what's dragged, hands what's dropped to it as it came, and draws
-// where it lands. Tags are dragged in All Tags alone, as text, with an outline
-// of their own (`AllTagsOutline.swift`).
+// where it lands.
 
 /// What Lucas drags onto the sidebar's decks, as the window's state names
 /// it: a tile of the grid, with the other selected ones when it's one of
 /// them, all in one drag, or a deck's row. It stays within Ficha, under a
-/// type of its own, so no other app takes it, and the sidebar's pinned
-/// tags, which take text, don't either.
+/// type of its own, so no other app takes it.
 nonisolated struct SidebarDrag: Codable, Sendable, Transferable {
     let dragged: [CardsWindowState.Dragged]
 

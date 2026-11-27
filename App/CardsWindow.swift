@@ -68,8 +68,7 @@ final class CardsWindow: NSWindow {
         let content = NSHostingView(
             rootView: CardsView(model: model, state: state)
                 .frame(minWidth: Self.minimumSize.width, minHeight: Self.minimumSize.height))
-        // The toolbar, and the title, which names the tag whose cards the
-        // window lists in All Tags' place.
+        // The toolbar, and the title, as the content names it.
         content.sceneBridgingOptions = [.toolbars, .title]
         content.sizingOptions = [.minSize]
         contentView = content

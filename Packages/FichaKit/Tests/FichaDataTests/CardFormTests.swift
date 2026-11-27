@@ -43,28 +43,26 @@ struct CardFormTests {
         #expect(try engine.cards().map(\.front) == ["petricor"])
     }
 
-    // So that the next card on the same subject is quick, as in Anki.
-    @Test("after Add, the front and back are empty and the type, tags and source stay")
+    // So that the next card on the same subject is quick, as in Anki. The
+    // form shows no tags and no type, so the card it adds has neither (#538).
+    @Test("after Add, the front and back are empty and the source stays, and the card has no tags and no type")
     func afterAddTheSidesAreEmptyAndTheRestStays() throws {
         var window = openWindow()
         window.openNewCardForm()
-        window.type(front: "petricor", back: "El olor de la lluvia.", tags: "lenguaje, ciencia", source: "Un podcast")
-        window.choose(type: .word)
+        window.type(front: "petricor", back: "El olor de la lluvia.", source: "Un podcast")
 
         window.addCard()
 
         let added = try #require(try engine.cards().first)
-        #expect(added.type == .word)
+        #expect(added.type == nil)
         #expect(added.front == "petricor")
-        #expect(added.tags == ["lenguaje", "ciencia"])
+        #expect(added.tags == [])
         #expect(added.source == "Un podcast")
         #expect(added.captureID == nil)
         #expect(try engine.reviewNow(.defaults) == [.new(added)])
         let draft = try #require(window.cardForm?.draft)
         #expect(draft.front.text == "")
         #expect(draft.back.text == "")
-        #expect(draft.type == .word)
-        #expect(draft.tags == "lenguaje, ciencia")
         #expect(draft.source == "Un podcast")
         #expect(window.cardForm?.addedCards == [added])
         #expect(window.cardForm?.canAdd == false)
@@ -113,7 +111,7 @@ struct CardFormTests {
         #expect(window.cardForm?.frontWarning == .repeats(petricor))
     }
 
-    // As the type does, so that several words in a row go both ways.
+    // As the source does, so that several words in a row go both ways.
     @Test("Both ways is off for a new card, Add saves the card going the way it says, and it stays for the next card")
     func bothWaysIsOffForANewCardAndStaysAfterAdd() throws {
         var window = openWindow()
@@ -169,8 +167,6 @@ struct CardFormTests {
         #expect(form.draft.source == "Un discurso de Mandela")
         #expect(form.draft.front.text == "")
         #expect(form.draft.back.text == "")
-        #expect(form.draft.type == nil)
-        #expect(form.draft.tags == "")
     }
 
     @Test(
@@ -200,9 +196,7 @@ struct CardFormTests {
         #expect(try engine.inbox().captures == [bostezo])
     }
 
-    @Test(
-        "Convert to Card on a follow-up opens the form beside the follow-up and its card, with the card's tags filled in"
-    )
+    @Test("Convert to Card on a follow-up opens the form beside the follow-up and its card, in the card's deck")
     func theFormFromAFollowUpShowsItsCard() throws {
         let poderes = try approve(
             card(
@@ -221,30 +215,10 @@ struct CardFormTests {
         #expect(form.capture == followUp)
         #expect(form.followUp?.capture == followUp)
         #expect(form.followUp?.card == poderes)
-        #expect(form.draft.tags == "política, argentina")
-        #expect(form.draft.type == nil)
+        #expect(form.draft.deck == poderes.deck)
         #expect(form.draft.front.text == "")
         #expect(form.draft.back.text == "")
         #expect(form.draft.source == "")
-    }
-
-    @Test("a card added from a follow-up keeps a tag with a comma in its name whole, until the user changes the field")
-    func aFollowUpsTagWithACommaStaysWhole() throws {
-        let poderes = try approve(
-            card(.concept, front: "La división de poderes", back: "Tres.", tags: ["历史、文学", "política"]), in: engine)
-        let followUp = try engine.followUp(poderes.id, text: "¿Cómo se eligen los jueces?")
-        var window = openWindow()
-        window.choose(.inbox)
-        window.selectInInbox(.capture(followUp.id))
-        window.convertToCard()
-
-        window.type(front: "Los jueces", back: "Los propone el Ejecutivo.")
-        window.addCard()
-        window.type(front: "Los jueces de la Corte", back: "Los aprueba el Senado.", tags: "历史、文学, arte")
-        window.addCard()
-
-        let added = try #require(window.cardForm?.addedCards)
-        #expect(added.map(\.tags) == [["历史、文学", "política"], ["历史", "文学", "arte"]])
     }
 
     @Test(
@@ -281,7 +255,8 @@ struct CardFormTests {
             cards.dropFirst().map(\.front) == [
                 "¿Quién propone a los jueces de la Corte Suprema?", "¿Quién aprueba a los jueces de la Corte Suprema?",
             ])
-        #expect(cards.dropFirst().map(\.tags) == [["política", "argentina"], ["política", "argentina"]])
+        // The form shows no tags, so they don't take the card's (#538).
+        #expect(cards.dropFirst().map(\.tags) == [[], []])
         #expect(cards.dropFirst().map(\.captureID) == [followUp.id, followUp.id])
         #expect(try engine.inbox().followUps.isEmpty)
         #expect(try engine.inbox().captures.isEmpty)
@@ -441,21 +416,11 @@ struct CardFormTests {
 extension CardsWindowState {
     /// Types into the form's fields, in place of what they held, as the user
     /// would, leaving alone each field whose text is nil.
-    fileprivate mutating func type(
-        front: String? = nil, back: String? = nil, tags: String? = nil, source: String? = nil
-    ) {
+    fileprivate mutating func type(front: String? = nil, back: String? = nil, source: String? = nil) {
         guard var draft = cardForm?.draft else { return }
         draft.front.text = front ?? draft.front.text
         draft.back.text = back ?? draft.back.text
-        draft.tags = tags ?? draft.tags
         draft.source = source ?? draft.source
-        changeDraft(draft)
-    }
-
-    /// Picks `type` in the form's type picker, or None when it's nil.
-    fileprivate mutating func choose(type: CardType?) {
-        guard var draft = cardForm?.draft else { return }
-        draft.type = type
         changeDraft(draft)
     }
 

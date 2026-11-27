@@ -84,16 +84,15 @@ private struct SetAsideIcon: View {
 
 /// The selected card, whole: Lucas's note on top when it's flagged, when he
 /// set it aside when it's set aside on its own, and its set-aside decks when
-/// it's set aside with its deck,
-/// its type and tags and whether it goes both ways, its front and back, each
-/// side's image above its text and its sound below it, and its source; then,
-/// in words, that it's new, or when it's back and how many times he saw it
-/// (`CardWords`); and under Details, closed until he opens it, where it
-/// stands as Anki's Card Info says it, and its review log, in a chart and in
-/// full (#537). Details is a disclosure triangle, which Tab reaches while
-/// macOS's Keyboard navigation is on and Space opens, and VoiceOver reads
-/// and opens as one. Its front, back, source and images show at the card
-/// size, and the rest stays its size.
+/// it's set aside with its deck, whether it goes both ways, its front and
+/// back, each side's image above its text and its sound below it, and its
+/// source; then, in words, that it's new, or when it's back and how many
+/// times he saw it (`CardWords`); and under Details, closed until he opens
+/// it, where it stands as Anki's Card Info says it, and its review log, in a
+/// chart and in full (#537). Details is a disclosure triangle, which Tab
+/// reaches while macOS's Keyboard navigation is on and Space opens, and
+/// VoiceOver reads and opens as one. Its front, back, source and images show
+/// at the card size, and the rest stays its size.
 struct CardDetail: View {
     let row: CardRow
     /// Where the card is, in words, as the window says it.
@@ -115,7 +114,7 @@ struct CardDetail: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 FlagAndSetAside(standing: row.cardStanding)
-                TypeAndTags(card: row.card)
+                BothWaysMark(card: row.card)
                 if let image = row.card.frontImage {
                     SideImage(image: images[image], maximumHeight: cardSize.scaled(320))
                 }
@@ -440,8 +439,8 @@ private struct CardWords: View {
     }
 }
 
-/// A word in a capsule of the window's tint, on top of a detail: a card's
-/// type, or what kind of capture it is.
+/// A word in a capsule of the window's tint, on top of a capture's detail:
+/// what kind of capture it is.
 private struct Chip: View {
     let text: String
 
@@ -455,37 +454,27 @@ private struct Chip: View {
     }
 }
 
-/// A card's type, when it has one, its tags after it when it has any, and
-/// Both ways last when it goes both ways.
-private struct TypeAndTags: View {
+/// Both ways, above a card's front while it goes both ways. A card shows
+/// neither its type nor its tags, which the database keeps (#538).
+private struct BothWaysMark: View {
     let card: Card
 
     var body: some View {
-        HStack(spacing: 8) {
-            if let type = card.type {
-                Chip(text: type.title)
+        if card.bothWays {
+            Label {
+                Text(
+                    "Both ways",
+                    comment: """
+                        In the Cards window's detail, above a card's front: it's also reviewed back first, its back, \
+                        then its front.
+                        """)
+            } icon: {
+                // Arrows both ways, the same mirrored, so no backward and
+                // forward.
+                Image(systemName: "arrow.left.arrow.right")
             }
-            if !card.tags.isEmpty {
-                Label(card.tags.map(TagPath.shown).formatted(.list(type: .and, width: .narrow)), systemImage: "tag")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            if card.bothWays {
-                Label {
-                    Text(
-                        "Both ways",
-                        comment: """
-                            In the Cards window's detail, after a card's type and tags: it's also reviewed back \
-                            first, its back, then its front.
-                            """)
-                } icon: {
-                    // Arrows both ways, the same mirrored, so no backward
-                    // and forward.
-                    Image(systemName: "arrow.left.arrow.right")
-                }
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
         }
     }
 }
@@ -579,15 +568,15 @@ struct CaptureDetail: View {
     }
 }
 
-/// The card an expansion or a follow-up is tied to, in its detail: its type,
-/// tags and whether it goes both ways, its front, with the marks the inbox
-/// gives it, and its back.
+/// The card an expansion or a follow-up is tied to, in its detail: whether
+/// it goes both ways, its front, with the marks the inbox gives it, and its
+/// back.
 private struct TiedCard: View {
     let card: Card
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            TypeAndTags(card: card)
+            BothWaysMark(card: card)
             FrontCell(card: card, wraps: true)
                 .font(.headline)
             TextAsItReads(card.back)

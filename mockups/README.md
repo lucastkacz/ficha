@@ -43,7 +43,7 @@ No build step: React 18.3.1 from cdnjs and htm 3.1.1 from jsDelivr, pinned, so c
 | `--text-title2` semibold, `--text-title3` semibold, `--text-body`, `--text-caption` | `.title2.weight(.semibold)`, `.title3.weight(.semibold)`, `.body`, `.caption` (`CardTextStyle`) |
 | `Button` / `Button prominent` / `Button yellow` | `.buttonStyle(.bordered)` / `.borderedProminent` / `.borderedProminent` with `.tint(.yellow)` and a black title while the panel has the keyboard |
 | `IconButton` | `.labelStyle(.iconOnly)`, `.buttonStyle(.borderless)` |
-| `KeyLabel`, `Capsule` | `KeyLabel`, `capsuleLook(tintedWith:)` (`App/TagCapsule.swift`) |
+| `KeyLabel`, `Capsule` | `KeyLabel`, a badge's `.background(.secondary.opacity(0.15), in: .capsule)`, as `AheadBadge`'s (`App/ReviewPanelView.swift`) |
 | `Segmented` | `Picker` with `.pickerStyle(.segmented)` |
 | `DisclosureGroup` | `DisclosureGroup(isExpanded:)` |
 | `Window`'s `toolbar`, as the Cards window's New Card and Search, in `desktop/` | `.toolbar` and `.searchable(text:placement: .toolbar)`, at the window's unified toolbar's trailing end (`App/Cards/CardsView.swift`) |
