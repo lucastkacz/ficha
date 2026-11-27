@@ -431,7 +431,7 @@ struct ImportSheet: View {
                 ))
             if outcome.copyBeforeImport != nil {
                 Text(
-                    "To undo it, restore the copy saved before it, in Settings › Backups.",
+                    "To undo it, restore the copy saved before it, in Settings › Advanced.",
                     comment: "In the Import sheet once it's done, when Ficha saved a copy before the import."
                 )
                 .foregroundStyle(.secondary)
@@ -456,11 +456,11 @@ struct ImportSheet: View {
         switch importing.cardsComingIn {
         case .new(let count)?:
             Text(
-                "\(count) new cards come in, at the pace of your new cards per day.",
+                "\(count) new cards come in, at your pace.",
                 comment: "In the Import sheet's preview, with how many new cards the file brings.")
         case .newAndWithProgress(let new, let withProgress)?:
             Text(
-                "\(new) new cards come in, at the pace of your new cards per day, and \(withProgress) with their progress and Anki's reviews, due when Anki had them due.",
+                "\(new) new cards come in, at your pace, and \(withProgress) with their progress and Anki's reviews, due when Anki had them due.",
                 comment:
                     "In the Import sheet's preview of an Anki package, with how many cards come in new and how many with Anki's reviews of them, the interval Anki gave them and the day or moment Anki had them due."
             )

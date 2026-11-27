@@ -14,7 +14,7 @@ Each claim says where it comes from: a link to Apple's documentation, the guidel
 4. **Lucas's data.** Apple's container migration only moves, once, and can't reach the App Group's container. The path that loses nothing copies instead, from a last unsandboxed build signed by the team, and, our inference, the sandboxed app refuses to start empty (section 3).
 5. **Sync needs its own answers where Apple's are wrong for Ficha.** An iCloud account change empties `CKSyncEngine`'s queue of unsent changes, and Apple says to delete local data on sign-out, but Ficha's cards exist before any sync. Our inference: Ficha tracks unsent changes in SQLite itself, which also catches the CLI's writes (section 5).
 6. **No more ad hoc builds.** iCloud and push are restricted entitlements, so `make run` and `make install` need the team's signing, and a development-signed real Ficha would put Lucas's cards in CloudKit's Development environment, which the App Store build never reads (section 6).
-7. **A privacy policy at a public URL**, linked from the app too (Guideline 5.1.1(i)). Since #303, `site/privacy.md` is the policy, and Settings' About tab links to it.
+7. **A privacy policy at a public URL**, linked from the app too (Guideline 5.1.1(i)). Since #303, `site/privacy.md` is the policy, and Settings links to it, since #492 at the foot of its General tab.
 
 **What the grilling must decide** is listed in "Questions for the grilling", below the sections.
 

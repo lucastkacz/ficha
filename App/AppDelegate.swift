@@ -139,10 +139,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         openSettings(on: nil)
     }
 
-    /// Opens the Settings window on its Backups tab, as "Last backup failed"
-    /// in the menu does. When it's open, it comes forward on that tab.
+    /// Opens the Settings window on its Advanced tab, scrolled to its foot,
+    /// where Backups shows, as "Last backup failed" in the menu does. When
+    /// it's open, it comes forward there.
     func openBackupSettings() {
-        openSettings(on: .backups)
+        openSettings(on: .advanced, at: .backups)
     }
 
     /// Opens the Settings window on its Sync tab, as "iCloud is full" in the
@@ -151,18 +152,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         openSettings(on: .sync)
     }
 
-    /// Opens the Settings window on `tab`, or on the tab Lucas left it on
-    /// last. When it's open, it comes forward, on `tab` if there's one.
-    private func openSettings(on tab: SettingsTab?) {
+    /// Opens the Settings window on `tab`, scrolled to its foot when
+    /// `section` is one of the tab's (`SettingsScroll`), or on the tab Lucas
+    /// left it on last. When it's open, it comes forward, on `tab` if there's
+    /// one.
+    private func openSettings(on tab: SettingsTab?, at section: SettingsSection? = nil) {
         guard let model else { return }
         if let tab, let tabs = settingsWindow?.contentViewController as? SettingsTabViewController {
-            tabs.select(tab)
+            tabs.select(tab, at: section)
         }
         open(&settingsWindow) {
             AppWindow(
                 tabs: SettingsTabViewController(
                     model: model, captureShortcut: captureShortcut,
-                    closeReviewPanel: { [weak self] in self?.panel?.close(.byLucas) }, openingOn: tab))
+                    closeReviewPanel: { [weak self] in self?.panel?.close(.byLucas) },
+                    openDiagnostics: { [weak self] in self?.openDiagnostics() }, openingOn: tab, at: section))
         }
     }
 

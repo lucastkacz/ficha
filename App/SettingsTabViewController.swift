@@ -1,19 +1,9 @@
 import AppKit
+import FichaData
+import Observation
 import SwiftUI
 
-/// A tab of the Settings window. Its raw value is how the preferences store
-/// it, and its tab's identifier, so it never changes.
-enum SettingsTab: String {
-    case general
-    case appearances
-    case reviewPanel
-    /// Stored as the Ladder tab it replaced (#404), so Settings reopens on
-    /// it.
-    case scheduling = "ladder"
-    case backups
-    case sync
-    case about
-
+extension SettingsTab {
     /// The tab `item` shows, if it's one of these.
     init?(of item: NSTabViewItem?) {
         guard let identifier = item?.identifier as? String else { return nil }
@@ -24,15 +14,27 @@ enum SettingsTab: String {
     var name: String {
         switch self {
         case .general: String(localized: "General", comment: "A tab of the Settings window.")
-        case .appearances: String(localized: "Appearances", comment: "A tab of the Settings window.")
-        case .reviewPanel: String(localized: "Review panel", comment: "A tab of the Settings window.")
-        case .scheduling:
+        case .pace:
             String(
-                localized: "Scheduling",
-                comment: "A tab of the Settings window: when cards come back, as Anki's deck options set it.")
-        case .backups: String(localized: "Backups", comment: "A tab of the Settings window.")
+                localized: "Pace",
+                comment: """
+                    A tab of the Settings window: how fast new cards come, and the queue of decks they come from.
+                    """)
+        case .interruptions:
+            String(
+                localized: "Interruptions",
+                comment: """
+                    A tab of the Settings window: when the review panel shows up on its own, what holds it back, and \
+                    how it behaves once it's up.
+                    """)
         case .sync: String(localized: "Sync", comment: "A tab of the Settings window: sync through iCloud.")
-        case .about: String(localized: "About", comment: "A tab of the Settings window.")
+        case .advanced:
+            String(
+                localized: "Advanced",
+                comment: """
+                    A tab of the Settings window: when cards come back, as Anki's deck options set it, the backups and \
+                    Diagnostics.
+                    """)
         }
     }
 
@@ -40,84 +42,84 @@ enum SettingsTab: String {
     var symbol: String {
         switch self {
         case .general: "gearshape"
-        case .appearances: "clock"
-        case .reviewPanel: "macwindow"
-        case .scheduling: "calendar.badge.clock"
-        case .backups: "clock.arrow.circlepath"
+        case .pace: "speedometer"
+        case .interruptions: "clock"
         case .sync: "icloud"
-        case .about: "info.circle"
+        case .advanced: "slider.horizontal.3"
         }
     }
 }
 
-/// The Settings window's content, as a Mac's usual settings window: its tabs
-/// in the toolbar, each as tall as its settings, so none scrolls, and the
-/// window as tall as the selected tab and as wide as its toolbar's tabs need,
-/// 500 points at least. The last tab says which version of the
-/// app this is. It opens on the tab Lucas left it on last, unless it's asked
-/// to open on another.
+/// Where a tab of Settings scrolls to, as Settings is asked to show one of
+/// its sections, such as Advanced's Backups, which "Last backup failed" in
+/// the menu opens, at Advanced's foot (`SettingsTabContent`): each request
+/// scrolls once, even for the section asked for before.
+@Observable
+final class SettingsScroll {
+    /// The section asked for last, or nil while none was.
+    private(set) var section: SettingsSection?
+    /// How many times a section was asked for, so a tab scrolls each time.
+    private(set) var requests = 0
+
+    /// Asks the tab that holds `section` to scroll to its foot, which shows
+    /// it when it's one of Advanced's last: Backups, the copies or
+    /// Diagnostics.
+    func scroll(to section: SettingsSection) {
+        self.section = section
+        requests += 1
+    }
+}
+
+/// The Settings window's content, as a Mac's usual settings window: its five
+/// tabs in the toolbar (#492), each as tall as its settings, so none scrolls,
+/// but Advanced, taller than a screen, which scrolls at the height of
+/// Interruptions, the next tallest; and the window as tall as the selected
+/// tab and as wide as its toolbar's tabs need, 500 points at least. It opens
+/// on the tab Lucas left it on last, unless it's asked to open on another.
 final class SettingsTabViewController: NSTabViewController {
+    /// How tall Advanced is, past which it scrolls: Interruptions' height, as
+    /// `make render`'s picture of Interruptions measured it.
+    private static let advancedHeight: CGFloat = 739
     /// How wide every tab is, and so the window.
     private var width: CGFloat = 500
+    /// Where a tab scrolls to, as Settings is asked to show a section.
+    private let scroll = SettingsScroll()
 
     /// The tabs of every default Lucas can change in `model`, and of the
-    /// capture shortcut, `captureShortcut`, then the Backups tab, which closes
-    /// the review panel with `closeReviewPanel` before a restore, the Sync
-    /// tab, in an app that syncs, and the About tab. It opens on `tab`, or on
-    /// the tab Lucas left it on last, when the window has it.
+    /// capture shortcut, `captureShortcut`, with the Sync tab in an app that
+    /// syncs: Advanced closes the review panel with `closeReviewPanel` before
+    /// a restore, and opens the Diagnostics window with `openDiagnostics`.
+    /// It opens on `tab`, scrolled to its foot when `section` is one of the
+    /// tab's (`SettingsScroll`), or on the tab Lucas left it on last, when
+    /// the window has it.
     convenience init(
         model: AppModel, captureShortcut: CaptureShortcutRegistration, closeReviewPanel: @escaping () -> Void,
-        openingOn tab: SettingsTab? = nil
+        openDiagnostics: @escaping () -> Void, openingOn tab: SettingsTab? = nil, at section: SettingsSection? = nil
     ) {
         self.init(nibName: nil, bundle: nil)
         // Read before adding the tabs, since adding the first one selects it.
         let firstTab = tab ?? Preferences.settingsTab
         tabStyle = .toolbar
-        let tabs: [SettingsTab] =
-            [.general, .appearances, .reviewPanel, .scheduling, .backups] + (model.sync != nil ? [.sync] : [])
-            + [.about]
+        let tabs = SettingsTab.shown(syncing: model.sync != nil)
         width = Self.width(showing: tabs)
         for shown in tabs {
             add(
                 shown,
-                content: Self.content(
-                    of: shown, width: width, model: model, captureShortcut: captureShortcut,
-                    closeReviewPanel: closeReviewPanel))
+                content: SettingsTabContent(
+                    tab: shown, model: model, captureShortcut: captureShortcut, width: width,
+                    closeReviewPanel: closeReviewPanel, openDiagnostics: openDiagnostics, scroll: scroll))
         }
-        select(firstTab)
+        select(firstTab, at: section)
     }
 
-    /// What `tab` shows, `width` points wide.
-    @ViewBuilder
-    private static func content(
-        of tab: SettingsTab, width: CGFloat, model: AppModel, captureShortcut: CaptureShortcutRegistration,
-        closeReviewPanel: @escaping () -> Void
-    ) -> some View {
-        switch tab {
-        case .general:
-            Form { GeneralSettings(model: model, captureShortcut: captureShortcut) }.formStyle(.grouped)
-        // Each of these three changes one of the settings that decide a
-        // card's progress, which the engine keeps.
-        case .appearances: ProgressSettingsForm(model: model, settings: AppearancesSettings(model: model))
-        case .reviewPanel: ProgressSettingsForm(model: model, settings: ReviewPanelSettings(model: model))
-        case .scheduling:
-            ProgressSettingsForm(
-                model: model, settings: SchedulingSettings(scheduler: Bindable(model).settings.scheduler))
-        case .backups: BackupsTab(model: model, width: width, closeReviewPanel: closeReviewPanel)
-        case .sync: SyncTab(model: model)
-        case .about: AboutTab()
-        }
-    }
-
-    /// How wide Settings is with `tabs` in its toolbar: 500 points, as in
-    /// English, or as wide as the toolbar needs to show every tab's name in
-    /// a language whose names run longer, as German's and French's do, since
-    /// a name can't wrap and AppKit hides the tabs that don't fit behind ».
-    /// The forms inside keep wrapping their texts, and the Backups tab's
-    /// table of copies fits by narrowing its Kind column, whose texts wrap
-    /// too (`CopyTableColumns`). Our own sum of AppKit's toolbar, as
-    /// `make render`'s pictures measure it: each name in the toolbar's font,
-    /// at least as wide as an icon, the room between two tabs and at the
+    /// How wide Settings is with `tabs` in its toolbar: 500 points, or as
+    /// wide as the toolbar needs to show every tab's name, since a name can't
+    /// wrap and AppKit hides the tabs that don't fit behind ». The forms
+    /// inside keep wrapping their texts, and Advanced's table of copies fits
+    /// by narrowing its Kind column, whose texts wrap too
+    /// (`CopyTableColumns`). Our own sum of AppKit's toolbar, as `make
+    /// render`'s pictures measure it: each name in the toolbar's font, at
+    /// least as wide as an icon, the room between two tabs and at the
     /// window's edges.
     private static func width(showing tabs: [SettingsTab]) -> CGFloat {
         let font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
@@ -126,18 +128,24 @@ final class SettingsTabViewController: NSTabViewController {
         return max(500, toolbar.rounded(.up))
     }
 
-    /// Shows `tab`.
-    func select(_ tab: SettingsTab) {
+    /// Shows `tab`, scrolled to its foot when `section` is one of the tab's
+    /// (`SettingsScroll`).
+    func select(_ tab: SettingsTab, at section: SettingsSection? = nil) {
         if let index = tabViewItems.firstIndex(where: { SettingsTab(of: $0) == tab }) {
             selectedTabViewItemIndex = index
         }
+        if let section, tab.sections.contains(section) {
+            scroll.scroll(to: section)
+        }
     }
 
-    /// Adds `tab`, which shows `content`, as wide as every tab. The tab
-    /// follows the content's height as it changes, as when Lucas adds a
-    /// learning step.
+    /// Adds `tab`, which shows `content`, as wide as every tab, and, for
+    /// Advanced, `advancedHeight` tall. Each other tab follows its content's
+    /// height as it changes, as Sync does when Lucas picks to sync only the
+    /// cards in chosen decks.
     private func add(_ tab: SettingsTab, content: some View) {
-        let controller = NSHostingController(rootView: content.frame(width: width))
+        let sized = content.frame(width: width).frame(idealHeight: tab == .advanced ? Self.advancedHeight : nil)
+        let controller = NSHostingController(rootView: sized)
         controller.sizingOptions = .preferredContentSize
         controller.title = tab.name
         let item = NSTabViewItem(viewController: controller)
@@ -153,21 +161,21 @@ final class SettingsTabViewController: NSTabViewController {
         if let tab = SettingsTab(of: tabViewItem) {
             Preferences.settingsTab = tab
         }
-        keepTheKeyboardOutOfTheSchedulingTab()
+        keepTheKeyboardOutOfTheAdvancedTab()
     }
 
     override func viewDidAppear() {
         super.viewDidAppear()
-        keepTheKeyboardOutOfTheSchedulingTab()
+        keepTheKeyboardOutOfTheAdvancedTab()
     }
 
-    /// Leaves the keyboard with the window when the Scheduling tab shows, as
+    /// Leaves the keyboard with the window when the Advanced tab shows, as
     /// Settings opens on it or Lucas picks it: AppKit gives it to the tab's
     /// Longest interval field, Settings' only text field, with its number
     /// selected, where a stray keystroke would change a setting that syncs.
     /// A click or Tab puts it there.
-    private func keepTheKeyboardOutOfTheSchedulingTab() {
-        guard SettingsTab(of: tabView.selectedTabViewItem) == .scheduling else { return }
+    private func keepTheKeyboardOutOfTheAdvancedTab() {
+        guard SettingsTab(of: tabView.selectedTabViewItem) == .advanced else { return }
         view.window?.makeFirstResponder(nil)
     }
 }

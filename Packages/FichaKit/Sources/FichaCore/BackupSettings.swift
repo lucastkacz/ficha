@@ -1,7 +1,8 @@
 import Foundation
 
 /// How often Ficha saves a backup on its own, and how many backups it keeps,
-/// as Lucas sets them in Settings' Backups tab. Backups can't be turned off.
+/// as Lucas sets them in Settings' Backups, in its Advanced tab. Backups
+/// can't be turned off.
 public struct BackupSettings: Sendable, Equatable {
     /// How often Ficha saves a backup on its own: once in each hour, day or
     /// week of the Mac's calendar.

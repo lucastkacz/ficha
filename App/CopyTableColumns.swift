@@ -1,10 +1,10 @@
 import AppKit
 
-/// The columns of the Backups tab's table of copies, each with its header and
-/// its widths in the app's language, which the table draws them at. Saved is
-/// as wide as its dates and Size as its sizes, and Kind takes what they leave
-/// it, down to its header, its texts wrapping, so that every column shows
-/// whole within the width the tab names give Settings.
+/// The columns of Settings' table of copies, under Backups, each with its
+/// header and its widths in the app's language, which the table draws them
+/// at. Saved is as wide as its dates and Size as its sizes, and Kind takes
+/// what they leave it, down to its header, its texts wrapping, so that every
+/// column shows whole within the width the tab names give Settings.
 struct CopyTableColumns {
     let saved: FittedColumn
     let kind: FittedColumn

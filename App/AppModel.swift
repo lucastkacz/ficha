@@ -28,6 +28,7 @@ final class AppModel {
                 keepProgressSettings(changedFrom: oldValue.progress)
             }
             countProgress()
+            pace.read(settings)
         }
     }
     /// Why the engine couldn't keep the last change to the settings that
@@ -59,9 +60,13 @@ final class AppModel {
         }
     }
     /// The backups the app saves on its own, once they started, and Settings'
-    /// Backups tab, which lists the copies and acts on them: the menu says
-    /// when the last backup failed.
+    /// Backups, in its Advanced tab, which lists the copies and acts on them:
+    /// the menu says when the last backup failed.
     var backups: BackupsState
+    /// Settings' Pace tab: How fast?, at the pace of `settings`' new cards a
+    /// day, and the queue new cards come from, which the model reads again as
+    /// the settings or the database change.
+    var pace: PaceTabState
     /// Settings' Sync tab, and the menu's line while iCloud is full, which
     /// the app's delegate opens as it starts syncing, or nil in a build not
     /// signed for iCloud, which doesn't sync and shows neither.
@@ -98,8 +103,10 @@ final class AppModel {
     private init(engine: Engine, debugTools: DebugTools?) throws(EngineError) {
         self.engine = engine
         self.debugTools = debugTools
-        settings = Preferences.reviewSettings(with: try Self.movedInProgressSettings(of: engine))
+        let opened = Preferences.reviewSettings(with: try Self.movedInProgressSettings(of: engine))
+        settings = opened
         backups = engine.openBackups()
+        pace = engine.openPaceTab(opened)
         // Listening before counting, so no change falls in between.
         let changes = engine.changes()
         countProgress()
@@ -110,6 +117,7 @@ final class AppModel {
                 readProgressSettings()
                 countProgress()
                 readPrioritizeMenu()
+                pace.read(settings)
                 sync?.read()
                 // So a check can tell, from the log, how soon the menu shows
                 // what the CLI changed.

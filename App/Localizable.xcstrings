@@ -50,7 +50,7 @@
 
     },
     "%@ or %@" : {
-      "comment" : "A finish date of two days in a row, in the Cards window: “today or tomorrow”.",
+      "comment" : "A finish date of two days in a row, in the Cards window and Settings' Pace tab: “today or tomorrow”.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -64,7 +64,7 @@
       "comment" : "On the Welcome page, under whether the app opens at login. The name is the app's."
     },
     "%@ to %@" : {
-      "comment" : "A finish date from one day or third of a month to another, in the Cards window.",
+      "comment" : "A finish date from one day or third of a month to another, in the Cards window and Settings' Pace tab.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -92,6 +92,28 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "%1$@ · %2$lld front first, %3$lld back first"
+          }
+        }
+      }
+    },
+    "%@ · queue met %@" : {
+      "comment" : "Settings, under How fast?, in the Pace tab: below a pace's name, its new cards a day, then when every deck in the queue is all met at it, starting with today, as in “queue met today or tomorrow”.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · queue met %2$@"
+          }
+        }
+      }
+    },
+    "%@ · queue met by %@" : {
+      "comment" : "Settings, under How fast?, in the Pace tab: below a pace's name, its new cards a day, then when every deck in the queue is all met at it, as a day or a month.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · queue met by %2$@"
           }
         }
       }
@@ -738,7 +760,7 @@
       }
     },
     "%lld new a day" : {
-      "comment" : "In How fast?, beside a pace's name: how many new cards a day it brings."
+      "comment" : "In How fast?, beside a pace's name, and in Settings' Pace tab, below it: how many new cards a day it brings."
     },
     "%lld new cards came in, %lld cards were updated and %lld were skipped." : {
       "comment" : "In the Import sheet once it's done, with how many cards came in, were updated and skipped.",
@@ -813,13 +835,13 @@
         }
       }
     },
-    "%lld new cards come in, at the pace of your new cards per day, and %lld with their progress and Anki's reviews, due when Anki had them due." : {
+    "%lld new cards come in, at your pace, and %lld with their progress and Anki's reviews, due when Anki had them due." : {
       "comment" : "In the Import sheet's preview of an Anki package, with how many cards come in new and how many with Anki's reviews of them, the interval Anki gave them and the day or moment Anki had them due.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%#@new@, at the pace of your new cards per day, and %#@withProgress@."
+            "value" : "%#@new@, at your pace, and %#@withProgress@."
           },
           "substitutions" : {
             "new" : {
@@ -866,7 +888,7 @@
         }
       }
     },
-    "%lld new cards come in, at the pace of your new cards per day." : {
+    "%lld new cards come in, at your pace." : {
       "comment" : "In the Import sheet's preview, with how many new cards the file brings.",
       "localizations" : {
         "en" : {
@@ -875,13 +897,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld new card comes in, at the pace of your new cards per day."
+                  "value" : "%lld new card comes in, at your pace."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld new cards come in, at the pace of your new cards per day."
+                  "value" : "%lld new cards come in, at your pace."
                 }
               }
             }
@@ -1006,7 +1028,7 @@
       "comment" : "In the Cards window, under a card's front, when Lucas saves it blank."
     },
     "A card you forget waits each step in turn before it graduates again. With none, it gets FSRS's interval at once." : {
-      "comment" : "Settings, under Scheduling: below the relearning steps; a card forgotten is a lapse."
+      "comment" : "Settings, under Advanced: below the relearning steps; a card forgotten is a lapse."
     },
     "A deck needs a name, so nothing changed. Write one, with “::” between a deck and a deck inside it, as in “Idiomas::Inglés”." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
@@ -1017,13 +1039,13 @@
       "extractionState" : "manual"
     },
     "A higher retention means shorter intervals and more reviews a day. A change applies from each card's next review." : {
-      "comment" : "Settings, under Scheduling: below the desired retention and the longest interval, as Anki's manual says it; a change never moves a card's due time."
+      "comment" : "Settings, under Advanced: below the desired retention and the longest interval, as Anki's manual says it; a change never moves a card's due time."
     },
     "A microphone" : {
       "comment" : "A microphone whose name the OS doesn't give, in Diagnostics."
     },
     "A new card waits each step in turn before it graduates. With none, its first review graduates it." : {
-      "comment" : "Settings, under Scheduling: below the learning steps."
+      "comment" : "Settings, under Advanced: below the learning steps."
     },
     "A newer version of Ficha changed the database, and this version won't open it, so as not to damage your cards. Open it with the version that changed it, or a newer one." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
@@ -1050,9 +1072,6 @@
     "A word, a concept, a quote or a question" : {
 
     },
-    "About" : {
-      "comment" : "A tab of the Settings window."
-    },
     "Actions" : {
       "comment" : "A menu button of the Cards window, above the card list while the sidebar chose a deck: the deck's menu, as on its row in the sidebar.\nA menu button of the Cards window, beside All Tags: the context menu of the tags selected there."
     },
@@ -1066,7 +1085,7 @@
       "comment" : "The tooltip of the Cards window's button that adds one of Ficha's decks."
     },
     "Add Step" : {
-      "comment" : "Settings, under Scheduling: adds a learning or relearning step at the end."
+      "comment" : "Settings, under Advanced: adds a learning or relearning step at the end."
     },
     "Added" : {
       "comment" : "A column of the Cards window's inbox: when Lucas captured it, or flagged the card."
@@ -1074,8 +1093,11 @@
     "Added “%@”" : {
       "comment" : "In the Cards window's card form, after Add, with the front of the card it added."
     },
+    "Advanced" : {
+      "comment" : "A tab of the Settings window: when cards come back, as Anki's deck options set it, the backups and Diagnostics."
+    },
     "After forgetting it %lld times" : {
-      "comment" : "Settings, under Review panel: how many “Forgot” answers, Anki's Again, to one of a card's ways while it was out of its learning and relearning steps, Anki's lapses, since its front or back last changed, bring the offer to flag it.",
+      "comment" : "Settings, under Advanced: how many “Forgot” answers, Anki's Again, to one of a card's ways while it was out of its learning and relearning steps, Anki's lapses, since its front or back last changed, bring the offer to flag it.",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -1098,7 +1120,7 @@
       }
     },
     "After the Mac wakes, wait" : {
-      "comment" : "Settings, under Appearances: how long an appearance waits once the Mac wakes."
+      "comment" : "Settings, under Interruptions: how long an appearance waits once the Mac wakes."
     },
     "Again" : {
       "comment" : "A rating, Anki's first button, as the Cards window's review log shows it: Lucas didn't know the card. Anki's own name for it, “Otra vez” in Spanish."
@@ -1136,9 +1158,6 @@
     "Answer" : {
       "comment" : "For VoiceOver, the Cards window's chart: what Lucas answered, which colors each point."
     },
-    "Appearances" : {
-      "comment" : "A tab of the Settings window."
-    },
     "Apps using the microphone" : {
       "comment" : "In Diagnostics: which apps use a microphone."
     },
@@ -1155,7 +1174,13 @@
       "comment" : "An item of the review panel's ⋯ menu, whose key is A: it asks a question about the card the panel shows, which waits in the inbox tied to the card."
     },
     "At least this long apart" : {
-      "comment" : "Settings, under Appearances: the least time between two appearances."
+      "comment" : "Settings, under Interruptions: the least time between two appearances."
+    },
+    "At this pace, you'll have met every deck in your queue %@." : {
+      "comment" : "Settings, under How fast?, in the Pace tab: when the last deck in the queue is all met, starting with today, as in “today or tomorrow”."
+    },
+    "At this pace, you'll have met every deck in your queue by %@." : {
+      "comment" : "Settings, under How fast?, in the Pace tab: when the last deck in the queue is all met, as a day or a month."
     },
     "Back" : {
       "comment" : "In the Cards window's card form, the label of the card's back.\nIn the Cards window, the label of a card's back, while Lucas edits it."
@@ -1191,7 +1216,7 @@
       "comment" : "Settings, under Backups: a copy's kind, a backup."
     },
     "Backups" : {
-      "comment" : "A tab of the Settings window."
+      "comment" : "A heading of Settings' Advanced tab: over how often Ficha backs up on its own, how many backups it keeps, the last backup and the folder the copies are in."
     },
     "Backups to keep" : {
       "comment" : "Settings, under Backups: how many backups Ficha keeps, the newest ones."
@@ -1221,7 +1246,7 @@
       "comment" : "In the Cards window's detail, after a card's type and tags: it's also reviewed back first, its back, then its front.\nIn the Cards window, the checkbox of a card that is also reviewed back first: its back, then its front."
     },
     "Bring along cards due within" : {
-      "comment" : "Settings, under Appearances: the look-ahead, how soon a card due later may come along."
+      "comment" : "Settings, under Interruptions: the look-ahead, how soon a card due later may come along."
     },
     "Bring progress" : {
       "comment" : "In the Import sheet's preview of an Anki package, the checkbox that keeps Anki's progress."
@@ -1364,7 +1389,7 @@
       "comment" : "Settings, under Sync: the app is asking whether this Mac is signed into iCloud."
     },
     "Chill" : {
-      "comment" : "A pace in How fast?, the slowest: 1 new card a day."
+      "comment" : "A pace in How fast? and in Settings' Pace tab, the slowest: 1 new card a day."
     },
     "Choose Another File…" : {
       "comment" : "The Import sheet's button that opens another text file of cards instead."
@@ -1385,7 +1410,7 @@
 
     },
     "Close it when untouched for" : {
-      "comment" : "Settings, under Review panel: how long it stays open untouched before it closes on its own."
+      "comment" : "Settings, under Interruptions: how long the review panel stays open untouched before it closes on its own."
     },
     "Closed on its own" : {
       "comment" : "How an appearance closed, in Diagnostics."
@@ -1568,7 +1593,7 @@
       }
     },
     "Couldn't move %lld copies to the Trash" : {
-      "comment" : "An alert's title in Settings' Backups tab, with how many copies.",
+      "comment" : "An alert's title in Settings, under Backups, with how many copies.",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -1599,6 +1624,9 @@
     "Couldn't pin “%@” to the sidebar" : {
       "comment" : "An alert's title in the Cards window, after Pin to Sidebar in a tag's menu, its Pinned checkbox in All Tags or dragging a tag into the sidebar, with the tag's whole name."
     },
+    "Couldn't put %@ first in the queue" : {
+      "comment" : "An alert's title in Settings' Pace tab, with the name of the deck Put it first was for; the alert says why under it."
+    },
     "Couldn't read Ficha's deck “%@”" : {
       "comment" : "An alert's title in the Cards window as it opens, when the file of one of the decks that come with Ficha couldn't be read, with the deck's name."
     },
@@ -1615,7 +1643,7 @@
       "comment" : "An alert's title in the Cards window's rename sheet, after OK, with the deck's whole name.\nAn alert's title in the Cards window's rename sheet, after OK, with the tag's whole name."
     },
     "Couldn't restore the copy" : {
-      "comment" : "An alert's title in Settings' Backups tab."
+      "comment" : "An alert's title in Settings, under Backups."
     },
     "Couldn't save the capture" : {
       "comment" : "An alert's title in the Cards window."
@@ -1624,7 +1652,7 @@
       "comment" : "An alert's title in the Cards window."
     },
     "Couldn't save the change" : {
-      "comment" : "An alert's title in Settings, when a change to the scheduling settings, the new cards per day or the forgotten-often count couldn't be saved; the alert says why under it."
+      "comment" : "An alert's title in Settings, when a change to the pace, the scheduling settings or the forgotten-often count couldn't be saved; the alert says why under it."
     },
     "Couldn't save the pace or the deck's place in the queue" : {
       "comment" : "An alert's title over How fast?, the Cards window's sheet as a deck comes in, on Start."
@@ -1841,10 +1869,10 @@
       "comment" : "A button of the Cards window that deletes the selected cards for good, asking first.\nA button of the Cards window, beside All Tags, that deletes the selected tags, asking first.\nAn item of a card type's menu in the Cards window's sidebar: it asks whether to delete the type.\nAn item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu above the card list: it asks whether to delete the deck, with the decks inside it and their cards.\nAn item of a tag's menu in the Cards window's sidebar or its All Tags: it asks whether to delete the tag, or the tags selected with it.\nSettings, under Backups: moves the selected copies to the Trash, asking first."
     },
     "Delete… (⌘⌫)" : {
-      "comment" : "The tooltip of the Backups tab's button that deletes copies.\nThe tooltip of the Cards window's button that deletes the cards.\nThe tooltip of the Cards window's button that deletes the tags."
+      "comment" : "The tooltip of Settings' Backups button that deletes copies.\nThe tooltip of the Cards window's button that deletes the cards.\nThe tooltip of the Cards window's button that deletes the tags."
     },
     "Desired retention" : {
-      "comment" : "Settings, under Scheduling: how likely the user wants to be to remember a card when it's due."
+      "comment" : "Settings, under Advanced: how likely the user wants to be to remember a card when it's due."
     },
     "Diagnostics" : {
       "comment" : "The Diagnostics window's title."
@@ -1886,7 +1914,7 @@
       "comment" : "A column of the Cards window: when the card is due.\nIn the Cards window's detail: when the card is due."
     },
     "Each “Forgot” to a card out of its learning and relearning steps counts, since the card's front or back last changed. If you don't flag it, the panel offers again after half as many more." : {
-      "comment" : "Settings, under Review panel: below the offer to flag a card forgotten often, which counts Anki's lapses. “Forgot” is the review panel's button that records Anki's Again, also on key 1."
+      "comment" : "Settings, under Advanced: below the offer to flag a card forgotten often, which counts Anki's lapses. “Forgot” is the review panel's button that records Anki's Again, also on key 1."
     },
     "Easy" : {
       "comment" : "A rating, Anki's fourth button, as the Cards window's review log shows it: Lucas knew the card at once. Anki's own name for it, “Fácil” in Spanish."
@@ -1919,7 +1947,7 @@
       "comment" : "An item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu above the card list: it asks for the deck's emoji.\nAn item of the menu of a tag, in the Cards window's sidebar or its All Tags, or of a card type in its sidebar: it asks for its emoji."
     },
     "End at" : {
-      "comment" : "Settings, under Appearances: the hour active hours end at."
+      "comment" : "Settings, under Interruptions: the hour active hours end at."
     },
     "Entry" : {
       "comment" : "For VoiceOver, the Cards window's chart: an entry of the review log, by its place in it."
@@ -1958,7 +1986,7 @@
       "comment" : "Settings, under Backups: the last backup failed, and why."
     },
     "Faster" : {
-      "comment" : "A pace in How fast?, the fastest: 4 new cards a day."
+      "comment" : "A pace in How fast? and in Settings' Pace tab, the fastest: 4 new cards a day."
     },
     "Ficha can't make sense of the review log of card %lld, so it doesn't know when the card is due. Your cards are still saved: report it." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
@@ -2005,7 +2033,7 @@
       "extractionState" : "manual"
     },
     "Ficha first saves everything as it is now in a copy before a restore, which the list then shows: restoring that copy undoes this one." : {
-      "comment" : "Under the title of the Backups tab's question before it restores a copy."
+      "comment" : "Under the title of the question Settings' Backups asks before it restores a copy."
     },
     "Ficha holds no image or sound named “%@”. Give its name as `ficha cards` prints it, or the path of a file on the Mac." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
@@ -2111,7 +2139,7 @@
       }
     },
     "From %@ to %@" : {
-      "comment" : "Settings, under Scheduling: below the desired retention, the least and the most it can be.",
+      "comment" : "Settings, under Advanced: below the desired retention, the least and the most it can be.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2281,10 +2309,10 @@
       "comment" : "What the app's filter in a Focus does, in System Settings."
     },
     "How fast?" : {
-      "comment" : "The title of How fast?, the Cards window's sheet as a deck comes in."
+      "comment" : "A heading of Settings' Pace tab, over the paces: how fast new cards come.\nThe title of How fast?, the Cards window's sheet as a deck comes in."
     },
     "Idle for" : {
-      "comment" : "Settings, under Review panel: how long Lucas must be idle before the panel takes the keyboard, in the \"Once you're idle\" focus mode."
+      "comment" : "Settings, under Interruptions: how long Lucas must be idle before the review panel takes the keyboard, in the \"Once you're idle\" focus mode."
     },
     "Ignore" : {
       "comment" : "A button that drops a capture that repeats a card or a capture."
@@ -2323,13 +2351,16 @@
       "comment" : "The tooltip of the Cards window's toolbar button that imports cards."
     },
     "In days, up to %@" : {
-      "comment" : "Settings, under Scheduling: below the longest interval, its unit and the most it can be."
+      "comment" : "Settings, under Advanced: below the longest interval, its unit and the most it can be."
     },
     "In use: %@" : {
       "comment" : "What a detector sees in Diagnostics."
     },
     "Inbox" : {
       "comment" : "An item of the Cards window's sidebar: what waits to be refined."
+    },
+    "Interruptions" : {
+      "comment" : "A tab of the Settings window: when the review panel shows up on its own, what holds it back, and how it behaves once it's up."
     },
     "Interval" : {
       "comment" : "A column of the Cards window: how long the card waits after its last review.\nFor VoiceOver, the Cards window's chart: how long the card waited after each entry.\nIn the Cards window's detail: how long the card waits after its last review."
@@ -2380,7 +2411,7 @@
       "comment" : "Settings, under Backups: when the last backup was saved."
     },
     "Last backup failed" : {
-      "comment" : "A menu item while the last backup failed, which opens Settings' Backups tab, where it says why."
+      "comment" : "A menu item while the last backup failed, which opens Settings on Backups, in its Advanced tab, where it says why."
     },
     "Last seen" : {
       "comment" : "A column of the Cards window: when Lucas last reviewed the card.\nIn the Cards window's detail: when Lucas last reviewed the card."
@@ -2398,7 +2429,7 @@
       "comment" : "In the Cards window's Interval columns and its detail's Interval rows: a card in its learning steps, the short intervals before it graduates, whatever the step's interval, as Anki's Browse says “(learning)”; or a card an import from Anki brought in while Anki was still learning it."
     },
     "Learning steps" : {
-      "comment" : "Settings, under Scheduling: the header of the learning steps."
+      "comment" : "Settings, under Advanced: the header of the learning steps."
     },
     "Leave Out “%@”" : {
       "comment" : "The Import sheet's button that leaves out a tag, which shows a minus, with the tag's whole name, like “Medicina › Anatomía”.\nThe tooltip of the Import sheet's button that leaves out a tag, with the tag's whole name, like “Medicina › Anatomía”."
@@ -2483,7 +2514,7 @@
       "comment" : "The tooltip of a tag above the Cards window's card list, with its whole name: choosing it narrows the deck's cards to those that carry it, or a tag inside it."
     },
     "Longest interval" : {
-      "comment" : "Settings, under Scheduling: the longest a card can wait after a review, in days."
+      "comment" : "Settings, under Advanced: the longest a card can wait after a review, in days."
     },
     "Look for %@ at the top of your screen. From there, %@ shows you a card every so often. If you can't see the icon, open %@ again to reach your cards." : {
       "comment" : "On the Welcome page, under that the app lives in the menu bar. The first value is the app's icon in the menu bar, drawn in the text. The other two are the app's name.",
@@ -2608,7 +2639,7 @@
       }
     },
     "Move %lld copies to the Trash?" : {
-      "comment" : "The title of the Backups tab's question before it moves copies to the Trash, with how many.",
+      "comment" : "The title of the question Settings' Backups asks before it moves copies to the Trash, with how many.",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -2631,7 +2662,7 @@
       }
     },
     "Move to Trash" : {
-      "comment" : "The button that moves the copies Settings' Backups tab asks about to the Trash."
+      "comment" : "The button that moves the copies Settings' Backups asks about to the Trash."
     },
     "Name" : {
       "comment" : "The field of the Cards window's sheet that names a new deck, or of the Change Deck or Import sheet while it names one.\nThe field of the sheet that makes a card type of the user's own: its name.\nThe field of the sheet that renames a tag or a deck, its whole name, or a card type of the user's own."
@@ -2666,14 +2697,70 @@
     "New Type…" : {
       "comment" : "An item of the menu of a row of the Types section in the Cards window's sidebar, or of its title: it asks for a new type's name, and OK makes the type.\nThe last item of a card's type picker in the Cards window: it asks for a new type's name."
     },
-    "New cards per day" : {
-
+    "New cards come from the first deck until you've met them all, then from the next. Cards you've met keep coming from every deck." : {
+      "comment" : "Settings, under Up next, in the Pace tab: below the queue of decks."
     },
     "New to me" : {
       "comment" : "The review panel's Forgot button on a new card's first turn, for a card the user hadn't met before: it records Anki's Again. Its key is 1."
     },
     "Next in the queue: %@. Its first card comes with the next new one." : {
       "comment" : "In the review panel, under the decks it met in full: the deck new cards come from now, with its emoji and name."
+    },
+    "Next · %lld cards to meet" : {
+      "comment" : "Settings, under Up next, in the Pace tab: below the name of a deck that waits its turn, how many of its new cards are still to meet.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Next · %lld card to meet"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Next · %lld cards to meet"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Next · %lld cards to meet · on track for %@" : {
+      "comment" : "Settings, under Up next, in the Pace tab: below the name of a deck that waits its turn, how many of its new cards are still to meet, and when they'll all be.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next · %#@cards@ · on track for %2$@"
+          },
+          "substitutions" : {
+            "cards" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg card to meet"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg cards to meet"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "Next · on track for %@" : {
       "comment" : "Under the name of a deck that waits its turn in the queue of new cards, in the Cards window's sidebar: when its cards will all be met."
@@ -2725,6 +2812,12 @@
     },
     "No concepts" : {
       "comment" : "In the Cards window: no concept card that isn't buried."
+    },
+    "No deck waits for new cards." : {
+      "comment" : "Settings, under How fast?, in the Pace tab: no deck in the queue has new cards."
+    },
+    "No deck waits. Add one from the Cards window." : {
+      "comment" : "Settings, under Up next, in the Pace tab, while no deck has new cards."
     },
     "No flagged cards" : {
       "comment" : "In the Cards window: no card is flagged."
@@ -2804,11 +2897,67 @@
     "Nothing waits in the queue. Another of Ficha's decks?" : {
       "comment" : "In the review panel, under the decks it met in full: no deck has new cards, and a button beside it, or under it, adds one of the decks that come with Ficha."
     },
+    "Now · %lld cards to meet" : {
+      "comment" : "Settings, under Up next, in the Pace tab: below the name of the deck new cards come from now, how many of its new cards are still to meet.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Now · %lld card to meet"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Now · %lld cards to meet"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Now · %lld cards to meet · on track for %@" : {
+      "comment" : "Settings, under Up next, in the Pace tab: below the name of the deck new cards come from now, how many of its new cards are still to meet, and when they'll all be.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Now · %#@cards@ · on track for %2$@"
+          },
+          "substitutions" : {
+            "cards" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg card to meet"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg cards to meet"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "OK" : {
 
     },
     "Offer to flag a card you forget often" : {
-      "comment" : "Settings, under Review panel: whether the panel offers to flag a card the user keeps answering “Forgot”, Anki's Again, to while it's out of its learning and relearning steps, so it gets fixed."
+      "comment" : "Settings, under Advanced: whether the review panel offers to flag a card the user keeps answering “Forgot”, Anki's Again, to while it's out of its learning and relearning steps, so it gets fixed."
     },
     "On its own" : {
       "comment" : "In Diagnostics: the review panel showed up on its own."
@@ -2854,6 +3003,9 @@
     "Open %@ when you log in?" : {
       "comment" : "The question on the Welcome page. The name is the app's."
     },
+    "Open Diagnostics" : {
+      "comment" : "Settings, under Advanced: opens the Diagnostics window."
+    },
     "Open Login Items" : {
 
     },
@@ -2867,7 +3019,7 @@
       "comment" : "One of Finder's tag colors, which a tag can have."
     },
     "Pace" : {
-      "comment" : "The name of How fast?'s group of paces, which VoiceOver reads."
+      "comment" : "A tab of the Settings window: how fast new cards come, and the queue of decks they come from.\nThe name of How fast?'s group of paces, which VoiceOver reads."
     },
     "Paste" : {
       "comment" : "A hidden button of the Cards window: ⌘V in a side's text, which takes a copied image too."
@@ -2906,7 +3058,7 @@
       "comment" : "In the Import sheet, before the menu of the deck every card it imports comes into."
     },
     "Put it first" : {
-      "comment" : "A checkbox of How fast?: the deck coming in goes first in the queue."
+      "comment" : "A button of Settings' Pace tab, beside a deck in the queue: its new cards come first.\nA checkbox of How fast?: the deck coming in goes first in the queue."
     },
     "Question" : {
       "comment" : "A card type.\nThe label of the field where the user writes a question about the card the review panel shows."
@@ -2933,7 +3085,7 @@
       "comment" : "One of Finder's tag colors, which a tag can have."
     },
     "Relearning steps" : {
-      "comment" : "Settings, under Scheduling: the header of the relearning steps."
+      "comment" : "Settings, under Advanced: the header of the relearning steps."
     },
     "Remove Image" : {
       "comment" : "The button that removes the image on a side of a card."
@@ -2948,7 +3100,7 @@
       "comment" : "The tooltip of the button that removes the sound on a side of a card."
     },
     "Remove Step %lld" : {
-      "comment" : "Settings, under Scheduling: removes a learning or relearning step."
+      "comment" : "Settings, under Advanced: removes a learning or relearning step."
     },
     "Rename the type “%@”" : {
       "comment" : "The title of the Cards window's sheet that renames a card type of the user's own, with its name."
@@ -2963,16 +3115,16 @@
       "comment" : "In the Import sheet, the name of the Update and Skip choice, unseen."
     },
     "Restore" : {
-      "comment" : "The button that restores the copy Settings' Backups tab asks about."
+      "comment" : "The button that restores the copy Settings' Backups asks about."
     },
     "Restore the copy from %@?" : {
-      "comment" : "The title of the Backups tab's question before it restores a copy, with when it was saved."
+      "comment" : "The title of the question Settings' Backups asks before it restores a copy, with when it was saved."
     },
     "Restore…" : {
       "comment" : "Settings, under Backups: restores the selected copy, asking first."
     },
     "Restore… (⌘R)" : {
-      "comment" : "The tooltip of the Backups tab's button that restores a copy."
+      "comment" : "The tooltip of Settings' Backups button that restores a copy."
     },
     "Retrievability" : {
       "comment" : "In the Cards window's detail, as Anki's Card Info says it: FSRS's retrievability, the chance of remembering the card now."
@@ -2992,9 +3144,6 @@
     "Review now (%lld due)" : {
 
     },
-    "Review panel" : {
-      "comment" : "A tab of the Settings window."
-    },
     "Reviews" : {
       "comment" : "A column of the Cards window: how many times Lucas reviewed the card, either way.\nIn the Cards window's detail: how many times Lucas reviewed the card, either way."
     },
@@ -3009,9 +3158,6 @@
     },
     "Saving fixes it, and it keeps its progress." : {
       "comment" : "In the Cards window, under Lucas's note on a flagged card, while he edits it."
-    },
-    "Scheduling" : {
-      "comment" : "A tab of the Settings window: when cards come back, as Anki's deck options set it."
     },
     "See more" : {
 
@@ -3076,7 +3222,7 @@
       "comment" : "How an appearance closed, in Diagnostics."
     },
     "So it gets fixed. Ficha never flags a card on its own." : {
-      "comment" : "Settings, under Review panel: below the offer to flag a card forgotten often."
+      "comment" : "Settings, under Advanced: below the offer to flag a card forgotten often."
     },
     "Some settings couldn't be read" : {
 
@@ -3100,16 +3246,16 @@
       "comment" : "The button of How fast? that sets the pace, and puts the deck first when ticked."
     },
     "Start at" : {
-      "comment" : "Settings, under Appearances: the hour active hours start at."
+      "comment" : "Settings, under Interruptions: the hour active hours start at."
     },
     "Start at login" : {
 
     },
     "Steady" : {
-      "comment" : "A pace in How fast?, the one Ficha starts at: 2 new cards a day."
+      "comment" : "A pace in How fast? and in Settings' Pace tab, the one Ficha starts at: 2 new cards a day."
     },
     "Step %lld" : {
-      "comment" : "Settings, under Scheduling: a learning or relearning step, counted from 1."
+      "comment" : "Settings, under Advanced: a learning or relearning step, counted from 1."
     },
     "Stop Sound" : {
       "comment" : "The button that stops the sound of a card's side as it plays.\nThe tooltip of the button that stops the sound of a card's side as it plays."
@@ -3133,7 +3279,7 @@
       "comment" : "A column of the Cards window: the card's tags.\nA section of the Cards window's sidebar: the tags Lucas pinned, then All Tags….\nIn the Cards window's card form, the label of the card's tags.\nIn the Cards window, the label of a card's tags, while Lucas edits it."
     },
     "Take the keyboard" : {
-      "comment" : "Settings, under Review panel: when the panel takes the keyboard as it shows up on its own."
+      "comment" : "Settings, under Interruptions: when the review panel takes the keyboard as it shows up on its own."
     },
     "Text" : {
       "comment" : "A column of the Cards window's inbox: a capture's text, or a flagged card's front.\nIn the Cards window, the label of a capture's text, while Lucas edits it."
@@ -3284,6 +3430,9 @@
     "The front has an image" : {
       "comment" : "The tooltip of the photo in the Cards window's Media column, when the card's front has one."
     },
+    "The review panel" : {
+      "comment" : "A heading of Settings' Interruptions tab: over how the review panel behaves when it shows up on its own."
+    },
     "The tags you write on your cards show up here." : {
       "comment" : "In the Cards window's All Tags, when no card has a tag."
     },
@@ -3342,7 +3491,7 @@
     "This repeats a card" : {
 
     },
-    "To undo it, restore the copy saved before it, in Settings › Backups." : {
+    "To undo it, restore the copy saved before it, in Settings › Advanced." : {
       "comment" : "In the Import sheet once it's done, when Ficha saved a copy before the import."
     },
     "Turn Off Both Ways" : {
@@ -3382,13 +3531,16 @@
 
     },
     "Unknown version" : {
-      "comment" : "Settings' About tab, when the build doesn't say."
+      "comment" : "Settings, at the foot of General, when the build doesn't say."
     },
     "Unpin from Sidebar" : {
       "comment" : "An item of a tag's menu in the Cards window's sidebar or its All Tags, while the tag is pinned: it takes the tag out of the sidebar."
     },
     "Until you empty the Trash, you can put back what you move there." : {
-      "comment" : "Under the title of the Backups tab's question before it moves copies to the Trash."
+      "comment" : "Under the title of the question Settings' Backups asks before it moves copies to the Trash."
+    },
+    "Up next" : {
+      "comment" : "A heading of Settings' Pace tab, over the queue of decks new cards come from."
     },
     "Update them with Anki's back and tags, keeping their deck and progress" : {
       "comment" : "In the Import sheet, the choice that updates the cards an Anki package repeats."
@@ -3397,7 +3549,7 @@
       "comment" : "In the Import sheet, the choice that updates the cards the file repeats."
     },
     "Version %@ (%@)" : {
-      "comment" : "Settings' About tab: the release version, then the build number in parentheses.",
+      "comment" : "Settings, at the foot of General: the release version, then the build number in parentheses.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3416,11 +3568,17 @@
     "What do you want to know?" : {
       "comment" : "The prompt of the field where the user writes a question about the card the review panel shows."
     },
+    "What each detector sees right now, and the latest appearances." : {
+      "comment" : "Settings, under Advanced: below Diagnostics, what its window shows."
+    },
     "What needs fixing?" : {
 
     },
     "What you capture, and the cards you flag, wait here to be refined." : {
       "comment" : "In the Cards window, when the inbox is empty."
+    },
+    "When %@ shows up" : {
+      "comment" : "A heading of Settings' Interruptions tab, with the app's name: over the active hours, how often the review panel shows up on its own and with how many cards."
     },
     "When it shows up on its own. Opened with Review now, it takes the keyboard at once." : {
 
@@ -3450,7 +3608,7 @@
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },
-    "You can't undo this, but the daily backups in Settings › Backups hold what it deletes." : {
+    "You can't undo this, but the daily backups, in Settings › Advanced, hold what it deletes." : {
       "comment" : "The last sentence of the Cards window's question before it deletes a deck."
     },
     "You can't undo this." : {
@@ -3703,10 +3861,10 @@
       "comment" : "The Space key's name, next to the button it presses."
     },
     "today" : {
-      "comment" : "A finish date's day, in the Cards window: “on track for today”."
+      "comment" : "A finish date's day, in the Cards window and Settings' Pace tab: “on track for today”."
     },
     "tomorrow" : {
-      "comment" : "A finish date's day, in the Cards window: “all met by tomorrow”."
+      "comment" : "A finish date's day, in the Cards window and Settings' Pace tab: “all met by tomorrow”."
     },
     "toolbar.back" : {
       "comment" : "A toolbar button of the Cards window, while it lists a tag's cards: back to All Tags.",
