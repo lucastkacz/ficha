@@ -143,8 +143,8 @@ final class FichaDecksTests {
         #expect(try updated.reviewLog() == before.log)
     }
 
-    // The user has a deck of their own, Lenguaje, with a new card, so Arte
-    // argentino comes in after it.
+    // The user has a deck of their own, Lenguaje, with a new card that came
+    // in a minute before, so Arte argentino comes in after it.
     @Test(
         "the Cards window lists Ficha's decks the user hasn't added after Your Decks, shows one's first card front and back, and once Add Deck… and How fast?'s Start add it, lists it no longer and chooses the deck",
         .bug(id: 458))
@@ -155,6 +155,7 @@ final class FichaDecksTests {
             files[deck] = .success(try await engine.readFichaDeck(deck, at: shipped))
         }
         try approveInDeck("serendipia", deck: "Lenguaje", in: engine)
+        time.advance(by: minutes(1))
         var window = engine.openCardsWindow(with: scheduler)
         window.read(with: scheduler)
 
