@@ -1569,7 +1569,9 @@ struct CardsView: View {
                     selectionSummary(rows)
                 case .card(let row, let reviewLog):
                     CardDetail(
-                        row: row, images: state.images, now: state.now, reviewLog: reviewLog
+                        row: row, wording: state.wording(of: row), images: state.images, now: state.now,
+                        reviewLog: reviewLog,
+                        isDetailsOpen: Binding(get: { state.isDetailsOpen }, set: { state.setDetailsOpen($0) })
                     ) { side in
                         SoundControls(
                             sound: row.card.sound(on: side).flatMap { state.sounds[$0] },

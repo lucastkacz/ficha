@@ -27,6 +27,14 @@ enum Window: String, CaseIterable {
     /// lists, with the three cards made by hand as tiles, the flag's
     /// picture first.
     case cards
+    /// The Cards window on the sample's graduated card that waits longest,
+    /// selected in its deck, its detail saying in words when it's back, on a
+    /// later day, and how many times it was seen, with Details closed.
+    case cardsCard = "cards-card"
+    /// The same with Details open: its interval, due time, stability,
+    /// difficulty and retrievability, when it was last seen, its reviews and
+    /// when it was made, and its review log, in a chart and in full.
+    case cardsCardDetails = "cards-card-details"
     /// The Cards window with no cards at all, as a new user's opens: it
     /// offers New Card and Import… in plain sight, and its sidebar's Ficha's
     /// Decks section lists the three, read from the repo's `App/FichaDecks/`.
@@ -85,7 +93,8 @@ enum Window: String, CaseIterable {
     /// package.
     case cardsImportAnki = "cards-import-anki"
     /// The Cards window once that Anki package came in with its progress,
-    /// with a card it brought Anki's interval to selected, and reviewed since.
+    /// with a card it brought Anki's interval to selected, and reviewed since,
+    /// its Details open on its review log.
     case cardsAnkiImported = "cards-anki-imported"
     /// The Cards window with its Import sheet showing the preview of a zip
     /// of cards whose images weigh 240 MB, while sync is on, which says they
@@ -196,9 +205,10 @@ enum Window: String, CaseIterable {
     /// which the panel reads from the repo's `App/FichaDecks/`.
     case panelMetThemAllOffer = "panel-met-them-all-offer"
     /// The Cards window with a sample card that goes both ways selected, its
-    /// back-first way rated Again and then Good, its detail scrolled to its
-    /// end, below both ways' interval, due time, stability, difficulty and
-    /// retrievability: its chart, with a line for each way, and its key.
+    /// back-first way rated Again and then Good, its Details open and its
+    /// detail scrolled to its end, below both ways' interval, due time,
+    /// stability, difficulty and retrievability: its chart, with a line for
+    /// each way, and its key.
     case cardsBothWays = "cards-both-ways"
     /// The review panel on a new card in Arabic, which the tool adds to the
     /// sample, as `panel-card` draws it: its text reads, and is aligned, right
@@ -1233,11 +1243,14 @@ func zipFiles(_ files: [URL], into file: URL, describing described: String) thro
 }
 
 /// The Cards window's state once the sample Anki package came in, on the
-/// femur's deck, with its card selected, so the detail shows its review log.
+/// femur's deck, with its card selected and its Details open, so the detail
+/// shows its review log.
 func ankiImportedState(of model: AppModel) throws -> CardsWindowState {
-    try cardsState(
+    var state = try cardsState(
         of: model, selectingFirst: { $0.card.front == "fémur" },
         orElse: "The Cards window doesn't list the sample Anki package's card of the femur.")
+    state.setDetailsOpen(true)
+    return state
 }
 
 /// Writes the sample Anki package to `file`, as current Anki exports a deck
@@ -1415,9 +1428,9 @@ func hours(_ count: Int) -> TimeInterval {
 /// `renderDataFolder`, with copies to list, and files to weigh.
 func model(for name: Window) throws -> AppModel {
     switch name {
-    case .cards, .cardsNewDeck, .cardsImport, .cardsImportAnki, .cardsHowFast, .cardsHowFastNewDeck,
-        .cardsFichaDeckWords, .cardsFichaDeckPicture, .cardsFichaDeckFlower, .general, .pace, .interruptions,
-        .capture, .welcome, .welcomeOneButton, .panelCard, .panelMetThemAll:
+    case .cards, .cardsCard, .cardsCardDetails, .cardsNewDeck, .cardsImport, .cardsImportAnki, .cardsHowFast,
+        .cardsHowFastNewDeck, .cardsFichaDeckWords, .cardsFichaDeckPicture, .cardsFichaDeckFlower, .general, .pace,
+        .interruptions, .capture, .welcome, .welcomeOneButton, .panelCard, .panelMetThemAll:
         return try AppModel(engine: try sampleEngine(at: .inMemory).engine)
     case .cardsEmpty, .panelMetThemAllOffer:
         return try AppModel(engine: try Engine(location: .inMemory, time: SystemTimeSource()))
@@ -1536,6 +1549,14 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         let window = CardsWindow(model: model)
         window.makeContent()
         return window
+    case .cardsCard, .cardsCardDetails:
+        let longest = try longestWaitingSampleCard(in: model.engine).row
+        return try cardsWindow(
+            of: model, selectingFirst: { $0.id == longest.id }, openingDetails: name == .cardsCardDetails,
+            orElse: """
+                The Cards window doesn't list the sample's graduated card that waits longest: fix \
+                sampleEngine(at:).
+                """)
     case .cardsEmpty:
         var state = model.openCardsWindow()
         state.offerFichaDecks(try fichaDecksInTheRepo(readBy: model.engine))
@@ -1700,7 +1721,7 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
     case .panelMetThemAllOffer: return try metThemAllPanelWindow(model: model, offersFichaDeck: true)
     case .cardsBothWays:
         return try cardsWindow(
-            of: model, selectingFirst: { $0.backFirst != nil },
+            of: model, selectingFirst: { $0.backFirst != nil }, openingDetails: true,
             orElse: "No sample card goes both ways: fix bothWaysModel().")
     case .panelArabic: return try panelWindow(model: model, on: sampleArabicFront)
     case .cardsArabic:
@@ -1712,13 +1733,17 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
 
 /// The Cards window of `model`, its cards read, on the deck of the first
 /// card `isWanted` picks among all of them, with that card selected, its
-/// detail showing it, as `cards-both-ways` and `cards-arabic` open;
-/// `missing`, a failure that says what to fix, when no card is.
+/// detail showing it, with Details open when `openingDetails` says so, as
+/// `cards-card`, `cards-card-details`, `cards-both-ways` and `cards-arabic`
+/// open; `missing`, a failure that says what to fix, when no card is.
 func cardsWindow(
-    of model: AppModel, selectingFirst isWanted: (CardRow) -> Bool, orElse missing: String
+    of model: AppModel, selectingFirst isWanted: (CardRow) -> Bool, openingDetails: Bool = false,
+    orElse missing: String
 ) throws -> NSWindow {
+    var state = try cardsState(of: model, selectingFirst: isWanted, orElse: missing)
+    state.setDetailsOpen(openingDetails)
     let window = CardsWindow(model: model)
-    window.makeContent(opening: try cardsState(of: model, selectingFirst: isWanted, orElse: missing))
+    window.makeContent(opening: state)
     return window
 }
 

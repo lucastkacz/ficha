@@ -5,7 +5,8 @@ import Foundation
 /// Your Decks lists as it opens, or nothing while it lists none, what Lucas
 /// looks for and what he selected, what the grid lists, a tile for each card
 /// (`CardsWindowGrid.swift`), read from his cards with the scheduling
-/// settings in Settings, and so what the detail shows and what Lucas can do
+/// settings in Settings, and so what the detail shows, a card in words, with
+/// its numbers under Details (`CardWording.swift`), and what Lucas can do
 /// with it. It reads his cards whenever the window asks: once
 /// the window listens for the reasons to read them again, and then for each
 /// of them, the engine's changes, the passing of time, new scheduling
@@ -485,6 +486,10 @@ public struct CardsWindowState: Sendable {
     /// The review log of the card the detail shows, while it shows one: read
     /// with the cards, and again when Lucas selects another card.
     private var reviewLog: CardReviewLog?
+    /// Whether the detail of a card opens Details, with FSRS's numbers and
+    /// the review log, under the card in words: closed as the window opens,
+    /// and kept from card to card while it's open (`CardWording.swift`).
+    public internal(set) var isDetailsOpen = false
     /// What the window lists, or why it couldn't be read: nil until the
     /// window first reads Lucas's cards.
     public private(set) var listing: Result<Listing, EngineError>?
@@ -534,8 +539,9 @@ public struct CardsWindowState: Sendable {
     /// alphabetical order, and No Type after them while a card that isn't
     /// buried has no type.
     public private(set) var typeGroups = CardType.builtIn.map(CardGroup.type)
-    /// The engine's time when the cards were read, which the tiles' marks
-    /// and the detail's Due rows count from.
+    /// The engine's time when the cards were read, which the tiles' marks,
+    /// the detail's words for when a card is back and its Due rows count
+    /// from.
     public private(set) var now: Date
     /// The scheduling settings in Settings, which the cards stand by, and
     /// which give the intervals of a card's review log.
@@ -1265,7 +1271,7 @@ public struct CardsWindowState: Sendable {
 }
 
 /// A card's review log, as the Cards window's detail shows it under the
-/// card, or why it couldn't be read.
+/// card's Details, or why it couldn't be read.
 private struct CardReviewLog: Sendable {
     let cardID: Int64
     let rows: Result<[ReviewLogRow], EngineError>

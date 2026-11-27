@@ -4,10 +4,10 @@ import Testing
 
 @testable import FichaData
 
-/// Tests on a card's review log as the Cards window shows it under the card,
-/// in its chart and its list: each review and placement, oldest first, with
-/// the interval it left the way waiting (ADR 0002), with the default
-/// scheduling settings: learning steps of 1 hour and 4 hours, and a
+/// Tests on a card's review log as the Cards window shows it under the card's
+/// Details, in its chart and its list: each review and placement, oldest
+/// first, with the interval it left the way waiting (ADR 0002), with the
+/// default scheduling settings: learning steps of 1 hour and 4 hours, and a
 /// relearning step of 1 hour.
 struct CardReviewLogTests {
     let calendar: Calendar

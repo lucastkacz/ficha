@@ -13,24 +13,27 @@ public struct CardRow: Sendable, Equatable, Identifiable {
     /// fixed, buried, or set aside.
     public let cardStanding: CardStanding
     /// Where its front-first way stands, which every card has, as the
-    /// detail's Interval and Due rows show it, and its tile's mark in the
-    /// grid (`CardsWindowGrid.swift`).
+    /// detail says in words whether the card is new and when it's back
+    /// (`CardWording.swift`), its Interval and Due rows under Details show
+    /// it, and its tile's mark in the grid (`CardsWindowGrid.swift`).
     public let frontFirst: WayProgress
-    /// Where its back-first way stands, as the detail's Back-first interval
-    /// and Back-first due rows show it, or nil while the card goes one way,
-    /// also once Lucas switched Both ways off, which keeps that way's
-    /// progress.
+    /// Where its back-first way stands, as the detail's words count it when
+    /// they say when the card is back, and its Back-first interval and
+    /// Back-first due rows under Details show it, or nil while the card goes
+    /// one way, also once Lucas switched Both ways off, which keeps that
+    /// way's progress.
     public let backFirst: WayProgress?
     /// When the user last saw it, either way: its review log's latest
     /// review, or nil while it's new, or while it has only the placement an
     /// import gave it (ADR 0013).
     public let lastSeen: Date?
-    /// How many times the user reviewed it, either way, as the detail's
-    /// Reviews row shows it: its review log's reviews, an import's from
-    /// another app too, the rated points of the card's chart. A placement
-    /// isn't one, even when an import made it from Anki's first review of a
-    /// card whose learning steps Anki lost. A way the card no longer goes
-    /// keeps its reviews here, as the chart still draws them.
+    /// How many times the user reviewed it, either way, as the detail says
+    /// it, "Seen 3 times", and its Reviews row under Details shows it: its
+    /// review log's reviews, an import's from another app too, the rated
+    /// points of the card's chart. A placement isn't one, even when an import
+    /// made it from Anki's first review of a card whose learning steps Anki
+    /// lost. A way the card no longer goes keeps its reviews here, as the
+    /// chart still draws them.
     public let reviews: Int
 
     public var id: Int64 {
@@ -58,8 +61,8 @@ public struct WayProgress: Sendable, Equatable {
     /// read it, or nil while it's new, or while an import placed it in its
     /// learning steps without reviews.
     public let memory: WayMemory?
-    /// How many times the user reviewed the card this way, as the detail's
-    /// Reviews row splits the card's reviews.
+    /// How many times the user reviewed the card this way, as the Reviews
+    /// row under the detail's Details splits the card's reviews.
     public let reviews: Int
     /// Where the card stands, both ways together.
     let cardStanding: CardStanding
@@ -134,10 +137,10 @@ public struct WayProgress: Sendable, Equatable {
 }
 
 /// What FSRS knows of how well Lucas remembers one of a card's ways, as a
-/// card's detail shows it, as Anki's Card Info does: why the way shows up
-/// when it does: FSRS's memory state, its stability and difficulty, as
-/// fsrs-rs's `MemoryState` and `WayStanding.Memory` name them, and the
-/// retrievability they give.
+/// card's detail shows it under Details, as Anki's Card Info does: why the
+/// way shows up when it does: FSRS's memory state, its stability and
+/// difficulty, as fsrs-rs's `MemoryState` and `WayStanding.Memory` name
+/// them, and the retrievability they give.
 public struct WayMemory: Sendable, Equatable {
     /// How long the way's memory lasts: the days it takes the chance of
     /// remembering it to fall to 90%, FSRS's stability.
@@ -151,8 +154,8 @@ public struct WayMemory: Sendable, Equatable {
 }
 
 /// An entry of a card's review log as the Cards window shows it under the
-/// card, in its chart and its list: the review or placement, and the
-/// interval the entry's way waited after it.
+/// card's Details, in its chart and its list: the review or placement, and
+/// the interval the entry's way waited after it.
 public struct ReviewLogRow: Sendable, Equatable {
     /// The review or placement, as the review log keeps it.
     public let entry: ReviewLogEntry
@@ -311,11 +314,11 @@ extension Engine {
         }
     }
 
-    /// A card's review log as the Cards window shows it under the card,
-    /// oldest first, also when it joins two devices' entries, which come in
-    /// any order: each review and placement, either way, in the order the
-    /// scheduler replays them, with the interval `scheduler` gives the
-    /// entry's way after it. Empty while the card is new.
+    /// A card's review log as the Cards window shows it under the card's
+    /// Details, oldest first, also when it joins two devices' entries, which
+    /// come in any order: each review and placement, either way, in the
+    /// order the scheduler replays them, with the interval `scheduler` gives
+    /// the entry's way after it. Empty while the card is new.
     public func reviewLogRows(of cardID: Int64, with scheduler: Scheduler) throws(EngineError) -> [ReviewLogRow] {
         try read { db in
             let entries = try logEntries(ofExisting: cardID, in: db).sorted { $0.precedes($1) }

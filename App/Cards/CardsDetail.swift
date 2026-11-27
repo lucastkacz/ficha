@@ -83,11 +83,18 @@ private struct SetAsideIcon: View {
 /// The selected card, whole: Lucas's note on top when it's flagged, when he
 /// buried it when it's buried, and its set-aside decks when it's set aside,
 /// its type and tags and whether it goes both ways, its front and back, each
-/// side's image above its text and its sound below it, and its source, where
-/// it stands, and its review log, in a chart and in full. Its front, back,
-/// source and images show at the card size, and the rest stays its size.
+/// side's image above its text and its sound below it, and its source; then,
+/// in words, that it's new, or when it's back and how many times he saw it
+/// (`CardWords`); and under Details, closed until he opens it, where it
+/// stands as Anki's Card Info says it, and its review log, in a chart and in
+/// full (#537). Details is a disclosure triangle, which Tab reaches while
+/// macOS's Keyboard navigation is on and Space opens, and VoiceOver reads
+/// and opens as one. Its front, back, source and images show at the card
+/// size, and the rest stays its size.
 struct CardDetail: View {
     let row: CardRow
+    /// Where the card is, in words, as the window says it.
+    let wording: CardRow.Wording
     /// The images the window shows, the card's among them.
     let images: ShownImages
     /// The engine's time, which the due time counts from.
@@ -95,6 +102,8 @@ struct CardDetail: View {
     /// The card's review log, oldest first, or why it couldn't be read, or
     /// nil until it's read.
     let reviewLog: Result<[ReviewLogRow], EngineError>?
+    /// Whether Details is open, as the window keeps it from card to card.
+    @Binding var isDetailsOpen: Bool
     /// The ▶ and the length of a side's sound, which the window fills.
     let soundControls: (CardSide) -> SoundControls
     @Environment(\.cardSize) private var cardSize
@@ -137,17 +146,17 @@ struct CardDetail: View {
                         .foregroundStyle(.secondary)
                 }
                 Divider()
-                standing
-                switch reviewLog {
-                case .success(let rows):
-                    Divider()
-                    ReviewLogView(rows: rows)
-                case .failure(let error):
-                    Divider()
-                    Label(error.localizedDescription, systemImage: "exclamationmark.triangle")
-                        .foregroundStyle(.secondary)
-                case nil:
-                    EmptyView()
+                CardWords(wording: wording)
+                DisclosureGroup(isExpanded: $isDetailsOpen) {
+                    details
+                        .padding(.top, 8)
+                } label: {
+                    Text(
+                        "Details",
+                        comment: """
+                            In the Cards window's detail, the disclosure under a card's words that holds its numbers, \
+                            as Anki's Card Info shows them, and its review log, closed until the user opens it.
+                            """)
                 }
             }
             .textSelection(.enabled)
@@ -156,11 +165,31 @@ struct CardDetail: View {
         }
     }
 
+    /// What Details holds: where the card stands, and its review log, or why
+    /// it couldn't be read.
+    private var details: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            standing
+            switch reviewLog {
+            case .success(let rows):
+                Divider()
+                ReviewLogView(rows: rows)
+            case .failure(let error):
+                Divider()
+                Label(error.localizedDescription, systemImage: "exclamationmark.triangle")
+                    .foregroundStyle(.secondary)
+            case nil:
+                EmptyView()
+            }
+        }
+    }
+
     /// Where the card stands, and why it shows up when it does, as Anki's
     /// Card Info says: its interval, when it's due, and its stability,
     /// difficulty and retrievability once it has them, front first, and
     /// back first too when it goes both ways; when Lucas last saw it, how
-    /// many times he reviewed it and when he approved it.
+    /// many times he reviewed it, when he approved it, and, once its front
+    /// or back changed since, when they last did.
     private var standing: some View {
         Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: 6) {
             wayRows(
@@ -245,6 +274,18 @@ struct CardDetail: View {
                 gridLabel(Text("Created", comment: "In the Cards window's detail: when Lucas approved the card."))
                 Text(row.card.createdAt.formatted(date: .abbreviated, time: .shortened))
             }
+            if let editedAt = row.card.editedAt {
+                GridRow {
+                    gridLabel(
+                        Text(
+                            "Edited",
+                            comment: """
+                                In the Cards window's detail: when the card's front or back last changed, a side's \
+                                image or sound included.
+                                """))
+                    Text(editedAt.formatted(date: .abbreviated, time: .shortened))
+                }
+            }
         }
     }
 
@@ -321,6 +362,78 @@ struct CardDetail: View {
                 gridLabel(labels.retrievability)
                 Text(memory.retrievability.formatted(.percent.precision(.fractionLength(0))))
             }
+        }
+    }
+}
+
+/// Where a card is, in words, as FichaData says it (`CardRow.Wording`), as
+/// the desktop mock's card pane says it: that a new card waits its turn in
+/// the queue, as the grid's legend says "New: waits its turn"; and of a card
+/// Lucas has seen, when it's back, "Due now", as the grid's dot says, "Back
+/// today at" a time, "Back on" a day, by its weekday, month and day, as the
+/// Mac's locale writes them, or that it's out of his reviews; and under it,
+/// how many times he saw it, "Seen 3 times".
+private struct CardWords: View {
+    let wording: CardRow.Wording
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            switch wording {
+            case .new:
+                Text(
+                    "New: it waits its turn in the queue.",
+                    comment: """
+                        In the Cards window's detail, of a card the user hasn't met yet, which waits its turn in the \
+                        queue of new cards, as the grid's “New: waits its turn” says.
+                        """)
+            case .seen(let times, let back):
+                backText(back)
+                Text(
+                    "Seen \(times) times",
+                    comment: """
+                        In the Cards window's detail, under when the card is back: how many times the user reviewed \
+                        it, either way, like “Seen 3 times”. None for a card an import from Anki brought in with its \
+                        progress, which the user hasn't reviewed in Ficha since.
+                        """
+                )
+                .foregroundStyle(.secondary)
+            }
+        }
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// When the card is back, as `back` says.
+    private func backText(_ back: CardRow.Wording.Back) -> Text {
+        switch back {
+        case .now:
+            Text(
+                "Due now",
+                comment: """
+                    In the Cards window's detail: the card is due, front first or back first, as the orange dot on \
+                    its tile says.
+                    """)
+        case .today(let time):
+            Text(
+                "Back today at \(time.formatted(date: .omitted, time: .shortened))",
+                comment: """
+                    In the Cards window's detail: the card is due again later today, at this time, like “Back today \
+                    at 3:00 PM”. Today runs until Ficha's day starts again, at 4:00, so the time can be after \
+                    midnight.
+                    """)
+        case .on(let day):
+            Text(
+                "Back on \(day.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()))",
+                comment: """
+                    In the Cards window's detail: the card is due again on a later day, by its weekday, month and \
+                    day, like “Back on Tue, Dec 15”.
+                    """)
+        case .outOfReviews:
+            Text(
+                "Out of your reviews",
+                comment: """
+                    In the Cards window's detail, in place of when the card is back: it's out of the user's \
+                    reviews, and the box above the card says why, so it isn't due until it's back in them.
+                    """)
         }
     }
 }

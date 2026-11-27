@@ -1191,8 +1191,14 @@
     "Back first" : {
       "comment" : "A badge on a card the review panel shows back first, its back on top and its front under it once flipped, and beside a review that went that way in the Cards window's review log.\nIn the key of the Cards window's review log chart: the line of a card that goes both ways, back first."
     },
+    "Back on %@" : {
+      "comment" : "In the Cards window's detail: the card is due again on a later day, by its weekday, month and day, like “Back on Tue, Dec 15”."
+    },
     "Back to All Tags (⌘[)" : {
       "comment" : "The tooltip of the Cards window's Back button."
+    },
+    "Back today at %@" : {
+      "comment" : "In the Cards window's detail: the card is due again later today, at this time, like “Back today at 3:00 PM”. Today runs until Ficha's day starts again, at 4:00, so the time can be after midnight."
     },
     "Back up" : {
       "comment" : "Settings, under Backups: how often Ficha backs up on its own."
@@ -1868,6 +1874,9 @@
     "Desired retention" : {
       "comment" : "Settings, under Advanced: how likely the user wants to be to remember a card when it's due."
     },
+    "Details" : {
+      "comment" : "In the Cards window's detail, the disclosure under a card's words that holds its numbers, as Anki's Card Info shows them, and its review log, closed until the user opens it."
+    },
     "Diagnostics" : {
       "comment" : "The Diagnostics window's title."
     },
@@ -1907,6 +1916,9 @@
     "Due" : {
       "comment" : "In the Cards window's detail: when the card is due."
     },
+    "Due now" : {
+      "comment" : "In the Cards window's detail: the card is due, front first or back first, as the orange dot on its tile says."
+    },
     "Each “Forgot” to a card out of its learning and relearning steps counts, since the card's front or back last changed. If you don't flag it, the panel offers again after half as many more." : {
       "comment" : "Settings, under Advanced: below the offer to flag a card forgotten often, which counts Anki's lapses. “Forgot” is the review panel's button that records Anki's Again, also on key 1."
     },
@@ -1918,6 +1930,9 @@
     },
     "Edit (⌘L)" : {
       "comment" : "The tooltip of the Cards window's button that edits the card or the capture."
+    },
+    "Edited" : {
+      "comment" : "In the Cards window's detail: when the card's front or back last changed, a side's image or sound included."
     },
     "Emoji" : {
       "comment" : "The field of the sheet that gives a tag, a deck or a card type an emoji."
@@ -2691,6 +2706,9 @@
     "New to me" : {
       "comment" : "The review panel's Forgot button on a new card's first turn, for a card the user hadn't met before: it records Anki's Again. Its key is 1."
     },
+    "New: it waits its turn in the queue." : {
+      "comment" : "In the Cards window's detail, of a card the user hasn't met yet, which waits its turn in the queue of new cards, as the grid's “New: waits its turn” says."
+    },
     "New: waits its turn" : {
       "comment" : "In the Cards window, above the grid of cards, and for VoiceOver, on a card's tile: the user hasn't met the card yet, which waits its turn in the queue of new cards."
     },
@@ -2994,6 +3012,9 @@
     "Orange" : {
       "comment" : "One of Finder's tag colors, which a tag can have."
     },
+    "Out of your reviews" : {
+      "comment" : "In the Cards window's detail, in place of when the card is back: it's out of the user's reviews, and the box above the card says why, so it isn't due until it's back in them."
+    },
     "Pace" : {
       "comment" : "A tab of the Settings window: how fast new cards come, and the queue of decks they come from.\nThe name of How fast?'s group of paces, which VoiceOver reads."
     },
@@ -3140,6 +3161,35 @@
     },
     "See more?" : {
 
+    },
+    "Seen %lld times" : {
+      "comment" : "In the Cards window's detail, under when the card is back: how many times the user reviewed it, either way, like “Seen 3 times”. None for a card an import from Anki brought in with its progress, which the user hasn't reviewed in Ficha since.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Seen once"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Seen %lld times"
+                }
+              },
+              "zero" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Not seen in Ficha yet"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "Select All" : {
       "comment" : "A hidden button of the Cards window: ⌘A, which selects every card the grid lists, while the grid has the keyboard."

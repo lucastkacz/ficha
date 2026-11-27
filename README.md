@@ -55,7 +55,7 @@ The steps, how sure you want to be to remember a card, and the longest it may wa
 
 ## Your cards
 
-Ficha's Cards window shows your decks, and each deck's cards as cards, with their front's picture or text and a dot for the ones you've met and the ones due, and it's where you add, import and export them; an AI agent can also add them from a terminal.
+Ficha's Cards window shows your decks, and each deck's cards as cards, with their front's picture or text and a dot for the ones you've met and the ones due, and it's where you add, import and export them; an AI agent can also add them from a terminal. A card you select says when it's back, such as "Back on Tue, Dec 15", and how many times you've seen it, with FSRS's numbers, when it was created and last edited, and its reviews under Details.
 
 **New Card.** Write a card yourself: its front and back, the deck it goes in, and if you like its tags, a type, where it comes from, and Both ways, so that it comes back first too. As in Anki's Add window, the deck starts as the one you're looking at in the sidebar, or else the one you last added a card to on this Mac, and New Deck… there makes another. Right-click a deck or a type in the sidebar, or the Your Decks or Types title, to make a new one before it has any card. The form stays open for the next card, and tells you when a front repeats one of your cards. Editing a card can move it to another deck too.
 

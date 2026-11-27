@@ -54,6 +54,42 @@ struct CardWordingTests {
         #expect(!calendar.isDate(petricorIsBack, inSameDayAs: time.now))
         #expect(said[petricor.id] == .seen(times: 3, back: .on(calendar.startOfDay(for: petricorIsBack))))
     }
+
+    // Ficha's day starts at 4 in the morning (ADR 0045). At 9 at night,
+    // lechuza is met, due at 10, and rated Good then, which puts it on its
+    // second learning step, 4 hours, due at 2 in the morning. At 11, búho is
+    // met, due at midnight. Read at 11, lechuza is back later today, though
+    // after midnight. At midnight búho is rated Good, due at 4 in the
+    // morning: read then, it's back on the 15th, Ficha's next day, though
+    // that's the date it is.
+    @Test(
+        "a card's detail counts its days from 4 in the morning, so a card back at 2 is back later today, and one back at 4 on that day",
+        .bug(id: 537))
+    func aCardsDetailCountsItsDaysFromFourInTheMorning() throws {
+        let lechuza = try engine.create(card(nil, front: "lechuza", back: "Un ave de la noche."))
+        let buho = try engine.create(card(nil, front: "búho", back: "Otra ave de la noche."))
+        time.move(to: time.now + hours(12))
+        try engine.meet(lechuza)
+        try engine.reviewWhenDue(lechuza, .good, movingForward: time)
+        time.move(to: time.now + hours(1))
+        try engine.meet(buho)
+        var window = engine.openCardsWindow(with: scheduler)
+        window.read(with: scheduler)
+        window.select([lechuza.id])
+        let lechuzaAtEleven = window.wording(of: try #require(window.shownCardRow))
+        let lechuzaIsBack = time.now + hours(3)
+
+        try engine.reviewWhenDue(buho, .good, movingForward: time)
+        window.read(with: scheduler)
+        window.select([buho.id])
+        let buhoAtMidnight = window.wording(of: try #require(window.shownCardRow))
+        let buhoIsBack = time.now + hours(4)
+
+        #expect(!calendar.isDate(lechuzaIsBack, inSameDayAs: time.now - hours(1)))
+        #expect(lechuzaAtEleven == .seen(times: 2, back: .today(at: lechuzaIsBack)))
+        #expect(calendar.isDate(buhoIsBack, inSameDayAs: time.now))
+        #expect(buhoAtMidnight == .seen(times: 2, back: .on(calendar.startOfDay(for: buhoIsBack))))
+    }
 }
 
 extension CardsWindowState {
