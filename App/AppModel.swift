@@ -103,7 +103,8 @@ final class AppModel {
     private init(engine: Engine, debugTools: DebugTools?) throws(EngineError) {
         self.engine = engine
         self.debugTools = debugTools
-        settings = Preferences.reviewSettings(with: try Self.movedInProgressSettings(of: engine))
+        let settings = Preferences.reviewSettings(with: try Self.movedInProgressSettings(of: engine))
+        self.settings = settings
         backups = engine.openBackups()
         pace = engine.openPaceTab(settings)
         // Listening before counting, so no change falls in between.
