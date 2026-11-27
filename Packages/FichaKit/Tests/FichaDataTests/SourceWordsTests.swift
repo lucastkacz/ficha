@@ -25,6 +25,45 @@ struct SourceWordsTests {
             (#536). Say it as the grid or the detail does, and run the test again. \(SourceHit.list(hits))
             """)
     }
+
+    // The words, in the code alone, as with the columns: "tag" and "tags",
+    // alone or in a name, such as `CardTag`, `allTags` and `chosenDeckTag`;
+    // and a card type's names, "Type" or "Types" in a name after a lowercase
+    // letter, such as `CardType`, `UserTypes` and `editedType`, a name that
+    // starts with "type" or "Type", such as `typeGroups`, and `.type`, a
+    // card's type read, or a group's. Not "type" alone, which also names what
+    // the user types and a pasteboard's types of data.
+    // Taken out of each line first: `TagPath` with its member, and
+    // `TagColor`, since decks reuse a tag's path and its colors (ADR 0024);
+    // `tags: []` and `type: nil`, a card made with neither, as `CardContent`
+    // still takes both, which the database keeps, unread (ADR 0041); and
+    // `UniformTypeIdentifiers`, `typeIdentifiers` and `ofType`, which name a
+    // pasteboard's types of data.
+    // Exempt: the Import sheet (`CardsWindowImport.swift`), whose tags are
+    // those an import's file proposes for its cards, and which ADR 0041 takes
+    // out with text files and Anki's packages (Mac › Cards › Import).
+    @Test("no window's state reads tags or card types", .bug(id: 538))
+    func noWindowsStateReadsTagsOrCardTypes() throws {
+        let files = try SourceFile.windowStates().filter { $0.name != "CardsWindowImport.swift" }
+        let hits = try SourceFile.hits(
+            of: [
+                #"(?<![A-Za-z])[Tt]ags?(?![a-z])|(?<=[a-z])Tags?(?![a-z])"#,
+                #"(?<=[a-z])Types?(?![a-z])|(?<![A-Za-z])[Tt]ypes?(?=[A-Z])|\.type\b"#,
+            ],
+            in: files,
+            ignoring: [
+                #"\bTagPath(\.[a-z]\w*)?"#, #"\bTagColor\b"#, #"\btags: \[\]"#, #"\btype: nil\b"#,
+                #"\bUniformTypeIdentifiers\b"#, #"\btypeIdentifiers\b"#, #"\bofType\b"#,
+            ],
+            codeOnly: true)
+        #expect(
+            hits.isEmpty,
+            """
+            A window's state still reads tags or card types, which leave the app's face (#538): the database keeps \
+            them, unread, and the CLI's tag and type commands stay. Take them out of the state, and run the test \
+            again. \(SourceHit.list(hits))
+            """)
+    }
 }
 
 /// A Swift file of the repo, by its path from the repo's folder, with its
@@ -72,6 +111,14 @@ struct SourceFile {
     /// itself, such as `CardForm.swift` and `HowFast.swift`.
     static func cardsWindowState() throws -> [SourceFile] {
         try fichaData(declaringOrExtending: #"^(public )?(struct|extension) CardsWindowState\b"#)
+    }
+
+    /// FichaData's files that hold a window's state: those named
+    /// `CardsWindow…`, and those that declare or extend a type whose name ends
+    /// in `State`, as `CardsWindowState`, `ReviewPanelState`, `SyncTabState`
+    /// and `BackupsState` do.
+    static func windowStates() throws -> [SourceFile] {
+        try fichaData(declaringOrExtending: #"^(public )?(struct|extension) \w+State\b"#)
     }
 
     /// FichaData's files named `CardsWindow…`, and those with a line that
