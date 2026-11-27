@@ -4,7 +4,7 @@ import Foundation
 import Testing
 
 /// Tests on Ficha's day (ADR 0045): from 4:00, or the hour the user sets, to
-/// the same hour the next day, by the Mac's clock, so that a night that
+/// the same hour the next day, by the device's clock, so that a night that
 /// crosses midnight is one day for the new cards a day and the days Ficha
 /// names. They run at Steady, in Buenos Aires, from 9 in the morning of
 /// Wednesday the 14th.
