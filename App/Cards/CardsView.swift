@@ -1361,7 +1361,7 @@ struct CardsView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(verbatim: file.deck.name)
                         .font(.title3)
-                        .bold()
+                        .fontWeight(.semibold)
                     Text(verbatim: CardsWindowState.HowFast.Line.fichaDeck(cardCount: file.cardCount).text)
                         .foregroundStyle(.secondary)
                 }
@@ -2235,7 +2235,7 @@ private struct FichaDeckRow: View {
                         brings.
                         """
                 )
-                .font(.caption)
+                .font(.subheadline)
                 .foregroundStyle(.secondary)
             }
         } icon: {
@@ -2262,7 +2262,7 @@ private struct FichaDeckCard: View {
                 }
                 if !card.front.isEmpty {
                     TextAsItReads(card.front)
-                        .cardFont(.title)
+                        .cardFont(.title3)
                 }
                 Divider()
                 if let image = card.backImage {

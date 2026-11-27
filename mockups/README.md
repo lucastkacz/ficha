@@ -39,7 +39,7 @@ No build step: React 18.3.1 from cdnjs and htm 3.1.1 from jsDelivr, pinned, so c
 | `--separator` | `Divider()` |
 | `--accent` | `.tint` |
 | `.glass` with `--radius-panel` (24) | `.glassEffect(.regular, in: .rect(cornerRadius: 24, style: .continuous))` |
-| `--text-title2` semibold, `--text-body`, `--text-caption` | `.title2.weight(.semibold)`, `.body`, `.caption` (`CardTextStyle`) |
+| `--text-title2` semibold, `--text-title3` semibold, `--text-body`, `--text-caption` | `.title2.weight(.semibold)`, `.title3.weight(.semibold)`, `.body`, `.caption` (`CardTextStyle`) |
 | `Button` / `Button prominent` | `.buttonStyle(.bordered)` / `.borderedProminent` |
 | `IconButton` | `.labelStyle(.iconOnly)`, `.buttonStyle(.borderless)` |
 | `KeyLabel`, `Capsule` | `KeyLabel`, `TagCapsule` |
