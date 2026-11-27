@@ -95,6 +95,9 @@ struct ReviewPanelView: View {
     /// Whether the panel reads right to left, which says whether a card's
     /// upper side can sit beside the ⋯ menu.
     @Environment(\.layoutDirection) private var layoutDirection
+    /// Whether the panel has the keyboard, `.key`, which macOS draws a
+    /// prominent button's color in: without it, Kind of is gray, as Got it is.
+    @Environment(\.controlActiveState) private var controlActiveState
 
     var body: some View {
         HeightUpTo(maximum: maximumHeight) {
@@ -760,7 +763,9 @@ struct ReviewPanelView: View {
     /// Forgot and Got it are named New to me and Knew it, and Kind of keeps its
     /// name. The one Space presses is the prominent one, as Flip is. Kind of is
     /// yellow, filled as the prominent one is, with a dark title, since a white
-    /// one on yellow barely reads; Forgot stays gray.
+    /// one on yellow barely reads; Forgot stays gray. Without the keyboard, macOS
+    /// draws Kind of and Got it gray too, and Kind of's title takes the others'
+    /// color, since a dark one barely reads on dark gray.
     @ViewBuilder
     private func answerButton(_ button: AnswerButton, isNew: Bool, in panel: ReviewPanelModel) -> some View {
         let label = KeyLabel(title: name(of: button, isNew: isNew), key: keyName(of: button.key))
@@ -772,9 +777,15 @@ struct ReviewPanelView: View {
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.space, modifiers: [])
         case .kindOf:
-            Button(action: answer) { label.foregroundStyle(.black) }
-                .buttonStyle(.borderedProminent)
-                .tint(.yellow)
+            Button(action: answer) {
+                if controlActiveState == .key {
+                    label.foregroundStyle(.black)
+                } else {
+                    label
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.yellow)
         case .forgot:
             Button(action: answer) { label }
                 .buttonStyle(.bordered)

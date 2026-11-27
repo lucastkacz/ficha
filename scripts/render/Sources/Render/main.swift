@@ -1629,7 +1629,9 @@ func bothWaysModel() throws -> AppModel {
 /// The review panel on the sample's card whose front is `front`, as an
 /// appearance brings it, new unless `panelCard` says otherwise, on a gradient
 /// in a window, so that its Liquid Glass has something to show through, as
-/// the README's pictures draw it.
+/// the README's pictures draw it. Its controls draw as in the key window
+/// (`controlActiveState`), which `actAsKey` doesn't reach: Flip and Got it in
+/// the accent color and Kind of in yellow, as with the keyboard.
 func panelWindow(
     model: AppModel, on front: String, as panelCard: (Card) -> PanelCard = { .new($0) }
 ) throws -> NSWindow {
@@ -1638,6 +1640,7 @@ func panelWindow(
     }
     let panel = model.startAppearance(with: [panelCard(card)])
     let content = ReviewPanelView(model: panel, player: SoundPlayer()) {}
+        .environment(\.controlActiveState, .key)
         .padding(32)
         .background(LinearGradient(colors: [.teal, .indigo], startPoint: .topLeading, endPoint: .bottomTrailing))
     let window = AppWindow(title: "Review", content: content)
