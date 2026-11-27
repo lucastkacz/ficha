@@ -392,7 +392,8 @@ extension FinishDate.Wording {
     private static func either(_ day: String, _ next: String) -> String {
         String(
             localized: "\(day) or \(next)",
-            comment: "A finish date of two days in a row, in the Cards window and Settings' Pace tab: “today or tomorrow”.")
+            comment:
+                "A finish date of two days in a row, in the Cards window and Settings' Pace tab: “today or tomorrow”.")
     }
 
     /// Two ends of a finish date, joined by "to": "Wednesday to Saturday",
@@ -400,7 +401,9 @@ extension FinishDate.Wording {
     private static func range(_ first: String, _ last: String) -> String {
         String(
             localized: "\(first) to \(last)",
-            comment: "A finish date from one day or third of a month to another, in the Cards window and Settings' Pace tab.")
+            comment:
+                "A finish date from one day or third of a month to another, in the Cards window and Settings' Pace tab."
+        )
     }
 }
 
