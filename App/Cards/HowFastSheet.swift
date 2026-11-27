@@ -53,7 +53,7 @@ struct HowFastSheet: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("How fast?", comment: "The title of How fast?, the Cards window's sheet as a deck comes in.")
                     .font(.headline)
-                Picker(selection: Binding(get: { howFast.pace }, set: choosePace)) {
+                Picker(selection: Binding(get: { howFast.pace }, set: { choosePace($0) })) {
                     ForEach(howFast.paces, id: \.pace) { option in
                         paceRow(option)
                             .tag(option.pace)
@@ -69,7 +69,7 @@ struct HowFastSheet: View {
                     Text(verbatim: whereItGoes)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
-                    Toggle(isOn: Binding(get: { howFast.putsFirst }, set: putFirst)) {
+                    Toggle(isOn: Binding(get: { howFast.putsFirst }, set: { putFirst($0) })) {
                         Text(
                             "Put it first",
                             comment: "A checkbox of How fast?: the deck coming in goes first in the queue.")
