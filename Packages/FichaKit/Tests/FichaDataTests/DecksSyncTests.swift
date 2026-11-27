@@ -158,10 +158,12 @@ final class DecksSyncTests {
         }
     }
 
-    // The iPhone, offline, writes Historia's description first; the Mac writes
-    // another later, and sends first, so the latest is the one the iPhone
-    // hears of. The deck's record holds it as `deckDescription`, a field
-    // Production's schema gets before an upload, which can never be deleted.
+    // The iPhone, offline, writes Historia's description first, and gives it
+    // an emoji; the Mac writes another description later, and sends first, so
+    // the latest is the one the iPhone hears of, while the iPhone's emoji,
+    // which the Mac didn't change, stays. The deck's record holds the
+    // description as `deckDescription`, a field Production's schema gets
+    // before an upload, which can never be deleted.
     @Test(
         "a deck's description reaches the other device as a field of the deck's record, the latest change wins, and taking it away reaches it",
         .bug(id: 556))
@@ -175,6 +177,7 @@ final class DecksSyncTests {
         iPhone.iCloud.isOffline = true
         time.advance(by: minutes(1))
         try iPhone.engine.setDescription("Lo que pasó.", ofDeck: "Historia")
+        try iPhone.engine.setEmoji(Emoji("🏛️"), ofDeck: "Historia")
         time.advance(by: minutes(1))
         try mac.engine.setDescription("Roma, Grecia y Egipto.", ofDeck: "Historia")
         try await mac.syncNow()
@@ -189,10 +192,10 @@ final class DecksSyncTests {
         try await syncBoth()
 
         #expect(first == [Deck(name: "Historia", description: "Roma y Grecia.")])
-        #expect(latest == [Deck(name: "Historia", description: "Roma, Grecia y Egipto.")])
+        #expect(latest == [Deck(name: "Historia", emoji: "🏛️", description: "Roma, Grecia y Egipto.")])
         #expect(record.value(of: "deckDescription") == .string("Roma, Grecia y Egipto."))
         for device in [mac, iPhone] {
-            #expect(try device.engine.decks() == [Deck(name: "Historia")])
+            #expect(try device.engine.decks() == [Deck(name: "Historia", emoji: "🏛️")])
             #expect(try device.engine.changesToSend().isEmpty)
         }
     }

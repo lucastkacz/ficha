@@ -226,6 +226,28 @@ final class DeckChangesSyncTests {
         }
     }
 
+    // As above, with a description in place of the color (ADR 0044).
+    @Test(
+        "a description a device offline meanwhile gave a deck moves with the rename once it hears of it", .bug(id: 556))
+    func aDeckDescribedOfflineMovesWithTheRename() async throws {
+        try mac.engine.create(card(.concept, front: "Coliseo", back: "Un anfiteatro."), deck: "Historia")
+        try await syncBoth()
+
+        iPhone.iCloud.isOffline = true
+        time.advance(by: minutes(1))
+        try mac.engine.renameDeck("Historia", to: "Pasado")
+        try await mac.syncNow()
+        time.advance(by: minutes(1))
+        try iPhone.engine.setDescription("Roma y Grecia.", ofDeck: "Historia")
+        iPhone.iCloud.isOffline = false
+        try await syncBoth()
+
+        for device in [mac, iPhone] {
+            #expect(try device.engine.decks() == [Deck(name: "Pasado", description: "Roma y Grecia.")])
+            #expect(try device.engine.changesToSend().isEmpty)
+        }
+    }
+
     // Only Idiomas syncs, and none of its decks has a card. The iPhone made
     // Idiomas::Latín and the Mac Idiomas::Griego; the Mac moves both to the
     // top, where they no longer sync. Each device lists those made on it
