@@ -141,7 +141,8 @@
       svg(html`<path d="M3.5 2.4h9A1.6 1.6 0 0 1 14.1 4v6a1.6 1.6 0 0 1-1.6 1.6H8.3l-3 2.4v-2.4H3.5A1.6 1.6 0 0 1 1.9 10V4a1.6 1.6 0 0 1 1.6-1.6z" />
         <path d="M6.7 5.3a1.4 1.4 0 1 1 2 1.3c-.5.2-.7.6-.7 1v.2" /><circle cx="8" cy="9.4" r=".55" fill="currentColor" stroke="none" />`, s),
     flag: (s) => svg(html`<path d="M3.8 14.2V2.4" /><path d="M3.8 2.8h8.6l-2 3 2 3H3.8" />`, s),
-    bury: (s) =>
+    // eye.slash: Set Aside, and a card set aside, as the app marks it.
+    setAside: (s) =>
       svg(html`<path d="M1.8 8S4 3.6 8 3.6 14.2 8 14.2 8 12 12.4 8 12.4 1.8 8 1.8 8z" /><circle cx="8" cy="8" r="2" /><path d="m2.6 2.6 10.8 10.8" />`, s),
     close: (s) => svg(html`<path d="m4 4 8 8M12 4l-8 8" />`, s),
     // magnifyingglass: a search field's.
@@ -511,7 +512,7 @@
   /**
    * The ⋯ menu in the panel's corner, as the app's (`moreMenu(of:)` in
    * `App/ReviewPanelView.swift`, with `ReviewPanelState`'s `cardActions` and
-   * `menuOffersUndo`): Ask…, Flag… and Bury, then Undo and Close. While a
+   * `menuOffersUndo`): Ask…, Flag… and Set Aside, then Undo and Close. While a
    * note or a question is being written, Close alone; once the cards are
    * done, Undo and Close. Its items show no keys, as the app's don't: A, M,
    * E, ⌘Z and Esc work with the menu closed.
@@ -524,7 +525,7 @@
       <div className="menu more-menu glass" role="menu">
         ${onACard && html`${item('Ask…', onAsk)}
           ${item('Flag…', onFlag)}
-          ${item('Bury', () => app.bury())}
+          ${item('Set Aside', () => app.setCurrentCardAside())}
           <div className="sep" />`}
         ${!panel.mode && item('Undo', () => app.undo(), !panel.undo.length)}
         ${item('Close', () => app.close())}
@@ -589,7 +590,7 @@
         const k = e.key.toLowerCase();
         if (k === 'a') return handled(), setMore(false), setText(''), app.setMode('ask');
         if (k === 'm') return handled(), setMore(false), setText(''), app.setMode('flag');
-        if (k === 'e') return handled(), setMore(false), app.bury();
+        if (k === 'e') return handled(), setMore(false), app.setCurrentCardAside();
       };
       window.addEventListener('keydown', onKey, true);
       return () => window.removeEventListener('keydown', onKey, true);
@@ -647,7 +648,7 @@
       : html`${!writing && html`${undo}
             <${IconButton} icon=${Icon.ask} label="Ask… (a)" onClick=${ask} />
             <${IconButton} icon=${Icon.flag} label="Flag… (m)" onClick=${flag} />
-            <${IconButton} icon=${Icon.bury} label="Bury (e)" onClick=${() => app.bury()} />`}
+            <${IconButton} icon=${Icon.setAside} label="Set Aside (e)" onClick=${() => app.setCurrentCardAside()} />`}
           ${close}`;
     let controls;
     if (writing) {
