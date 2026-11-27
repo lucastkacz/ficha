@@ -16,8 +16,8 @@ import UniformTypeIdentifiers
 /// place, then the rest alphabetically, and those set aside last; each with
 /// how many of its cards are due, grayed while its cards are out of Lucas's
 /// reviews, and with its emoji and color, and each at the top of the tree
-/// with a line under its title that says how far it is and when it's all
-/// met (#491); a deck's context menu, and the Actions menu above the card
+/// with a line under its title, on up to two lines, that says how far it is
+/// and when it's all met (#491); a deck's context menu, and the Actions menu above the card
 /// list while the sidebar chose it (`DeckMenu.swift`), set it aside or
 /// prioritize it, give it a color and an emoji, rename it, in the rename
 /// sheet, which moves it too, and delete it, with its cards, asking first;
@@ -2148,15 +2148,20 @@ private struct DeckBranch: View {
     /// Its own row, which choosing lists its cards: its emoji before its
     /// title, and its symbol in its color, its own or else the decks' it sits
     /// inside, as a pinned tag's row shows a tag's, and, for a deck at the
-    /// top of the tree, its line under its title, smaller and secondary.
+    /// top of the tree, its line under its title, smaller and secondary, on
+    /// up to two lines.
     private var label: some View {
         Label {
             VStack(alignment: .leading, spacing: 1) {
                 Text(verbatim: row.shownTitle)
                 if let line = row.line {
+                    // Its finish date is what the line is for: a second line,
+                    // not an ellipsis, in a narrow sidebar.
                     Text(verbatim: line.text)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
         } icon: {

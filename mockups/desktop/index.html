@@ -108,7 +108,8 @@
   .cards .side-row:hover { background: var(--fill); }
   .cards .side-row[aria-selected='true'] { background: var(--selection); }
   .cards .side-row .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .cards .side-row small { grid-column: 2; color: var(--secondary-label); font-size: var(--text-subheadline); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* A deck's line, on up to two lines, as the app's row: its finish date is what it's for. */
+  .cards .side-row small { grid-column: 2; color: var(--secondary-label); font-size: var(--text-subheadline); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
   .cards .side-row.aside .name { color: var(--secondary-label); }
   .cards .detail { min-width: 0; padding: 6px 22px 18px; display: flex; flex-direction: column; gap: 12px; overflow: auto; }
   .cards .row-actions { display: flex; gap: 8px; flex-wrap: wrap; }
