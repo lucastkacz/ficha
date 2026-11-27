@@ -28,7 +28,7 @@ No build step: React 18.3.1 from cdnjs and htm 3.1.1 from jsDelivr, pinned, so c
 | `kit/ui.css` | The look of macOS 26 controls, Liquid Glass, the review panel, and the mock's own bar. |
 | `kit/ui.js` | React components named after their SwiftUI counterparts, the fake Mac, and `MockControls`. |
 | `kit/engine.js` | The toy engine: FSRS-6, the learning steps, the appearance rules, the clock, the pace, the queue and the finish date, and each card's review log. Plain JavaScript, so it also runs in Node. |
-| `kit/decks.js` | Ficha's three decks, `ficha: true`, with the cards the app ships in `App/FichaDecks/`, which the Claude project's `build_decks.py` writes between its `// <ficha-decks>` lines, from `/mnt/project-files/mazos-ficha/build/` in its sessions (`PLIEGO.md`, An artifact's sources), and a made-up deck of the user's own. |
+| `kit/decks.js` | Ficha's three decks, `ficha: true`, with the cards the app ships in `App/FichaDecks/`, which the Claude project's `build_decks.py` writes between its `// <ficha-decks>` lines, from `/mnt/project-files/mazos-ficha/build/` in its sessions (`PLIEGO.md`, An artifact's sources), and a made-up deck someone sent the user, as its `.ficha` (#554). |
 | `kit/lab.js` | The Lab's simulator: weeks of the toy engine in a made-up life (the Mac's hours, meetings, snoozed appearances, ratings as FSRS predicts), run several times and averaged. Plain JavaScript; the Lab page and `tools/simulate.js` share it. |
 
 ### From the mock to SwiftUI
@@ -77,7 +77,7 @@ What `desktop/` shows that the app doesn't yet, or not where the mock has it, so
 
 - The Welcome page's steps, `WelcomePage` (#467).
 - In the Cards window, a deck's bar, with Put it first and Set aside: the app has Set Aside in the deck's menu, and Put it first in How fast? and in Settings' Pace tab.
-- The Cards window's "Your Own" section, with New Deck… and Import an Anki file…, which the app keeps elsewhere: New Deck… in a deck's menu and the Your Decks title's, and Import… in the toolbar, on ⇧⌘I.
+- The Cards window's "Your Own" section, with New Deck… and Open Deck…, which the app keeps elsewhere: both in a deck's menu and the Your Decks title's, Open Deck… on ⌘O too, and beside New Card while the user has no cards. The mock's Open Deck… shows the deck a made-up `.ficha` holds, as the app's open panel would choose it, with Add Deck…, which asks How fast? for it (#554).
 
 ### Sizes
 

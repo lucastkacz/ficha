@@ -265,15 +265,18 @@
    * and the finish date, in How fast? and the Cards window (#491); Ficha's
    * decks (#458) and the Welcome page that offers them (#467); Settings in
    * five tabs, with where each of today's rows went (#492); the card form,
-   * with no tags and no type (#538). And, as before,
+   * with no tags and no type (#538); Open Deck…, which brings in a deck's
+   * .ficha someone sent, with How fast? for it (#554). And, as before,
    * the panel over a working day on a fast clock, and what holds it back.
    * New here, not in the app yet: WelcomePage's steps and SettingsWindow's
    * five tabs. Ahead of the app too, in CardsWindow: a deck's bar, with Put
    * it first and Set aside, where the app has Set Aside in the deck's menu
    * and Put it first in How fast? alone; and the sidebar's "Your Own"
-   * section, with New Deck… and Import an Anki file…, which the app keeps
-   * elsewhere: New Deck… in a deck's menu and the Your Decks title's, and
-   * Import… in the toolbar, on ⇧⌘I.
+   * section, with New Deck… and Open Deck…, which the app keeps elsewhere:
+   * both in a deck's menu and the Your Decks title's, Open Deck… on ⌘O too,
+   * and beside New Card while the user has no cards. The mock's Open Deck…
+   * shows the deck its made-up .ficha holds, as the app's open panel would
+   * choose it, with Add Deck… for How fast?.
    */
   const { useState, useEffect, useRef, createContext, useContext } = React;
   const {
@@ -345,15 +348,15 @@
   }
 
   // ---------------------------------------------------------------------
-  // WelcomePage: Ficha's decks, an Anki file or from scratch; How fast?;
-  // then whether it opens at login (#467).
+  // WelcomePage: Ficha's decks or from scratch; How fast?; then whether it
+  // opens at login (#467). A deck's .ficha comes in through the Cards
+  // window's Open Deck… or a double-click, not here (ADR 0044).
   // ---------------------------------------------------------------------
   function WelcomePage({ app, state, onDone, ...win }) {
     const [step, setStep] = useState('start');
     const [choice, setChoice] = useState(null);
     const [pace, setPace] = useState(state.pace);
     const fichaDecks = state.decks.filter((d) => d.ficha);
-    const anki = state.decks.find((d) => !d.ficha);
     const chosen = choice && choice !== 'scratch' ? app.deck(choice) : null;
     const finish = (login) => {
       if (choice) app.setPace(pace);
@@ -397,10 +400,6 @@
               <span className="count">${cardsIn(app, d.id)} cards</span></button>`)}
           </div>
           <div className="doors">
-            <button type="button" className=${choice === anki.id ? 'drop on' : 'drop'} onClick=${() => setChoice(anki.id)}>
-              ${choice === anki.id
-                ? html`<b>${anki.file}</b> · ${cardsIn(app, anki.id)} cards, ready to import`
-                : html`<b>I have Anki:</b> drop a file`}</button>
             <button type="button" className="linkish" aria-pressed=${choice === 'scratch'} onClick=${() => setChoice('scratch')}>
               Start from scratch</button>
           </div>
@@ -409,7 +408,7 @@
           ${chosen
             ? html`<div className="deck-head"><span className="deck-emoji">${chosen.emoji}</span>
               <div><h2>${chosen.name}</h2>
-                <p className="sub">${cardsIn(app, chosen.id)} cards · ${chosen.ficha ? "one of Ficha's decks" : `from ${chosen.file}`}</p></div></div>`
+                <p className="sub">${cardsIn(app, chosen.id)} cards · one of Ficha's decks</p></div></div>`
             : html`<div className="deck-head"><span className="deck-emoji">🗂️</span>
               <div><h2>From scratch</h2>
                 <p className="sub">No cards yet. Make a deck, or capture a card from the menu bar.</p></div></div>`}
@@ -437,6 +436,9 @@
   // which says in words when it's back and how many times it was seen,
   // with its numbers under Details (#537), and offers Set Aside or Put Back
   // (#539); and the card form, with no tags and no type (#538).
+  // Open Deck… shows the deck a made-up .ficha someone sent holds, as the
+  // app's open panel would choose it, with Add Deck…, which asks How fast?
+  // for it, "12 cards · from Capitales.ficha" (#554).
   // ---------------------------------------------------------------------
   /** A deck's line, as its row says it (#491). */
   function deckStatus(app, state, d) {
@@ -576,7 +578,8 @@
     const empty = queued.filter((d) => !cardsIn(app, d.id)).sort((a, b) => a.name.localeCompare(b.name));
     const yours = [...queued.filter((d) => cardsIn(app, d.id)), ...empty, ...state.decks.filter((d) => d.added && d.setAside).sort((a, b) => a.name.localeCompare(b.name))];
     const toAdd = state.decks.filter((d) => d.ficha && !d.added);
-    const anki = state.decks.find((d) => !d.ficha && !d.added);
+    // The deck a made-up .ficha someone sent holds, which Open Deck… opens.
+    const sent = state.decks.find((d) => !d.ficha && !d.added);
     const [selected, setSelected] = useState((yours[0] || toAdd[0]).id);
     const [sheet, setSheet] = useState(null);
     // Whether the card form is open, over the window (#538).
@@ -643,8 +646,8 @@
           <div className="side-title">Your Own</div>
           <button type="button" className="side-row" aria-selected=${making} onClick=${() => setSelected(NEW)}>
             <span>🗂️</span><span className="name">New Deck…</span><small>Empty, for your own cards</small></button>
-          ${anki && html`<button type="button" className="side-row" aria-selected=${selected === anki.id} onClick=${() => setSelected(anki.id)}>
-              <span>📥</span><span className="name">Import an Anki file…</span><small>Mock: ${anki.file}</small></button>`}
+          ${sent && html`<button type="button" className="side-row" aria-selected=${selected === sent.id} onClick=${() => setSelected(sent.id)}>
+              <span>📂</span><span className="name">Open Deck…</span><small>Mock: ${sent.file}, a deck someone sent you</small></button>`}
         </nav>
         <div className=${browsing ? 'detail browsing' : 'detail'}>
           <div className="deck-head"><span className="deck-emoji">${deck.emoji}</span>
@@ -676,10 +679,10 @@
               ? html`<div className="one-card">${cards[0].picture ? html`<${CardPicture} card=${cards[0]} />` : html`<div className="front">${cards[0].front}</div>`}
                   <${Divider} /><div className="back">${cards[0].back}</div></div>
                 <div className="row-actions"><${Button} prominent title="Add Deck…" onClick=${() => openSheet(deck.id)} /></div>`
-              : html`<p className="sub">${deck.blurb}</p>
+              : html`${deck.blurb ? html`<p className="sub">${deck.blurb}</p>` : null}
               <div className="peek">${cards.slice(0, 5).map((c) => html`<${Capsule} key=${c.id}>${c.front}</${Capsule}>`)}
                 ${cards.length > 5 && html`<${Capsule}>+${cards.length - 5} more</${Capsule}>`}</div>
-              <div className="row-actions"><${Button} prominent title=${making ? 'New Deck…' : 'Import…'}
+              <div className="row-actions"><${Button} prominent title=${making ? 'New Deck…' : 'Add Deck…'}
                 onClick=${() => openSheet(deck.id)} /></div>`}
         </div>
         ${browsing && html`<aside className="card-pane" aria-label="The card's detail">
@@ -700,7 +703,7 @@
         ${sheetDeck && html`<div className="sheet-cover"><div className="sheet" role="dialog" aria-label="How fast?">
           <div className="deck-head"><span className="deck-emoji">${sheetDeck.emoji}</span>
             <div><h2>${sheetDeck.name}</h2>
-              <p className="sub">${sheet === NEW ? 'No cards yet' : `${cardsIn(app, sheetDeck.id)} cards · ${sheetDeck.ficha ? "one of Ficha's decks" : `imported from ${sheetDeck.file}`}`}</p></div></div>
+              <p className="sub">${sheet === NEW ? 'No cards yet' : `${cardsIn(app, sheetDeck.id)} cards · ${sheetDeck.ficha ? "one of Ficha's decks" : `from ${sheetDeck.file}`}`}</p></div></div>
           <${HowFast} app=${app} state=${state} deckId=${sheet === NEW ? null : sheetDeck.id} pace=${pace} setPace=${setPace} first=${first} setFirst=${setFirst} />
           <div className="actions"><${Button} title="Cancel" k="esc" onClick=${() => setSheet(null)} />
             <${Button} prominent title=${sheet === NEW ? 'Create' : 'Start'} k="↩" onClick=${start} /></div>
@@ -1018,7 +1021,8 @@
         deck in the queue until you've met them all, then from the next. A finish date is a range: the soonest if every
         day has appearances, the latest if five days in seven do. 85% desired retention.</li>
       <li>Ficha's three decks, in Spanish for now, offered at the Welcome page and in the Cards window; the first card
-        comes a minute after the Welcome page. "I have Anki" stands for the Import sheet with a made-up file.</li>
+        comes a minute after the Welcome page. In the Cards window, Open Deck… stands for its open panel, on a made-up
+        Capitales.ficha someone sent you: Add Deck… asks How fast? for it, as a double-click on the file does.</li>
       <li>The Cards window, ADR 0041's: the decks alone in the sidebar, each with its row, and the chosen deck's cards
         as a grid, each its front's picture or its text, a dot for met or due. Click one for its front and back, in the detail beside the grid,
         with Set Aside, which takes it out of your reviews: it stays in its deck, dimmed, with Put Back.
