@@ -2776,7 +2776,7 @@
       "comment" : "In the review panel, under the decks it met in full: no deck has new cards."
     },
     "Nothing waits in the queue. Another of Ficha's decks?" : {
-      "comment" : "In the review panel, under the decks it met in full: no deck has new cards, and a button under it adds one of the decks that come with Ficha."
+      "comment" : "In the review panel, under the decks it met in full: no deck has new cards, and a button beside it, or under it, adds one of the decks that come with Ficha."
     },
     "OK" : {
 

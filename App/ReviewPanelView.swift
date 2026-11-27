@@ -299,12 +299,14 @@ struct ReviewPanelView: View {
     /// answer in it met in full, and then the next deck in the queue new
     /// cards come from, or that nothing waits there, with a button for one
     /// of Ficha's decks the user hasn't added, which closes the panel and
-    /// opens the Cards window on it, with How fast? (#458). Nothing while it
-    /// met none.
+    /// opens the Cards window on it, with How fast? (#458), on the same row
+    /// as the line while they fit, and under it otherwise. All in a filled
+    /// rounded box, as the mock's `MetThemAll` is. Nothing while it met
+    /// none.
     @ViewBuilder
     private func metThemAll(of panel: ReviewPanelModel) -> some View {
         if let met = panel.state.metThemAll {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 6) {
                 ForEach(met.decks, id: \.name) { deck in
                     Text(
                         "You've met them all: \(deck.title)",
@@ -315,45 +317,73 @@ struct ReviewPanelView: View {
                     )
                     .fontWeight(.semibold)
                 }
-                Group {
-                    if let next = met.nextInQueue {
-                        Text(
-                            "Next in the queue: \(next.title). Its first card comes with the next new one.",
-                            comment: """
-                                In the review panel, under the decks it met in full: the deck new cards come from \
-                                now, with its emoji and name.
-                                """)
-                    } else if met.fichaDeck != nil {
-                        Text(
-                            "Nothing waits in the queue. Another of Ficha's decks?",
-                            comment: """
-                                In the review panel, under the decks it met in full: no deck has new cards, and a \
-                                button under it adds one of the decks that come with Ficha.
-                                """)
-                    } else {
-                        Text(
-                            "Nothing waits in the queue.",
-                            comment: "In the review panel, under the decks it met in full: no deck has new cards.")
+                if let next = met.nextInQueue {
+                    Text(
+                        "Next in the queue: \(next.title). Its first card comes with the next new one.",
+                        comment: """
+                            In the review panel, under the decks it met in full: the deck new cards come from \
+                            now, with its emoji and name.
+                            """
+                    )
+                    .foregroundStyle(.secondary)
+                } else if let deck = met.fichaDeck {
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 10) {
+                            anotherFichaDeck
+                            Spacer(minLength: 0)
+                            fichaDeckButton(deck, of: panel)
+                        }
+                        VStack(alignment: .leading, spacing: 6) {
+                            anotherFichaDeck
+                            fichaDeckButton(deck, of: panel)
+                        }
                     }
-                }
-                .foregroundStyle(.secondary)
-                if let deck = met.fichaDeck {
-                    Button {
-                        addFichaDeck(deck)
-                        panel.state.close(.byLucas)
-                    } label: {
-                        Text(
-                            "\(deck.emoji) \(deck.name)…",
-                            comment: """
-                                A button in the review panel, once nothing waits in the queue, with the emoji and the \
-                                name of one of Ficha's decks: it opens the Cards window to add it.
-                                """)
-                    }
-                    .padding(.top, 4)
+                } else {
+                    Text(
+                        "Nothing waits in the queue.",
+                        comment: "In the review panel, under the decks it met in full: no deck has new cards."
+                    )
+                    .foregroundStyle(.secondary)
                 }
             }
             .fixedSize(horizontal: false, vertical: true)
+            .padding(.vertical, 12)
+            .padding(.horizontal, 14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.fill.quaternary, in: .rect(cornerRadius: 14))
         }
+    }
+
+    /// What "You've met them all" says while nothing waits in the queue and
+    /// it offers one of Ficha's decks.
+    private var anotherFichaDeck: some View {
+        Text(
+            "Nothing waits in the queue. Another of Ficha's decks?",
+            comment: """
+                In the review panel, under the decks it met in full: no deck has new cards, and a \
+                button beside it, or under it, adds one of the decks that come with Ficha.
+                """
+        )
+        .foregroundStyle(.secondary)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// The button for `deck`, one of Ficha's decks the user hasn't added,
+    /// which closes the panel and opens the Cards window on it, with How
+    /// fast?.
+    private func fichaDeckButton(_ deck: FichaDeck, of panel: ReviewPanelModel) -> some View {
+        Button {
+            addFichaDeck(deck)
+            panel.state.close(.byLucas)
+        } label: {
+            Text(
+                "\(deck.emoji) \(deck.name)…",
+                comment: """
+                    A button in the review panel, once nothing waits in the queue, with the emoji and the \
+                    name of one of Ficha's decks: it opens the Cards window to add it.
+                    """)
+        }
+        .fixedSize()
     }
 
     /// The panel's main button, at its bottom trailing corner, which Enter
