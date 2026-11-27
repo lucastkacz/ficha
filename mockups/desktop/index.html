@@ -461,11 +461,12 @@
                   <td className="when">${nextReview(c, state.now)}</td></tr>`)}</tbody></table>`}`
             : deck.ficha
               ? html`<div className="one-card">${cards[0].picture ? html`<${CardPicture} />` : html`<div className="front">${cards[0].front}</div>`}
-                  <${Divider} /><div className="back">${cards[0].back}</div></div>`
+                  <${Divider} /><div className="back">${cards[0].back}</div></div>
+                <div className="row-actions"><${Button} prominent title="Add Deck…" onClick=${() => openSheet(deck.id)} /></div>`
               : html`<p className="sub">${deck.blurb}</p>
               <div className="peek">${cards.slice(0, 5).map((c) => html`<${Capsule} key=${c.id}>${c.front}</${Capsule}>`)}
                 ${cards.length > 5 && html`<${Capsule}>+${cards.length - 5} more</${Capsule}>`}</div>
-              <div className="row-actions"><${Button} prominent title=${making ? 'New Deck…' : deck.ficha ? 'Add Deck…' : 'Import…'}
+              <div className="row-actions"><${Button} prominent title=${making ? 'New Deck…' : 'Import…'}
                 onClick=${() => openSheet(deck.id)} /></div>`}
         </div>
         ${sheetDeck && html`<div className="sheet-cover"><div className="sheet" role="dialog" aria-label="How fast?">
