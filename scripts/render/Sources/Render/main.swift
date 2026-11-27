@@ -92,6 +92,17 @@ enum Window: String, CaseIterable {
     /// meeting: each pace with when Arte's all met, where it goes in the
     /// queue, and Put it first.
     case cardsHowFast = "cards-how-fast"
+    /// The Cards window on Palabras lindas, one of Ficha's decks, which its
+    /// sidebar's Ficha's Decks section lists after Decks with the other two,
+    /// read from the repo's `App/FichaDecks/`: its emoji, its name and how
+    /// many cards it brings in the table's place, with Add Deck…, which
+    /// `--key return` asks How fast? for, and its first card, a word, front
+    /// and back, in the detail's.
+    case cardsFichaDeckWords = "cards-ficha-deck-words"
+    /// The same on Arte argentino, whose first card's front is a painting,
+    /// and its back the painting's title, painter, year and museum, and its
+    /// credit.
+    case cardsFichaDeckPicture = "cards-ficha-deck-picture"
     /// Settings, on its Backups tab.
     case backups
     /// Settings, on its Backups tab, once a backup failed.
@@ -739,6 +750,20 @@ func howFastState(of model: AppModel) throws -> CardsWindowState {
     return state
 }
 
+/// Ficha's decks as `engine` reads their files in the repo's
+/// `App/FichaDecks/`, found from this file's path, as the app reads those it
+/// bundles: the tool's own bundle has none (`AppModel.readsFichaDecks`).
+func fichaDecksInTheRepo(readBy engine: Engine) throws -> [FichaDeckFile] {
+    let folder = URL(filePath: #filePath)
+        .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        .deletingLastPathComponent().deletingLastPathComponent()
+        .appending(path: "App/FichaDecks", directoryHint: .isDirectory)
+    return try FichaDeck.allCases.map { deck in
+        let file = folder.appending(path: "\(deck.fileName).zip")
+        return try waitFor { try await engine.readFichaDeck(deck, at: file) }
+    }
+}
+
 /// The Cards window's state partway through importing an Anki package, as
 /// the Import sheet shows it once the user chose one: the preview of a deck
 /// of medicine the tool writes in its scratch home, with two subdecks and
@@ -1338,8 +1363,8 @@ func hours(_ count: Int) -> TimeInterval {
 /// in `renderDataFolder`, with copies to list, and files to weigh.
 func model(for name: Window) throws -> AppModel {
     switch name {
-    case .cards, .cardsNewDeck, .cardsImport, .cardsImportAnki, .cardsHowFast, .about, .general, .capture, .welcome,
-        .welcomeOneButton, .panelCard, .panelMetThemAll:
+    case .cards, .cardsNewDeck, .cardsImport, .cardsImportAnki, .cardsHowFast, .cardsFichaDeckWords,
+        .cardsFichaDeckPicture, .about, .general, .capture, .welcome, .welcomeOneButton, .panelCard, .panelMetThemAll:
         return try AppModel(engine: try sampleEngine(at: .inMemory).engine)
     case .cardsEmpty:
         return try AppModel(engine: try Engine(location: .inMemory, time: SystemTimeSource()))
@@ -1477,6 +1502,16 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
     case .cardsHowFast:
         let window = CardsWindow(model: model)
         window.makeContent(opening: try howFastState(of: model))
+        return window
+    case .cardsFichaDeckWords, .cardsFichaDeckPicture:
+        var state = model.openCardsWindow()
+        state.offerFichaDecks(try fichaDecksInTheRepo(readBy: model.engine))
+        state.choose(.fichaDeck(name == .cardsFichaDeckWords ? .palabrasLindas : .arteArgentino))
+        guard state.shownFichaDeck?.firstCard != nil else {
+            throw RenderError(description: "The Cards window shows none of Ficha's decks: fix offerFichaDecks(_:).")
+        }
+        let window = CardsWindow(model: model)
+        window.makeContent(opening: state)
         return window
     case .cardsTags:
         var state = model.openCardsWindow()
@@ -2155,6 +2190,9 @@ do {
     let copiedSound = URL.temporaryDirectory.appending(path: "RenderSound-\(UUID().uuidString).wav")
     defer { try? FileManager.default.removeItem(at: copiedSound) }
     let model = try model(for: name)
+    // The tool has no bundle with Ficha's decks: a window that shows them
+    // reads them from the repo itself, so every other picture shows none.
+    model.readsFichaDecks = false
     let window = try window(name, model: model)
     window.level = belowDesktop
     window.ignoresMouseEvents = true
