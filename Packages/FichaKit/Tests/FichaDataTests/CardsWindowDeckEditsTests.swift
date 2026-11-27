@@ -242,8 +242,8 @@ struct CardsWindowDeckEditsTests {
         #expect(window.failure == nil)
     }
 
-    /// The window as it opens, on the first deck the sidebar lists, with the
-    /// cards read.
+    /// The window as it opens, on the first deck of the queue new cards come
+    /// from that the sidebar lists, with the cards read.
     private func openWindow() -> CardsWindowState {
         var window = engine.openCardsWindow(with: scheduler)
         window.read(with: scheduler)
