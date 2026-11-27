@@ -73,8 +73,10 @@ final class AppModel {
     /// nil when it couldn't be read (the engine logs why).
     private(set) var prioritizeMenu: PrioritizeMenu?
     /// The one of Ficha's decks the review panel's "You've met them all"
-    /// asked to add, until the Cards window, which it opens, asks How fast?
-    /// for it (#458): nil while none waits.
+    /// asked to add, until the Cards window, which it opens, takes it, at
+    /// once, for its state to ask How fast? for it as soon as nothing's open
+    /// there (`CardsWindowState.askToAddFichaDeck(_:)`, #458): nil while
+    /// none waits.
     var fichaDeckToAdd: FichaDeck?
     /// Whether `readFichaDecks()` reads Ficha's decks from the app's
     /// resources: always in the app. `make render`, whose app has no bundle
@@ -191,10 +193,11 @@ final class AppModel {
     /// Opens the Cards window on Lucas's cards as they are now, with the
     /// scheduling settings and the active hours he set, remembering the deck
     /// he last added a card to, as this Mac's preferences keep it: what he
-    /// does in it goes through the state. It reads them before the window's first layout, so the table
-    /// is there for it: the split view opens the table's pane at its ideal
-    /// width only then, and at its least otherwise (#391). The window reads
-    /// them again as it starts listening for changes.
+    /// does in it goes through the state. It reads them before the window's
+    /// first layout, so the table is there for it: the split view opens the
+    /// table's pane at its ideal width only then, and at its least otherwise
+    /// (#391). The window reads them again as it starts listening for
+    /// changes.
     func openCardsWindow() -> CardsWindowState {
         var state = engine.openCardsWindow(
             with: settings.scheduler, activeHours: settings.activeHours, lastDeckAddedTo: Preferences.lastDeckAddedTo)

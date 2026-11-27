@@ -62,8 +62,8 @@ import UniformTypeIdentifiers
 /// shows, offers and asks, and what happens when Lucas acts, and the view
 /// draws it. It reads the cards again whenever the engine says they changed,
 /// from the app or the `ficha` CLI, when Lucas changes the scheduling
-/// settings, and every minute, since cards come due as time passes, or at once
-/// when Ficha Dev's debug menu moves the time.
+/// settings or the active hours, and every minute, since cards come due as
+/// time passes, or at once when Ficha Dev's debug menu moves the time.
 struct CardsView: View {
     let model: AppModel
     /// What the sidebar chose, what Lucas looks for and selected, and so what

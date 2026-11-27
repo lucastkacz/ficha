@@ -511,7 +511,7 @@ extension CardsWindowState {
     }
 
     /// The decks at the top of the tree the sidebar lists, as last read, in
-    /// its order.
+    /// the order a tree lists them.
     var listedTopDecks: [Deck] {
         decks.map(\.deck).filter { TagPath.parent(of: $0.name) == nil }
     }
