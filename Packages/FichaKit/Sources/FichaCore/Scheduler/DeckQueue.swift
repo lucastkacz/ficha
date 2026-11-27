@@ -100,10 +100,10 @@ extension ReviewSettings {
     /// first reviews of new ways in that day count against.
     private func newCardsLeftToday(in cards: CardsInReviews, now: Date, calendar: Calendar) -> Int {
         let endOfToday = calendar.startOfNextFichasDay(after: now, startingAt: dayStartsAtHour)
-        let activeHoursLeft =
+        let hasActiveHoursLeft =
             activeHours.contains(calendar.component(.hour, from: now))
             || (startOfActiveHours(after: now, calendar: calendar).map { $0 < endOfToday } ?? false)
-        guard activeHoursLeft else {
+        guard hasActiveHoursLeft else {
             return 0
         }
         let metToday =

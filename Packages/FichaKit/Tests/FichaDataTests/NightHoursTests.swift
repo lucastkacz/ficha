@@ -7,6 +7,8 @@ import Testing
 /// a test says otherwise, with Ficha's other settings: Steady, and Ficha's
 /// day from 4:00. They run in Buenos Aires, from 9 in the morning of
 /// Wednesday the 14th.
+/// `mockups/tools/check-engine.js` copies some of these cases into the web
+/// mocks' toy engine: run it after changing one (`mockups/README.md`).
 struct NightHoursTests {
     let calendar: Calendar
     let time: ManualTimeSource
@@ -113,6 +115,26 @@ struct NightHoursTests {
         ]
         #expect(atEleven == queue)
         #expect(atHalfPastMidnight == queue)
+    }
+
+    // At 3:30 the night's active hours are over and Ficha's day, the 14th's,
+    // lasts until 4:00, so Las Meninas waits for the 15th's night. At 5:00
+    // Ficha's day is the 15th's, whose night is still to come.
+    @Test(
+        "the queue's new cards left today wait for active hours inside today's Ficha day: with 20 to 3 and none met, a deck's one new card finishes on the 15th or the 16th at 3:30, and on the 15th at 5:00",
+        .bug(id: 564))
+    func newCardsLeftTodayWaitForTheNextNight() throws {
+        try approveInDeck("Las Meninas", deck: "Arte", in: engine)
+        time.move(to: try at(3, 30, day: 15))
+        let atHalfPastThree = try engine.queue(settings)
+        time.move(to: try at(5, 0, day: 15))
+        let atFive = try engine.queue(settings)
+
+        let (fifteenth, sixteenth) = try (startOfDay(15), startOfDay(16))
+        let finish = [
+            FinishDate(soonest: fifteenth, latest: sixteenth), FinishDate(soonest: fifteenth, latest: fifteenth),
+        ]
+        #expect([atHalfPastThree, atFive] == finish.map { [QueuedDeck(deck: "Arte", newCards: 1, finish: $0)] })
     }
 
     /// A time of day on a day in October 2026 by the tests' calendar: the

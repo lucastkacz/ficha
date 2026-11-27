@@ -202,7 +202,8 @@ const noSteps = { ...SCHEDULER, learningSteps: [] };
   check('from 20 to 3, appearances may come at 20:00, 23:59 and 2:59, and from 3:00 or 19:59 next at 20:00',
     inside.every(Boolean) && next.every((t) => t === at(15, 20)), [inside, next]);
 }
-// NightHoursTests.newCardsLeftTodayCountTonight and
+// NightHoursTests.newCardsLeftTodayCountTonight,
+// NightHoursTests.newCardsLeftTodayWaitForTheNextNight and
 // PaceAndQueueTests.aDecksFinishDateCountsWhatTodayStillBrings: today's new
 // cards come until the active hours inside today's Ficha day are over.
 {
