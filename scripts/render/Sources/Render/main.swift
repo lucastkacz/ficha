@@ -24,8 +24,9 @@ import SwiftUI
 /// usage lists.
 enum Window: String, CaseIterable {
     case cards
-    /// The Cards window with no cards at all, as a new user's opens, which
-    /// offers New Card and Import… in plain sight.
+    /// The Cards window with no cards at all, as a new user's opens: it
+    /// offers New Card and Import… in plain sight, and its sidebar's Ficha's
+    /// Decks section lists the three, read from the repo's `App/FichaDecks/`.
     case cardsEmpty = "cards-empty"
     /// The Cards window on ciencia, once the sample's tags sit inside tags
     /// and five are pinned, in an order of their own, its sidebar scrolled to
@@ -1506,9 +1507,15 @@ func model(for name: Window) throws -> AppModel {
 /// opens at.
 func window(_ name: Window, model: AppModel) throws -> NSWindow {
     switch name {
-    case .cards, .cardsEmpty:
+    case .cards:
         let window = CardsWindow(model: model)
         window.makeContent()
+        return window
+    case .cardsEmpty:
+        var state = model.openCardsWindow()
+        state.offerFichaDecks(try fichaDecksInTheRepo(readBy: model.engine))
+        let window = CardsWindow(model: model)
+        window.makeContent(opening: state)
         return window
     case .cardsImport:
         let window = CardsWindow(model: model)
