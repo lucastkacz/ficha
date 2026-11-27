@@ -3,7 +3,7 @@
 Ficha is a small Mac app that lives in the menu bar and, every so often, shows you a tiny card: a word, a concept, a quote or a question. You flip it, say how well you knew it, and go back to what you were doing. Each card comes back around when you'd start to forget it: soon while it's new to you, and less and less often as you learn it. Your cards stay on your Mac, and in your own iCloud if you turn on sync.
 
 <p align="center">
-  <img src="docs/images/review-panel.png" width="496" alt="Ficha's review panel, a small translucent panel, showing the card “¿Por qué el cielo es azul?” turned over to its back, with two buttons below, Forgot and Got it, and a small line under them: also 2 Hard and 4 Easy, as in Anki.">
+  <img src="docs/images/review-panel.png" width="496" alt="Ficha's review panel, a small translucent panel, showing the card “¿Por qué el cielo es azul?” turned over to its back, with three buttons below, Forgot, a yellow Kind of and Got it.">
 </p>
 
 The cards in these pictures are samples, in Spanish. Yours can be in any language.
@@ -26,10 +26,10 @@ In Settings you pick the hours, how many cards come at a time and how far apart,
 
 <p align="center">
   <img src="docs/images/card-front.png" width="49%" alt="The review panel showing only the front of a card, the quote “Caminante, no hay camino, se hace camino al andar.”, with a Flip button.">
-  <img src="docs/images/card-back.png" width="49%" alt="The same card turned over: Antonio Machado wrote it in “Campos de Castilla”, and its meaning, with the buttons Forgot and Got it.">
+  <img src="docs/images/card-back.png" width="49%" alt="The same card turned over: Antonio Machado wrote it in “Campos de Castilla”, and its meaning, with the buttons Forgot, Kind of and Got it.">
 </p>
 
-A card shows its front first. Try to remember what's on the back, press Space to turn it over, and say whether you remembered it: 1 for "Forgot", or Space for "Got it". The panel shows the card alone, with those two buttons. It takes a few seconds, and every button has its key, so you never need the mouse. If you come from Anki, its four keys still work: 2 for "Hard", 3 for "Good", as Space, and 4 for "Easy". A card you haven't met yet comes the same way, its buttons named "New to me" and "Knew it": try to remember its back too, even if you can't yet, and say which.
+A card shows its front first. Try to remember what's on the back, press Space to turn it over, and say how well you remembered it: 1 for "Forgot", 2 for "Kind of", when it came back with effort, or Space for "Got it". The panel shows the card alone, with those three buttons. It takes a few seconds, and every button has its key, so you never need the mouse; 3 is "Got it" too, as in Anki. A card you haven't met yet comes the same way, its buttons named "New to me", "Kind of" and "Knew it": try to remember its back too, even if you can't yet, and say which.
 
 A card can also go both ways, as a word and its translation do. Once you've met it, it comes back first too, marked "Back first": the back on top, and you try to remember the front. Each way is spaced on its own, and the first time it comes back first its buttons say "New to me" and "Knew it" too.
 
@@ -49,7 +49,7 @@ flowchart LR
     g -- "Forgot" --> r["1 hour"] --> g
 ```
 
-A new card goes through two learning steps. "Got it" moves it to the next one, and "Forgot" sends it back to the first. Anki's other two keys do what they do there: 2, "Hard", waits a little more before it comes back, and 4, "Easy", graduates it at once. Once it's past them, it graduates: from every answer you gave it, FSRS works out how many days it can wait while you'd still remember it 85 times out of 100, to start, so a card you know well waits longer each time, and one you find hard comes back sooner. "Forgot" on a graduated card sends it to relearn, back an hour later, and then it waits fewer days than before. A card that waits 21 days or more counts as learned, as in Anki, and still comes back now and then, so you keep it.
+A new card goes through two learning steps. "Got it" moves it to the next one, "Forgot" sends it back to the first, and "Kind of", Anki's "Hard", waits a little more before it comes back. Once it's past them, it graduates: from every answer you gave it, FSRS works out how many days it can wait while you'd still remember it 85 times out of 100, to start, so a card you know well waits longer each time, and one you find hard comes back sooner. "Forgot" on a graduated card sends it to relearn, back an hour later, and then it waits fewer days than before. "Kind of" still counts as remembered: it stretches the card's wait too, less than "Got it" does. A card that waits 21 days or more counts as learned, as in Anki, and still comes back now and then, so you keep it.
 
 The steps, how sure you want to be to remember a card, and the longest it may wait can be changed in Settings' Scheduling tab.
 

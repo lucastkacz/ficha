@@ -8,28 +8,27 @@ import SwiftUI
 /// or intervals (ADR 0033). A card shows front first, or, when it goes both
 /// ways, back first too, with the back on top and a "Back first" mark, and a
 /// review ahead is marked "Ahead". Every action has a key: Space flips a
-/// card, and then two buttons answer it, Forgot, on 1, and Got it, on Space,
-/// named New to me and Knew it on a new way's first review (`AnswerButton`),
-/// while 2, 3 and 4 still rate it hard, good and easy, as a small line under
-/// them says of 2 and 4. A ⋯ menu in the corner offers the rest, each also on
-/// its key: A asks a question about the card, which waits in the inbox as a
-/// follow-up, M flags it with a note, E buries it (`CardAction`), ⌘Z undoes
-/// the last thing Lucas did, and Esc closes the panel, which snoozes an
-/// appearance. A side with a sound has a ▶ under its text, which plays it and
-/// shows ■ while it plays, and R plays or stops the lower side's sound once
-/// it shows, or else the upper side's. When 1 makes a card forgotten often,
-/// the panel offers to flag it, its note written: Enter flags it, and Esc
-/// leaves it in his reviews. Once Lucas went through every card, the
-/// panel stays open until he closes it, and offers more cards if there are
-/// any, which Enter brings; review now with nothing due offers to review
-/// ahead the same way. A card taller than the panel's maximum
-/// height scrolls between the line at its top and what's under it, which
-/// stay in view. A card's text and images show at the card size, which ⌘+, ⌘−
-/// and ⌘0 change (`ReviewPanelWindow`), and above 100% the panel widens with
-/// them; its buttons, a sound's ▶, the note's and the question's fields and its
+/// card, and then three buttons answer it, Forgot, on 1, a yellow Kind of, on
+/// 2, and Got it, on Space and 3, named New to me, Kind of and Knew it on a
+/// new way's first review (`AnswerButton`). A ⋯ menu in the corner offers the
+/// rest, each also on its key: A asks a question about the card, which waits
+/// in the inbox as a follow-up, M flags it with a note, E buries it
+/// (`CardAction`), ⌘Z undoes the last thing Lucas did, and Esc closes the
+/// panel, which snoozes an appearance. A side with a sound has a ▶ under its
+/// text, which plays it and shows ■ while it plays, and R plays or stops the
+/// lower side's sound once it shows, or else the upper side's. When 1 makes a
+/// card forgotten often, the panel offers to flag it, its note written: Enter
+/// flags it, and Esc leaves it in his reviews. Once Lucas went through every
+/// card, the panel stays open until he closes it, and offers more cards if
+/// there are any, which Enter brings; review now with nothing due offers to
+/// review ahead the same way. A card taller than the panel's maximum height
+/// scrolls between the line at its top and what's under it, which stay in
+/// view. A card's text and images show at the card size, which ⌘+, ⌘− and ⌘0
+/// change (`ReviewPanelWindow`), and above 100% the panel widens with them;
+/// its buttons, a sound's ▶, the note's and the question's fields and its
 /// messages stay their size, as Anki's bottom bar does. `ReviewPanelState`
-/// decides what the panel shows and what happens when Lucas acts, and the view
-/// draws it.
+/// decides what the panel shows and what happens when Lucas acts, and the
+/// view draws it.
 struct ReviewPanelView: View {
     /// The corner radius of the panel's glass, with continuous corners. The
     /// panel's window clips its content to it, which matches the glass while
@@ -729,44 +728,28 @@ struct ReviewPanelView: View {
         .disabled(!panel.state.canPlaySounds)
     }
 
-    /// The two buttons that answer the card once its lower side shows
-    /// (`AnswerButton`), in the middle of a wider panel, as Anki's bottom bar,
-    /// and under them a small line that says 2 and 4 still rate it hard and
-    /// easy, as in Anki. The four rating keys work through hidden buttons, one
-    /// each (`RatingKey`), since a button takes one key, Got it's is Space,
-    /// and 2 and 4 have no button. The note's and the question's fields never
+    /// The three buttons that answer the card once its lower side shows
+    /// (`AnswerButton`), in the middle of a wider panel, as Anki's bottom bar.
+    /// Their rating keys work through hidden buttons, one each (`RatingKey`),
+    /// since a button takes one key, and Got it's is Space. Key 4 has none, so
+    /// it rates nothing (ADR 0039). The note's and the question's fields never
     /// show with them, so Space in those types a space.
     private func answerButtons(isNew: Bool, in panel: ReviewPanelModel) -> some View {
-        let hardKey = String(RatingKey.digit(of: .hard))
-        let easyKey = String(RatingKey.digit(of: .easy))
-        return VStack(spacing: 8) {
-            HStack {
-                ForEach(AnswerButton.allCases, id: \.self) { button in
-                    answerButton(button, isNew: isNew, in: panel)
-                }
+        HStack {
+            ForEach(AnswerButton.allCases, id: \.self) { button in
+                answerButton(button, isNew: isNew, in: panel)
             }
-            Text(
-                "Also \(hardKey) Hard and \(easyKey) Easy, as in Anki",
-                comment: """
-                    Under the review panel's two buttons, Forgot and Got it: keys 2 and 4 still rate the card Hard \
-                    and Easy, Anki's names for its second and fourth buttons, which the panel doesn't show.
-                    """
-            )
-            .font(.caption)
-            .foregroundStyle(.tertiary)
-            .multilineTextAlignment(.center)
-            .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: Self.controlsWidth)
         .frame(maxWidth: .infinity)
         .background {
-            ForEach(Rating.allCases, id: \.self) { rating in
+            ForEach(AnswerButton.allCases, id: \.self) { button in
                 Button {
-                    rate(rating, in: panel)
+                    rate(button.rating, in: panel)
                 } label: {
-                    Text(verbatim: String(RatingKey.digit(of: rating)))
+                    Text(verbatim: String(button.ratingKey))
                 }
-                .keyboardShortcut(KeyEquivalent(RatingKey.digit(of: rating)), modifiers: [])
+                .keyboardShortcut(KeyEquivalent(button.ratingKey), modifiers: [])
                 .hidden()
             }
         }
@@ -775,21 +758,25 @@ struct ReviewPanelView: View {
     /// The button that rates the card as `button` says, named New to me or
     /// Knew it when `isNew`, a new way's first review, where Forgot means
     /// nothing, with the key its label shows. The one Space presses is the
-    /// prominent one, as Flip is.
+    /// prominent one, as Flip is. Kind of is yellow, filled as the prominent
+    /// one is, with a dark title, since a white one on yellow barely reads;
+    /// Forgot stays gray.
     @ViewBuilder
     private func answerButton(_ button: AnswerButton, isNew: Bool, in panel: ReviewPanelModel) -> some View {
-        let answer = Button {
-            rate(button.rating, in: panel)
-        } label: {
-            KeyLabel(title: name(of: button, isNew: isNew), key: keyName(of: button.key))
-                .frame(maxWidth: .infinity)
-        }
-        if button.key == .space {
-            answer
+        let label = KeyLabel(title: name(of: button, isNew: isNew), key: keyName(of: button.key))
+            .frame(maxWidth: .infinity)
+        let answer = { rate(button.rating, in: panel) }
+        switch button {
+        case .gotIt:
+            Button(action: answer) { label }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.space, modifiers: [])
-        } else {
-            answer
+        case .kindOf:
+            Button(action: answer) { label.foregroundStyle(.black) }
+                .buttonStyle(.borderedProminent)
+                .tint(.yellow)
+        case .forgot:
+            Button(action: answer) { label }
                 .buttonStyle(.bordered)
         }
     }
@@ -803,6 +790,13 @@ struct ReviewPanelView: View {
                 comment: """
                     The review panel's button, once a card is turned over, for a card the user didn't remember: it \
                     records Anki's Again. Its key is 1.
+                    """)
+        case (.kindOf, _):
+            Text(
+                "Kind of",
+                comment: """
+                    The review panel's yellow button in the middle, once a card is turned over, a new card's first \
+                    turn included, for a card the user remembered with effort: it records Anki's Hard. Its key is 2.
                     """)
         case (.gotIt, false):
             Text(

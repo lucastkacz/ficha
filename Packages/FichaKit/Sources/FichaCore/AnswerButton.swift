@@ -1,27 +1,20 @@
-/// The review panel's two buttons once a card's lower side shows (ADR 0033):
-/// Forgot, which records again, and Got it, which records good. A new way's
-/// first review names them New to me and Knew it, which record the same.
-/// Keys 2 and 4 record hard and easy with no button, for whoever comes from
-/// Anki, and 3 records good, as before (`RatingKey`), so a review still
+/// The review panel's three buttons once a card's lower side shows (ADR
+/// 0039): Forgot, which records again, Kind of, which records hard, and Got
+/// it, which records good. A new way's first review names them New to me,
+/// Kind of and Knew it, which record the same. Each has its rating key, 1, 2
+/// and 3, as Anki's keys for those three ratings (`RatingKey`), and Got it
+/// takes Space too. No key records easy in the panel, though a review still
 /// stores one of Anki's four ratings (ADR 0025). The panel's view keeps the
-/// buttons, their names and their shortcuts; this map is here so it's
-/// tested. Pass and fail grading is FSRS's; the names, and keys 2 and 4 kept
-/// without buttons, are our own.
+/// buttons, their names, their look and their shortcuts; this map is here so
+/// it's tested. Pass and fail grading is FSRS's, and Hard Anki's; the names,
+/// and key 4 left without a rating, are our own.
 public enum AnswerButton: CaseIterable, Sendable {
     /// Lucas didn't remember the card.
     case forgot
+    /// He remembered it, with effort.
+    case kindOf
     /// He remembered it.
     case gotIt
-
-    /// A stub that compiles and fails #517's tests until its code: Kind of,
-    /// between Forgot and Got it.
-    public static let kindOf = AnswerButton.forgot
-
-    /// A stub that compiles and fails #517's tests until its code: the button
-    /// the rating key `digit` presses.
-    public init?(ratingKey digit: Character) {
-        return nil
-    }
 
     /// The key a button's label shows, which presses it.
     public enum Key: Sendable, Equatable {
@@ -31,19 +24,39 @@ public enum AnswerButton: CaseIterable, Sendable {
         case space
     }
 
+    /// The button the rating key `digit` presses, or nil for any other key:
+    /// 4, Anki's key for easy, presses none (ADR 0039).
+    public init?(ratingKey digit: Character) {
+        guard let button = Self.allCases.first(where: { $0.ratingKey == digit }) else {
+            return nil
+        }
+        self = button
+    }
+
     /// The rating the button records.
     public var rating: Rating {
         switch self {
         case .forgot: .again
+        case .kindOf: .hard
         case .gotIt: .good
         }
     }
 
-    /// The key its label shows, which presses it: Forgot's rating key, 1, and
-    /// Space for Got it, whose rating key, 3, records good too.
+    /// The rating key that presses it, "1" to "3", Anki's keys for its
+    /// rating, which its shortcut takes.
+    public var ratingKey: Character {
+        switch self {
+        case .forgot: "1"
+        case .kindOf: "2"
+        case .gotIt: "3"
+        }
+    }
+
+    /// The key its label shows, which presses it: its rating key, or Space
+    /// for Got it, whose rating key, 3, presses it too.
     public var key: Key {
         switch self {
-        case .forgot: .digit(RatingKey.digit(of: rating))
+        case .forgot, .kindOf: .digit(ratingKey)
         case .gotIt: .space
         }
     }

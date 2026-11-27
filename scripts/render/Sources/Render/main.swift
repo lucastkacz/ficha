@@ -141,12 +141,13 @@ enum Window: String, CaseIterable {
     case diagnostics
     /// The review panel on a new card, alone, drawn on a gradient in a
     /// window, since the panel's own has nothing behind its Liquid Glass below
-    /// the desktop picture. `--key space` flips it, showing its two buttons as
-    /// a new card's first review names them, New to me and Knew it.
+    /// the desktop picture. `--key space` flips it, showing its three buttons
+    /// as a new card's first review names them, New to me, Kind of and Knew
+    /// it.
     case panelCard = "panel-card"
     /// The same on the sample's graduated card that waits longest, once it's
-    /// due, which `--key space` flips, showing its two buttons, Forgot and Got
-    /// it.
+    /// due, which `--key space` flips, showing its three buttons, Forgot, Kind
+    /// of and Got it.
     case panelReview = "panel-review"
     /// The Cards window with a sample card that goes both ways selected, its
     /// back-first way rated Again and then Good, its detail scrolled to its
