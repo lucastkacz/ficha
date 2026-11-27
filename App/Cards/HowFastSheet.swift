@@ -285,15 +285,15 @@ extension FinishDate.Wording {
 
 extension FinishDate.Wording.Day {
     /// The day as a finish date says it: "today", "tomorrow", or its
-    /// weekday's name, as the system's formatters write it.
+    /// weekday's name, as the system's date format writes it.
     var text: String {
         switch self {
         case .today:
             String(localized: "today", comment: "A finish date's day, in the Cards window: “on track for today”.")
         case .tomorrow:
             String(localized: "tomorrow", comment: "A finish date's day, in the Cards window: “all met by tomorrow”.")
-        case .weekday(let weekday):
-            Calendar.current.weekdaySymbols.name(at: weekday - 1)
+        case .weekday(let day):
+            day.formatted(.dateTime.weekday(.wide))
         }
     }
 }
@@ -315,10 +315,10 @@ extension FinishDate.Wording.Third {
 
 extension FinishDate.Wording.MonthThird {
     /// The third of its month as a finish date says it, with the month's
-    /// name, as the system's formatters write it: "early December",
+    /// name, as the system's date format writes it: "early December",
     /// "mid-December", "late December".
     var text: String {
-        let monthName = Calendar.current.monthSymbols.name(at: month - 1)
+        let monthName = day.formatted(.dateTime.month(.wide))
         return switch third {
         case .early:
             String(localized: "early \(monthName)", comment: "A finish date in the first ten days of a month.")
@@ -327,13 +327,5 @@ extension FinishDate.Wording.MonthThird {
         case .late:
             String(localized: "late \(monthName)", comment: "A finish date from the day 21 of a month on.")
         }
-    }
-}
-
-extension [String] {
-    /// The name at `index` among a calendar's names, as its weekdays' or its
-    /// months', or none for an index it doesn't have.
-    fileprivate func name(at index: Int) -> String {
-        indices.contains(index) ? self[index] : ""
     }
 }

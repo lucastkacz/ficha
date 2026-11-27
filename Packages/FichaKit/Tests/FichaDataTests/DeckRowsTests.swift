@@ -57,10 +57,10 @@ struct DeckRowsTests {
         #expect(
             window.deckRows.map(\.id) == [Deck.defaultName, "Arte", "Historia", "Geografía", "Lenguaje", "Música"])
         #expect(
-            window.deckRows.map(\.line) == [
-                .next(finish: .dayOrNext(.weekday(6), .weekday(7))),
+            try window.deckRows.map(\.line) == [
+                .next(finish: .dayOrNext(.weekday(start(of: 16, 10)), .weekday(start(of: 17, 10)))),
                 .first(met: 1, of: 4, finish: .day(.today)),
-                .next(finish: .dayOrNext(.tomorrow, .weekday(6))),
+                .next(finish: .dayOrNext(.tomorrow, .weekday(start(of: 16, 10)))),
                 .noCards,
                 .metThemAll(cards: 1, days: 1),
                 .setAside(met: 1, of: 2),
@@ -150,24 +150,32 @@ struct DeckRowsTests {
         "a finish date reads by its days within the week, as one day, two days in a row with or, or a range with to, and further on by the thirds of its months",
         .bug(id: 491))
     func aFinishDateReadsByItsDaysOrItsThirds() throws {
+        let (friday, saturday) = (try start(of: 16, 10), try start(of: 17, 10))
+        let (monday, tuesday) = (try start(of: 19, 10), try start(of: 20, 10))
         #expect(try wording(start(of: 14, 10), start(of: 14, 10)) == .day(.today))
-        #expect(try wording(start(of: 16, 10), start(of: 16, 10)) == .day(.weekday(6)))
+        #expect(wording(friday, friday) == .day(.weekday(friday)))
         #expect(try wording(start(of: 14, 10), start(of: 15, 10)) == .dayOrNext(.today, .tomorrow))
-        #expect(try wording(start(of: 15, 10), start(of: 16, 10)) == .dayOrNext(.tomorrow, .weekday(6)))
-        #expect(try wording(start(of: 16, 10), start(of: 19, 10)) == .days(.weekday(6), to: .weekday(2)))
-        #expect(try wording(start(of: 17, 10), start(of: 20, 10)) == .days(.weekday(7), to: .weekday(3)))
-        #expect(try wording(start(of: 17, 10), start(of: 21, 10)) == .thirds(.mid, to: MonthThird(.late, month: 10)))
-        #expect(try wording(start(of: 22, 10), start(of: 31, 10)) == .third(MonthThird(.late, month: 10)))
-        #expect(try wording(start(of: 1, 11), start(of: 10, 11)) == .third(MonthThird(.early, month: 11)))
-        #expect(try wording(start(of: 11, 11), start(of: 20, 11)) == .third(MonthThird(.mid, month: 11)))
-        #expect(
-            try wording(start(of: 10, 11), start(of: 11, 11)) == .thirds(.early, to: MonthThird(.mid, month: 11)))
+        #expect(try wording(start(of: 15, 10), friday) == .dayOrNext(.tomorrow, .weekday(friday)))
+        #expect(wording(friday, monday) == .days(.weekday(friday), to: .weekday(monday)))
+        #expect(wording(saturday, tuesday) == .days(.weekday(saturday), to: .weekday(tuesday)))
+        #expect(calendar.component(.weekday, from: friday) == 6)
+        #expect(try wording(saturday, start(of: 21, 10)) == .thirds(.mid, to: third(.late, of: 21, 10)))
+        #expect(try wording(start(of: 22, 10), start(of: 31, 10)) == .third(third(.late, of: 31, 10)))
+        #expect(try wording(start(of: 1, 11), start(of: 10, 11)) == .third(third(.early, of: 10, 11)))
+        #expect(try wording(start(of: 11, 11), start(of: 20, 11)) == .third(third(.mid, of: 20, 11)))
+        #expect(try wording(start(of: 10, 11), start(of: 11, 11)) == .thirds(.early, to: third(.mid, of: 11, 11)))
         #expect(
             try wording(start(of: 28, 10), start(of: 5, 11))
-                == .months(MonthThird(.late, month: 10), to: MonthThird(.early, month: 11)))
+                == .months(third(.late, of: 28, 10), to: third(.early, of: 5, 11)))
         #expect(
             try wording(start(of: 28, 12), start(of: 6, 1, 2027))
-                == .months(MonthThird(.late, month: 12), to: MonthThird(.early, month: 1)))
+                == .months(third(.late, of: 28, 12), to: MonthThird(.early, of: start(of: 6, 1, 2027))))
+    }
+
+    /// The third `third` of the month, as a finish date reads it, with the
+    /// day `day` of the month `month` of 2026, in Buenos Aires.
+    private func third(_ third: FinishDate.Wording.Third, of day: Int, _ month: Int) throws -> MonthThird {
+        MonthThird(third, of: try start(of: day, month))
     }
 
     /// How the finish date from `soonest` to `latest` reads now.

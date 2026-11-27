@@ -5,8 +5,8 @@ import Foundation
 // `formatFinish` says it: within the week, by its days, and further on, by
 // the thirds of their months. Which words is the window's decision, so
 // FichaData works them out here, and the app's views write them from the
-// String Catalog, with the month and weekday names of the system's
-// formatters.
+// String Catalog, with each day's weekday or month as the system's date
+// formats name it, so no name is looked up by a number.
 
 extension FinishDate {
     /// How the app says a finish date, from today: by its days when the
@@ -17,10 +17,9 @@ extension FinishDate {
         public enum Day: Sendable, Hashable {
             case today
             case tomorrow
-            /// Another day of the week, by its number in the engine's
-            /// calendar, as `Calendar.Component.weekday` counts them: 1 for
-            /// Sunday to 7 for Saturday.
-            case weekday(Int)
+            /// Another day of the week, the start of it in the engine's
+            /// calendar, which the app names by its weekday: "Friday".
+            case weekday(Date)
         }
 
         /// The third of its month a day falls in: days 1 to 10 early, 11 to
@@ -34,13 +33,14 @@ extension FinishDate {
         /// A third of a month: "early December", "mid-December".
         public struct MonthThird: Sendable, Hashable {
             public let third: Third
-            /// The month, by its number in the engine's calendar: 1 for
-            /// January to 12 for December.
-            public let month: Int
+            /// The day it's the third of, an end of the finish date, the
+            /// start of it in the engine's calendar, which the app names by
+            /// its month: "December".
+            public let day: Date
 
-            public init(_ third: Third, month: Int) {
+            public init(_ third: Third, of day: Date) {
                 self.third = third
-                self.month = month
+                self.day = day
             }
         }
 
@@ -110,7 +110,7 @@ extension FinishDate.Wording.Day {
         switch days {
         case ...0: self = .today
         case 1: self = .tomorrow
-        default: self = .weekday(calendar.component(.weekday, from: date))
+        default: self = .weekday(calendar.startOfDay(for: date))
         }
     }
 }
@@ -124,6 +124,6 @@ extension FinishDate.Wording.MonthThird {
             case 11...20: .mid
             default: .late
             }
-        self.init(third, month: calendar.component(.month, from: date))
+        self.init(third, of: calendar.startOfDay(for: date))
     }
 }
