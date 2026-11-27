@@ -28,8 +28,9 @@ struct DeckRowsTests {
     // in Arte::Barroco, and El Grito buried, which counts among its 4 cards:
     // it's all met today. Historia's 2, after it, are met tomorrow or Friday,
     // the 16th, and Default's serendipia, which came in a minute after them,
-    // Friday or Saturday, the 17th. Música is set aside, and Geografía has no
-    // card.
+    // Friday or Saturday, the 17th. Lenguaje, met in full, came in with Arte,
+    // so it keeps its place in the queue after Arte, by name, and ahead of
+    // Historia. Música is set aside, and Geografía has no card.
     @Test(
         "each deck's row says how far it is and when it's all met, Next for a deck waiting its turn, and whether it's set aside, met in full or empty, while a deck inside another says nothing",
         .bug(id: 491))
@@ -55,14 +56,14 @@ struct DeckRowsTests {
         window.read(with: scheduler)
 
         #expect(
-            window.deckRows.map(\.id) == [Deck.defaultName, "Arte", "Historia", "Geografía", "Lenguaje", "Música"])
+            window.deckRows.map(\.id) == [Deck.defaultName, "Arte", "Lenguaje", "Historia", "Geografía", "Música"])
         #expect(
             try window.deckRows.map(\.line) == [
                 .next(finish: .dayOrNext(.weekday(start(of: 16, 10)), .weekday(start(of: 17, 10)))),
                 .first(met: 1, of: 4, finish: .day(.today)),
+                .metThemAll(cards: 1, days: 1),
                 .next(finish: .dayOrNext(.tomorrow, .weekday(start(of: 16, 10)))),
                 .noCards,
-                .metThemAll(cards: 1, days: 1),
                 .setAside(met: 1, of: 2),
             ])
         #expect(window.deckRows.first { $0.id == "Arte" }?.children.map(\.line) == [nil])
@@ -70,17 +71,21 @@ struct DeckRowsTests {
 
     // Zoología's first card came in the day before Arte's, so it goes first
     // in the queue, though Arte comes first alphabetically. Botánica's one
-    // card is met, Geografía has none, and Cocina is set aside.
+    // card came in a minute after Zoología's and is met, so the deck keeps
+    // its place between them. Geografía has no card, and Cocina is set
+    // aside. Put first, Arte takes Zoología's place and Zoología Arte's, as
+    // `ficha deck queue --first` saves them, and Botánica keeps its own.
     @Test(
-        "the sidebar lists the decks at the top of the tree in the queue's order, the one new cards come from now first, then the others alphabetically, and those set aside last, each with the decks inside it alphabetically",
+        "the sidebar lists the decks at the top of the tree with cards in the user's reviews in the order of their places in the queue, one met in full at its own, then the others alphabetically, and those set aside last, each with the decks inside it alphabetically",
         .bug(id: 491))
     func theDecksAreListedInTheQueuesOrder() throws {
         time.move(to: try morning(of: 13, in: calendar))
         try approveInDeck("tiburón", deck: "Zoología::Mar", in: engine)
         try approveInDeck("abeja", deck: "Zoología::Aire", in: engine)
-        try engine.meet(try approveInDeck("rosa", deck: "Botánica", in: engine))
         try approveInDeck("asado", deck: "Cocina", in: engine)
         try engine.setAside(deck: "Cocina")
+        time.advance(by: minutes(1))
+        try engine.meet(try approveInDeck("rosa", deck: "Botánica", in: engine))
         time.move(to: try morning(of: 14, in: calendar))
         try approveInDeck("La Gioconda", deck: "Arte", in: engine)
         try engine.makeDeck(named: "Geografía")
@@ -91,9 +96,10 @@ struct DeckRowsTests {
         try engine.moveInQueue(deck: "Arte", to: .first)
         window.read(with: scheduler)
 
-        #expect(byTheQueue.map(\.id) == ["Zoología", "Arte", "Botánica", "Geografía", "Cocina"])
+        #expect(byTheQueue.map(\.id) == ["Zoología", "Botánica", "Arte", "Geografía", "Cocina"])
         #expect(byTheQueue.first?.children.map(\.title) == ["Aire", "Mar"])
-        #expect(window.deckRows.map(\.id) == ["Arte", "Zoología", "Botánica", "Geografía", "Cocina"])
+        #expect(byTheQueue.first { $0.id == "Botánica" }?.line == .metThemAll(cards: 1, days: 1))
+        #expect(window.deckRows.map(\.id) == ["Arte", "Botánica", "Zoología", "Geografía", "Cocina"])
     }
 
     // ubuntu goes both ways, and its front-first way was met the day before,

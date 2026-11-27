@@ -176,6 +176,16 @@ extension CardsInReviews {
         Set(queue.map(\.deck)).subtracting(newWays.compactMap { topDecks[$0.cardID] })
     }
 
+    /// The decks at the top of the tree that hold cards in Lucas's reviews,
+    /// by their whole names, in the order of their places in the queue
+    /// (ADR 0034): those met in full too, which keep theirs, though
+    /// `ReviewSettings.queue(of:now:calendar:)` no longer lists them. The
+    /// Cards window's Your Decks lists its decks at the top of the tree in
+    /// this order (#491).
+    public var topDecksByPlace: [String] {
+        queue.map(\.deck)
+    }
+
     /// The decks at the top of the tree that have new ways, as
     /// `decksWithNewWays()` lists them, with the decks in `queue`'s order,
     /// the queue's places.

@@ -495,10 +495,11 @@ public struct CardsWindowState: Sendable {
     /// What the row of each of those decks at the top of the tree says under
     /// its title, by its whole name, read with them (#491).
     var deckLines: [String: DeckRow.Line] = [:]
-    /// The decks at the top of the tree in the queue new cards come from, by
-    /// their whole names, in its order, read with them, which the sidebar
-    /// lists in that order (#491).
-    var queuedTopDecks: [String] = []
+    /// The decks at the top of the tree that hold cards in the user's
+    /// reviews, by their whole names, in the order of their places in the
+    /// queue new cards come from, those met in full too, read with them,
+    /// which the sidebar lists in that order (#491).
+    var placedTopDecks: [String] = []
     /// The sidebar's decks Lucas closed, which each start open, and the
     /// window remembers while it's open.
     var closedDecks: Set<String> = []

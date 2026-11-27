@@ -41,8 +41,9 @@ enum Window: String, CaseIterable {
     case cardsAllTags = "cards-all-tags"
     /// The Cards window on Idiomas, one of the decks the sample's cards sit
     /// in, with its sidebar's Your Decks section: Default first, then every
-    /// deck as a tree, those at the top in the order of the queue new cards
-    /// come from, the rest after them and those set aside last, each with how
+    /// deck as a tree, those at the top with cards in the reviews in the
+    /// order of their places in the queue new cards come from, met in full
+    /// or not, the rest after them and those set aside last, each with how
     /// many of its cards are due, Idiomas and Ciencias with a color and an
     /// emoji, which the decks inside them show too, Ciencias and Humanidades
     /// closed, so that Sociedad shows, set aside, grayed with the deck inside
