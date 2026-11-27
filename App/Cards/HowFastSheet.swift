@@ -34,12 +34,13 @@ extension View {
 /// "No cards yet"; the three paces, Chill, Steady and Faster, each a tile
 /// with its radio, its new cards a day and, when the deck has new cards,
 /// when they're all met at it, the chosen one in the accent; where the deck
-/// goes in the queue new cards come from, with Put it first, while it
-/// would pass a deck with new cards ahead of it; that one pace is for all the
-/// user's decks, while they have others; and Cancel, with esc, and Start,
-/// or Create after New Deck…, with ↩. It's never narrower than the mock's,
-/// and widens so that a label fits whole. `CardsWindowState` decides all of
-/// it (`HowFast.swift`).
+/// goes in the queue new cards come from, while a deck with new cards is
+/// ahead of it, with Put it first while it would pass one, any but a deck
+/// listed first for its priority cards; that one pace is for all the user's
+/// decks, while they have others; and Cancel, with esc, and Start, or
+/// Create after New Deck…, with ↩. It's never narrower than the mock's, and
+/// widens so that a label fits whole. `CardsWindowState` decides all of it
+/// (`HowFast.swift`).
 struct HowFastSheet: View {
     let howFast: CardsWindowState.HowFast
     /// Chooses a pace among the tiles.
@@ -77,6 +78,8 @@ struct HowFastSheet: View {
                             putItFirst
                         }
                     }
+                } else if howFast.saysWhereItGoes {
+                    whereItGoesText
                 }
                 if howFast.hasOtherDecks {
                     Text(

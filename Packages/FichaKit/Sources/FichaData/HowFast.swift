@@ -113,9 +113,18 @@ extension CardsWindowState {
         /// would put it.
         let pacesFirst: [PaceOption]
 
-        /// Whether the sheet offers Put it first: while it passes some deck,
-        /// one with new cards ahead of the deck in the queue that isn't
-        /// listed first for its priority cards.
+        /// Whether the sheet says where the deck goes in the queue: while
+        /// some deck with new cards is ahead of it, as `decksAhead` says,
+        /// with Put it first beside it while it's offered.
+        public var saysWhereItGoes: Bool {
+            !decksAhead.isEmpty
+        }
+
+        /// Whether the sheet offers Put it first, beside where the deck
+        /// goes: while it passes some deck, one with new cards ahead of the
+        /// deck in the queue that isn't listed first for its priority cards.
+        /// With only such decks ahead, the sheet says the deck goes after
+        /// them, and offers nothing.
         public var offersPutItFirst: Bool {
             !decksPassed.isEmpty
         }

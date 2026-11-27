@@ -125,9 +125,9 @@ final class HowFastTests {
     // Música, a priority deck, has a new card from a minute before Historia
     // comes in, from an import, last.
     @Test(
-        "How fast? offers no Put it first for a deck whose only deck ahead is a priority deck, whose new cards come first wherever the deck goes",
+        "How fast?, for a deck whose only deck ahead is a priority deck, says it goes after that deck, and offers no Put it first, as the priority deck's new cards come first wherever the deck goes",
         .bug(id: 491))
-    func noPutItFirstPastAPriorityDeck() async throws {
+    func itGoesAfterAPriorityDeckWithNoPutItFirst() async throws {
         try approveInDeck("Bach", deck: "Música", in: engine)
         try engine.setPriority(true, ofDeck: "Música")
         time.advance(by: minutes(1))
@@ -142,6 +142,7 @@ final class HowFastTests {
         #expect(asked.decksAhead == ["Música"])
         #expect(asked.decksPassed == [])
         #expect(asked.decksStillAhead == ["Música"])
+        #expect(asked.saysWhereItGoes)
         #expect(!asked.offersPutItFirst)
         #expect(window.howFast?.putsFirst == false)
     }
@@ -171,6 +172,7 @@ final class HowFastTests {
         #expect(howFast.pace == .steady)
         #expect(howFast.paces.map(\.pace) == [.chill, .steady, .faster])
         #expect(howFast.paces.map(\.finish) == [nil, nil, nil])
+        #expect(!howFast.saysWhereItGoes)
         #expect(!howFast.offersPutItFirst)
         #expect(howFast.hasOtherDecks)
         #expect(window.question == nil)
