@@ -86,6 +86,12 @@ enum Window: String, CaseIterable {
     /// of cards whose images weigh 240 MB, while sync is on, which says they
     /// go up to iCloud.
     case cardsImportHeavy = "cards-import-heavy"
+    /// The Cards window with How fast? over it, once Done closed the Import
+    /// sheet after a file brought three cards into Arte, a deck the sample
+    /// cards don't have, which comes in last, behind the decks they're
+    /// meeting: each pace with when Arte's all met, where it goes in the
+    /// queue, and Put it first.
+    case cardsHowFast = "cards-how-fast"
     /// Settings, on its Backups tab.
     case backups
     /// Settings, on its Backups tab, once a backup failed.
@@ -148,6 +154,11 @@ enum Window: String, CaseIterable {
     /// due, which `--key space` flips, showing its two buttons, Forgot and Got
     /// it.
     case panelReview = "panel-review"
+    /// The review panel done, as `panel-card` draws it, once its one card,
+    /// the only one of Arte, a deck the tool adds to the sample and puts
+    /// first in the queue new cards come from, was met: "You've met them
+    /// all", with the sample's deck next in the queue.
+    case panelMetThemAll = "panel-met-them-all"
     /// The Cards window with a sample card that goes both ways selected, its
     /// back-first way rated Again and then Good, its detail scrolled to its
     /// end, below both ways' interval, due time, stability, difficulty and
@@ -694,6 +705,38 @@ func previewImportAtOnce(of file: URL, in state: inout CardsWindowState) throws 
     if let work = state.previewImport(of: file) {
         state.finishImportWork(try waitFor { await work.run() })
     }
+}
+
+/// The Cards window's state once the Import sheet's Done closed it after a
+/// file the tool writes in its scratch home brought three cards into Arte, a
+/// deck the sample cards don't have, which comes in last, behind the decks
+/// they're meeting: How fast? asks about it, with Put it first. The file goes
+/// once it's read.
+func howFastState(of model: AppModel) throws -> CardsWindowState {
+    let file = URL.documentsDirectory.appending(path: "Arte.txt")
+    let lines = [
+        "#separator:tab",
+        "#html:false",
+        "#columns:Front\tBack\tDeck",
+        "La Gioconda\tDe Leonardo da Vinci, en el Louvre.\tArte",
+        "Las Meninas\tDe Diego Velázquez, en el Prado.\tArte",
+        "La noche estrellada\tDe Vincent van Gogh, en el MoMA.\tArte",
+    ]
+    try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try Data(lines.joined(separator: "\n").utf8).write(to: file)
+    defer { try? FileManager.default.removeItem(at: file) }
+    var state = model.openCardsWindow()
+    state.startImport()
+    try previewImportAtOnce(of: file, in: &state)
+    if let work = state.importCards() {
+        state.finishImportWork(try waitFor { await work.run() })
+    }
+    state.closeImport()
+    guard state.howFast?.offersPutItFirst == true else {
+        throw RenderError(
+            description: "How fast? didn't offer to put Arte first: \(String(describing: state.howFast))")
+    }
+    return state
 }
 
 /// The Cards window's state partway through importing an Anki package, as
@@ -1295,8 +1338,8 @@ func hours(_ count: Int) -> TimeInterval {
 /// in `renderDataFolder`, with copies to list, and files to weigh.
 func model(for name: Window) throws -> AppModel {
     switch name {
-    case .cards, .cardsNewDeck, .cardsImport, .cardsImportAnki, .about, .general, .capture, .welcome,
-        .welcomeOneButton, .panelCard:
+    case .cards, .cardsNewDeck, .cardsImport, .cardsImportAnki, .cardsHowFast, .about, .general, .capture, .welcome,
+        .welcomeOneButton, .panelCard, .panelMetThemAll:
         return try AppModel(engine: try sampleEngine(at: .inMemory).engine)
     case .cardsEmpty:
         return try AppModel(engine: try Engine(location: .inMemory, time: SystemTimeSource()))
@@ -1431,6 +1474,10 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         let window = CardsWindow(model: model)
         window.makeContent(opening: try heavyImportingState(of: model))
         return window
+    case .cardsHowFast:
+        let window = CardsWindow(model: model)
+        window.makeContent(opening: try howFastState(of: model))
+        return window
     case .cardsTags:
         var state = model.openCardsWindow()
         state.choose(.cards(.tag("ciencia")))
@@ -1535,6 +1582,7 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         return try panelWindow(model: model, on: try longestWaitingSampleCard(in: model.engine).row.card.front) {
             .review($0)
         }
+    case .panelMetThemAll: return try metThemAllPanelWindow(model: model)
     case .cardsBothWays:
         return try cardsWindow(
             of: model, selectingFirst: { $0.backFirst != nil },
@@ -1635,7 +1683,12 @@ func panelWindow(
     guard let card = try model.engine.cards().first(where: { $0.front == front }) else {
         throw RenderError(description: "No sample card's front is “\(front)”: fix SampleCards.swift.")
     }
-    let panel = model.startAppearance(with: [panelCard(card)])
+    return panelWindow(showing: model.startAppearance(with: [panelCard(card)]))
+}
+
+/// The review panel as `panel` shows it, on a gradient in a window, as
+/// `panelWindow(model:on:as:)` draws it.
+func panelWindow(showing panel: Result<ReviewPanelModel, EngineError>) -> NSWindow {
     let content = ReviewPanelView(model: panel, player: SoundPlayer()) {}
         .padding(32)
         .background(LinearGradient(colors: [.teal, .indigo], startPoint: .topLeading, endPoint: .bottomTrailing))
@@ -1644,6 +1697,32 @@ func panelWindow(
         window.setContentSize(view.fittingSize)
     }
     return window
+}
+
+/// The review panel done, as `panelWindow(model:on:as:)` draws it, once its
+/// one card, the only one of Arte, a deck the tool adds to the sample cards,
+/// with an emoji, and puts first in the queue new cards come from, was met:
+/// "You've met them all", with the sample's deck next in the queue.
+func metThemAllPanelWindow(model: AppModel) throws -> NSWindow {
+    guard
+        let content = CardContent(
+            type: nil, front: "La Gioconda", back: "De Leonardo da Vinci, en el Louvre.", tags: [], source: nil)
+    else {
+        throw RenderError(description: "The card the tool adds to Arte has a blank front or back.")
+    }
+    let card = try model.engine.create(content, deck: "Arte")
+    try model.engine.setEmoji(try Emoji("🎨"), ofDeck: "Arte")
+    try model.engine.moveInQueue(deck: "Arte", to: .first)
+    let panel = model.startAppearance(with: [.new(card)])
+    guard case .success(let opened) = panel else {
+        throw RenderError(description: "The review panel didn't open on Arte's card: \(panel)")
+    }
+    try opened.state.answer(.review(.good), responseTime: .seconds(4))
+    guard opened.state.metThemAll?.nextInQueue != nil else {
+        throw RenderError(
+            description: "Meeting Arte's card didn't say it met Arte, with the next deck: fix sampleEngine(at:).")
+    }
+    return panelWindow(showing: panel)
 }
 
 /// The menu under Ficha's icon, its content in a window, as SwiftUI lays it
