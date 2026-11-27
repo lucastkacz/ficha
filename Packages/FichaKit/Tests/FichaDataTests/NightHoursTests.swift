@@ -88,28 +88,41 @@ struct NightHoursTests {
         #expect(withNewCards.allSatisfy { $0.newCards.count == 1 })
     }
 
-    // Arte's two cards: La Gioconda met at 22:00, tonight's first, and Las
-    // Meninas, which may still come tonight.
+    // Arte's La Gioconda met at 22:00, tonight's first new card, and Las
+    // Meninas, tonight's second, so Historia's Coliseo comes tomorrow night:
+    // with two left tonight, it would come tonight too, and with none, Las
+    // Meninas would wait for tomorrow night. At 0:30 it's still tonight.
     @Test(
-        "the queue's new cards left today count tonight's active hours: at 23:00, with 20 to 3, Steady and one met tonight, one is left",
+        "the queue's new cards left today count tonight's active hours: at 23:00 and at 0:30, with 20 to 3, Steady and one met tonight, one is left",
         .bug(id: 564))
     func newCardsLeftTodayCountTonight() throws {
         let gioconda = try approveInDeck("La Gioconda", deck: "Arte", in: engine)
         try approveInDeck("Las Meninas", deck: "Arte", in: engine)
+        try approveInDeck("Coliseo", deck: "Historia", in: engine)
         time.move(to: try at(22, 0))
         try engine.meet(gioconda)
         time.move(to: try at(23, 0))
+        let atEleven = try engine.queue(settings)
+        time.move(to: try at(0, 30, day: 15))
+        let atHalfPastMidnight = try engine.queue(settings)
 
-        let arte = try #require(try engine.queue(settings).first)
-
-        let today = calendar.startOfDay(for: time.now)
-        #expect(arte.newCards == 1)
-        #expect(arte.finish == FinishDate(soonest: today, latest: today))
+        let (tonight, tomorrow, friday) = try (startOfDay(14), startOfDay(15), startOfDay(16))
+        let queue = [
+            QueuedDeck(deck: "Arte", newCards: 1, finish: FinishDate(soonest: tonight, latest: tonight)),
+            QueuedDeck(deck: "Historia", newCards: 1, finish: FinishDate(soonest: tomorrow, latest: friday)),
+        ]
+        #expect(atEleven == queue)
+        #expect(atHalfPastMidnight == queue)
     }
 
     /// A time of day on a day in October 2026 by the tests' calendar: the
     /// 14th, unless another day is given.
     private func at(_ hour: Int, _ minute: Int, day: Int = 14) throws -> Date {
         try #require(calendar.date(from: DateComponents(year: 2026, month: 10, day: day, hour: hour, minute: minute)))
+    }
+
+    /// The start of the day `day` of October 2026, by the tests' calendar.
+    private func startOfDay(_ day: Int) throws -> Date {
+        try #require(calendar.date(from: DateComponents(year: 2026, month: 10, day: day)))
     }
 }
