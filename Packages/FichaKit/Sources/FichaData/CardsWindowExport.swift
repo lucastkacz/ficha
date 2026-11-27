@@ -42,8 +42,7 @@ extension CardsWindowState {
             case .cards: .selectedCards
             case .deck(let name): .deck(name)
             // All cards, and what the engine exports beyond what the sheet
-            // offers, which it never chooses: a tag's cards, which #542
-            // takes out with the sheet.
+            // offers, which it never chooses: a tag's cards (#538).
             default: .allCards
             }
         }

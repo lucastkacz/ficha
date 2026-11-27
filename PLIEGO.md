@@ -14,7 +14,7 @@ What the method's commands read about Ficha (`.claude/method/method.md`), approv
 
 - `Mac` (blue): the Mac app.
   - `Mac › Review`: the review panel, appearances and what holds them back, Review now.
-  - `Mac › Cards`: the Cards window: decks and their cards, shown as cards, the card form, flags and burials; burials until ADR 0041's node makes them set-asides, and tags, card types and the inbox until its nodes take them out.
+  - `Mac › Cards`: the Cards window: decks and their cards, shown as cards, the card form, flags and burials; burials until ADR 0041's node makes them set-asides, and the inbox until its node takes it out; a card's tags and type stay in the database, and show nowhere (#538).
     - `Mac › Cards › Import`: a deck's `.ficha` file, coming in and going out: Ficha's own decks, Open Deck…, a double-click in Finder, and the file Share Deck… sends (ADR 0044); the Import and Export sheets, with text files, zips and Anki's packages, until ADR 0041's node takes them out.
   - `Mac › Menu`: the menu bar item and its menu, the Welcome page; Capture and Diagnostics until ADR 0041's nodes take Capture out and move Diagnostics to Settings' Advanced tab.
   - `Mac › Settings`: the Settings window's tabs.

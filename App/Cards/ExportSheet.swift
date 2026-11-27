@@ -52,7 +52,7 @@ private struct ExportButtonAndSheet: ViewModifier {
             .sheet(isPresented: Binding(get: { state.exporting != nil }, set: { if !$0 { state.closeExport() } })) {
                 if let exporting = state.exporting {
                     ExportSheet(
-                        exporting: exporting, decks: state.decks.map(\.deck), tags: state.tags, failure: failure,
+                        exporting: exporting, decks: state.decks.map(\.deck), failure: failure,
                         choose: { state.chooseCardsToExport($0) }, export: { state.export(to: $0) })
                 }
             }
@@ -60,19 +60,17 @@ private struct ExportButtonAndSheet: ViewModifier {
 }
 
 /// The sheet the Cards window's Export button opens: a line on what an
-/// export holds, a menu of what to export, the selected cards, all cards,
-/// each deck, with the decks inside it, and each tag, each with how many
-/// cards it takes, and Export…, which opens a save panel and writes the file
-/// where the user saves it, with each card's deck.
+/// export holds, a menu of what to export, the selected cards, all cards and
+/// each deck, with the decks inside it, each with how many cards it takes,
+/// and Export…, which opens a save panel and writes the file where the user
+/// saves it, with each card's deck.
 /// `CardsWindowState` decides what the menu offers, what it starts on and
 /// what each item takes, and the sheet draws it.
 struct ExportSheet: View {
     let exporting: CardsWindowState.Exporting
-    /// Every deck, as the sidebar lists them, and every tag, as All Tags
-    /// lists them, for the menu to name each as the window does, with its
-    /// emoji.
+    /// Every deck, as the sidebar lists them, for the menu to name each as
+    /// the window does, with its emoji.
     let decks: [Deck]
-    let tags: [CardTag]
     /// What couldn't be done, as the alert over the sheet says it.
     let failure: Binding<Failure?>
     /// Chooses what to export.
@@ -117,12 +115,6 @@ struct ExportSheet: View {
                     Divider()
                 }
                 ForEach(exporting.deckChoices, id: \.cards) { choice in
-                    Text(title(of: choice)).tag(choice.cards)
-                }
-                if !exporting.tagChoices.isEmpty {
-                    Divider()
-                }
-                ForEach(exporting.tagChoices, id: \.cards) { choice in
                     Text(title(of: choice)).tag(choice.cards)
                 }
             } label: {
@@ -177,16 +169,16 @@ struct ExportSheet: View {
                     deck's emoji, when it has one, and its whole name, like “🗣️ Idiomas › Inglés”, and how many.
                     """)
         case .tag(let name):
-            String(
-                localized: "\(tags.first { $0.name == name }?.title ?? TagPath.shown(name)) (\(count))",
-                comment: "An item of the Export sheet's menu: the cards with a tag, with the tag and how many.")
+            // A tag's cards, which the engine exports and the menu never
+            // offers (#538).
+            TagPath.shown(name)
         }
     }
 
     /// The name the save panel proposes for the file, as the state chose it:
-    /// for a deck's cards or a tag's, its whole name, written with " › ", as
-    /// in "economía › Argentina", since a Mac's file name can't hold a colon,
-    /// or Default's name as the app shows it.
+    /// for a deck's cards, its whole name, written with " › ", as in
+    /// "Idiomas › Inglés", since a Mac's file name can't hold a colon, or
+    /// Default's name as the app shows it.
     private var fileName: String {
         switch exporting.fileName {
         case .selectedCards:
@@ -199,8 +191,6 @@ struct ExportSheet: View {
                 comment: "The name the Export sheet's save panel proposes for the file of all cards.")
         case .deck(let name):
             Deck.shownName(name)
-        case .tag(let name):
-            TagPath.shown(name)
         }
     }
 

@@ -3,10 +3,9 @@ import FichaData
 import Foundation
 import Testing
 
-/// Tests on pinned tags (ADR 0022): the tags the user keeps in the Cards
-/// window's sidebar, in an order of their own, which they pin, unpin and
-/// move, and which keep their pin and their place when they're renamed,
-/// moved or merged.
+/// Tests on pinned tags (ADR 0022): the tags the user pinned, in an order of
+/// their own, which `ficha tag` pins, unpins and moves, and which keep their
+/// pin and their place when they're renamed, moved or merged.
 struct PinnedTagsTests {
     let engine: Engine
 

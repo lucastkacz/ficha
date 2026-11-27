@@ -101,7 +101,7 @@ final class UserTypesTests {
         #expect(cards[1].buriedAt != nil)
     }
 
-    // As the Cards window's form saves a card while another device's
+    // As `ficha add` or `ficha fix` saves a card while another device's
     // deletion comes in.
     @Test("a card can't be saved with a user type deleted meanwhile, new or edited")
     func aCardCantBeSavedWithADeletedType() throws {

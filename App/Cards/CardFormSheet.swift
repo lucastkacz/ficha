@@ -7,12 +7,9 @@ extension View {
     /// ⌘N, which open the card form on a new card, and the form itself, a
     /// sheet over the window while `state` has it open, from New Card or from
     /// Convert to Card on a capture or a follow-up. `failure` is the alert
-    /// over the sheet, and `newTypeFailure` the one over the New Type sheet,
-    /// which New Type… in the form's type picker opens over it.
-    func creatingCards(
-        _ state: Binding<CardsWindowState>, failure: Binding<Failure?>, newTypeFailure: Binding<Failure?>
-    ) -> some View {
-        modifier(CreatingCards(state: state, failure: failure, newTypeFailure: newTypeFailure))
+    /// over the sheet.
+    func creatingCards(_ state: Binding<CardsWindowState>, failure: Binding<Failure?>) -> some View {
+        modifier(CreatingCards(state: state, failure: failure))
     }
 }
 
@@ -20,7 +17,6 @@ extension View {
 private struct CreatingCards: ViewModifier {
     @Binding var state: CardsWindowState
     let failure: Binding<Failure?>
-    let newTypeFailure: Binding<Failure?>
 
     func body(content: Content) -> some View {
         content
@@ -55,8 +51,7 @@ private struct CreatingCards: ViewModifier {
             .sheetWithinWindow(
                 isPresented: Binding(get: { state.cardForm != nil }, set: { if !$0 { state.closeCardForm() } })
             ) { maximumHeight in
-                CardFormSheet(
-                    state: $state, maximumHeight: maximumHeight, failure: failure, newTypeFailure: newTypeFailure)
+                CardFormSheet(state: $state, maximumHeight: maximumHeight, failure: failure)
             }
     }
 }
@@ -83,16 +78,16 @@ struct ConvertToCardButton: View {
     }
 }
 
-/// The card form, a sheet over the Cards window: an optional type, the deck
-/// the card goes to, which starts as `CardsWindowState` says, with New Deck…
-/// to name one in the New Deck sheet (`NewDeckSheet.swift`), a front
-/// and a back, each with its text, an image and a sound, dragged or pasted
-/// under it, an image also with ⌘V in its text while the clipboard holds no
-/// text, tags, a source and Both ways, and, when it was opened from a capture, the capture
-/// beside them, whole, with the card it follows up below it when it's a
-/// follow-up. Add saves the card and keeps the form open, with the
-/// front and the back cleared for the next one, as Anki's Add
-/// window does; Return adds too, Option-Return starts a new line, and Escape
+/// The card form, a sheet over the Cards window: the deck the card goes to,
+/// which starts as `CardsWindowState` says, with New Deck… to name one in the
+/// New Deck sheet (`NewDeckSheet.swift`), a front and a back, each with its
+/// text, an image and a sound, dragged or pasted under it, an image also with
+/// ⌘V in its text while the clipboard holds no text, a source and Both ways,
+/// and, when it was opened from a capture, the capture beside them, whole,
+/// with the card it follows up below it when it's a follow-up. No type and no
+/// tags: the card it adds has neither (#538). Add saves the card and keeps the
+/// form open, with the front and the back cleared for the next one, as Anki's
+/// Add window does; Return adds too, Option-Return starts a new line, and Escape
 /// closes, as Close does. While the front repeats another card's, the form
 /// says so under it, with Show Card (⌘R), which sets the form aside, as it
 /// is, until it's opened the same way again, and selects that card in the
@@ -108,8 +103,6 @@ private struct CardFormSheet: View {
     let maximumHeight: CGFloat
     /// What couldn't be saved, as the alert over the sheet says it.
     let failure: Binding<Failure?>
-    /// What couldn't be saved, as the alert over the New Type sheet says it.
-    let newTypeFailure: Binding<Failure?>
     @FocusState private var isFrontFocused: Bool
     /// The part of the form that has the focus, which it scrolls to.
     @FocusedValue(\.cardFormPart) private var focusedPart
@@ -165,7 +158,6 @@ private struct CardFormSheet: View {
                 isFrontFocused = true
             }
             .failureAlert(failure)
-            .newTypeSheet(for: .form, $state, failure: newTypeFailure)
             .newDeckSheet(for: .form, $state)
         }
     }
@@ -205,16 +197,6 @@ private struct CardFormSheet: View {
 
     private func fields(_ form: CardsWindowState.CardForm) -> some View {
         Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: 12) {
-            GridRow {
-                let label = Text("Type", comment: "In the Cards window's card form, the label of the card's type.")
-                gridLabel(label)
-                CardTypePicker(type: form.draft.type, types: state.pickerTypes, label: label) { type in
-                    draft(\.type).wrappedValue = type
-                } newType: {
-                    state.askForNewType(in: .form)
-                }
-                .cardFormPart(.type)
-            }
             GridRow {
                 let label = Text("Deck", comment: "In the Cards window's card form, the label of the card's deck.")
                 gridLabel(label)
@@ -257,19 +239,6 @@ private struct CardFormSheet: View {
                         }
                     imageWell(on: .back, of: form)
                     soundWell(on: .back, of: form)
-                }
-            }
-            GridRow {
-                gridLabel(Text("Tags", comment: "In the Cards window's card form, the label of the card's tags."))
-                VStack(alignment: .leading, spacing: 4) {
-                    TextField("Tags", text: draft(\.tags))
-                        .cardFormPart(.tags)
-                    Text(
-                        "Separate tags with commas, and write “::” before a tag inside another, as in “economía::Argentina”.",
-                        comment: "In the Cards window's card form, under the tags."
-                    )
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
                 }
             }
             GridRow {
@@ -373,12 +342,10 @@ private struct CardFormSheet: View {
 /// A part of the card form that takes the focus, which the form scrolls to
 /// when it does.
 private enum CardFormPart: Hashable {
-    case type
     case deck
     case text(CardSide)
     case image(CardSide)
     case sound(CardSide)
-    case tags
     case source
     case bothWays
 }

@@ -221,14 +221,15 @@ extension CardType {
 
     /// The names a type Ficha comes with goes by: its raw value, and its name
     /// as the app showed it, in English, until types left the app's face
-    /// (#538); none for a user type.
+    /// (#538), which a file or the `ficha` CLI may still give; none for a
+    /// user type.
     var builtInNames: [String] {
         let name: String? =
             switch self {
-            case .word: String(localized: "Word", comment: "A card type.")
-            case .concept: String(localized: "Concept", comment: "A card type.")
-            case .quote: String(localized: "Quote", comment: "A card type.")
-            case .question: String(localized: "Question", comment: "A card type.")
+            case .word: "Word"
+            case .concept: "Concept"
+            case .quote: "Quote"
+            case .question: "Question"
             case .user: nil
             }
         return [builtInName, name].compactMap(\.self)
