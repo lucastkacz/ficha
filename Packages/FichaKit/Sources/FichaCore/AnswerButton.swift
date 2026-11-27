@@ -13,6 +13,16 @@ public enum AnswerButton: CaseIterable, Sendable {
     /// He remembered it.
     case gotIt
 
+    /// A stub that compiles and fails #517's tests until its code: Kind of,
+    /// between Forgot and Got it.
+    public static let kindOf = AnswerButton.forgot
+
+    /// A stub that compiles and fails #517's tests until its code: the button
+    /// the rating key `digit` presses.
+    public init?(ratingKey digit: Character) {
+        return nil
+    }
+
     /// The key a button's label shows, which presses it.
     public enum Key: Sendable, Equatable {
         /// A rating key, by its place on the keyboard (`RatingKey`).

@@ -161,22 +161,42 @@ struct ReviewPanelTests {
         #expect(panel.mayHaveKeyboard)
     }
 
-    // What a review stores stays Anki's four ratings (ADR 0033).
-    @Test(
-        "Forgot, Got it and keys 2 and 4 record again, good, hard and easy through the panel, as before",
-        .bug(id: 489))
-    func theButtonsAndKeysRecordAnkisRatings() throws {
-        let cards = try ["serendipia", "ubuntu", "hygge", "resiliencia"].map { try approveCard($0, in: engine) }
+    // What a review stores stays Anki's four ratings, of which the panel's
+    // buttons record three (ADR 0039).
+    @Test("Forgot, Kind of and Got it record again, hard and good through the panel", .bug(id: 517))
+    func theButtonsRecordAnkisRatings() throws {
+        let cards = try ["serendipia", "ubuntu", "hygge"].map { try approveCard($0, in: engine) }
         var panel = try engine.openPanel(.reviewNow, with: cards.map { .new($0) }, settings: settings)
 
-        for rating in [AnswerButton.forgot.rating, .hard, AnswerButton.gotIt.rating, .easy] {
+        for button in AnswerButton.allCases {
             panel.flip()
-            panel.rate(rating)
+            panel.rate(button.rating)
         }
 
         #expect(panel.failure == nil)
-        #expect(
-            try engine.reviewLog().map(\.kind) == [.review(.again), .review(.hard), .review(.good), .review(.easy)])
+        #expect(try engine.reviewLog().map(\.kind) == [.review(.again), .review(.hard), .review(.good)])
+    }
+
+    @Test(
+        "a new way's first Kind of records hard, and the card waits halfway between the first two learning steps",
+        .bug(id: 517))
+    func kindOfOnANewWay() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
+        try #require(settings.scheduler.learningSteps == [.seconds(hours(1)), .seconds(hours(4))])
+
+        panel.flip()
+        let flipped = panel.content
+        panel.rate(AnswerButton.kindOf.rating)
+
+        #expect(flipped == .bothSides(serendipia, isNew: true))
+        #expect(try engine.reviewLog().map(\.kind) == [.review(.hard)])
+        // Halfway between 1 hour and 4 hours, as Anki's Hard on the first
+        // learning step.
+        let standing = try engine.standing(of: serendipia.id, with: settings.scheduler)
+        #expect(standing.stage == .learning(step: 0))
+        #expect(standing.interval == .seconds(minutes(150)))
+        #expect(standing.due == time.now + minutes(150))
     }
 
     @Test(

@@ -39,6 +39,17 @@ struct StringCatalogsTests {
             the text that replaced it, if one did, and run the test again.
             """)
     }
+
+    @Test("the app's String Catalog no longer holds the line under the panel's buttons on keys 2 and 4", .bug(id: 517))
+    func theLineOnKeys2And4IsGone() throws {
+        let catalog = try StringCatalog.read(at: "App/Localizable.xcstrings")
+        #expect(
+            catalog.strings["Also %@ Hard and %@ Easy, as in Anki"] == nil,
+            """
+            App/Localizable.xcstrings still holds the line under the review panel's buttons on keys 2 and 4, which \
+            ADR 0039 takes out: delete it, and run the test again.
+            """)
+    }
 }
 
 /// The parts of a String Catalog FichaKit's tests read, from the repo.

@@ -1,24 +1,24 @@
 import FichaCore
 import Testing
 
-/// The review panel's two buttons and its rating keys, once a card's lower
-/// side shows (ADR 0033).
+/// The review panel's three buttons and its rating keys, once a card's lower
+/// side shows (ADR 0039).
 struct AnswerButtonTests {
-    @Test("Forgot records again, on key 1, and Got it records good, on Space", .bug(id: 489))
-    func theTwoButtons() {
-        #expect(AnswerButton.allCases == [.forgot, .gotIt])
-        #expect(AnswerButton.forgot.rating == .again)
-        #expect(AnswerButton.forgot.key == .digit("1"))
-        #expect(AnswerButton.gotIt.rating == .good)
-        #expect(AnswerButton.gotIt.key == .space)
+    @Test("the buttons are Forgot, Kind of and Got it, in that order, and Kind of's key is 2", .bug(id: 517))
+    func theThreeButtons() {
+        #expect(AnswerButton.allCases == [.forgot, .kindOf, .gotIt])
+        #expect(AnswerButton.kindOf.key == .digit("2"))
     }
 
-    @Test("keys 1 to 4 still record again, hard, good and easy, and 2 and 4 have no button", .bug(id: 489))
-    func theFourKeys() {
-        #expect(Rating.allCases.map(RatingKey.digit(of:)) == ["1", "2", "3", "4"])
-        #expect(Rating.allCases == [.again, .hard, .good, .easy])
-        let buttonKeys = AnswerButton.allCases.map(\.key)
-        #expect(!buttonKeys.contains(.digit("2")))
-        #expect(!buttonKeys.contains(.digit("4")))
+    @Test(
+        "Forgot and key 1 record again, Kind of and key 2 hard, Got it, Space and key 3 good, and key 4 nothing",
+        .bug(id: 517))
+    func theKeysRecordTheButtonsRatings() {
+        let keys: [Character] = ["1", "2", "3", "4"]
+
+        #expect(AnswerButton.allCases.map(\.rating) == [.again, .hard, .good])
+        #expect(AnswerButton.forgot.key == .digit("1"))
+        #expect(AnswerButton.gotIt.key == .space)
+        #expect(keys.map(AnswerButton.init(ratingKey:)) == [.forgot, .kindOf, .gotIt, nil])
     }
 }
