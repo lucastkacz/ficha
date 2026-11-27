@@ -21,7 +21,7 @@ Infer the repo from `git remote -v`; `gh` does this automatically when run insid
 
 An issue is all one agent can build in one fresh context without compacting: up to about 1,500 changed lines, tests included. Each costs about $14 before its first line, plus about $1 per 100 changed lines, so fewer, bigger issues cost less, up to the size where a session compacts. `/decision` sizes them so.
 
-- A node's PR holds all its ready issues, each in commits that name it; with several, one `builder` writes every issue's test, for `/construir`'s first round, and then each issue's code is built in a fresh context of its own, by a `builder`.
+- A node's PR holds all its ready issues, each in commits that name it; with several, one `builder` writes the first round's tests (`/construir`'s step 3), and then each issue's code is built in a fresh context of its own, by a `builder`.
 - A node that needs Lucas at his Mac partway, such as a hand check before its next issues can start, goes in as two PRs, split there.
 
 ## Hand checks

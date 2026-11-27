@@ -99,7 +99,7 @@ async function openPieces(browser, mode = {}) {
         const pressed = {};
         document.querySelectorAll('.k-q').forEach((x) => { pressed[x.dataset.q] = (x.querySelector('.k-opt[aria-pressed="true"]') || {}).dataset?.o || null; });
         const notes = {};
-        ['ritmo', 'mazos', 'nota-ritmo', 'aprobacion'].forEach((id) => { notes[id] = box(id).value; });
+        ['riego', 'canteros', 'nota-riego', 'aprobacion'].forEach((id) => { notes[id] = box(id).value; });
         return { status: save ? save.textContent : null, statusErr: !!save && save.classList.contains('err'), button: ap.textContent, buttonOff: ap.disabled, apState: document.querySelector('.k-apstate').textContent, pressed, notes };
       },
     };
@@ -117,8 +117,8 @@ const KIT = 'look at the saving part of kit.js, from "Questions, notes and the a
 const at = '2026-01-01T00:00:00Z';
 // Each case returns what broke, what it should have done and where to look, or nothing.
 const SAVING = [
-  ['a choice, a note and Aprobar made before the database answers wait, and are saved once it does', { slow: true, docs: { ritmo: { choice: 'a', note: '', at }, 'nota-ritmo': { note: 'vieja', at }, aprobacion: { approved: false, note: 'una nota', at } } }, async (pg, run, T) => {
-    await run((t) => { t.choose('ritmo', 'c'); t.type('nota-ritmo', 'antes'); t.leave('nota-ritmo'); t.approve(); });
+  ['a choice, a note and Aprobar made before the database answers wait, and are saved once it does', { slow: true, docs: { riego: { choice: 'a', note: '', at }, 'nota-riego': { note: 'vieja', at }, aprobacion: { approved: false, note: 'una nota', at } } }, async (pg, run, T) => {
+    await run((t) => { t.choose('riego', 'c'); t.type('nota-riego', 'antes'); t.leave('nota-riego'); t.approve(); });
     await pg.clock.runFor(10000);
     let s = await run((t) => t.screen());
     const early = await pg.evaluate(() => window.__db.writes.length);
@@ -129,52 +129,52 @@ const SAVING = [
     await pg.clock.runFor(100);
     const docs = await pg.evaluate(() => window.__db.docs);
     s = await run((t) => t.screen());
-    if (docs.ritmo?.choice !== 'c') return `the choice made before the answer is "${docs.ritmo?.choice}" in the database, which held "a": it's "c", since the user's choice wins over the first snapshot. Then ${KIT}.`;
-    if (docs['nota-ritmo']?.note !== 'antes') return `the note typed before the answer was saved as "${docs['nota-ritmo']?.note}": it's "antes". Then ${KIT}.`;
+    if (docs.riego?.choice !== 'c') return `the choice made before the answer is "${docs.riego?.choice}" in the database, which held "a": it's "c", since the user's choice wins over the first snapshot. Then ${KIT}.`;
+    if (docs['nota-riego']?.note !== 'antes') return `the note typed before the answer was saved as "${docs['nota-riego']?.note}": it's "antes". Then ${KIT}.`;
     if (!docs.aprobacion?.approved || docs.aprobacion.note !== 'una nota' || s.button !== T.approved) return `the approval made before the answer is ${JSON.stringify(docs.aprobacion)} in the database, which held it unapproved with the note "una nota", and Aprobar says "${s.button}": it's approved, with that note, and Aprobar says "${T.approved}". Then ${KIT}.`;
     if (s.status !== T.saved) return `once everything saved, the status says "${s.status}": it says "${T.saved}". Then ${KIT}.`;
   }],
-  ['a note typed while another answer saves stays, and is saved', { docs: { ritmo: { choice: 'b', note: 'vieja', at }, aprobacion: { approved: false, note: 'vieja', at } } }, async (pg, run, T) => {
-    await run((t) => { t.type('ritmo', 'nueva'); t.type('aprobacion', 'nueva'); t.choose('mazos', 'b'); });
+  ['a note typed while another answer saves stays, and is saved', { docs: { riego: { choice: 'b', note: 'vieja', at }, aprobacion: { approved: false, note: 'vieja', at } } }, async (pg, run, T) => {
+    await run((t) => { t.type('riego', 'nueva'); t.type('aprobacion', 'nueva'); t.choose('canteros', 'b'); });
     await pg.clock.runFor(100);
     const s = await run((t) => t.screen());
-    for (const id of ['ritmo', 'aprobacion']) if (s.notes[id] !== 'nueva') return `the snapshot of another answer's save put back "${s.notes[id]}" over the note being typed on "${id}": the note stays "nueva", since a snapshot leaves alone what touched holds. Then ${KIT}.`;
-    await run((t) => { t.leave('ritmo'); t.leave('aprobacion'); });
+    for (const id of ['riego', 'aprobacion']) if (s.notes[id] !== 'nueva') return `the snapshot of another answer's save put back "${s.notes[id]}" over the note being typed on "${id}": the note stays "nueva", since a snapshot leaves alone what touched holds. Then ${KIT}.`;
+    await run((t) => { t.leave('riego'); t.leave('aprobacion'); });
     await pg.clock.runFor(100);
     const docs = await pg.evaluate(() => window.__db.docs);
-    if (docs.ritmo?.note !== 'nueva' || docs.ritmo?.choice !== 'b') return `the question's note was saved as ${JSON.stringify(docs.ritmo)}: it's "nueva", with the choice the database held, "b". Then ${KIT}.`;
+    if (docs.riego?.note !== 'nueva' || docs.riego?.choice !== 'b') return `the question's note was saved as ${JSON.stringify(docs.riego)}: it's "nueva", with the choice the database held, "b". Then ${KIT}.`;
     if (docs.aprobacion?.note !== 'nueva' || docs.aprobacion?.approved) return `Aprobar's note was saved as ${JSON.stringify(docs.aprobacion)}: it's "nueva", and still unapproved. Then ${KIT}.`;
   }],
   ['a note left again while its last save is on its way is saved after it', {}, async (pg, run, T) => {
     await pg.evaluate(() => { window.__db.hold = true; });
-    await run((t) => { t.type('nota-ritmo', 'uno'); t.leave('nota-ritmo'); t.type('nota-ritmo', 'uno dos'); t.leave('nota-ritmo'); });
+    await run((t) => { t.type('nota-riego', 'uno'); t.leave('nota-riego'); t.type('nota-riego', 'uno dos'); t.leave('nota-riego'); });
     await pg.evaluate(() => { window.__db.hold = false; window.__db.release(); });
     await pg.clock.runFor(100);
     const docs = await pg.evaluate(() => window.__db.docs), s = await run((t) => t.screen());
-    if (docs['nota-ritmo']?.note !== 'uno dos') return `the database holds "${docs['nota-ritmo']?.note}": it holds "uno dos", since a save asked for while another is on its way goes once that one is back. Then ${KIT}.`;
-    if (s.notes['nota-ritmo'] !== 'uno dos' || s.status !== T.saved) return `the screen shows "${s.notes['nota-ritmo']}" and the status "${s.status}": "uno dos", and "${T.saved}". Then ${KIT}.`;
+    if (docs['nota-riego']?.note !== 'uno dos') return `the database holds "${docs['nota-riego']?.note}": it holds "uno dos", since a save asked for while another is on its way goes once that one is back. Then ${KIT}.`;
+    if (s.notes['nota-riego'] !== 'uno dos' || s.status !== T.saved) return `the screen shows "${s.notes['nota-riego']}" and the status "${s.status}": "uno dos", and "${T.saved}". Then ${KIT}.`;
   }],
   ['a note typed on while its save is on its way stays when another answer saves, and is saved', {}, async (pg, run, T) => {
     await pg.evaluate(() => { window.__db.hold = true; });
-    await run((t) => { t.type('nota-ritmo', 'uno'); t.leave('nota-ritmo'); t.type('nota-ritmo', 'uno dos'); });
+    await run((t) => { t.type('nota-riego', 'uno'); t.leave('nota-riego'); t.type('nota-riego', 'uno dos'); });
     await pg.evaluate(() => { window.__db.hold = false; window.__db.release(); });
     await pg.clock.runFor(100);
-    await run((t) => t.choose('mazos', 'b'));
+    await run((t) => t.choose('canteros', 'b'));
     await pg.clock.runFor(100);
     const s = await run((t) => t.screen());
-    if (s.notes['nota-ritmo'] !== 'uno dos') return `the snapshot of another answer's save put back "${s.notes['nota-ritmo']}": the note stays "uno dos", since a field the user changed while its save was on its way stays the page's. Then ${KIT}.`;
+    if (s.notes['nota-riego'] !== 'uno dos') return `the snapshot of another answer's save put back "${s.notes['nota-riego']}": the note stays "uno dos", since a field the user changed while its save was on its way stays the page's. Then ${KIT}.`;
     await pg.clock.runFor(1000);
     const docs = await pg.evaluate(() => window.__db.docs);
-    if (docs['nota-ritmo']?.note !== 'uno dos') return `a second after the user stopped typing, the database holds "${docs['nota-ritmo']?.note}": it holds "uno dos". Then ${KIT}.`;
+    if (docs['nota-riego']?.note !== 'uno dos') return `a second after the user stopped typing, the database holds "${docs['nota-riego']?.note}": it holds "uno dos". Then ${KIT}.`;
   }],
   ...[['none', 'no window.claude'], ['null', 'no database'], ['refused', 'a database it may not use'], ['failing', 'a database whose snapshots fail']].map(([absent, what]) => [
     `a view with ${what} says it doesn't save, and leaves Aprobar off`, absent === 'failing' ? {} : { absent }, async (pg, run, T) => {
       if (absent === 'failing') await pg.evaluate(() => window.__db.lose());
-      await run((t) => { t.choose('mazos', 'b'); t.type('nota-ritmo', 'x'); t.leave('nota-ritmo'); t.approve(); });
+      await run((t) => { t.choose('canteros', 'b'); t.type('nota-riego', 'x'); t.leave('nota-riego'); t.approve(); });
       await pg.clock.runFor(3000);
       const s = await run((t) => t.screen()), writes = await pg.evaluate(() => (window.__db ? window.__db.writes.length : 0));
       if (s.apState !== T.noSave || !s.buttonOff) return `Aprobar is ${s.buttonOff ? 'off' : 'on'} and says "${s.apState}": a view that can't save keeps it off, and says "${T.noSave}". Then ${KIT}.`;
-      if (s.pressed.mazos !== 'a' || writes) return `a tap in a view that can't save chose "${s.pressed.mazos}" and wrote ${writes} time(s): it changes nothing, so the recommended "a" stays, with no write. Then ${KIT}.`;
+      if (s.pressed.canteros !== 'a' || writes) return `a tap in a view that can't save chose "${s.pressed.canteros}" and wrote ${writes} time(s): it changes nothing, so the recommended "a" stays, with no write. Then ${KIT}.`;
     }]),
   ['a view that loses the right to save goes read-only, and takes back the approval it hadn\'t saved', {}, async (pg, run, T) => {
     await pg.evaluate(() => { window.__db.hold = true; window.__db.fail(1, 'revoked'); });
@@ -187,7 +187,7 @@ const SAVING = [
   }],
   ['a choice that doesn\'t save says so, holds Aprobar back, and is tried again by itself', {}, async (pg, run, T) => {
     await pg.evaluate(() => window.__db.fail(1));
-    await run((t) => t.choose('mazos', 'b'));
+    await run((t) => t.choose('canteros', 'b'));
     await pg.clock.runFor(100);
     let s = await run((t) => t.screen());
     if (s.status !== T.notSaved || !s.statusErr) return `after a failed save the status says "${s.status}"${s.statusErr ? ', in red' : ', not in red'}: it says "${T.notSaved}", in red. Then ${KIT}.`;
@@ -195,22 +195,22 @@ const SAVING = [
     await pg.clock.runFor(2000);
     const docs = await pg.evaluate(() => window.__db.docs);
     s = await run((t) => t.screen());
-    if (docs.mazos?.choice !== 'b') return `2 s later the database holds ${JSON.stringify(docs.mazos)}: it holds the choice "b", since a failed save is tried again by itself. Then ${KIT}.`;
+    if (docs.canteros?.choice !== 'b') return `2 s later the database holds ${JSON.stringify(docs.canteros)}: it holds the choice "b", since a failed save is tried again by itself. Then ${KIT}.`;
     if (s.status !== T.saved || s.buttonOff || s.apState !== T.withChoices) return `once the retry saved, the status says "${s.status}", and Aprobar is ${s.buttonOff ? 'off' : 'on'}, its line saying "${s.apState}": "${T.saved}", and Aprobar on, saying "${T.withChoices}". Then ${KIT}.`;
   }],
   ['a save that keeps failing is tried three more times, 2, 4 and 6 s apart, and the next tap saves it', {}, async (pg, run, T) => {
     await pg.evaluate(() => window.__db.fail(99));
-    await run((t) => t.choose('mazos', 'b'));
+    await run((t) => t.choose('canteros', 'b'));
     const sent = [];
     for (const ms of [1900, 200, 3800, 200, 5800, 200, 30000]) { await pg.clock.runFor(ms); sent.push(await pg.evaluate(() => window.__db.writes.length)); }
     if (sent.join() !== '1,2,2,3,3,4,4') return `the writes sent, counted at 1.9, 2.1, 5.9, 6.1, 11.9, 12.1 and 42.1 s, were ${sent.join(', ')}: they're 1, 2, 2, 3, 3, 4, 4, the first save and three more tries, 2, 4 and 6 s apart. Then ${KIT}.`;
     let s = await run((t) => t.screen());
     if (s.status !== T.notSaved || !s.buttonOff) return `after the last try the status says "${s.status}" and Aprobar is ${s.buttonOff ? 'off' : 'on'}: it says "${T.notSaved}", and Aprobar stays off. Then ${KIT}.`;
     await pg.evaluate(() => window.__db.fail(0));
-    await run((t) => t.choose('mazos', 'b'));
+    await run((t) => t.choose('canteros', 'b'));
     await pg.clock.runFor(100);
     s = await run((t) => t.screen());
-    const choice = await pg.evaluate(() => window.__db.docs.mazos?.choice);
+    const choice = await pg.evaluate(() => window.__db.docs.canteros?.choice);
     if (choice !== 'b' || s.status !== T.saved || s.buttonOff) return `after the user's next tap, the database holds "${choice}", the status says "${s.status}" and Aprobar is ${s.buttonOff ? 'off' : 'on'}: "b", "${T.saved}", and Aprobar on. Then ${KIT}.`;
   }],
   ['an approval that doesn\'t save is taken back, and pressing Aprobar again saves it', {}, async (pg, run, T) => {
@@ -231,7 +231,7 @@ const SAVING = [
     await pg.evaluate(() => window.__db.fail(1));
     await run((t) => { t.type('aprobacion', 'nueva'); t.approve(); });
     await pg.clock.runFor(100);
-    await run((t) => t.choose('mazos', 'b'));
+    await run((t) => t.choose('canteros', 'b'));
     await pg.clock.runFor(100);
     const typed = (await run((t) => t.screen())).notes.aprobacion;
     if (typed !== 'nueva') return `the approval was taken back, then another answer's snapshot put back "${typed}" over Aprobar's note: it stays "nueva", since taking back the approval leaves the note the page's. Then ${KIT}.`;
@@ -302,12 +302,12 @@ const DEFECTS = [
   ['a tab whose name runs off a phone\'s bar', ['data-tab="Preguntas"', 'data-tab="Las preguntas de la ronda"'], [/the tab "Las preguntas de la ronda" (takes \d+ lines|is wider than its place)/]],
   ['a page whose name doesn\'t fit its header', ['<h1>Piezas tipo</h1>', '<h1>Piezastipoparatodaslaspaginasdelmetodo</h1>'], [/the page's name, "Piezastipo[^"]*", doesn't fit its header/, /the header is wider than the screen/, /the page scrolls sideways/]],
   ['a drawing\'s label too small at a movie\'s middle step', ['</svg>\n        <ol>', `  ${tooSmall}\n        </svg>\n        <ol>`], [/a movie at step 3: .*the label "diminuta" is drawn at/]],
-  ['words in a legend, over a card\'s limit', ['<span>○ abierto</span></p>', '<span>○ abierto</span><span>y una leyenda tan larga que pasa sola el límite de palabras de una tarjeta aunque nadie la mire como texto, porque una leyenda también se lee</span></p>'], [/card \d+ "El ritmo": \d+ words, over 40/]],
-  ['a note whose id is the approval\'s', ['data-id="nota-ritmo"', 'data-id="aprobacion"'], [/the note's id "aprobacion" is taken by the approval/]],
-  ['a note whose id is a question\'s', ['data-id="nota-ritmo"', 'data-id="ritmo"'], [/the note's id "ritmo" is taken\. Give each note/]],
-  ['two notes with one id', ['</ul>\n    </article>\n    <article class="k-card">\n      <p class="k-kick">Carriles', '</ul>\n      <div class="k-note" data-id="nota-ritmo"></div>\n    </article>\n    <article class="k-card">\n      <p class="k-kick">Carriles'], [/the note's id "nota-ritmo" is taken\. Give each note/]],
-  ['a word with no meaning', ['data-term="pliego">pliego', 'data-term="plano">pliego'], [/The word "pliego" has no meaning to show/]],
-  ['an issue that doesn\'t say what it does', [' data-tip="Lo que hace el issue, en una línea."', ''], [/The issue "El título del issue" doesn't say what it does/]],
+  ['words in a legend, over a card\'s limit', ['<span>○ abierto</span></p>', '<span>○ abierto</span><span>y una leyenda tan larga que pasa sola el límite de palabras de una tarjeta aunque nadie la mire como texto, porque una leyenda también se lee</span></p>'], [/card \d+ "El riego": \d+ words, over 40/]],
+  ['a note whose id is the approval\'s', ['data-id="nota-riego"', 'data-id="aprobacion"'], [/the note's id "aprobacion" is taken by the approval/]],
+  ['a note whose id is a question\'s', ['data-id="nota-riego"', 'data-id="riego"'], [/the note's id "riego" is taken\. Give each note/]],
+  ['two notes with one id', ['</ul>\n    </article>\n    <article class="k-card">\n      <p class="k-kick">Carriles', '</ul>\n      <div class="k-note" data-id="nota-riego"></div>\n    </article>\n    <article class="k-card">\n      <p class="k-kick">Carriles'], [/the note's id "nota-riego" is taken\. Give each note/]],
+  ['a word with no meaning', ['data-term="cantero">cantero', 'data-term="huerta">cantero'], [/The word "cantero" has no meaning to show/]],
+  ['an issue that doesn\'t say what it does', [' data-tip="Pide una canilla junto a los canteros del fondo."', ''], [/The issue "Una canilla para el fondo" doesn't say what it does/]],
   ['a link to a tab that isn\'t there', ['href="#pelicula"', 'href="#peli"'], [/The link "Ver la película ›" goes to "#peli", which no tab is/]],
 ];
 
@@ -382,7 +382,7 @@ function docs() {
   if (!project) { console.log(`skip ${name}: no PLIEGO.md titled "# Pliego of <project>" at the repo's root. Where the project's CLAUDE.md names another pliego, search the kit's files for the project's name with git grep.`); return; }
   const word = new RegExp(`(^|[^\\p{L}\\p{N}])${project.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}\\p{N}])`, 'u');
   const named = fs.readdirSync(kitDir).filter((f) => word.test(read(f)));
-  check(name, named.length ? `${named.join(', ')} name(s) "${project}", the project's name in its pliego: the kit and its examples serve any project, so give them a generic example (.claude/method/method.md).` : null);
+  check(name, named.length ? `${named.join(', ')} name(s) "${project}", the project's name in its pliego: the kit serves any project, so take the name out, and give pieces.html's examples the topic its README names (${README}, Changing the kit).` : null);
 }
 
 (async () => {

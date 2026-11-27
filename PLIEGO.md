@@ -85,14 +85,14 @@ Each kind of work, as a cloud session does it by `CLAUDE.md`'s Shipping:
   - ✓ `.claude/hooks/`, `.claude/settings.json`, `.claude/agents/`, the `Makefile`, `scripts/data-changes.sh` and `project.yml`: GitHub took a cloud session's push to them, in #471 on 2026-11-21 and #494 on 2026-11-24.
   - ○ The last paths `.claude/hooks/merge-gate.sh` lists, the `.entitlements` files and `CLI/Info.plist`: no cloud session has tried a push to them yet; the next `/preparar` does.
 - ✓ The tests while building, in two rounds per node (ADR 0031): from the cloud, GitHub's Macs; on Lucas's Mac, `make test`.
-  - ◐ From the cloud, each push to the node's draft PR runs a round, CI's `tests` job, `make test` alone, which the session reads as `CLAUDE.md`'s Shipping says; marking the PR ready runs the full `check`.
+  - ◐ From the cloud, each push to the node's draft PR with no conflict runs a round, CI's `tests` job, `make test` alone, which the session reads as `CLAUDE.md`'s Shipping says; marking the PR ready runs the full `check`.
 - ✓ The three checks' tests and CI: from the cloud, the last round on the draft PR, then CI's `check` once it's ready; on Lucas's Mac, `make check`, then CI.
 - ✓ The web mocks' pictures, with `mockups/tools/shoot.js`, the inspection of the method's pages, with `.claude/method/kit/inspect.js`, and the kit's test, `.claude/method/kit/test.js`, which a change to the kit passes: the cloud.
 - ✓ Fetching the images of Ficha's decks from Wikimedia Commons: the cloud, in Lucas's environment `ficha`, which reaches `commons.wikimedia.org` and `upload.wikimedia.org`; the built-in one refuses both (ADR 0040).
 - ○ The pictures of Ficha: GitHub's Macs, if the probe shows they draw Ficha's windows (#480); until then, Lucas's Mac, through Remote Control.
 - ✓ The hand checks an agent can run (#473): Lucas's Mac, through Remote Control.
 - ○ An agent's runs of Ficha, with `ficha`, `make render`'s clicks or the simulator: Lucas's Mac, through Remote Control, as the hand checks; GitHub's Macs, if the probe shows they can (#480).
-- ✓ An acceptance criterion's proof: `test` runs where the tests do, `picture` where its picture is made, above, and `hand` on Lucas's Mac, from the Hand checks issue.
+- ✓ An acceptance criterion's proof: `test` runs where the tests do, `review` where the reviews do, `picture` where its picture is made, above, and `hand` on Lucas's Mac, from the Hand checks issue.
 - ◐ In the cloud, a node's branch is the one the session is given.
 - ○ The guards: no hook of the repo ran in a cloud session on 2026-11-23, and none matches the session's GitHub tools (#479). Until they do, a cloud session keeps them itself.
 

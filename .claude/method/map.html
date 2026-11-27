@@ -2,8 +2,8 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@500;600&family=Inter:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="kit/kit.css">
-<!-- The method at a glance, for the user: its seven commands and its words (method.md). A change to the commands
-     or the words changes this page in the same PR, published again at the same link. -->
+<!-- The method at a glance, for the user: its seven commands and its words (method.md), which says which changes
+     change this page. -->
 
 <header class="k-top">
   <p class="k-kick">Cómo se construye</p>
@@ -242,7 +242,7 @@
       <ul class="k-items">
         <li data-s="done">Decidido: lo elegiste vos.</li>
         <li data-s="prov">Provisorio: lo propuso Claude; vale hasta que un debate lo cambie.</li>
-        <li data-s="open">Abierto: se decide en el debate que lo necesite.</li>
+        <li data-s="open">Abierto: se decide en el debate que lo necesite, o con una <span class="k-term" data-term="prueba">prueba</span>.</li>
       </ul>
     </article>
     <article class="k-card">
@@ -299,7 +299,7 @@
           </svg>
         </div>
       </figure>
-      <p>Compara cada issue con el código de hoy. Lo que necesite de vos te lo pide enseguida, y sigue. Si el plano cambia, para y te muestra esto.</p>
+      <p>Antes de construir, compara cada issue con el código de hoy. Si el plano tiene que cambiar, para y te muestra esto.</p>
     </article>
     <article class="k-card">
       <p class="k-kick">Después del merge</p>
@@ -312,11 +312,11 @@
 
 <dl class="k-terms">
   <dt data-term="pliego">Pliego</dt>
-  <dd>El archivo que leen los comandos: qué es el proyecto, sus áreas, cómo se dibuja, maneja y prueba, dónde corre cada cosa, qué espera tu OK, su plano y sus palabras.</dd>
+  <dd>El archivo que leen los comandos: qué es el proyecto, sus áreas, cómo se dibuja, maneja, ve y prueba, dónde corre cada cosa, qué espera tu OK, qué marca al publicar, su plano, sus palabras y cómo se trabaja.</dd>
   <dt data-term="nodo">Nodo</dt>
   <dd>Un punto del árbol de áreas, de cualquier tamaño: una hoja, como App › UI › Ajustes, o App entero.</dd>
   <dt data-term="orden">Orden de cambio</dt>
-  <dd>Cuando el plano tiene que cambiar mientras se construye: el plano antes y después, y los issues que toca, para que lo apruebes.</dd>
+  <dd>Un cambio al plano, encontrado mientras se construye, que aprobás antes de seguir.</dd>
   <dt data-term="obra">Conforme a obra</dt>
   <dd>Después del merge, la decisión, sus issues, el pliego y el plano cuentan lo que se construyó.</dd>
   <dt data-term="torcio">Se torció</dt>
