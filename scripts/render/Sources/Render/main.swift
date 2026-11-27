@@ -39,17 +39,16 @@ enum Window: String, CaseIterable {
     /// first, and economía selected, which `--key return` lists the cards
     /// of, in All Tags' place, and `--key cmd+delete` asks whether to delete.
     case cardsAllTags = "cards-all-tags"
-    /// The Cards window on Idiomas, one of the decks the sample's cards sit
-    /// in, with its sidebar's Your Decks section: Default first, then every
-    /// deck as a tree, those at the top with cards in the reviews in the
-    /// order of the queue new cards come from, the rest after them and those
-    /// set aside last, each with how many of its cards are due, Idiomas and
-    /// Ciencias with a color and an emoji, which the decks inside them show
-    /// too, Ciencias, Humanidades and Idiomas › Español closed, so that
-    /// Sociedad shows, set aside and grayed; the bar
-    /// above the card list, with Idiomas's name, its Actions menu and its
-    /// cards' tags; and two of Idiomas's cards selected, which `--key cmd+d`
-    /// asks to move in the Change Deck sheet.
+    /// The Cards window on Idiomas, one of the decks the sample's cards sit in,
+    /// with its sidebar's Your Decks section: Default first, then every deck as
+    /// a tree, those at the top with cards in the reviews in the order of the
+    /// queue new cards come from, the rest after them and those set aside last,
+    /// each with how many of its cards are due, Idiomas and Ciencias with a
+    /// color and an emoji, which the decks inside them show too, Ciencias,
+    /// Humanidades and Idiomas › Español closed, so that Sociedad shows, set
+    /// aside and grayed; the bar above the card list, with Idiomas's name, its
+    /// Actions menu and its cards' tags; and two of Idiomas's cards selected,
+    /// which `--key cmd+d` asks to move in the Change Deck sheet.
     case cardsDecks = "cards-decks"
     /// The same on Idiomas › Español, with historia, one of its
     /// tags, chosen above the card list, which lists only the deck's cards
@@ -100,9 +99,9 @@ enum Window: String, CaseIterable {
     /// cards: "No cards yet", the paces alone, with their new cards a day,
     /// and Create.
     case cardsHowFastNewDeck = "cards-how-fast-new-deck"
-    /// The Cards window on Palabras lindas, one of Ficha's decks, read from
-    /// the repo's `App/FichaDecks/`, which its sidebar's Ficha's Decks
-    /// section lists after Your Decks with the other two, its sidebar
+    /// The Cards window on Palabras lindas, one of Ficha's decks, which its
+    /// sidebar's Ficha's Decks section lists after Your Decks with the other
+    /// two, all three read from the repo's `App/FichaDecks/`, its sidebar
     /// scrolled to the deck's row: its emoji, its name and how many cards it
     /// brings in the table's place, with Add Deck…, which `--key return` asks
     /// How fast? for, and its first card, a word, front and back, in the
@@ -1073,7 +1072,7 @@ func scrollSidebarToSelection(of window: NSWindow) throws {
     guard let sidebar, sidebar.selectedRow >= 0 else {
         throw RenderError(
             description: """
-                The Cards window's sidebar selects none of Ficha's decks, even in sight: fix \
+                The Cards window's sidebar selects none of Ficha's decks, even scrolled to its end: fix \
                 scrollSidebarToSelection(of:), or the window's case in window(_:model:), which chooses it.
                 """)
     }
