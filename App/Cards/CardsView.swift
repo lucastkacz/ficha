@@ -2151,7 +2151,7 @@ private struct DeckBranch: View {
                 Text(verbatim: row.shownTitle)
                 if let line = row.line {
                     Text(verbatim: line.text)
-                        .font(.caption)
+                        .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
             }
