@@ -207,7 +207,7 @@ struct CardsWindowDecksTests {
     }
 
     @Test(
-        "New Deck… in the sidebar refuses Default's name, OK makes a deck with no card at the top, not inside any deck, and A::B makes B inside A; Cancel makes none"
+        "New Deck… in the sidebar refuses Default's name, OK makes a deck with no card at the top, not inside any deck, and A::B makes B inside A, each OK followed by How fast?, whose Cancel leaves the deck made; Cancel makes none"
     )
     func newDeckFromTheSidebar() throws {
         let petricor = try engine.create(card(.word, front: "petricor", back: "El olor de la lluvia."))
@@ -225,9 +225,12 @@ struct CardsWindowDecksTests {
         let afterRefusal = window.question
         window.chooseNewDeck(" Arte ")
         let afterFirst = window.deckRows.outline
-        let afterFirstQuestion = window.question
+        let afterFirstHowFast = window.howFast?.subject
+        window.cancelQuestion()
         window.askToMakeDeck()
         window.chooseNewDeck("Idiomas :: Inglés")
+        let afterSecondHowFast = window.howFast?.subject
+        window.cancelQuestion()
 
         #expect(afterCancel == [Deck.defaultName])
         #expect(asked == .makeDeck)
@@ -235,7 +238,9 @@ struct CardsWindowDecksTests {
         #expect(defaultsName == .refused(.defaultDeckName("default")))
         #expect(afterRefusal == .makeDeck)
         #expect(afterFirst == ["Default 0", "Arte 0"])
-        #expect(afterFirstQuestion == nil)
+        // How fast? asks for the deck at the queue's top level (#491).
+        #expect(afterFirstHowFast == .deck("Arte"))
+        #expect(afterSecondHowFast == .deck("Idiomas"))
         #expect(window.question == nil)
         #expect(window.failure == nil)
         #expect(window.deckRows.outline == ["Default 0", "Arte 0", "Idiomas 0", "  Inglés 0"])
