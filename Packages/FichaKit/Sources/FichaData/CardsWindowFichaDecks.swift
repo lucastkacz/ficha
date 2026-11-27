@@ -85,8 +85,10 @@ extension CardsWindowState {
     /// cards calls it (`read(with:)`), and so does the end of each way out
     /// of a question, an edit, the card form or a sheet, once it's over,
     /// never a read partway through one (`readAgain()`), so the sidebar stays
-    /// where that leaves it. It forgets the deck once it asks, or once the
-    /// user has added it meanwhile.
+    /// where that leaves it. Show Card's is the exception: it leaves the
+    /// window on the card it shows (`showRepeatedCard()`), so the app's next
+    /// read asks. It forgets the deck once it asks, or once the user has
+    /// added it meanwhile.
     mutating func askForTheFichaDeckAskedToAdd() {
         guard let deck = fichaDeckAskedToAdd, fichaDeckFiles.contains(where: { $0.deck == deck }),
             question == nil, editing == nil, cardForm == nil, importing == nil, exporting == nil

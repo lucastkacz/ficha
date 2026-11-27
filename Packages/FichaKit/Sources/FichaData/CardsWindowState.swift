@@ -1117,7 +1117,8 @@ public struct CardsWindowState: Sendable {
     /// sidebar (`askForTheFichaDeckAskedToAdd()`). This is the app's read,
     /// as the cards change and every minute: the window's own operations
     /// read with `readAgain()`, which asks nothing, so the ask never comes
-    /// partway through one, and they ask once they're over.
+    /// partway through one, and each asks once it's over, all but Show Card,
+    /// which leaves the window on the card it shows, so that this read asks.
     public mutating func read(with scheduler: Scheduler) {
         read(with: scheduler, activeHours: activeHours)
     }

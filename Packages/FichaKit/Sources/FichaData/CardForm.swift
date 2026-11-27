@@ -262,7 +262,9 @@ extension CardsWindowState {
     /// sides, until it's opened the same way again, and the window selects
     /// the card in All cards, or in Buried when it's buried, with no search,
     /// and scrolls to it. A capture the form came from stays in the inbox
-    /// meanwhile.
+    /// meanwhile, and one of Ficha's decks the review panel asked for
+    /// meanwhile waits for the window's next read (`read(with:)`), so the
+    /// window stays on the card.
     public mutating func showRepeatedCard() {
         guard case .repeats(let card)? = cardForm?.frontWarning else { return }
         setAsideCardForm = cardForm
