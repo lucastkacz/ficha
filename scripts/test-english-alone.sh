@@ -79,18 +79,20 @@ expect "with no app at the path, it stops and says so" stops "*There's no app at
 # make upload's recipe, as `make -n` prints it without running it, with none of
 # the make that runs this test's flags.
 recipe=$(MAKEFLAGS='' make --no-print-directory -C "$(dirname "$script")/.." -n upload 2>&1)
-# line_of <text>: the number of the recipe's first line that holds the text, or
-# 0 when none does.
+# line_of [-x] <text>: the number of the recipe's first line that holds the
+# text, or that is the text alone with -x, or 0 when none is.
 line_of() {
   local number
-  number=$(grep -n -F -e "$1" <<<"$recipe" | head -n 1 | cut -d : -f 1)
+  number=$(grep -n -F "$@" <<<"$recipe" | head -n 1 | cut -d : -f 1)
   echo "${number:-0}"
 }
 deleted=$(line_of "rm -rf .build/upload")
-archived=$(line_of "-derivedDataPath .build/upload/DerivedData")
+archived=$(line_of -e "-derivedDataPath .build/upload/DerivedData")
 unregistered=$(line_of "scripts/unregister-other-copies.sh Ficha.app")
-checked=$(line_of "scripts/english-alone.sh .build/upload/Ficha.xcarchive/Products/Applications/Ficha.app")
-exported=$(line_of "-exportArchive")
+# The check's whole line, so that nothing after it, such as `|| true`, lets
+# the upload go on when it fails.
+checked=$(line_of -x "scripts/english-alone.sh .build/upload/Ficha.xcarchive/Products/Applications/Ficha.app")
+exported=$(line_of -e "-exportArchive")
 if ((deleted > 0 && deleted < archived && archived < unregistered && unregistered < checked && checked < exported)); then
   pass "make upload deletes .build/upload, archives in the derived data there, unregisters the other copies, and checks its app before the export"
 else
