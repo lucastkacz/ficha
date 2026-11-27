@@ -47,7 +47,8 @@ extension CardsWindowState {
     /// skips, into the user's deck by its name, at its place in the queue,
     /// or else last, as a deck that comes in goes. Its Start adds the deck,
     /// sets the pace and its place, and the sidebar then chooses the deck in
-    /// Decks. When the queue can't be read, it asks nothing, and says why.
+    /// Your Decks. When the queue can't be read, it asks nothing, and says
+    /// why.
     public mutating func askToAddFichaDeck() {
         guard let file = shownFichaDeck else { return }
         do throws(EngineError) {
