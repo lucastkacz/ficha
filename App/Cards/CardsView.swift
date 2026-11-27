@@ -2246,8 +2246,8 @@ private struct FichaDeckRow: View {
 
 /// The first card of one of Ficha's decks, in the detail's place while the
 /// window shows the deck, as the mock draws it, in a box of its own: its
-/// front, its image or its text, then a line, and its back, at the card
-/// size.
+/// front, its image above its text when it has both, then a line, and its
+/// back the same way, at the card size.
 private struct FichaDeckCard: View {
     let card: CardContent
     /// The images the window shows, the card's among them.
