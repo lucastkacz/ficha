@@ -228,7 +228,7 @@ How likely the user is to remember a card right now, as FSRS estimates it.
 _Avoid_: recall, memory
 
 **Settings that decide progress**:
-The learning and relearning steps, the desired retention, the longest interval a card can get, FSRS's parameters, how many new cards a day the user meets, which the pace sets, and after how many lapses a card is forgotten often, one set for every deck. They sync, so a card's progress means the same on each device; the user's other settings stay each device's own.
+The learning and relearning steps, the desired retention, the longest interval a card can get, FSRS's parameters, how many new cards a day the user meets, which the pace sets, after how many lapses a card is forgotten often, and the hour Ficha's day starts at, one set for every deck. They sync, so a card's progress means the same on each device; the user's other settings stay each device's own.
 _Avoid_: synced settings, review settings, preset
 
 **Due**:
@@ -246,6 +246,10 @@ _Avoid_: mastered, known, mature
 **Pace**:
 How many new cards a day the user meets, one pace for all decks: Chill, Steady or Faster, which Ficha asks as a deck comes in.
 _Avoid_: speed, rhythm, daily limit
+
+**Ficha's day**:
+The day Ficha counts by: from 4:00, or as the user sets it, to the same hour the next day, so that a night that crosses midnight is one day. How many new cards a day the user meets, the finish date and the days Ficha names, such as "today", count by it. A new card counts toward the day its first review is answered in. A card's due time doesn't follow it.
+_Avoid_: calendar day, study day, rollover
 
 **Queue**:
 The decks waiting their turn for new cards: new cards come from the first alone until the user has met all of its cards, then from the next. Cards already met keep coming from every deck.
@@ -270,7 +274,7 @@ How far ahead an appearance looks: it brings along the cards due within it, whos
 _Avoid_: buffer, window
 
 **Active hours**:
-The part of the day in which appearances may happen.
+The hours in which appearances may happen, such as 9 to 22, or 20 to 3, which crosses midnight. Each device keeps its own.
 _Avoid_: schedule, work hours
 
 **Separation**:
