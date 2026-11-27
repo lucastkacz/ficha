@@ -73,7 +73,7 @@ What `desktop/` shows that the app doesn't yet, or not where the mock has it, so
 
 - The Welcome page's steps, `WelcomePage` (#467), and Settings in five tabs, `SettingsWindow` (#492).
 - In the Cards window, a deck's bar, with Put it first and Set aside: the app has Set Aside in the deck's menu, and Put it first in How fast? alone.
-- The Cards window's "Your own" section, with New Deck… and Import an Anki file…, which the app keeps elsewhere: New Deck… in a deck's menu and the Your Decks title's, and Import… in the toolbar, on ⇧⌘I.
+- The Cards window's "Your Own" section, with New Deck… and Import an Anki file…, which the app keeps elsewhere: New Deck… in a deck's menu and the Your Decks title's, and Import… in the toolbar, on ⇧⌘I.
 
 ### Sizes
 

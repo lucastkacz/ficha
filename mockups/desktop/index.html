@@ -208,7 +208,7 @@
    * New here, not in the app yet: WelcomePage's steps and SettingsWindow's
    * five tabs. Ahead of the app too, in CardsWindow: a deck's bar, with Put
    * it first and Set aside, where the app has Set Aside in the deck's menu
-   * and Put it first in How fast? alone; and the sidebar's "Your own"
+   * and Put it first in How fast? alone; and the sidebar's "Your Own"
    * section, with New Deck… and Import an Anki file…, which the app keeps
    * elsewhere: New Deck… in a deck's menu and the Your Decks title's, and
    * Import… in the toolbar, on ⇧⌘I.
@@ -443,7 +443,7 @@
         <nav className="sidebar" aria-label="Decks">
           ${yours.length ? html`<div className="side-title">Your Decks</div>${yours.map(row)}` : null}
           ${toAdd.length ? html`<div className="side-title">Ficha's Decks</div>${toAdd.map(row)}` : null}
-          <div className="side-title">Your own</div>
+          <div className="side-title">Your Own</div>
           <button type="button" className="side-row" aria-selected=${making} onClick=${() => setSelected(NEW)}>
             <span>🗂️</span><span className="name">New Deck…</span><small>Empty, for your own cards</small></button>
           ${anki && html`<button type="button" className="side-row" aria-selected=${selected === anki.id} onClick=${() => setSelected(anki.id)}>
