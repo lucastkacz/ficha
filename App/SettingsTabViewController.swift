@@ -75,9 +75,9 @@ final class SettingsScroll {
 /// tab and as wide as its toolbar's tabs need, 500 points at least. It opens
 /// on the tab Lucas left it on last, unless it's asked to open on another.
 final class SettingsTabViewController: NSTabViewController {
-    /// How tall Advanced is, past which it scrolls: about Interruptions'
-    /// height, our estimate of it until `make render`'s pictures measure it.
-    private static let advancedHeight: CGFloat = 620
+    /// How tall Advanced is, past which it scrolls: Interruptions' height, as
+    /// `make render`'s pictures of the two measured it.
+    private static let advancedHeight: CGFloat = 739
     /// How wide every tab is, and so the window.
     private var width: CGFloat = 500
     /// Where a tab scrolls to, as Settings is asked to show a section.

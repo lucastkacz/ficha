@@ -315,12 +315,16 @@ private struct SettingsSectionView: View {
         }
     }
 
-    /// The section's rows, in their order.
+    /// The section's rows, in their order, each with its own identity, for
+    /// the tab to scroll to: a grouped form scrolls to an `id` it was given,
+    /// not to its `ForEach`'s.
     private var rows: some View {
         ForEach(section.rows, id: \.self) { row in
             SettingsRowView(
                 row: row, model: model, captureShortcut: captureShortcut, width: width,
-                openDiagnostics: openDiagnostics)
+                openDiagnostics: openDiagnostics
+            )
+            .id(row)
         }
     }
 }
