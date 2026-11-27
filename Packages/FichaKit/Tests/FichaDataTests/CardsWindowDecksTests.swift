@@ -4,9 +4,9 @@ import Foundation
 import GRDB
 import Testing
 
-/// Tests on the Cards window's decks (ADR 0024): the sidebar's Decks section,
-/// choosing a deck, and Change Deck… with its sheet and New Deck…, on the
-/// default scheduler. They start at 9 in the morning in Buenos Aires, when
+/// Tests on the Cards window's decks (ADR 0024): the sidebar's Your Decks
+/// section, choosing a deck, and Change Deck… with its sheet and New Deck…, on
+/// the default scheduler. They start at 9 in the morning in Buenos Aires, when
 /// active hours start.
 struct CardsWindowDecksTests {
     let time: ManualTimeSource
@@ -22,7 +22,7 @@ struct CardsWindowDecksTests {
     // Each card met the day before is due, and guernica, buried, counts in
     // no deck: Música::Tango has no card.
     @Test(
-        "the Decks section, after Inbox and before Tags, lists every deck as a tree, Default first while it holds cards, each with its due cards, those inside it counted"
+        "the Your Decks section, after Inbox and before Tags, lists every deck as a tree, Default first while it holds cards, each with its due cards, those inside it counted"
     )
     func theDecksSection() throws {
         let gioconda = try engine.create(card(.concept, front: "La Gioconda", back: "De Leonardo."))
@@ -251,7 +251,7 @@ struct CardsWindowDecksTests {
         #expect(try engine.cards().map(\.deck) == [Deck.defaultName])
     }
 
-    @Test("New Deck… from the Decks title makes the first deck of a window that lists none")
+    @Test("New Deck… from the Your Decks title makes the first deck of a window that lists none")
     func newDeckFromTheTitleWithNoDeck() throws {
         var window = openWindow()
         let before = window.sidebarSections.contains(.decks([]))

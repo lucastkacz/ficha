@@ -62,8 +62,8 @@ public struct CardsWindowState: Sendable {
         case cardGroups([CardGroup])
         /// The inbox.
         case inbox
-        /// The Decks section: every deck as a tree, as `deckRows` lists them
-        /// (`CardsWindowDecks.swift`).
+        /// The Your Decks section: every deck as a tree, as `deckRows` lists
+        /// them (`CardsWindowDecks.swift`).
         case decks([DeckRow])
         /// The Ficha's Decks section: the decks of Ficha's the user hasn't
         /// added, in `FichaDeck`'s order (`CardsWindowFichaDecks.swift`).
@@ -374,7 +374,7 @@ public struct CardsWindowState: Sendable {
         /// He renamed this deck, in the rename sheet.
         case renameDeck(deck: String)
         /// He dragged this deck, in the sidebar, onto another or onto the
-        /// Decks section's title, to move it.
+        /// Your Decks section's title, to move it.
         case moveDeck(deck: String)
         /// He deleted this deck, or chose Delete… on it, which counts what
         /// goes first.
@@ -488,7 +488,7 @@ public struct CardsWindowState: Sendable {
     /// cards, buried ones too, those with something of their own, and every
     /// tag they sit inside, in the order a tree lists them.
     public private(set) var tags: [CardTag] = []
-    /// Every deck the sidebar's Decks section lists, with what each has of
+    /// Every deck the sidebar's Your Decks section lists, with what each has of
     /// its own and its counts, in the order a tree lists them, Default first
     /// while it holds cards or has a switch on: `CardsWindowDecks.swift`.
     public private(set) var decks: [CountedDeck] = []
@@ -1102,7 +1102,7 @@ public struct CardsWindowState: Sendable {
     /// It finds which of Ficha's decks the user has added, as
     /// `Engine.hasAdded(_:)` says, and when the one the sidebar chose is
     /// added, by Start or meanwhile from another device, the sidebar chooses
-    /// the deck, or All cards while Decks doesn't list it.
+    /// the deck, or All cards while Your Decks doesn't list it.
     public mutating func read(with scheduler: Scheduler) {
         read(with: scheduler, activeHours: activeHours)
     }
@@ -1168,9 +1168,9 @@ public struct CardsWindowState: Sendable {
     }
 
     /// Whether the sidebar offers `group`, as last read: a deck while the
-    /// Decks section lists it, a tag while All Tags lists it, pinned or not,
-    /// No Type while some card has none, a user type while it lists it, and
-    /// every other group always.
+    /// Your Decks section lists it, a tag while All Tags lists it, pinned or
+    /// not, No Type while some card has none, a user type while it lists it,
+    /// and every other group always.
     private func offers(_ group: CardGroup) -> Bool {
         switch group {
         case .deck(let deck): listedDeck(deck) != nil

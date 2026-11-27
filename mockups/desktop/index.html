@@ -436,7 +436,7 @@
     return html`<${Window} title="Cards" onClose=${win.onClose} ...${win}>
       <div className="cards">
         <nav className="sidebar" aria-label="Decks">
-          ${yours.length ? html`<div className="side-title">Your decks</div>${yours.map(row)}` : null}
+          ${yours.length ? html`<div className="side-title">Your Decks</div>${yours.map(row)}` : null}
           ${toAdd.length ? html`<div className="side-title">Ficha's Decks</div>${toAdd.map(row)}` : null}
           <div className="side-title">Your own</div>
           <button type="button" className="side-row" aria-selected=${making} onClick=${() => setSelected(NEW)}>

@@ -1,7 +1,7 @@
 import FichaCore
 import Foundation
 
-// The Cards window's decks (ADR 0024): the sidebar's Decks section, after
+// The Cards window's decks (ADR 0024): the sidebar's Your Decks section, after
 // Inbox and before Tags, lists every deck as a tree, Default first while it
 // holds cards or has a switch on, where it always was, then the decks at the
 // top of the tree in the queue new cards come from, in its order, the one
@@ -22,18 +22,17 @@ import Foundation
 // the decks inside it, last when it's at the top of the tree and in its
 // place inside another. Every deck's but Default's also renames it and deletes
 // it, and in the sidebar cards and decks dropped on a deck move there
-// (`CardsWindowDeckEdits.swift`). Every deck's menu and the Decks title's have
-// New Deck…, whose OK makes a deck with no card, where its name says, and
+// (`CardsWindowDeckEdits.swift`). Every deck's menu and the Your Decks title's
+// have New Deck…, whose OK makes a deck with no card, where its name says, and
 // then asks How fast? for a new deck at the top of the tree (`HowFast.swift`).
-// A chosen deck's tags line up above its cards
-// (`CardsWindowDeckTags.swift`). Change Deck… moves the selected cards to the deck Lucas
-// picks in its sheet, from the same tree with Default always in it, or to one
-// he names there with New Deck…, which the move makes. The Deck field, in the
-// card form and the editor (`CardsWindowDeckField.swift`), offers that tree
-// too, and its New Deck… names a deck in the New Deck sheet with the same
-// name field and the same checks, for the field to hold; and so does the
-// Import sheet's choice of deck (`CardsWindowImport.swift`), which names one
-// in its preview's place.
+// A chosen deck's tags line up above its cards (`CardsWindowDeckTags.swift`).
+// Change Deck… moves the selected cards to the deck Lucas picks in its sheet,
+// from the same tree with Default always in it, or to one he names there with
+// New Deck…, which the move makes. The Deck field, in the card form and the
+// editor (`CardsWindowDeckField.swift`), offers that tree too, and its New
+// Deck… names a deck in the New Deck sheet with the same name field and the
+// same checks, for the field to hold; and so does the Import sheet's choice of
+// deck (`CardsWindowImport.swift`), which names one in its preview's place.
 
 extension CardsWindowState {
     /// A deck in the sidebar's tree, or in the Change Deck sheet's, with the
@@ -53,9 +52,10 @@ extension CardsWindowState {
         /// reviews, as it's set aside on its own or sits inside a deck that
         /// is.
         public let isGrayed: Bool
-        /// What its row says under its title, in the sidebar's Decks section,
-        /// for a deck at the top of the tree, Default included (#491): nil
-        /// for a deck inside another, and in the Change Deck sheet's tree.
+        /// What its row says under its title, in the sidebar's Your Decks
+        /// section, for a deck at the top of the tree, Default included
+        /// (#491): nil for a deck inside another, and in the Change Deck
+        /// sheet's tree.
         public let line: Line?
         /// The decks right inside it, in the order a tree lists them.
         public let children: [DeckRow]
@@ -191,7 +191,7 @@ extension CardsWindowState {
         }
     }
 
-    /// The sidebar's Decks section, as last read: every deck as a tree,
+    /// The sidebar's Your Decks section, as last read: every deck as a tree,
     /// Default first while it holds cards or has a switch on, then the other
     /// decks at the top of the tree in the queue new cards come from, in its
     /// order, then the rest in alphabetical order, and those set aside last,
@@ -403,9 +403,9 @@ extension CardsWindowState {
     }
 
     /// Asks for a new deck's name, in the New Deck sheet, after New Deck… in
-    /// the sidebar: in the menu of any deck, Default's too, or of the Decks
-    /// title. The deck goes where its name says, not inside the one Lucas
-    /// right-clicked.
+    /// the sidebar: in the menu of any deck, Default's too, or of the Your
+    /// Decks title. The deck goes where its name says, not inside the one
+    /// Lucas right-clicked.
     public mutating func askToMakeDeck() {
         question = .makeDeck
     }

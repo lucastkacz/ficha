@@ -1,20 +1,20 @@
 import FichaCore
 import Foundation
 
-// The Cards window's Ficha's Decks (#458): a sidebar section after Decks
+// The Cards window's Ficha's Decks (#458): a sidebar section after Your Decks
 // lists the decks of Ficha's the user hasn't added (`FichaDecks.swift`), each
 // with its emoji, name and how many cards it holds, until all are added.
 // Choosing one shows it in the table's and the detail's place: its emoji,
 // name and "40 cards · one of Ficha's decks", its first card, front and
 // back, and Add Deck…, which asks How fast? for it before it comes in
 // (`HowFast.swift`). Start adds it, sets the pace and its place, and the
-// sidebar then chooses the deck in Decks. The review panel's "You've met them
-// all" asks for one too, which opens the window on it with How fast?.
+// sidebar then chooses the deck in Your Decks. The review panel's "You've met
+// them all" asks for one too, which opens the window on it with How fast?.
 
 extension CardsWindowState {
     /// Takes Ficha's decks as the app read them from its bundle
     /// (`Engine.readFichaDeck(_:at:)`), each deck's file or why it couldn't
-    /// be read, which the sidebar's Ficha's Decks section, after Decks,
+    /// be read, which the sidebar's Ficha's Decks section, after Your Decks,
     /// lists while the user hasn't added them, in `FichaDeck`'s order, and
     /// leaves out once all are, as each read of the cards finds them; and
     /// asks How fast? for the one the review panel asked for meanwhile
@@ -95,8 +95,8 @@ extension CardsWindowState {
 
     /// Adds `deck`, one of Ficha's decks, as How fast?'s Start does before it
     /// saves the pace (`Engine.addFichaDeck(_:)`), and has the sidebar choose
-    /// it in Decks once the window reads the cards again; or records why it
-    /// couldn't: whether it did.
+    /// it in Your Decks once the window reads the cards again; or records why
+    /// it couldn't: whether it did.
     mutating func addFichaDeck(_ deck: FichaDeck) -> Bool {
         guard let file = fichaDeckFiles.first(where: { $0.deck == deck }) else {
             record(.fichaDeckMissing(deck.name), for: .addFichaDeck(deck))

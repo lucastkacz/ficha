@@ -187,7 +187,7 @@ struct CardsWindowDeckEditsTests {
 
     // The sidebar chose Arte::Pintura, and Historia is closed.
     @Test(
-        "dropping a deck on another moves it inside, with the sidebar following it and the deck it went into open, and on the Decks title to the top"
+        "dropping a deck on another moves it inside, with the sidebar following it and the deck it went into open, and on the Your Decks title to the top"
     )
     func droppingADeck() throws {
         try approveInDeck("La Gioconda", deck: "Arte::Pintura", in: engine)
@@ -211,7 +211,7 @@ struct CardsWindowDeckEditsTests {
     }
 
     @Test(
-        "a deck dropped on itself, on a deck inside it or on Default, Default dropped, a deck dropped where it is already, and a drop of cards with a deck, of two decks, of nothing or of cards on the Decks title, are refused, saying nothing"
+        "a deck dropped on itself, on a deck inside it or on Default, Default dropped, a deck dropped where it is already, and a drop of cards with a deck, of two decks, of nothing or of cards on the Your Decks title, are refused, saying nothing"
     )
     func refusedDeckDrops() throws {
         let petricor = try approveInDeck("petricor", in: engine)

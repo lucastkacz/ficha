@@ -7,66 +7,63 @@ import UniformTypeIdentifiers
 /// sidebar to choose a group of cards, the inbox, a deck or All Tags, a table
 /// with one row per card in it, or per capture and flagged card in the inbox,
 /// narrowed by the toolbar's search field, and the selected row whole beside
-/// it, with what Lucas can do with it at its foot. The sidebar's Decks section
-/// lists every deck as a tree, Default first while it holds cards or has a
-/// switch on, then the others in the order the state lists them, the queue's
-/// first (`CardsWindowDecks.swift`), each with how many of its cards are due,
-/// grayed while its cards are out of Lucas's reviews, and with its emoji and
-/// color, and each at the top of the tree with a line under its title that
-/// says how far it is and when it's all met (#491); a
-/// deck's context menu, and the Actions menu above the card list while the
-/// sidebar chose it (`DeckMenu.swift`), set it aside or prioritize it, give
-/// it a color and an emoji, rename it, in the rename sheet, which moves it
-/// too, and delete it, with its cards, asking first; and under that menu the
-/// deck's tags narrow the card list to one of them (`DeckTagsRow.swift`).
-/// Change Deck… moves the selected cards to the deck Lucas picks in its
-/// sheet, or names there with New Deck… (`ChangeDeckSheet.swift`), and so
-/// does dragging them onto a deck in the sidebar, where a deck dragged onto
-/// another goes inside it, or onto the Decks title to the top
-/// (`SidebarDrops.swift`). The card form and the editor have a
-/// Deck field, whose New Deck… names a deck in the New Deck sheet
-/// (`NewDeckSheet.swift`), which New Deck… in a deck's menu or the Decks
-/// title's opens too, to make the deck. As a deck comes in, made there or
-/// brought by an import, How fast? asks for the pace and where the deck goes
-/// in the queue new cards come from (`HowFastSheet.swift`). The sidebar's
-/// Ficha's Decks section, after Decks, lists the decks that come with Ficha
-/// that Lucas hasn't added, each with how many cards it brings, which the
-/// window reads from the app as it opens: one chosen shows in the table's
-/// place, with Add Deck…, which asks How fast? before Start adds it, and its
-/// first card, front and back, in the detail's (#458). The sidebar's Tags section
-/// lists the tags he pins, in the order he drags them into, and ends with All
-/// Tags…, which lists every tag where the table was, as a tree with columns
-/// and a checkbox (`AllTagsOutline.swift`, ADR 0022), and a tag's cards in
-/// its place, with Back. A tag's context menu, in either place, and the
-/// detail's Actions menu beside All Tags, act on the tags selected there:
-/// they pin them to the sidebar or unpin them, give them a color and an
-/// emoji, which the sidebar and the table's
-/// Tags column show, rename one, in the rename sheet (`RenameSheet.swift`),
-/// and delete them, asking first; and in All Tags Lucas drags tags into the
-/// sidebar to pin them there, onto another to move them inside, or between
-/// two rows to move them to that level. The sidebar's Types section lists
-/// the four types Ficha comes with, then the user's, each with its emoji,
-/// whose context menu renames it, gives it an emoji, in the same sheets, and
-/// deletes it, asking first; New Type…, in a card's type picker, in the
-/// context menu of any row of that section or of its title, makes one, in
-/// the New Type sheet (`NewTypeSheet.swift`).
-/// The cards' table opens with the columns Lucas showed and the order he
-/// sorted it by, which he changes in its headers, each column at a width that
-/// fits its pane. He edits a card or a capture right there, in fields that
-/// take the detail's place while the sidebar and the table wait. He selects
-/// several cards with
-/// ⌘ or Shift, as in Finder, and then the detail says how many, with what he
-/// can do with all of them. New Card in the toolbar, or ⌘N, and Convert to
-/// Card on a capture open the card form, a sheet of its own
-/// (`CardFormSheet.swift`), Import… in the toolbar opens the Import sheet
-/// (`ImportSheet.swift`), which imports a text file of cards, and Export…
-/// opens the Export sheet (`ExportSheet.swift`), which saves cards to one.
-/// `CardsWindowState` decides what the window lists, shows, offers and asks,
-/// and what happens when Lucas acts, and the view draws it. It reads the cards
-/// again whenever
-/// the engine says they changed, from the app or the `ficha` CLI, when Lucas
-/// changes the scheduling settings, and every minute, since cards come due as
-/// time passes, or at once when Ficha Dev's debug menu moves the time.
+/// it, with what Lucas can do with it at its foot. The sidebar's Your Decks
+/// section lists every deck as a tree, Default first while it holds cards or
+/// has a switch on, then the others in the order the state lists them, the
+/// queue's first (`CardsWindowDecks.swift`), each with how many of its cards
+/// are due, grayed while its cards are out of Lucas's reviews, and with its
+/// emoji and color, and each at the top of the tree with a line under its
+/// title that says how far it is and when it's all met (#491); a deck's
+/// context menu, and the Actions menu above the card list while the sidebar
+/// chose it (`DeckMenu.swift`), set it aside or prioritize it, give it a color
+/// and an emoji, rename it, in the rename sheet, which moves it too, and
+/// delete it, with its cards, asking first; and under that menu the deck's
+/// tags narrow the card list to one of them (`DeckTagsRow.swift`). Change
+/// Deck… moves the selected cards to the deck Lucas picks in its sheet, or
+/// names there with New Deck… (`ChangeDeckSheet.swift`), and so does dragging
+/// them onto a deck in the sidebar, where a deck dragged onto another goes
+/// inside it, or onto the Your Decks title to the top (`SidebarDrops.swift`).
+/// The card form and the editor have a Deck field, whose New Deck… names a
+/// deck in the New Deck sheet (`NewDeckSheet.swift`), which New Deck… in a
+/// deck's menu or the Your Decks title's opens too, to make the deck. As a
+/// deck comes in, made there or brought by an import, How fast? asks for the
+/// pace and where the deck goes in the queue new cards come from
+/// (`HowFastSheet.swift`). The sidebar's Ficha's Decks section, after Your
+/// Decks, lists the decks that come with Ficha that Lucas hasn't added, each
+/// with how many cards it brings, which the window reads from the app as it
+/// opens: one chosen shows in the table's place, with Add Deck…, which asks
+/// How fast? before Start adds it, and its first card, front and back, in the
+/// detail's (#458). The sidebar's Tags section lists the tags he pins, in the
+/// order he drags them into, and ends with All Tags…, which lists every tag
+/// where the table was, as a tree with columns and a checkbox
+/// (`AllTagsOutline.swift`, ADR 0022), and a tag's cards in its place, with
+/// Back. A tag's context menu, in either place, and the detail's Actions menu
+/// beside All Tags, act on the tags selected there: they pin them to the
+/// sidebar or unpin them, give them a color and an emoji, which the sidebar
+/// and the table's Tags column show, rename one, in the rename sheet
+/// (`RenameSheet.swift`), and delete them, asking first; and in All Tags Lucas
+/// drags tags into the sidebar to pin them there, onto another to move them
+/// inside, or between two rows to move them to that level. The sidebar's Types
+/// section lists the four types Ficha comes with, then the user's, each with
+/// its emoji, whose context menu renames it, gives it an emoji, in the same
+/// sheets, and deletes it, asking first; New Type…, in a card's type picker,
+/// in the context menu of any row of that section or of its title, makes one,
+/// in the New Type sheet (`NewTypeSheet.swift`). The cards' table opens with
+/// the columns Lucas showed and the order he sorted it by, which he changes in
+/// its headers, each column at a width that fits its pane. He edits a card or
+/// a capture right there, in fields that take the detail's place while the
+/// sidebar and the table wait. He selects several cards with ⌘ or Shift, as in
+/// Finder, and then the detail says how many, with what he can do with all of
+/// them. New Card in the toolbar, or ⌘N, and Convert to Card on a capture open
+/// the card form, a sheet of its own (`CardFormSheet.swift`), Import… in the
+/// toolbar opens the Import sheet (`ImportSheet.swift`), which imports a text
+/// file of cards, and Export… opens the Export sheet (`ExportSheet.swift`),
+/// which saves cards to one. `CardsWindowState` decides what the window lists,
+/// shows, offers and asks, and what happens when Lucas acts, and the view
+/// draws it. It reads the cards again whenever the engine says they changed,
+/// from the app or the `ficha` CLI, when Lucas changes the scheduling
+/// settings, and every minute, since cards come due as time passes, or at once
+/// when Ficha Dev's debug menu moves the time.
 struct CardsView: View {
     let model: AppModel
     /// What the sidebar chose, what Lucas looks for and selected, and so what
@@ -801,7 +798,7 @@ struct CardsView: View {
                     "Couldn't move “\(Deck.shownName(deck))”",
                     comment: """
                         An alert's title in the Cards window, after dragging a deck in the sidebar onto another or \
-                        onto the Decks section's title, with the deck's whole name.
+                        onto the Your Decks section's title, with the deck's whole name.
                         """),
                 error: error)
         case .deleteDeck(let deck):
@@ -1017,7 +1014,7 @@ struct CardsView: View {
                     DeckBranch(row: row, state: $state)
                 }
             } header: {
-                Text("Decks", comment: "A section of the Cards window's sidebar: the decks, as a tree.")
+                Text("Your Decks", comment: "A section of the Cards window's sidebar: the user's decks, as a tree.")
                     // A deck dropped here goes to the top.
                     .takingSidebarDrops { state.dropOnDecksTitle($0) }
                     .contextMenu {
@@ -1034,8 +1031,8 @@ struct CardsView: View {
                 Text(
                     "Ficha's Decks",
                     comment: """
-                        A section of the Cards window's sidebar, after Decks: the decks that come with Ficha, which \
-                        the user hasn't added.
+                        A section of the Cards window's sidebar, after Your Decks: the decks that come with Ficha, \
+                        which the user hasn't added.
                         """)
             }
         case .tags(let pinned):
@@ -1088,7 +1085,7 @@ struct CardsView: View {
             } header: {
                 Text("Types", comment: "A section of the Cards window's sidebar: the card types.")
                     // The title's whole row takes the right click, as the
-                    // Decks title's does.
+                    // Your Decks title's does.
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(.rect)
                     .contextMenu {
@@ -2222,8 +2219,8 @@ extension CardsWindowState.DeckRow.Line {
 }
 
 /// The row of one of Ficha's decks in the sidebar's Ficha's Decks section:
-/// its emoji before its name, and the deck symbol, as a deck's row in Decks,
-/// with how many cards it brings under its name, smaller and secondary.
+/// its emoji before its name, and the deck symbol, as a deck's row in Your
+/// Decks, with how many cards it brings under its name, smaller and secondary.
 private struct FichaDeckRow: View {
     let file: FichaDeckFile
 

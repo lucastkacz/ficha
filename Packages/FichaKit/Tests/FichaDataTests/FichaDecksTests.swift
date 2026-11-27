@@ -146,7 +146,7 @@ final class FichaDecksTests {
     // The user has a deck of their own, Lenguaje, with a new card, so Arte
     // argentino comes in after it.
     @Test(
-        "the Cards window lists Ficha's decks the user hasn't added after Decks, shows one's first card front and back, and once Add Deck… and How fast?'s Start add it, lists it no longer and chooses the deck",
+        "the Cards window lists Ficha's decks the user hasn't added after Your Decks, shows one's first card front and back, and once Add Deck… and How fast?'s Start add it, lists it no longer and chooses the deck",
         .bug(id: 458))
     func theCardsWindowOffersFichasDecks() async throws {
         var files: [FichaDeck: Result<FichaDeckFile, EngineError>] = [:]

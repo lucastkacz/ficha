@@ -1,8 +1,9 @@
 import FichaData
 import SwiftUI
 
-/// New Deck…, in a deck's menu and the menu of the sidebar's Decks title: it
-/// asks for a new deck's name, in the New Deck sheet, and OK makes the deck.
+/// New Deck…, in a deck's menu and the menu of the sidebar's Your Decks title:
+/// it asks for a new deck's name, in the New Deck sheet, and OK makes the
+/// deck.
 struct NewDeckItem: View {
     @Binding var state: CardsWindowState
 
@@ -14,15 +15,15 @@ struct NewDeckItem: View {
                 "New Deck…",
                 comment: """
                     An item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu \
-                    above the card list, and of the menu of the Decks title in the sidebar: it asks for a new deck's \
-                    name, and OK makes the deck.
+                    above the card list, and of the menu of the Your Decks title in the sidebar: it asks for a new \
+                    deck's name, and OK makes the deck.
                     """)
         }
     }
 }
 
 /// The items of a deck's menu, the same in the context menu of its row in
-/// the sidebar's Decks section and in the Actions menu above the card list
+/// the sidebar's Your Decks section and in the Actions menu above the card list
 /// while the sidebar chose it, as the state offers them: New Deck…
 /// (`NewDeckItem`), which acts on no deck; Set Aside, ticked
 /// while the deck is set aside on its own; Prioritize, ticked while it's a
