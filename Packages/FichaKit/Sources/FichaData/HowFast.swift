@@ -5,9 +5,12 @@ import Foundation
 // in, that asks how fast new cards come, for every deck together, and where
 // the deck goes in the queue new cards come from. It opens after the New Deck
 // sheet's OK makes a deck from the sidebar or a deck's menu, with the paces
-// alone, after an import that made decks, those its new cards came into that
-// the user didn't have, once its sheet's Done closes it, and after Add Deck…
-// on one of Ficha's decks, before it comes in
+// alone, when the sidebar didn't list the deck at the top of the tree it
+// made, the deck or one it sits inside: so "Arte::Barroco" asks about Arte
+// while Arte wasn't listed, and nothing while it was
+// (`CardsWindowDecks.swift`); after an import that made decks, those its new
+// cards came into that the user didn't have, once its sheet's Done closes
+// it; and after Add Deck… on one of Ficha's decks, before it comes in
 // (`CardsWindowFichaDecks.swift`). Each pace's finish date, where the deck is
 // and with the deck first, is FichaCore's, as the queue counts it
 // (`DeckQueue.swift`), with the settings the window reads the queue with.

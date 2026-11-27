@@ -46,7 +46,9 @@ public struct SideImages: Sendable, Equatable {
 /// holds it, while the window shows the deck.
 public struct ShownImages: Sendable, Equatable {
     private var images: [ImageName: Result<Data, EngineError>] = [:]
-    /// The images that came in and aren't kept yet.
+    /// The images that came in and aren't kept yet, and those of the first
+    /// card of the one of Ficha's decks the window shows, as its file holds
+    /// them.
     private var held: [ImageName: Data] = [:]
 
     /// The image named `name`, as a JPEG or a PNG, or why it couldn't be
