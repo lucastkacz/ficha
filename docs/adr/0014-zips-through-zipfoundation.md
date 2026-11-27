@@ -2,8 +2,6 @@
 
 > Changed in part by [ADR 0041](0041-ficha-is-small-decks-shown-as-cards-without-ankis-packages-tags-or-capture.md), whose zips are Ficha's own deck files alone: the user's zips and Anki's packages neither come in nor go out (2026-11-26).
 
-> Changed in part by [ADR 0044](0044-a-deck-travels-as-a-ficha-file-with-its-emoji-and-description.md), whose zip is a deck's `.ficha`, Ficha's or one someone sends, which comes in and goes out (2026-11-27).
-
 Cards with images travel in a zip, with the text file and the images (ADR 0012), and Anki's packages, which Ficha imports too (ADR 0013), are zips. Apple's frameworks have no public API that reads or writes a zip: the Compression framework deflates and inflates, but knows nothing of the zip around the data; `NSFileCoordinator` zips a whole folder for sharing, but reads none; and `ditto` or `unzip` are Mac command-line tools, which the iPhone lacks. ZIPFoundation, the zip library most Swift apps use, reads and writes zips in Swift over the Compression framework, in memory or on disk, and builds for macOS and iOS. We picked it over a zip reader and writer of our own on the Compression framework: the format is public (PKWARE's APPNOTE), but its variants, such as ZIP64, data descriptors and names that aren't UTF-8, are where a homemade one fails on files other tools made.
 
 ## Considered options

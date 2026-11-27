@@ -55,7 +55,7 @@ _Avoid_: blurb, about, summary, subtitle
 
 **Deck's file**:
 A deck as one file, named after it with `.ficha`: its cards, their images and sounds, its emoji and its description, never the user's progress. Ficha's decks come as one; Share Deck… sends one to someone else, who opens it with a double-click or Open Deck…, and an agent makes one with `ficha deck export`.
-_Avoid_: package, zip, bundle, export
+_Avoid_: package, zip, bundle
 
 **Tag**:
 A label a card carries, which can cross decks, like "Renaissance" or "inflación"; a card can have several, or none. A tag can sit inside another, its parent, as "Argentina" does in "países › Argentina".
