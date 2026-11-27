@@ -540,7 +540,7 @@ extension Engine {
     /// database holds them, `activeHours`, Settings' on this device, as the
     /// review panel's settings hold them, so today's new cards end when they
     /// do, and Ficha's own for the rest, which the queue doesn't read.
-    func cardsWindowQueueSettings(activeHours: Range<Int>) throws(EngineError) -> ReviewSettings {
+    func cardsWindowQueueSettings(activeHours: ActiveHours) throws(EngineError) -> ReviewSettings {
         var settings = ReviewSettings.defaults
         settings.progress = try progressSettings()
         settings.activeHours = activeHours

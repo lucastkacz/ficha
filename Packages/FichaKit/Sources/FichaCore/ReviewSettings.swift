@@ -18,9 +18,9 @@ public struct ReviewSettings: Sendable, Equatable {
     /// How far ahead an appearance looks: it brings along the cards due
     /// within it, and their reviews count as on time.
     public var lookAhead: Duration
-    /// The hours of the day in which appearances may happen, by the Mac's
-    /// clock: from the start of the first to the end of the last.
-    public var activeHours: Range<Int>
+    /// The hours in which appearances may happen, by the device's clock,
+    /// which may cross midnight (ADR 0045).
+    public var activeHours: ActiveHours
     /// How long the next appearance waits at least after the last appearance
     /// or review now closed.
     public var separation: Duration
@@ -56,7 +56,7 @@ public struct ReviewSettings: Sendable, Equatable {
         newCardsPerDay: Pace.steady.newCardsPerDay,
         lookAhead: .seconds(20 * 60),
         // From 9:00 to 22:00.
-        activeHours: 9..<22,
+        activeHours: ActiveHours(start: 9, end: 22),
         separation: .seconds(30 * 60),
         waitAfterWaking: .seconds(2 * 60),
         waitAfterSuppression: .seconds(2 * 60),

@@ -178,7 +178,7 @@ struct DeckRowsTests {
         try approveInDeck("La Gioconda", deck: "Arte", in: engine)
         time.move(to: try morning(of: 14, in: calendar))
         var settings = ReviewSettings.defaults
-        settings.activeHours = 6..<9
+        settings.activeHours = try #require(ActiveHours(from: 6, to: 9))
         var window = engine.openCardsWindow(with: scheduler, activeHours: settings.activeHours)
         window.read(with: scheduler)
         let overForToday = window.deckRows.first { $0.id == "Arte" }?.line

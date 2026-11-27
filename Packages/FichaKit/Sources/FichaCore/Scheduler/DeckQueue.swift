@@ -99,7 +99,9 @@ extension ReviewSettings {
     /// against.
     private func newCardsLeftToday(in cards: CardsInReviews, now: Date, calendar: Calendar) -> Int {
         let metToday = cards.firstReviews(onTheDayOf: now, calendar: calendar).count
-        return calendar.component(.hour, from: now) < activeHours.upperBound ? max(0, newCardsPerDay - metToday) : 0
+        // A stub for #564's tests: active hours that cross midnight are over at
+        // midnight.
+        return calendar.component(.hour, from: now) < activeHours.end ? max(0, newCardsPerDay - metToday) : 0
     }
 
     /// When the new way at `slot`, counting from 1, the first to come, has

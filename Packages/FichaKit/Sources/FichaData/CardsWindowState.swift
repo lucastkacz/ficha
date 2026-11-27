@@ -533,7 +533,7 @@ public struct CardsWindowState: Sendable {
     /// The active hours in Settings, this device's own, which the queue new
     /// cards come from counts today's new cards by, as the review panel's
     /// settings count them: the decks' finish dates and How fast?'s.
-    public private(set) var activeHours: Range<Int>
+    public private(set) var activeHours: ActiveHours
     /// What Lucas edits, until he saves or cancels.
     public private(set) var editing: Editing?
     /// The form that creates cards, while it's open: `CardForm.swift`.
@@ -606,7 +606,7 @@ public struct CardsWindowState: Sendable {
     /// Internal, for the window's parts in files of their own.
     let engine: Engine
 
-    init(engine: Engine, scheduler: Scheduler, activeHours: Range<Int>, lastDeckAddedTo: String) {
+    init(engine: Engine, scheduler: Scheduler, activeHours: ActiveHours, lastDeckAddedTo: String) {
         self.engine = engine
         self.scheduler = scheduler
         self.activeHours = activeHours
@@ -1125,7 +1125,7 @@ public struct CardsWindowState: Sendable {
 
     /// Reads the window as `read(with:)` does, with `activeHours` too,
     /// Settings', which may have changed since the last read.
-    public mutating func read(with scheduler: Scheduler, activeHours: Range<Int>) {
+    public mutating func read(with scheduler: Scheduler, activeHours: ActiveHours) {
         self.activeHours = activeHours
         self.scheduler = scheduler
         readAgain()
@@ -1234,7 +1234,7 @@ extension Engine {
     /// `lastDeckAddedTo`, the deck he last added a card to, as this device's
     /// preferences keep it: Default when they keep none.
     public func openCardsWindow(
-        with scheduler: Scheduler, activeHours: Range<Int> = ReviewSettings.defaults.activeHours,
+        with scheduler: Scheduler, activeHours: ActiveHours = ReviewSettings.defaults.activeHours,
         lastDeckAddedTo: String = Deck.defaultName
     ) -> CardsWindowState {
         CardsWindowState(

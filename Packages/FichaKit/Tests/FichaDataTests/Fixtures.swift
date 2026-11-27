@@ -234,6 +234,59 @@ func morning(of day: Int, in calendar: Calendar) throws -> Date {
     try #require(calendar.date(from: DateComponents(year: 2026, month: 10, day: day, hour: 9)))
 }
 
+/// An appearance as it showed: when, and the cards it brought, in their
+/// order.
+struct ShownAppearance: Equatable {
+    let time: Date
+    let cards: [PanelCard]
+
+    /// The new cards it brought, for their first reviews.
+    var newCards: [Card] {
+        cards.compactMap { card -> Card? in
+            guard case .new(let new, _) = card else {
+                return nil
+            }
+            return new
+        }
+    }
+}
+
+/// The appearances that come in the `dayCount` days from `start`, by
+/// `settings`, in an engine in memory of their own, by `calendar`, with
+/// `newCards` new cards approved at `start`, on a Mac awake all along that
+/// holds none back: Lucas answers each card of an appearance good a minute
+/// after it shows, and closes it then. The engine is asked for one at the
+/// time an appearance waits for, when it names one, and else every 10
+/// minutes by the clock.
+func appearances(
+    over dayCount: Int, from start: Date, newCards: Int, settings: ReviewSettings, calendar: Calendar
+) throws -> [ShownAppearance] {
+    let time = ManualTimeSource(now: start)
+    let engine = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
+    for number in 1...newCards {
+        try approveCard("palabra \(number)", in: engine)
+    }
+    let end = start + days(dayCount)
+    var shown: [ShownAppearance] = []
+    while time.now < end {
+        switch try engine.checkAppearance(settings, mac: FakeMac()) {
+        case .show(let cards):
+            shown.append(ShownAppearance(time: time.now, cards: cards))
+            var panel = try engine.openPanel(.appearance, with: cards, settings: settings)
+            time.advance(by: minutes(1))
+            for _ in cards {
+                try panel.answer(.review(.good), responseTime: .seconds(5))
+            }
+            panel.close(.byLucas)
+        case .notNow(let reason):
+            let tenMinutes = minutes(10)
+            let nextTen = ((time.now.timeIntervalSince1970 / tenMinutes).rounded(.down) + 1) * tenMinutes
+            time.move(to: reason.until ?? Date(timeIntervalSince1970: nextTen))
+        }
+    }
+    return shown
+}
+
 /// A span of whole minutes, in seconds.
 func minutes(_ count: Int) -> TimeInterval {
     TimeInterval(count * 60)
