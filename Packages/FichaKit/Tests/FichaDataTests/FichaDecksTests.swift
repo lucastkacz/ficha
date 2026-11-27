@@ -26,10 +26,11 @@ private let painters: [String: Int] = [
 /// Tests on Ficha's decks (ADR 0040, #458), the three zips of cards in the
 /// repo's `App/FichaDecks/`, which the app bundles: how each comes in, what
 /// their pictures credit, how an update of the app leaves one the user
-/// added, and how the Cards window offers them. They start at 9 in the
-/// morning in Buenos Aires, when active hours start, on a new install, with
-/// engines in memory, or, for an update, on a database in a folder of the
-/// test's own. Each fails while a file it reads isn't in the repo.
+/// added, how the Cards window offers them, and what How fast? says of one
+/// before it comes in (#491). They start at 9 in the morning in Buenos
+/// Aires, when active hours start, on a new install, at Steady, with engines
+/// in memory, or, for an update, on a database in a folder of the test's
+/// own. Each fails while a file it reads isn't in the repo.
 final class FichaDecksTests {
     let calendar: Calendar
     let time: ManualTimeSource
@@ -188,6 +189,121 @@ final class FichaDecksTests {
         #expect(window.offeredFichaDecks == [.palabrasLindas, .floresDeBuenosAires])
         #expect(window.sidebarItem == .cards(.deck(FichaDeck.arteArgentino.name)))
         #expect(try engine.cards().count { $0.deck == FichaDeck.arteArgentino.name } == 50)
+    }
+
+    // The user is meeting Lenguaje: ubuntu, which goes both ways, was met
+    // now, so its back-first way is still to come, and ojalá goes both ways
+    // too, new. Música, which came in a minute later, is a priority deck,
+    // whose new card comes first wherever a deck goes. `ficha` adds the same
+    // deck in another Ficha, on the same clock: its queue, its pace and its
+    // move are what the window's must match.
+    @Test(
+        "How fast? for one of Ficha's decks says when it's all met at each pace, last in the queue and, ticked, first, after a priority deck's new card, and Start with Faster and Put it first adds it and sets the pace and its place as ficha pace and ficha deck queue --first do",
+        .bug(id: 458), .bug(id: 491))
+    func howFastForOneOfFichasDecks() async throws {
+        let shipped = try fileInTheRepo(of: .arteArgentino)
+        let name = FichaDeck.arteArgentino.name
+        let ficha = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
+        for each in [engine, ficha] {
+            let ubuntu = try approveInDeck("ubuntu", deck: "Lenguaje", in: each)
+            let ojala = try approveInDeck("ojalá", deck: "Lenguaje", in: each)
+            try each.setBothWays(true, of: [ubuntu.id, ojala.id])
+            try each.meet(ubuntu)
+        }
+        time.advance(by: minutes(1))
+        for each in [engine, ficha] {
+            try approveInDeck("Bach", deck: "Música", in: each)
+            try each.setPriority(true, ofDeck: "Música")
+        }
+        time.advance(by: minutes(1))
+        let file = try await engine.readFichaDeck(.arteArgentino, at: shipped)
+        var window = engine.openCardsWindow(with: scheduler)
+        window.read(with: scheduler)
+        window.offerFichaDecks([file])
+        window.choose(.fichaDeck(.arteArgentino))
+
+        window.askToAddFichaDeck()
+        let asked = try #require(window.howFast)
+        window.putHowFastFirst(true)
+        let ticked = window.howFast
+        window.chooseHowFastPace(.faster)
+        window.startHowFast()
+        // What Add Deck… does in the other Ficha, with each pace's finish
+        // date there, last, and then first, as `ficha deck queue --first`
+        // puts it, and `ficha pace faster`.
+        try ficha.addFichaDeck(try await ficha.readFichaDeck(.arteArgentino, at: shipped))
+        let last = try Pace.allCases.map { try finish(of: name, at: $0, in: ficha) }
+        try ficha.moveInQueue(deck: name, to: .first)
+        let first = try Pace.allCases.map { try finish(of: name, at: $0, in: ficha) }
+        let old = try ficha.progressSettings()
+        var faster = old
+        faster.newCardsPerDay = Pace.faster.newCardsPerDay
+        try ficha.saveProgressSettings(faster, changedFrom: old)
+
+        #expect(asked.subject == .fichaDeck(.arteArgentino))
+        #expect(asked.line == .fichaDeck(cardCount: 50))
+        #expect(asked.pace == .steady)
+        #expect(asked.decksAhead == ["Música", "Lenguaje"])
+        #expect(asked.offersPutItFirst)
+        #expect(asked.paces.map(\.finish) == last)
+        #expect(ticked?.putsFirst == true)
+        #expect(ticked?.paces.map(\.finish) == first)
+        #expect(first != last)
+        #expect(window.question == nil)
+        #expect(try engine.progressSettings() == ficha.progressSettings())
+        #expect(try engine.progressSettings().newCardsPerDay == Pace.faster.newCardsPerDay)
+        #expect(try engine.queue(.defaults) == ficha.queue(.defaults))
+        #expect(try engine.queue(.defaults).map(\.deck) == ["Música", name, "Lenguaje"])
+    }
+
+    // The user has a deck of their own named Palabras lindas, with
+    // serendipia, new, from the day before, which one of Palabras lindas'
+    // cards repeats with another back, and Historia, which came in a minute
+    // after it, with a new card. `ficha` adds the same deck in another
+    // Ficha.
+    @Test(
+        "How fast? for one of Ficha's decks counts only the cards that come in, leaving out those that repeat the user's, and, when the user has a deck by its name, says when it's all met where that deck is in the queue",
+        .bug(id: 458), .bug(id: 491))
+    func howFastCountsTheCardsThatComeIn() async throws {
+        let shipped = try fileInTheRepo(of: .palabrasLindas)
+        let name = FichaDeck.palabrasLindas.name
+        let ficha = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
+        time.move(to: try morning(of: 13, in: calendar))
+        for each in [engine, ficha] {
+            try approveInDeck("serendipia", deck: name, in: each)
+        }
+        time.advance(by: minutes(1))
+        for each in [engine, ficha] {
+            try approveInDeck("Coliseo", deck: "Historia", in: each)
+        }
+        time.move(to: try morning(of: 14, in: calendar))
+        let file = try await engine.readFichaDeck(.palabrasLindas, at: shipped)
+        var window = engine.openCardsWindow(with: scheduler)
+        window.read(with: scheduler)
+        window.offerFichaDecks([file])
+        window.choose(.fichaDeck(.palabrasLindas))
+
+        window.askToAddFichaDeck()
+        let asked = try #require(window.howFast)
+        let added = try ficha.addFichaDeck(try await ficha.readFichaDeck(.palabrasLindas, at: shipped))
+        let whereItIs = try Pace.allCases.map { try finish(of: name, at: $0, in: ficha) }
+
+        #expect(file.cardCount == 40)
+        #expect(added.added == 39)
+        #expect(asked.line == .fichaDeck(cardCount: 39))
+        #expect(asked.decksAhead == [])
+        #expect(!asked.offersPutItFirst)
+        #expect(asked.paces.map(\.finish) == whereItIs)
+        #expect(try ficha.queue(.defaults).map(\.deck) == [name, "Historia"])
+    }
+
+    /// When the new cards of `deck` in `engine`'s queue are all met at
+    /// `pace`, now, with Ficha's other settings, as `ficha queue` says it:
+    /// nil while the deck isn't in the queue.
+    private func finish(of deck: String, at pace: Pace, in engine: Engine) throws -> FinishDate? {
+        var paced = ReviewSettings.defaults
+        paced.newCardsPerDay = pace.newCardsPerDay
+        return try engine.queue(paced).first { $0.deck == deck }?.finish
     }
 
     /// The file of `deck` in the repo's `App/FichaDecks/`, five folders up

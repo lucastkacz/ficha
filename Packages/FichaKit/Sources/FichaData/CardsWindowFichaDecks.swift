@@ -44,18 +44,21 @@ extension CardsWindowState {
     }
 
     /// Asks How fast? for the one of Ficha's decks the sidebar chose, after
-    /// its Add Deck…: before it comes in, with its cards counted as if they
-    /// came in now, last. Its Start adds the deck, sets the pace and its
-    /// place, and the sidebar then chooses the deck in Decks. When the queue
-    /// can't be read, it asks nothing, and says why.
+    /// its Add Deck…: before it comes in, with its cards counted as they'd
+    /// come in now, those that repeat none of the user's, which Add Deck…
+    /// skips, into the user's deck by its name, at its place in the queue,
+    /// or else last, as a deck that comes in goes. Its Start adds the deck,
+    /// sets the pace and its place, and the sidebar then chooses the deck in
+    /// Decks. When the queue can't be read, it asks nothing, and says why.
     public mutating func askToAddFichaDeck() {
         guard let file = shownFichaDeck else { return }
         do throws(EngineError) {
-            let cards = try engine.cardsInReviewsForFichaDeck()
+            let cards = try engine.cardsForHowFast(adding: file)
             let settings = try engine.cardsWindowQueueSettings(activeHours: activeHours)
             question = .howFast(
                 HowFast(
-                    adding: file, amongTopDecks: listedTopDecks, cards: cards, settings: settings, now: engine.now,
+                    about: [file.deck.name], fichaDeck: file.deck, line: .fichaDeck(cardCount: cards.cardCount),
+                    amongTopDecks: listedTopDecks, cards: cards.inReviews, settings: settings, now: engine.now,
                     calendar: engine.calendar))
         } catch {
             record(error, for: .addFichaDeck(file.deck))
@@ -99,40 +102,19 @@ extension CardsWindowState {
     }
 }
 
-extension CardsWindowState.HowFast {
-    /// How fast? as it opens for `file`, one of Ficha's decks, before it
-    /// comes in, among `topDecks`, the decks at the top of the tree the
-    /// sidebar lists, out of `cards`, the cards in the user's reviews, at
-    /// `now`, by `calendar`, the engine's, with `settings`' pace and Ficha's
-    /// other settings: at the user's pace, or Steady while it's none, with
-    /// Put it first unticked, and each pace's finish date with the deck's
-    /// new ways counted as if they came in now, last in the queue, after
-    /// every deck with new cards, or first.
-    fileprivate init(
-        adding file: FichaDeckFile, amongTopDecks topDecks: [Deck], cards: CardsInReviews, settings: ReviewSettings,
-        now: Date, calendar: Calendar
-    ) {
-        let queue = settings.queue(of: cards, now: now, calendar: calendar).map(\.deck)
-        let paces = { (first: Bool) -> [PaceOption] in
-            Pace.allCases.map { pace in
-                var paced = settings
-                paced.newCardsPerDay = pace.newCardsPerDay
-                let finish = paced.finishDate(
-                    ofComing: file.newWayCount, first: first, in: cards, now: now, calendar: calendar)
-                return PaceOption(pace: pace, finish: finish, wording: finish?.wording(now: now, calendar: calendar))
-            }
-        }
-        self.init(
-            subject: .fichaDeck(file.deck), decks: [], line: .fichaDeck(cardCount: file.cardCount),
-            pace: Pace(newCardsPerDay: settings.newCardsPerDay) ?? .steady, decksAhead: queue, putsFirst: false,
-            hasOtherDecks: !topDecks.isEmpty, pacesWhereItIs: paces(false), pacesFirst: paces(true))
-    }
-}
-
 extension Engine {
-    /// The cards in the user's reviews, as the planners take them, which How
-    /// fast? counts one of Ficha's decks' new ways after.
-    fileprivate func cardsInReviewsForFichaDeck() throws(EngineError) -> CardsInReviews {
-        try read { db in try cardsThatShowUp(in: db).inReviews }
+    /// What How fast? reads of the cards for `file`, one of Ficha's decks,
+    /// before it comes in, in one read: those in the user's reviews, as the
+    /// planners take them, with the file's cards as they'd come in now, as
+    /// `addFichaDeck(_:)` imports them, but for those that repeat one of the
+    /// user's, which it skips; and how many come in.
+    fileprivate func cardsForHowFast(adding file: FichaDeckFile) throws(EngineError)
+        -> (inReviews: CardsInReviews, cardCount: Int)
+    {
+        let now = time.now
+        return try read { db in
+            let coming = try cardsComingIn(file.preview, choosing: file.importChoices, at: now, in: db)
+            return (inReviews: try cardsThatShowUp(in: db, adding: coming).inReviews, cardCount: coming.count)
+        }
     }
 }

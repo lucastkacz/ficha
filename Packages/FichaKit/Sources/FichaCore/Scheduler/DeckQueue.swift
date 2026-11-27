@@ -81,7 +81,8 @@ extension ReviewSettings {
     /// passes, as `Engine.moveInQueue(deck:to:)` saves them, with the decks
     /// the move doesn't count where they were. Nil when the deck has no new
     /// card, or with no new cards a day. How fast? reads it at each pace, for
-    /// a deck as it comes in.
+    /// a deck as it comes in, and for one of Ficha's decks before it comes
+    /// in, with `cards` holding its cards as they'd come in (#458).
     public func finishDate(
         of deck: String, first: Bool, in cards: CardsInReviews, now: Date, calendar: Calendar
     ) -> FinishDate? {
@@ -90,24 +91,6 @@ extension ReviewSettings {
             return nil
         }
         return finishDate(after: through, in: cards, now: now, calendar: calendar)
-    }
-
-    /// When the user will have met `newWays` new ways of a deck that has no
-    /// card in their reviews yet, out of `cards`, at `now`, by `calendar`, as
-    /// if they came in now (ADR 0034): last in the queue, after every deck's
-    /// new ways, or, when `first`, ahead of the other decks', after only the
-    /// priority cards' ones, which come first wherever a deck goes. Each way a
-    /// card goes counts as one, as the new cards a day count them. Nil with
-    /// none, or with no new cards a day. How fast? reads it at each pace for
-    /// one of Ficha's decks, before it comes in (#458).
-    public func finishDate(
-        ofComing newWays: Int, first: Bool, in cards: CardsInReviews, now: Date, calendar: Calendar
-    ) -> FinishDate? {
-        guard newWays > 0 else {
-            return nil
-        }
-        let ahead = first ? cards.priorityNewWayCount : cards.decksWithNewWays().last?.through ?? 0
-        return finishDate(after: ahead + newWays, in: cards, now: now, calendar: calendar)
     }
 
     /// How many new ways today may still bring at `now`, by `calendar`, out
@@ -181,12 +164,6 @@ extension CardsInReviews {
     /// deck here says "Met them all".
     public var decksMetInFull: Set<String> {
         Set(queue.map(\.deck)).subtracting(newWays.compactMap { topDecks[$0.cardID] })
-    }
-
-    /// How many new ways priority cards have, which come first wherever a
-    /// deck goes in the queue, each counted as the new cards a day count it.
-    var priorityNewWayCount: Int {
-        splitByPriority(newWays).priority.map(countedAsNewCards).reduce(0, +)
     }
 
     /// The decks at the top of the tree that have new ways, as

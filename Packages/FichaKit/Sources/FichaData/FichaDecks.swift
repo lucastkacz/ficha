@@ -52,7 +52,9 @@ public struct FichaDeckFile: Sendable, Equatable {
     /// images its cards refer to, which `Engine.addFichaDeck(_:)` imports.
     let preview: ImportPreview
 
-    /// How many cards the file holds: "40 cards".
+    /// How many cards the file holds, the deck's own size, which the Cards
+    /// window says of it: "40 cards". How fast? counts those that come in,
+    /// fewer when some repeat the user's, which Add Deck… skips.
     public var cardCount: Int {
         preview.cardCount
     }
@@ -70,12 +72,13 @@ public struct FichaDeckFile: Sendable, Equatable {
         (firstCard?.images ?? []).sorted { $0.rawValue < $1.rawValue }.compactMap { preview.images[$0] }
     }
 
-    /// How many new ways the file's cards bring as they come in, as the new
-    /// cards a day count them: each card's front-first way, and its
-    /// back-first way too when it goes both ways. How fast? counts them as
-    /// if they came in now, last in the queue.
-    var newWayCount: Int {
-        preview.cards.reduce(0) { count, card in count + (card.goesBothWays(bringingProgress: false) ? 2 : 1) }
+    /// What `Engine.addFichaDeck(_:)` chooses as it imports the file: the
+    /// cards that repeat the user's skipped, and the tag an import gives a
+    /// file's cards after the file's name left out.
+    var importChoices: ImportChoices {
+        // The proposed tags, each once, are the file's name alone.
+        ImportChoices(
+            tagNames: Dictionary(uniqueKeysWithValues: preview.proposedTags.map { ($0, "") }), repeatedCards: .skip)
     }
 }
 
@@ -136,11 +139,7 @@ extension Engine {
         let hadDeck = try read { db in
             try deckWithRow(name, in: db) != nil || allCards(in: db).contains { $0.deck == name }
         }
-        // The proposed tags, each once, are the file's name alone.
-        let choices = ImportChoices(
-            tagNames: Dictionary(uniqueKeysWithValues: file.preview.proposedTags.map { ($0, "") }),
-            repeatedCards: .skip)
-        let imported = try importCardsAndTheirDecks(file.preview, choosing: choices)
+        let imported = try importCardsAndTheirDecks(file.preview, choosing: file.importChoices)
         if !hadDeck, imported.newCardDecks.contains(name) {
             try setEmoji(try Emoji(file.deck.emoji), ofDeck: name)
         }

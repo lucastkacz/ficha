@@ -31,8 +31,10 @@ extension CardsWindowState {
             /// then say when the last of them is all met.
             case decks([String])
             /// One of Ficha's decks, after its Add Deck…, before it comes in
-            /// (#458): its cards counted as if they came in now, last, and
-            /// Start adds it.
+            /// (#458): its cards counted as they'd come in now, those that
+            /// repeat none of the user's, into the deck of theirs by its
+            /// name at its place in the queue, or else last, and Start adds
+            /// it.
             case fichaDeck(FichaDeck)
         }
 
@@ -46,7 +48,8 @@ extension CardsWindowState {
             /// into.
             case imported(cardCount: Int)
             /// "40 cards · one of Ficha's decks": one of Ficha's decks, with
-            /// the cards its file holds (#458).
+            /// the cards that would come in, those of its file that repeat
+            /// none of the user's (#458).
             case fichaDeck(cardCount: Int)
         }
 
@@ -68,7 +71,7 @@ extension CardsWindowState {
         public let subject: Subject
         /// The decks it asks about, as the sidebar lists them, with their
         /// emoji, in the queue's order, which the sheet names at its top:
-        /// none for one of Ficha's decks, which the sidebar doesn't list yet.
+        /// none for one of Ficha's decks, which the sheet names as it is.
         public let decks: [Deck]
         /// What the line under the deck's name says.
         public let line: Line
@@ -200,16 +203,18 @@ extension CardsWindowState {
 
 extension CardsWindowState.HowFast {
     /// How fast? as it opens about `names`, decks at the top of the tree
-    /// among `topDecks`, those the sidebar lists, with `line` under their
-    /// names, out of `cards`, the cards in the user's reviews, at `now`, by
-    /// `calendar`, the engine's, with `settings`' pace and Ficha's other
-    /// settings: at the user's pace, or Steady while it's none, with Put it
-    /// first unticked, and each pace's finish date, of the deck, or of the
-    /// last of the decks in the queue, where it is and with the deck first.
-    /// Put it first is for one deck alone.
-    fileprivate init(
-        about names: [String], line: Line, amongTopDecks topDecks: [Deck], cards: CardsInReviews,
-        settings: ReviewSettings, now: Date, calendar: Calendar
+    /// among `topDecks`, those the sidebar lists, or about `fichaDeck`, one
+    /// of Ficha's decks, by its name alone, before it comes in, with `line`
+    /// under their names, out of `cards`, the cards in the user's reviews,
+    /// with those of `fichaDeck` as they'd come in, at `now`, by `calendar`,
+    /// the engine's, with `settings`' pace and Ficha's other settings: at
+    /// the user's pace, or Steady while it's none, with Put it first
+    /// unticked, and each pace's finish date, of the deck, or of the last of
+    /// the decks in the queue, where it is and with the deck first. Put it
+    /// first is for one deck alone.
+    init(
+        about names: [String], fichaDeck: FichaDeck? = nil, line: Line, amongTopDecks topDecks: [Deck],
+        cards: CardsInReviews, settings: ReviewSettings, now: Date, calendar: Calendar
     ) {
         let queue = settings.queue(of: cards, now: now, calendar: calendar).map(\.deck)
         let inQueueOrder = queue.filter(names.contains) + names.filter { !queue.contains($0) }
@@ -228,9 +233,14 @@ extension CardsWindowState.HowFast {
         if names.count == 1, let place = queue.firstIndex(of: names[0]) {
             decksAhead = Array(queue[..<place])
         }
+        var subject = names.count == 1 ? Subject.deck(names[0]) : .decks(inQueueOrder)
+        var decks = inQueueOrder.compactMap { name in topDecks.first { $0.name == name } }
+        if let fichaDeck {
+            subject = .fichaDeck(fichaDeck)
+            decks = []
+        }
         self.init(
-            subject: names.count == 1 ? .deck(names[0]) : .decks(inQueueOrder),
-            decks: inQueueOrder.compactMap { name in topDecks.first { $0.name == name } }, line: line,
+            subject: subject, decks: decks, line: line,
             pace: Pace(newCardsPerDay: settings.newCardsPerDay) ?? .steady, decksAhead: decksAhead,
             putsFirst: false, hasOtherDecks: topDecks.contains { !names.contains($0.name) },
             pacesWhereItIs: paces(false), pacesFirst: paces(true))

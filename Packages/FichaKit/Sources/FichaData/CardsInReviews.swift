@@ -19,16 +19,28 @@ struct CardsThatShowUp {
     private let cards: [Int64: Card]
 
     /// The cards that show up out of `cards`, every card in the order Lucas
-    /// approved them, those that live in one of `priorityDecks`, or in a deck
-    /// inside one, as priority cards, the decks a move put in the queue new
-    /// cards come from at `queuePlaces`, and `log`, the whole review log, in
-    /// the order it was written.
+    /// approved them, and `coming`, after them, as if they had come in, each
+    /// in his reviews unless one of `setAsideDecks` sets it aside, those that
+    /// live in one of `priorityDecks`, or in a deck inside one, as priority
+    /// cards, the decks a move put in the queue new cards come from at
+    /// `queuePlaces`, and `log`, the whole review log, in the order it was
+    /// written.
     fileprivate init(
-        _ cards: [Card], priorityDecks: Set<String>, queuePlaces: [String: Date], log: [ReviewLogEntry]
+        _ cards: [Card], adding coming: [CardComingIn], setAsideDecks: Set<String>, priorityDecks: Set<String>,
+        queuePlaces: [String: Date], log: [ReviewLogEntry]
     ) {
-        inReviews = CardsInReviews(
-            cards.map { ($0.id, $0.standing, $0.deck, $0.bothWays, $0.createdAt) }, priorityDecks: priorityDecks,
-            queuePlaces: queuePlaces, log: log)
+        var all = cards.map {
+            (id: $0.id, standing: $0.standing, deck: $0.deck, bothWays: $0.bothWays, createdAt: $0.createdAt)
+        }
+        // The cards coming in take the ids after every card's.
+        let nextID = (cards.map(\.id).max() ?? 0) + 1
+        for (index, card) in coming.enumerated() {
+            let id = nextID + Int64(index)
+            let setAsideBy = CardStanding.setAsideDecks(of: card.deck, among: setAsideDecks)
+            let standing = CardStanding(flag: nil, buriedAt: nil, setAsideBy: setAsideBy)
+            all.append((id, standing, card.deck, card.bothWays, card.createdAt))
+        }
+        inReviews = CardsInReviews(all, priorityDecks: priorityDecks, queuePlaces: queuePlaces, log: log)
         self.cards = Dictionary(uniqueKeysWithValues: cards.map { ($0.id, $0) })
     }
 
@@ -59,11 +71,25 @@ struct CardsThatShowUp {
 /// The cards that show up, out of every card, the priority decks, the
 /// places of the decks a move put in the queue new cards come from and the
 /// whole review log: the one way in to them, which every entry point
-/// that picks cards reads, never gathering them again.
-func cardsThatShowUp(in db: Database) throws -> CardsThatShowUp {
+/// that picks cards reads, never gathering them again. With `coming`, cards
+/// an import would bring in new, they show up as they would once they came
+/// in, after every card: what How fast? counts one of Ficha's decks by
+/// before it comes in (#458), which picks none of them.
+func cardsThatShowUp(in db: Database, adding coming: [CardComingIn] = []) throws -> CardsThatShowUp {
     CardsThatShowUp(
-        try allCards(in: db), priorityDecks: try decks(switchedOn: .priority, in: db),
-        queuePlaces: try queuePlaces(in: db), log: try logEntries(in: db))
+        try allCards(in: db), adding: coming, setAsideDecks: try coming.isEmpty ? [] : setAsideDecks(in: db),
+        priorityDecks: try decks(switchedOn: .priority, in: db), queuePlaces: try queuePlaces(in: db),
+        log: try logEntries(in: db))
+}
+
+/// A card an import would bring in new, which isn't among the cards yet, as
+/// `cardsComingIn(_:choosing:at:in:)` finds it: the deck it would come into,
+/// by its whole name, whether it would go both ways, and when it would come
+/// in.
+struct CardComingIn {
+    let deck: String
+    let bothWays: Bool
+    let createdAt: Date
 }
 
 /// The place in the queue new cards come from of each deck a move put in

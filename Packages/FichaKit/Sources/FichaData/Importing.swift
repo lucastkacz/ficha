@@ -795,6 +795,26 @@ func repeatedCards(of cards: [ImportedCard], in db: Database) throws -> [Card?] 
     return repeated
 }
 
+/// The cards of `preview` that importing it as `choices` say would bring in
+/// new at `now`, out of the cards in `db`, as
+/// `Engine.importCardsAndTheirDecks(_:choosing:)` adds them: those that
+/// repeat none of the user's, in their order, each with the deck it comes
+/// into and whether it goes both ways. How fast? counts one of Ficha's decks
+/// by them, before it comes in (#458).
+func cardsComingIn(
+    _ preview: ImportPreview, choosing choices: ImportChoices, at now: Date, in db: Database
+) throws -> [CardComingIn] {
+    let decks = try DecksComingIn(of: preview.cards, choosing: choices)
+    var coming: [CardComingIn] = []
+    for (card, repeated) in zip(preview.cards, try repeatedCards(of: preview.cards, in: db)) where repeated == nil {
+        coming.append(
+            CardComingIn(
+                deck: try decks.deck(of: card), bothWays: card.goesBothWays(bringingProgress: choices.bringsProgress),
+                createdAt: now))
+    }
+    return coming
+}
+
 /// The ways an imported front repeats one of the user's fronts with the same
 /// text, in the order an import tries them.
 private enum FrontImageMatch: CaseIterable {
