@@ -32,13 +32,6 @@ public enum FichaDeck: String, Sendable, CaseIterable {
         rawValue
     }
 
-    /// What the deck holds, in a sentence in its cards' language, which the
-    /// Cards window shows under its name while the user hasn't added it: a
-    /// stub, which #458's test fails.
-    public var about: String {
-        ""
-    }
-
     /// The emoji the deck gets when it comes in new, as `ficha deck emoji`
     /// gives one: provisional.
     public var emoji: String {
