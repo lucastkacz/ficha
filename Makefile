@@ -212,6 +212,11 @@ CHECKS += data-changes-test
 data-changes-test: ## Test the list make upload leaves of the changes to the cards' data, on a scratch repo.
 	scripts/test-data-changes.sh
 
+.PHONY: english-alone-test
+CHECKS += english-alone-test
+english-alone-test: ## Test the check make upload runs that the archive's app holds English alone, on apps made by hand.
+	scripts/test-english-alone.sh
+
 .PHONY: last-crash-test
 CHECKS += last-crash-test
 last-crash-test: ## Test make last-crash on a crash report written by hand.
