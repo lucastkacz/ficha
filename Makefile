@@ -214,7 +214,7 @@ data-changes-test: ## Test the list make upload leaves of the changes to the car
 
 .PHONY: english-alone-test
 CHECKS += english-alone-test
-english-alone-test: ## Test the check make upload runs that the archive's app holds English alone, on apps made by hand.
+english-alone-test: ## Test the check make upload runs that the archive's app holds English alone, on apps made by hand, and that make upload runs it before the export.
 	scripts/test-english-alone.sh
 
 .PHONY: last-crash-test
@@ -285,16 +285,16 @@ on-main: ## Fail unless this checkout is on main, with nothing uncommitted, as G
 # as Xcode's Organizer does, through the account in Xcode's settings, so
 # neither the repo nor CI holds a secret. ExportOptions.plist keeps the build
 # to TestFlight's internal testers, and its number as the Makefile sets it.
-# Archiving and exporting with xcodebuild is Apple's documented way. The
-# archive builds the app and its packages again, in derived data of its own
-# inside $(UPLOAD), which each upload deletes first, with the XCFramework
-# `make fsrs` keeps: the derived data the other builds share can keep what an
-# earlier build left there, such as the folders of languages Ficha no longer
-# comes in, which an archive built from it could carry (#518). Before the
-# export, scripts/english-alone.sh checks that the archive's app holds English
-# alone, and stops the upload when it doesn't; that check is our own. The archive holds a Ficha.app, which a widget's click
-# or a ficha:// link must never open in place of the installed one, on Lucas's
-# cards, so the other copies go first, also when the check then stops.
+# Archiving and exporting with xcodebuild is Apple's documented way. The archive
+# builds the app and its packages again, with the XCFramework `make fsrs` keeps,
+# in derived data of its own inside $(UPLOAD), which each upload deletes first:
+# the derived data the other builds share can keep what an earlier build left
+# there, such as the folders of languages Ficha no longer comes in, which an
+# archive built from it could carry (#518). The archive holds a Ficha.app, which
+# a widget's click or a ficha:// link must never open in place of the installed
+# one, on Lucas's cards, so the other copies go. Then, before the export,
+# scripts/english-alone.sh checks that the archive's app holds English alone,
+# and stops the upload when it doesn't; that check is our own.
 # Once the build is up, it lists what changed the cards' data since the last
 # upload, which reaches Lucas's cards when he installs this one, and tags the
 # build's commit with its version and build number, which the next upload

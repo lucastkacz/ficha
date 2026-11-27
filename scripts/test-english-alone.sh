@@ -88,12 +88,13 @@ line_of() {
 }
 deleted=$(line_of "rm -rf .build/upload")
 archived=$(line_of "-derivedDataPath .build/upload/DerivedData")
+unregistered=$(line_of "scripts/unregister-other-copies.sh Ficha.app")
 checked=$(line_of "scripts/english-alone.sh .build/upload/Ficha.xcarchive/Products/Applications/Ficha.app")
 exported=$(line_of "-exportArchive")
-if ((deleted > 0 && deleted < archived && archived < checked && checked < exported)); then
-  pass "make upload deletes .build/upload, archives in the derived data there, and checks its app before the export"
+if ((deleted > 0 && deleted < archived && archived < unregistered && unregistered < checked && checked < exported)); then
+  pass "make upload deletes .build/upload, archives in the derived data there, unregisters the other copies, and checks its app before the export"
 else
-  fail "make upload deletes .build/upload, archives in the derived data there, and checks its app before the export (got: $recipe)"
+  fail "make upload deletes .build/upload, archives in the derived data there, unregisters the other copies, and checks its app before the export (got: $recipe)"
 fi
 
 if ((failures > 0)); then
