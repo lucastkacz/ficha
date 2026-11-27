@@ -55,17 +55,45 @@ struct DeckRowsTests {
         window.read(with: scheduler)
 
         #expect(
-            window.deckRows.map(\.id) == [Deck.defaultName, "Arte", "Geografía", "Historia", "Lenguaje", "Música"])
+            window.deckRows.map(\.id) == [Deck.defaultName, "Arte", "Historia", "Geografía", "Lenguaje", "Música"])
         #expect(
             window.deckRows.map(\.line) == [
                 .next(finish: .dayOrNext(.weekday(6), .weekday(7))),
                 .first(met: 1, of: 4, finish: .day(.today)),
-                .noCards,
                 .next(finish: .dayOrNext(.tomorrow, .weekday(6))),
+                .noCards,
                 .metThemAll(cards: 1, days: 1),
                 .setAside(met: 1, of: 2),
             ])
         #expect(window.deckRows.first { $0.id == "Arte" }?.children.map(\.line) == [nil])
+    }
+
+    // Zoología's first card came in the day before Arte's, so it goes first
+    // in the queue, though Arte comes first alphabetically. Botánica's one
+    // card is met, Geografía has none, and Cocina is set aside.
+    @Test(
+        "the sidebar lists the decks at the top of the tree in the queue's order, the one new cards come from now first, then the others alphabetically, and those set aside last, each with the decks inside it alphabetically",
+        .bug(id: 491))
+    func theDecksAreListedInTheQueuesOrder() throws {
+        time.move(to: try morning(of: 13, in: calendar))
+        try approveInDeck("tiburón", deck: "Zoología::Mar", in: engine)
+        try approveInDeck("abeja", deck: "Zoología::Aire", in: engine)
+        try engine.meet(try approveInDeck("rosa", deck: "Botánica", in: engine))
+        try approveInDeck("asado", deck: "Cocina", in: engine)
+        try engine.setAside(deck: "Cocina")
+        time.move(to: try morning(of: 14, in: calendar))
+        try approveInDeck("La Gioconda", deck: "Arte", in: engine)
+        try engine.makeDeck(named: "Geografía")
+        var window = engine.openCardsWindow(with: scheduler)
+        window.read(with: scheduler)
+        let byTheQueue = window.deckRows
+
+        try engine.moveInQueue(deck: "Arte", to: .first)
+        window.read(with: scheduler)
+
+        #expect(byTheQueue.map(\.id) == ["Zoología", "Arte", "Botánica", "Geografía", "Cocina"])
+        #expect(byTheQueue.first?.children.map(\.title) == ["Aire", "Mar"])
+        #expect(window.deckRows.map(\.id) == ["Arte", "Zoología", "Botánica", "Geografía", "Cocina"])
     }
 
     // ubuntu goes both ways, and its front-first way was met the day before,

@@ -7,12 +7,13 @@ import UniformTypeIdentifiers
 /// sidebar to choose a group of cards, the inbox, a deck or All Tags, a table
 /// with one row per card in it, or per capture and flagged card in the inbox,
 /// narrowed by the toolbar's search field, and the selected row whole beside
-/// it, with what Lucas can do with it at its foot. The sidebar's Decks
-/// section lists every deck as a tree, Default first while it holds cards or
-/// has a switch on, each with how many of its cards are due, grayed while
-/// its cards are out of Lucas's reviews, and with its emoji and color, and
-/// each at the top of the tree with a line under its title that says how far
-/// it is and when it's all met (#491); a
+/// it, with what Lucas can do with it at its foot. The sidebar's Decks section
+/// lists every deck as a tree, Default first while it holds cards or has a
+/// switch on, then the others in the order the state lists them, the queue's
+/// first (`CardsWindowDecks.swift`), each with how many of its cards are due,
+/// grayed while its cards are out of Lucas's reviews, and with its emoji and
+/// color, and each at the top of the tree with a line under its title that
+/// says how far it is and when it's all met (#491); a
 /// deck's context menu, and the Actions menu above the card list while the
 /// sidebar chose it (`DeckMenu.swift`), set it aside or prioritize it, give
 /// it a color and an emoji, rename it, in the rename sheet, which moves it

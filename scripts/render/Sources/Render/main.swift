@@ -39,14 +39,15 @@ enum Window: String, CaseIterable {
     /// of, in All Tags' place, and `--key cmd+delete` asks whether to delete.
     case cardsAllTags = "cards-all-tags"
     /// The Cards window on Idiomas, one of the decks the sample's cards sit
-    /// in, with its sidebar's Decks section: Default first, then every deck
-    /// as a tree, each with how many of its cards are due, Idiomas and
-    /// Ciencias with a color and an emoji, which the decks inside them show
-    /// too, Ciencias and Humanidades closed, so that Sociedad shows, set
-    /// aside, grayed with the deck inside it; the bar above the card list,
-    /// with Idiomas's name, its Actions menu and its cards' tags; and two of
-    /// Idiomas's cards selected, which `--key cmd+d` asks to move in the
-    /// Change Deck sheet.
+    /// in, with its sidebar's Decks section: Default first, then every deck as
+    /// a tree, those at the top in the order of the queue new cards come from,
+    /// the rest after them and those set aside last, each with how many of its
+    /// cards are due, Idiomas and Ciencias with a color and an emoji, which
+    /// the decks inside them show too, Ciencias and Humanidades closed, so
+    /// that Sociedad shows, set aside, grayed with the deck inside it; the bar
+    /// above the card list, with Idiomas's name, its Actions menu and its
+    /// cards' tags; and two of Idiomas's cards selected, which `--key cmd+d`
+    /// asks to move in the Change Deck sheet.
     case cardsDecks = "cards-decks"
     /// The same on Idiomas › Español, with historia, one of its
     /// tags, chosen above the card list, which lists only the deck's cards
