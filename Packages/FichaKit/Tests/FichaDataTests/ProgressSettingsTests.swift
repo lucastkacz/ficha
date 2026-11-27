@@ -179,13 +179,19 @@ let customParameters: [Float] = [
 
 /// Saves a database at `file` as Ficha left it before Ficha's day
 /// (ADR 0045), through the schema's migrations up to the one before it, with
-/// the settings that decide progress a user changed to 3 new cards a day.
+/// the settings that decide progress a user changed to 3 new cards a day:
+/// Ficha's otherwise, as Ficha writes the row, the desired retention of a
+/// new install among them, 85%, where the column holds the scheduler's 90%.
 func saveDatabaseBeforeFichasDay(at file: URL) throws {
     let database = try DatabaseQueue(path: file.path(percentEncoded: false))
     try Schema.migrator.migrate(database, upTo: "v35 a deck's description")
     try database.write { db in
         try db.execute(sql: "UPDATE syncWrite SET recordsChanges = 0")
-        try db.execute(sql: "INSERT INTO progressSettings (id, newCardsPerDay, forgottenOftenAfter) VALUES (1, 3, 8)")
+        try db.execute(
+            sql: """
+                INSERT INTO progressSettings (id, newCardsPerDay, forgottenOftenAfter, desiredRetention)
+                VALUES (1, 3, 8, 0.85)
+                """)
         try db.execute(sql: "UPDATE syncWrite SET recordsChanges = 1")
     }
 }
