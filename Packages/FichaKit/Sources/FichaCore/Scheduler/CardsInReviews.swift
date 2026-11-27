@@ -76,7 +76,7 @@ public struct CardsInReviews: Sendable, Equatable {
         }
         queue = Set(topDecks.values)
             .map { PlacedDeck(deck: $0, place: queuePlaces[$0] ?? firstCameIn[$0] ?? .distantFuture) }
-            .sorted { ($0.place, $0.deck) < ($1.place, $1.deck) }
+            .sorted()
         self.log = log
     }
 
@@ -143,9 +143,16 @@ public struct CardsInReviews: Sendable, Equatable {
 
 /// A deck at the top of the tree in the queue new ways come from, at its
 /// place (ADR 0034).
-struct PlacedDeck: Sendable, Equatable {
+struct PlacedDeck: Sendable, Comparable {
     /// The deck's whole name, or `""` for Default.
     let deck: String
     /// Its place: the queue goes from the earliest to the latest.
     let place: Date
+
+    /// Whether `first` goes before `second` in the queue: at an earlier
+    /// place, or at the same one, such as two decks an import brought, by
+    /// name, as on every device.
+    static func < (first: PlacedDeck, second: PlacedDeck) -> Bool {
+        (first.place, first.deck) < (second.place, second.deck)
+    }
 }
