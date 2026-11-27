@@ -53,7 +53,7 @@ public struct CardsInReviews: Sendable, Equatable {
         log: [ReviewLogEntry]
     ) {
         let inReviews = cards.filter { $0.standing == .inReviews }
-        let metFrontFirst = Set(log.filter { $0.way == .frontFirst }.map(\.cardID))
+        let metFrontFirst = Self.metCards(in: log)
         ways = inReviews.flatMap { card in
             let frontFirst = CardWay(cardID: card.id, way: .frontFirst)
             guard card.bothWays, metFrontFirst.contains(card.id) else {
@@ -131,6 +131,15 @@ public struct CardsInReviews: Sendable, Equatable {
     var newWays: [CardWay] {
         let started = Set(log.map { CardWay(cardID: $0.cardID, way: $0.way) })
         return ways.filter { !started.contains($0) }
+    }
+
+    /// The cards met, by id, out of `log`, the whole review log: those whose
+    /// front-first way has any entry, its first review or a placement
+    /// (ADR 0016), as a card that goes both ways brings its back-first way
+    /// once it's met. The Cards window's deck rows count these too: "9 of
+    /// 14".
+    public static func metCards(in log: [ReviewLogEntry]) -> Set<Int64> {
+        Set(log.filter { $0.way == .frontFirst }.map(\.cardID))
     }
 
     /// The first reviews of new ways Lucas had on `now`'s day, by

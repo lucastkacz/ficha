@@ -171,6 +171,18 @@ extension CardsInReviews {
             queuedAs: queue.map { PlacedDeck(deck: $0.deck, place: moved[$0.deck] ?? $0.place) }.sorted())
     }
 
+    /// The decks at the top of the tree met in full: those that hold cards in
+    /// Lucas's reviews but no new way, as he met every new way they had
+    /// there, so the queue new cards come from no longer lists them
+    /// (ADR 0034). A card buried, flagged or set aside with a deck inside
+    /// one leaves its ways out, and a card that goes both ways brings its
+    /// back-first way once it's met. The review panel says "You've met them
+    /// all" for a deck an answer puts here, and the Cards window's row of a
+    /// deck here says "Met them all".
+    public var decksMetInFull: Set<String> {
+        Set(queue.map(\.deck)).subtracting(newWays.compactMap { topDecks[$0.cardID] })
+    }
+
     /// How many new ways priority cards have, which come first wherever a
     /// deck goes in the queue, each counted as the new cards a day count it.
     var priorityNewWayCount: Int {

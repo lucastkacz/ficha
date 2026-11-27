@@ -574,21 +574,22 @@ public struct ReviewPanelState: Sendable {
     /// how many times he forgot it the way it showed, and the card's time
     /// stopped at his answer. The panel's buttons answer through
     /// `rate(_:)`, which times him on the steady clock,
-    /// and say what failed. When a new way's first review takes the deck at
-    /// the top of the tree its card lives in out of the queue new cards come
-    /// from, the answer met the deck in full, which the panel says once it's
-    /// done (`metThemAll`).
+    /// and say what failed. When a new way's first review puts the deck at
+    /// the top of the tree its card lives in among those met in full, out of
+    /// the queue new cards come from (`Engine.decksMetInFull()`), the answer
+    /// met the deck in full, which the panel says once it's done
+    /// (`metThemAll`).
     public mutating func answer(_ kind: ReviewLogEntry.Kind, responseTime: Duration) throws(EngineError) {
         guard outcome == nil, let answering = current else { return }
         let deck = TagPath.top(of: answering.card.deck)
         var wasQueued = false
         if case .new = answering {
-            wasQueued = queuedDecks()?.contains(deck) == true
+            wasQueued = decksMetInFull()?.contains(deck) == false
         }
         let forgottenOften = try engine.record(
             kind, of: answering.card.id, way: answering.way, responseTime: responseTime, trigger: trigger,
             settings: settings, reviewingAhead: answering.isAhead, intervalsWorkedOutAt: shownIntervals?.at)
-        answerMetInFull = wasQueued && queuedDecks()?.contains(deck) == false ? deck : nil
+        answerMetInFull = wasQueued && decksMetInFull()?.contains(deck) == true ? deck : nil
         // Also when the panel stays on the card, to offer to flag it.
         playingSound = nil
         guard let forgottenOften else {
@@ -747,14 +748,15 @@ public struct ReviewPanelState: Sendable {
         }
     }
 
-    /// The decks at the top of the tree in the queue new cards come from now,
-    /// with the panel's settings, by their whole names: nil when it can't be
+    /// The decks at the top of the tree met in full now, out of the queue new
+    /// cards come from, by their whole names, as the Cards window's rows say
+    /// "Met them all" (`Engine.decksMetInFull()`): nil when they can't be
     /// read, and the log says why.
-    private func queuedDecks() -> Set<String>? {
+    private func decksMetInFull() -> Set<String>? {
         do throws(EngineError) {
-            return Set(try engine.queue(settings).map(\.deck))
+            return try engine.decksMetInFull()
         } catch {
-            logger.error("Couldn't read the queue new cards come from: \(String(describing: error), privacy: .public)")
+            logger.error("Couldn't read the decks met in full: \(String(describing: error), privacy: .public)")
             return nil
         }
     }

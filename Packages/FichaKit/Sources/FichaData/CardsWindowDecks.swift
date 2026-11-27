@@ -58,20 +58,23 @@ extension CardsWindowState {
 
         /// What a deck's row says under its title (#491), from where it
         /// stands and the queue new cards come from (ADR 0034): "9 of 14"
-        /// counts the cards met, those whose front-first way has an entry in
-        /// the review log, of every card of the deck and the decks inside
-        /// it, whatever its standing. A deck with no card says so, and a deck
-        /// set aside so, before anything else; a deck in the queue says where
-        /// it is, also when its cards are all met but some of their
-        /// back-first ways are still to come; and a deck out of it, that it's
-        /// met in full, or how far it is.
+        /// counts the cards met (`CardsInReviews.metCards(in:)`), those whose
+        /// front-first way has an entry in the review log, of every card of
+        /// the deck and the decks inside it, whatever its standing. A deck
+        /// with no card says so, and a deck set aside so, before anything
+        /// else; a deck met in full says so exactly when the review panel
+        /// would say "You've met them all" of it, by the same rule, also with
+        /// a buried card still to meet; a deck in the queue says where it
+        /// is, also when its cards are all met but some of their back-first
+        /// ways are still to come; and any other, how far it is.
         public enum Line: Sendable, Equatable {
             /// "No cards yet": the deck, with the decks inside it, has no
             /// card.
             case noCards
             /// "Set aside · 9 of 14 met": the deck is set aside.
             case setAside(met: Int, of: Int)
-            /// "Met them all": every card of the deck is met.
+            /// "Met them all": the deck is met in full, out of the queue, as
+            /// `CardsInReviews.decksMetInFull` says.
             case metThemAll
             /// "9 of 14 · on track for early December": the deck is first in
             /// the queue, the one new cards come from now, with its finish
@@ -80,9 +83,9 @@ extension CardsWindowState {
             /// "Next · on track for mid-December": the deck waits in the
             /// queue after the first, with its finish date.
             case next(finish: FinishDate.Wording)
-            /// "9 of 14": the deck has new cards in the user's reviews but no
-            /// finish date, as when the pace brings no new card, or it has
-            /// cards still to meet out of them, such as buried ones.
+            /// "9 of 14": how far the deck is, with no finish date, as when
+            /// the pace brings no new card, or none of its cards is in the
+            /// user's reviews, as when they're all buried.
             case progress(met: Int, of: Int)
         }
 
@@ -503,7 +506,8 @@ extension Engine {
     /// What the rows of `decks`, decks at the top of the tree, say under
     /// their titles in the Cards window's sidebar (#491), by their whole
     /// names, now, in one read: out of every card, whatever its standing, how
-    /// many of each deck's are met, its front-first way in the review log,
+    /// many of each deck's are met, as `CardsInReviews.metCards(in:)` says;
+    /// which decks are met in full, as `CardsInReviews.decksMetInFull` says;
     /// and the queue new cards come from, with `settings`' pace, as
     /// `queue(_:)` reads it, with its finish dates as they read by the
     /// engine's calendar.
@@ -512,14 +516,16 @@ extension Engine {
     {
         let now = time.now
         return try read { db in
-            let met = Set(try logEntries(in: db).filter { $0.way == .frontFirst }.map(\.cardID))
+            let met = CardsInReviews.metCards(in: try logEntries(in: db))
             var counts: [String: (met: Int, of: Int)] = [:]
             for card in try allCards(in: db) {
                 let top = TagPath.top(of: card.deck)
                 counts[top, default: (0, 0)].of += 1
                 counts[top, default: (0, 0)].met += met.contains(card.id) ? 1 : 0
             }
-            let queue = settings.queue(of: try cardsThatShowUp(in: db).inReviews, now: now, calendar: calendar)
+            let inReviews = try cardsThatShowUp(in: db).inReviews
+            let metInFull = inReviews.decksMetInFull
+            let queue = settings.queue(of: inReviews, now: now, calendar: calendar)
             var lines: [String: CardsWindowState.DeckRow.Line] = [:]
             for deck in decks {
                 let count = counts[deck.name, default: (0, 0)]
@@ -530,10 +536,10 @@ extension Engine {
                         .noCards
                     } else if deck.isSetAside {
                         .setAside(met: count.met, of: count.of)
+                    } else if metInFull.contains(deck.name) {
+                        .metThemAll
                     } else if let finish {
                         place == 0 ? .first(met: count.met, of: count.of, finish: finish) : .next(finish: finish)
-                    } else if place == nil, count.met == count.of {
-                        .metThemAll
                     } else {
                         .progress(met: count.met, of: count.of)
                     }

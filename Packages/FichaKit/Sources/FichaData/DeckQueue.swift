@@ -22,6 +22,13 @@ extension Engine {
         }
     }
 
+    /// The decks at the top of the tree the user has met in full now, out of
+    /// the queue new cards come from, as `CardsInReviews.decksMetInFull`
+    /// says, by their whole names, or Default by `Deck.defaultName`.
+    public func decksMetInFull() throws(EngineError) -> Set<String> {
+        try read { db in try cardsThatShowUp(in: db).inReviews.decksMetInFull }
+    }
+
     /// Moves `deck` to `position` in the queue new cards come from, among
     /// the other decks that have new cards, as `queue(_:)` lists them, from
     /// the next appearance, review now or "See more" on: a deck at the top

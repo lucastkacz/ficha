@@ -55,6 +55,43 @@ struct MetThemAllTests {
         #expect(panel.metThemAll == met)
     }
 
+    // Arte has two new cards, La Gioconda and Las Meninas, so meeting the
+    // first leaves the second in the queue.
+    @Test(
+        "the answer that meets the first of a deck's two new cards makes the done panel say nothing of the deck",
+        .bug(id: 491))
+    func theFirstOfTwoNewCardsMeetsNothingInFull() throws {
+        let gioconda = try approveInDeck("La Gioconda", deck: "Arte", in: engine)
+        try approveInDeck("Las Meninas", deck: "Arte", in: engine)
+        var panel = try engine.openPanel(.reviewNow, with: [.new(gioconda)], settings: settings)
+
+        try panel.answer(.review(.good), responseTime: .seconds(3))
+
+        #expect(panel.content == .done)
+        #expect(panel.metThemAll == nil)
+        #expect(try engine.queue(settings).map(\.deck) == ["Arte"])
+    }
+
+    // El Grito, Arte's other new card, is buried, so it's out of the
+    // reviews, and the queue: the Cards window's row of Arte says it's met
+    // them all too, by the same rule.
+    @Test(
+        "the answer that meets a deck's last new card in the reviews makes the done panel say you've met them all, with a buried new card left, as the deck's row in the Cards window says",
+        .bug(id: 491))
+    func aBuriedNewCardLeavesTheDeckMetInFull() throws {
+        let gioconda = try approveInDeck("La Gioconda", deck: "Arte", in: engine)
+        let grito = try approveInDeck("El Grito", deck: "Arte", in: engine)
+        try engine.bury(grito.id)
+        var panel = try engine.openPanel(.reviewNow, with: [.new(gioconda)], settings: settings)
+
+        try panel.answer(.review(.good), responseTime: .seconds(3))
+        var window = engine.openCardsWindow(with: settings.scheduler)
+        window.read(with: settings.scheduler)
+
+        #expect(panel.metThemAll?.decks.map(\.name) == ["Arte"])
+        #expect(window.deckRows.first { $0.id == "Arte" }?.line == .metThemAll)
+    }
+
     // Lenguaje's ubuntu was met already, so Arte is the only deck in the
     // queue.
     @Test(

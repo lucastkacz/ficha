@@ -68,6 +68,29 @@ struct DeckRowsTests {
         #expect(window.deckRows.first { $0.id == "Arte" }?.children.map(\.line) == [nil])
     }
 
+    // ubuntu goes both ways, and its front-first way was met the day before,
+    // so its back-first way is still to come: Lenguaje, whose one card is
+    // met, stays in the queue until that way is met too.
+    @Test(
+        "a deck's row says it's met them all once the queue no longer has it, as the review panel says it, and not while a card's back-first way is still to come",
+        .bug(id: 491))
+    func aDeckIsMetInFullWithItsBackFirstWays() throws {
+        time.move(to: try morning(of: 13, in: calendar))
+        let ubuntu = try approveInDeck("ubuntu", deck: "Lenguaje", in: engine)
+        try engine.setBothWays(true, of: [ubuntu.id])
+        try engine.meet(ubuntu)
+        time.move(to: try morning(of: 14, in: calendar))
+        var window = engine.openCardsWindow(with: scheduler)
+        window.read(with: scheduler)
+        let beforeBackFirst = window.deckRows.first { $0.id == "Lenguaje" }?.line
+
+        try engine.meet(ubuntu, way: .backFirst)
+        window.read(with: scheduler)
+
+        #expect(beforeBackFirst == .first(met: 1, of: 1, finish: .day(.today)))
+        #expect(window.deckRows.first { $0.id == "Lenguaje" }?.line == .metThemAll)
+    }
+
     // The Wednesday the 14th is today; the 20th, a Tuesday, is the last day
     // less than 7 days from today's start. Days 1 to 10 of a month are its
     // early third, 11 to 20 its mid third, and 21 on its late third.
