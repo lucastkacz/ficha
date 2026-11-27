@@ -294,7 +294,7 @@ on-main: ## Fail unless this checkout is on main, with nothing uncommitted, as G
 # archive's app holds English alone, and stops the upload when it doesn't;
 # that check is our own. The archive holds a Ficha.app, which a widget's click
 # or a ficha:// link must never open in place of the installed one, on Lucas's
-# cards, so the other copies go.
+# cards, so the other copies go first, also when the check then stops.
 # Once the build is up, it lists what changed the cards' data since the last
 # upload, which reaches Lucas's cards when he installs this one, and tags the
 # build's commit with its version and build number, which the next upload
@@ -311,8 +311,8 @@ upload: on-main team project ## From main: archive the real Ficha from nothing, 
 	rm -rf $(UPLOAD)
 	$(XCODEBUILD_MAC) -derivedDataPath $(UPLOAD)/DerivedData -configuration Release \
 		-destination 'generic/platform=macOS' -archivePath $(UPLOAD)/Ficha.xcarchive $(SIGNING) archive
-	@scripts/english-alone.sh $(UPLOAD)/Ficha.xcarchive/Products/Applications/Ficha.app
 	@scripts/unregister-other-copies.sh Ficha.app /Applications/Ficha.app
+	@scripts/english-alone.sh $(UPLOAD)/Ficha.xcarchive/Products/Applications/Ficha.app
 	xcodebuild -exportArchive -archivePath $(UPLOAD)/Ficha.xcarchive -exportOptionsPlist ExportOptions.plist \
 		-exportPath $(UPLOAD)/export -allowProvisioningUpdates || { \
 		echo "The export to App Store Connect failed, as the lines above say. \"No Accounts\" means xcodebuild can't reach your account: open Xcode › Settings › Accounts, sign in again if it asks, and run make upload again." >&2; \

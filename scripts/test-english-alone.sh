@@ -1,7 +1,8 @@
 #!/bin/bash
 # Tests scripts/english-alone.sh, which `make upload` runs on the archive's app
-# before the export uploads it; `make check` runs this. Each case is an app made
-# by hand, of folders alone, laid out as the archive's, in a scratch folder.
+# before the export uploads it, and that `make upload` runs it there; `make
+# check` runs this. Each case of the script is an app made by hand, of folders
+# alone, laid out as the archive's, in a scratch folder.
 
 set -u
 script="$(cd "$(dirname "$0")" && pwd)/english-alone.sh"
@@ -53,7 +54,8 @@ expect "an app with English's and Base's folders alone passes" passes "*holds En
 
 app
 mkdir -p "$made/Contents/Resources/de.lproj"
-expect "a language's folder in the app's resources stops it, named" stops "*Contents/Resources/de.lproj*" "$made"
+expect "a language's folder in the app's resources stops it, named, and it says what to do" stops \
+  "*Contents/Resources/de.lproj*take each language out*run make upload again*" "$made"
 
 app
 mkdir -p "$made/Contents/PlugIns/FichaWidget.appex/Contents/Resources/fr.lproj"
@@ -73,6 +75,26 @@ else
 fi
 
 expect "with no app at the path, it stops and says so" stops "*There's no app at*" "$tmp/nowhere/Ficha.app"
+
+# make upload's recipe, as `make -n` prints it without running it, with none of
+# the make that runs this test's flags.
+recipe=$(MAKEFLAGS='' make --no-print-directory -C "$(dirname "$script")/.." -n upload 2>&1)
+# line_of <text>: the number of the recipe's first line that holds the text, or
+# 0 when none does.
+line_of() {
+  local number
+  number=$(grep -n -F -e "$1" <<<"$recipe" | head -n 1 | cut -d : -f 1)
+  echo "${number:-0}"
+}
+deleted=$(line_of "rm -rf .build/upload")
+archived=$(line_of "-derivedDataPath .build/upload/DerivedData")
+checked=$(line_of "scripts/english-alone.sh .build/upload/Ficha.xcarchive/Products/Applications/Ficha.app")
+exported=$(line_of "-exportArchive")
+if ((deleted > 0 && deleted < archived && archived < checked && checked < exported)); then
+  pass "make upload deletes .build/upload, archives in the derived data there, and checks its app before the export"
+else
+  fail "make upload deletes .build/upload, archives in the derived data there, and checks its app before the export (got: $recipe)"
+fi
 
 if ((failures > 0)); then
   echo "$failures test(s) of the check that an upload's app holds English alone failed"
