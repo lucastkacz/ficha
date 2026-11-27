@@ -223,7 +223,7 @@ When something macOS should deliver to Ficha never arrives, such as a Focus filt
 ```bash
 make render ARGS="cards"
 make render ARGS="cards-decks --dark --key cmd+d --out .build/render/change-deck-dark.png"
-make render ARGS="cards --key cmd+f --type serendip --out .build/render/search.png"
+make render ARGS="cards-decks --key cmd+f --type serendip --out .build/render/search.png"
 ```
 
 - The PNG goes to `.build/render/<window>-<light|dark>.png`, unless `--out` says otherwise, at the display's scale.
