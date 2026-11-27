@@ -181,7 +181,10 @@ final class DecksSyncTests {
         iPhone.iCloud.isOffline = false
         try await syncBoth()
         let latest = try iPhone.engine.decks()
-        let record = try #require(iCloud.records.first { $0.id == SyncedRow.deck("Historia").recordID })
+        let record = try #require(
+            iCloud.records.first {
+                $0.type == SyncedRow.RecordType.deck.rawValue && $0.value(of: "name") == .string("Historia")
+            })
         try mac.engine.setDescription(nil, ofDeck: "Historia")
         try await syncBoth()
 
