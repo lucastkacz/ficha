@@ -165,7 +165,7 @@ final class DecksSyncTests {
     // description as `deckDescription`, a field Production's schema gets
     // before an upload, which can never be deleted.
     @Test(
-        "a deck's description reaches the other device as a field of the deck's record, the latest change wins, and taking it away reaches it",
+        "a deck's description reaches the other device as a field of the deck's record, the latest change wins beside an emoji the other device gave, and taking it away reaches it",
         .bug(id: 556))
     func aDecksDescriptionReachesTheOtherDevice() async throws {
         let coliseo = try mac.engine.create(card(.concept, front: "Coliseo", back: "Un anfiteatro."))
