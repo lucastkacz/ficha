@@ -361,7 +361,9 @@
         lastClosedAt: null,
         introduced: { day: dayKey(now, settings), count: 0 },
         buried: {},
-        inbox: 0,
+        // A flagged card's note and when it was flagged, by its id, until
+        // it's fixed: out of the reviews, in its deck with its flag (#540).
+        flagged: {},
         log: [],
         toast: null,
       };
@@ -393,10 +395,11 @@
       return this.state.cards.find((c) => c.id === id);
     }
     activeCards() {
-      // A deck set aside takes all its cards out of the reviews (GLOSSARY.md).
+      // A deck set aside takes all its cards out of the reviews (GLOSSARY.md),
+      // and so does a flag, until the card is fixed.
       const added = new Set(this.state.decks.filter((d) => d.added && !d.setAside).map((d) => d.id));
-      const buriedUntil = this.state.buried;
-      return this.state.cards.filter((c) => added.has(c.deckId) && !(buriedUntil[c.id] > this.state.now));
+      const { buried: buriedUntil, flagged } = this.state;
+      return this.state.cards.filter((c) => added.has(c.deckId) && !(buriedUntil[c.id] > this.state.now) && !flagged[c.id]);
     }
     deckCards(id) {
       return this.state.cards.filter((c) => c.deckId === id);
@@ -813,18 +816,29 @@
       this.touch();
       this.emit();
     }
-    saveToInbox(what) {
-      this.state.inbox++;
+    /**
+     * Flags the panel's card with the user's note on what to fix: it leaves
+     * the reviews and waits in its deck, with its flag and its note, until
+     * it's fixed, and the panel goes on to the next card (#540).
+     */
+    flag(note) {
+      const card = this.currentCard();
+      if (!card) return;
+      this.state.flagged[card.id] = { note, at: this.state.now };
       this.state.panel.mode = null;
-      this.toast(what === 'flag' ? 'Flagged. It waits in the inbox.' : 'Your question waits in the inbox.');
+      this.toast("Flagged. It waits in its deck until it's fixed.");
+      this.changed();
+      this.advance();
       this.touch();
       this.emit();
     }
-    capture() {
-      this.state.inbox++;
-      this.log('Captured to the inbox', 'deck');
-      this.toast('Captured. It waits in the inbox.');
-      this.emit();
+    /**
+     * Flags a card from outside the panel, as a mock that opens with one
+     * flagged does.
+     */
+    flagCard(id, note) {
+      this.state.flagged[id] = { note, at: this.state.now };
+      this.changed();
     }
     close(how = 'byHand') {
       const s = this.state;
