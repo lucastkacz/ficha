@@ -5,7 +5,7 @@ import Testing
 
 /// Tests on a deck's menu in the Cards window (ADR 0011, ADR 0024): Set Aside
 /// and Prioritize, for Default too, the same menu in the sidebar and in the
-/// Actions menu above the card list, which is its keyboard path, and a
+/// Actions menu above the grid, which is its keyboard path, and a
 /// set-aside deck grayed in the sidebar, on the default scheduler. They start at
 /// 9 in the morning in Buenos Aires, when active hours start.
 struct CardsWindowDeckSwitchesTests {
@@ -155,7 +155,8 @@ struct CardsWindowDeckSwitchesTests {
         window.cancelEditing()
         window.choose(.inbox)
 
-        // The window opens on the first deck, Default.
+        // The window opens on the first deck of the queue new cards come
+        // from, Default, whose petricor came in first.
         #expect(onOpening?.deck.name == Deck.defaultName)
         #expect(onArte?.deck.name == "Arte" && onArte?.isSetAsideTicked == false)
         #expect(onArteSetAside?.isSetAsideTicked == true && onArteSetAside?.canPrioritize == false)
@@ -164,7 +165,8 @@ struct CardsWindowDeckSwitchesTests {
         #expect(window.chosenDeckMenu == nil)
     }
 
-    /// The window as it opens, on the first deck, with the cards read.
+    /// The window as it opens, on the first deck of the queue new cards come
+    /// from, with the cards read.
     private func openWindow() -> CardsWindowState {
         var window = engine.openCardsWindow(with: scheduler)
         window.read(with: scheduler)

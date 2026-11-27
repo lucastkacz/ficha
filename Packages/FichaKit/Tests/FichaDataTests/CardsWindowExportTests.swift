@@ -27,8 +27,8 @@ final class CardsWindowExportTests {
         try? FileManager.default.removeItem(at: folder)
     }
 
-    /// The Cards window, open on the first deck the sidebar lists, with its
-    /// cards read.
+    /// The Cards window, open on the first deck of the queue new cards come
+    /// from that the sidebar lists, with its cards read.
     private func openWindow() -> CardsWindowState {
         var window = engine.openCardsWindow(with: scheduler)
         window.read(with: scheduler)

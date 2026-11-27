@@ -115,8 +115,8 @@
   .cards .row-actions { display: flex; gap: 8px; flex-wrap: wrap; }
   .cards .peek { display: flex; flex-wrap: wrap; gap: 6px; }
   .cards .detail.browsing { overflow: hidden; }
-  .cards .tools { display: flex; gap: 8px; align-items: center; }
-  .cards .search { flex: 1; min-width: 80px; height: 24px; padding: 0 9px; border-radius: 7px; background: var(--fill); color: var(--secondary-label); display: flex; align-items: center; font-size: var(--text-callout); }
+  /* The toolbar's search field, at its trailing end, as `.searchable(placement: .toolbar)` puts it. */
+  .window .toolbar-search { width: 180px; height: 24px; padding: 0 9px; border-radius: 7px; background: var(--fill); color: var(--secondary-label); display: flex; align-items: center; gap: 5px; font-size: var(--text-callout); font-weight: 400; }
   .cards .legend { display: flex; flex-wrap: wrap; gap: 12px; color: var(--secondary-label); font-size: var(--text-footnote); }
   .cards .legend i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 4px; vertical-align: 1px; }
   .cards .gridwrap { flex: 1; min-height: 0; overflow: auto; margin: 0 -6px; padding: 2px 6px 6px; }
@@ -615,7 +615,12 @@
         <span>${d.emoji}</span><span className="name">${d.name}</span><small>${st.line}</small></button>`;
     };
     const browsing = deck.added && !status.empty;
-    return html`<${Window} title="Cards" onClose=${win.onClose} ...${win}>
+    // New Card and the search field sit in the window's toolbar, as the
+    // app's, where its Import… and Export… sit too. New Card opens the card
+    // form (#538).
+    const toolbar = html`<${Button} title="New Card" onClick=${() => setForm(true)} />
+      <span className="toolbar-search" role="search">${Icon.search(12)}Search</span>`;
+    return html`<${Window} title="Cards" toolbar=${toolbar} onClose=${win.onClose} ...${win}>
       <div className=${browsing ? 'cards with-detail' : 'cards'}>
         <nav className="sidebar" aria-label="Decks">
           ${yours.length ? html`<div className="side-title">Your Decks</div>${yours.map(row)}` : null}
@@ -638,8 +643,6 @@
                 ${!status.done && !status.empty && html`<${Button} title=${deck.setAside ? 'Back in the queue' : 'Set aside'}
                   onClick=${() => app.setAside(deck.id, !deck.setAside)} />`}
               </div>
-              <div className="tools"><span className="search">Search</span>
-                <${Button} title="New Card" onClick=${() => setForm(true)} /></div>
               ${status.empty ? html`<p className="sub">Add cards with Capture, from the menu bar. Each new card waits its turn in the queue.</p>` : html`
               <div className="legend"><span><i className="met" />Met</span><span><i className="due" />Due</span>
                 <span><i className="new" />New: waits its turn</span></div>
@@ -678,7 +681,8 @@
           <div className="actions"><${Button} title="Cancel" k="esc" onClick=${() => setSheet(null)} />
             <${Button} prominent title=${sheet === NEW ? 'Create' : 'Start'} k="↩" onClick=${start} /></div>
         </div></div>`}
-        ${form && html`<${CardForm} app=${app} decks=${yours} deckId=${deck.id} onClose=${() => setForm(false)} />`}
+        ${form && html`<${CardForm} app=${app} decks=${yours} deckId=${deck.added ? deck.id : (yours[0] || deck).id}
+          onClose=${() => setForm(false)} />`}
       </div>
     </${Window}>`;
   }

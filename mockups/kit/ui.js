@@ -144,6 +144,8 @@
     bury: (s) =>
       svg(html`<path d="M1.8 8S4 3.6 8 3.6 14.2 8 14.2 8 12 12.4 8 12.4 1.8 8 1.8 8z" /><circle cx="8" cy="8" r="2" /><path d="m2.6 2.6 10.8 10.8" />`, s),
     close: (s) => svg(html`<path d="m4 4 8 8M12 4l-8 8" />`, s),
+    // magnifyingglass: a search field's.
+    search: (s) => svg(html`<circle cx="7" cy="7" r="4.4" /><path d="m10.3 10.3 3.4 3.4" />`, s),
     // ellipsis.circle: the review panel's ⋯ menu.
     more: (s) =>
       svg(html`<circle cx="8" cy="8" r="6.3" /><circle cx="5.2" cy="8" r=".8" fill="currentColor" stroke="none" />
@@ -319,18 +321,20 @@
   /**
    * A window: drag it by its title bar, resize it from its lower right
    * corner, and the green button takes it to full screen when `onZoom` is
-   * given. The front one is active.
+   * given. The front one is active. A `toolbar` sits in the title bar, at
+   * its trailing end, as SwiftUI's `.toolbar` and a `.searchable` field
+   * placed in it do in a window with a unified toolbar.
    */
   function Window({
     id, title, x, y, width, height, minWidth = 320, minHeight = 200, resizable = true, full = false, active = true,
-    centeredTitle, onClose, onZoom, onFocus, z = 10, children,
+    centeredTitle, toolbar, onClose, onZoom, onFocus, z = 10, children,
   }) {
     const { scale, w: sw, h: sh, menuBar, notch } = useScreen();
     const [frame, setFrame] = useState({ x, y, w: width, h: height });
     const drag = useRef(null);
     const begin = (mode) => (e) => {
       onFocus && onFocus(id);
-      if (mode === 'move' && e.target.closest('.traffic')) return;
+      if (mode === 'move' && e.target.closest('.traffic, .toolbar-items')) return;
       e.stopPropagation();
       drag.current = { mode, sx: e.clientX, sy: e.clientY, f: frame };
       e.currentTarget.setPointerCapture(e.pointerId);
@@ -358,6 +362,7 @@
             onClick=${onZoom} />
         </div>
         <span className="title">${title}</span>
+        ${toolbar && html`<div className="toolbar-items">${toolbar}</div>`}
       </div>
       <div className="body">${children}</div>
       ${resizable && !full && html`<div className="grip" aria-hidden="true" onPointerDown=${begin('resize')}

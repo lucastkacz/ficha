@@ -204,9 +204,9 @@ struct DeckFieldTests {
         #expect(window.lastDeckAddedTo == "Sociedad::Política")
     }
 
-    /// The window as it opens, on the first deck the sidebar lists, with the
-    /// cards read, remembering `lastDeckAddedTo` as the deck the last card
-    /// was added to.
+    /// The window as it opens, on the first deck of the queue new cards come
+    /// from that the sidebar lists, with the cards read, remembering
+    /// `lastDeckAddedTo` as the deck the last card was added to.
     private func openWindow(lastDeckAddedTo: String = Deck.defaultName) -> CardsWindowState {
         var window = engine.openCardsWindow(with: scheduler, lastDeckAddedTo: lastDeckAddedTo)
         window.read(with: scheduler)

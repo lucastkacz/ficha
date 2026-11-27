@@ -68,7 +68,9 @@ final class CardsWindowSoundTests {
         #expect(withoutSound.draft.front.sound == nil)
     }
 
-    @Test("Add saves the sounds on the form's sides, which Ficha keeps from then on, and clears them for the next card")
+    @Test(
+        "Add saves the sounds on the form's sides, which Ficha keeps from then on, and clears them for the next card",
+        .bug(id: 536))
     func addSavesTheSoundsOnTheSides() async throws {
         var window = openWindow()
         window.openNewCardForm()
@@ -95,7 +97,11 @@ final class CardsWindowSoundTests {
         #expect(throws: Never.self) { try engine.sound(mi) }
         #expect(window.cardForm?.draft.front.sound == nil)
         #expect(window.cardForm?.draft.back.sound == nil)
-        #expect(window.sounds[la] == nil)
+        // The card's detail, as the grid selects the card added, reads both
+        // where Ficha keeps them.
+        #expect(window.selection == [added.id])
+        #expect(try window.sounds[la]?.get().data == shownLa)
+        #expect(try window.sounds[mi]?.get().data == engine.sound(mi))
     }
 
     @Test("a file with no sound, or one that can't be read, stays off the side, and the window says why")

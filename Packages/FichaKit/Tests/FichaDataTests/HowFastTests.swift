@@ -296,7 +296,8 @@ final class HowFastTests {
         #expect(try engine.queue(settings).map(\.deck) == ["Arte", "Botánica", "Zoología"])
     }
 
-    /// The window as it opens, on the first deck, with the cards read.
+    /// The window as it opens, on the first deck of the queue new cards come
+    /// from, with the cards read.
     private func openWindow() -> CardsWindowState {
         var window = engine.openCardsWindow(with: scheduler)
         window.read(with: scheduler)

@@ -8,27 +8,28 @@ import SwiftUI
 /// (#536): the cards the sidebar chose, narrowed by the search, as tiles in
 /// the order the state lists them, under a legend of their dots, as many a
 /// row as fit the pane. A tile shows its front's picture, filling it, or
-/// else its front's text, at the side it starts reading from, with a dot for
-/// where its card stands: green once Lucas met it, orange while it's due, and
-/// none while it's new, whose tile is dimmed (`CardsWindowGrid.swift`
-/// decides which). Lucas selects tiles as in Photos and the Finder, and the
-/// state decides what each click and key selects: a click selects one, a
-/// ⌘-click adds one or takes it out, a Shift-click selects the run from the
-/// last one clicked, a click between the tiles selects none, the arrow keys
-/// move the selection, with Shift extending the run, and ⌘A selects every
-/// tile (`CardsView`), all while the grid has the keyboard, which a click
-/// gives it. He drags a tile onto a deck in the sidebar, with the other
-/// selected ones when it's one of them, as Change Deck… moves them
-/// (`SidebarDrops.swift`).
+/// else its front's text, centered, with a dot for where its card stands:
+/// green once Lucas met it, orange while it's due, and none while it's new,
+/// whose tile is dimmed (`CardsWindowGrid.swift` decides which). Lucas
+/// selects tiles as in Photos and the Finder, and the state decides what
+/// each click and key selects: a click selects one, a ⌘-click adds one or
+/// takes it out, a Shift-click selects the run from the last one clicked, a
+/// click between the tiles selects none, the arrow keys move the selection,
+/// with Shift extending the run, and Edit › Select All, ⌘A, selects every
+/// tile, all while the grid has the keyboard, which a click gives it. He
+/// drags a tile onto a deck in the sidebar, with the other selected ones
+/// when it's one of them, as Change Deck… moves them (`SidebarDrops.swift`),
+/// and the state says what the drag carries.
 struct CardGrid: View {
     @Binding var state: CardsWindowState
-    /// Whether the grid has the keyboard, for the arrow keys and ⌘A.
+    /// Whether the grid has the keyboard, for the arrow keys and Select All.
     let isFocused: FocusState<Bool>.Binding
     /// How many tiles a row the grid lays out, which the arrow keys go up
     /// and down by.
     @State private var tilesPerRow = 1
-    /// The tiles' pictures, each read once from its image.
-    @State private var pictures = TilePictures()
+    /// The thumbnails of the tiles' pictures, which the tiles make as they
+    /// appear, and keep while there's room.
+    @State private var thumbnails = TileThumbnails()
     @Environment(\.layoutDirection) private var layoutDirection
 
     /// The least width of a tile, as the mock's: the grid fits as many as it
@@ -51,7 +52,7 @@ struct CardGrid: View {
                         spacing: Self.spacing
                     ) {
                         ForEach(tiles) { tile in
-                            tileView(tile, among: tiles)
+                            tileView(tile)
                         }
                     }
                     .onGeometryChange(for: CGFloat.self) { geometry in
@@ -61,16 +62,20 @@ struct CardGrid: View {
                         tilesPerRow = max(1, Int((width + Self.spacing) / (Self.tileWidth + Self.spacing)))
                     }
                     .padding(16)
+                    // VoiceOver goes into the tiles as a group, named for
+                    // whose cards they are, as the mock's grid is named.
+                    .accessibilityElement(children: .contain)
+                    .accessibilityLabel(accessibilityName)
                 }
                 // A click between the tiles selects none, as in the Finder: a
                 // tile's own click takes precedence over this one.
                 .contentShape(.rect)
                 .onTapGesture {
                     isFocused.wrappedValue = true
-                    state.select([])
+                    state.clickBetweenTiles()
                 }
-                // The card Show Card selected, or the arrow keys moved to,
-                // which may be far down the grid.
+                // The card Show Card or Add selected, or the arrow keys
+                // moved to, which may be far down the grid.
                 .onChange(of: state.cardToReveal, initial: true) {
                     guard let id = state.cardToReveal else { return }
                     proxy.scrollTo(id)
@@ -86,13 +91,41 @@ struct CardGrid: View {
                 move(for: press.key), tilesPerRow: tilesPerRow, extending: press.modifiers.contains(.shift))
             return .handled
         }
+        // Edit › Select All, from the menu or by ⌘A, sent to the grid while
+        // it has the keyboard: a text field that has it, as the search field
+        // or the editor's, selects its own text instead.
+        .onCommand(#selector(NSResponder.selectAll(_:))) {
+            state.selectAllTiles()
+        }
     }
 
-    /// The tile of `tile`, among the grid's `tiles`, which a click selects,
-    /// as the keys held down say, and Lucas drags onto a deck.
-    private func tileView(_ tile: CardsWindowState.Tile, among tiles: [CardsWindowState.Tile]) -> some View {
+    /// What VoiceOver names the grid: the cards of the deck the sidebar
+    /// chose, by its whole name. The grid lists a deck's cards alone, since
+    /// tags and types left the window (#538), so the sidebar always chose a
+    /// deck while it shows; Default's name stands for none.
+    private var accessibilityName: String {
+        guard let deck = state.selectedDeck, deck != Deck.defaultName else {
+            return String(
+                localized: "Cards in Default",
+                comment: """
+                    What VoiceOver names the Cards window's grid while it lists Default's cards, the deck of cards \
+                    with no other.
+                    """)
+        }
+        return String(
+            localized: "Cards in \(TagPath.shown(deck))",
+            comment: """
+                What VoiceOver names the Cards window's grid while it lists a deck's cards, those of the decks \
+                inside it too, with the deck's whole name, like “Idiomas › Inglés”.
+                """)
+    }
+
+    /// The tile of `tile`, which a click selects, as the keys held down say,
+    /// and Lucas drags onto a deck, with what the state says it drags.
+    private func tileView(_ tile: CardsWindowState.Tile) -> some View {
         let isSelected = state.selection.contains(tile.id)
-        return CardTile(tile: tile, picture: picture(of: tile), isSelected: isSelected)
+        let images = state.tileImages
+        return CardTile(tile: tile, isSelected: isSelected, thumbnails: thumbnails, images: images, readAt: state.now)
             .id(tile.id)
             .onTapGesture {
                 click(tile.id)
@@ -101,21 +134,7 @@ struct CardGrid: View {
                 isFocused.wrappedValue = true
                 state.clickTile(tile.id, .alone)
             }
-            .draggable(SidebarDrag(dragged: dragged(from: tile.id, among: tiles)))
-    }
-
-    /// The picture `tile` shows: its image, made once, or that it isn't read
-    /// yet, or couldn't be; or nil when the tile shows no picture.
-    private func picture(of tile: CardsWindowState.Tile) -> CardTile.Picture? {
-        guard case .picture(let name) = tile.face else { return nil }
-        switch state.images[name] {
-        case .success(let data):
-            return pictures.picture(name, from: data).map(CardTile.Picture.shown) ?? .unreadable
-        case .failure:
-            return .unreadable
-        case nil:
-            return .unread
-        }
+            .draggable(SidebarDrag(dragged: state.draggedCards(from: tile.id)))
     }
 
     /// Selects the tile of the card `id` as a click with the keys Lucas
@@ -126,15 +145,6 @@ struct CardGrid: View {
             keys.contains(.shift) ? .extending : keys.contains(.command) ? .adding : .alone
         isFocused.wrappedValue = true
         state.clickTile(id, click)
-    }
-
-    /// What dragging the tile of the card `id` drags: the selected tiles, in
-    /// the grid's order, when it's one of them, or else itself.
-    private func dragged(from id: CardRow.ID, among tiles: [CardsWindowState.Tile]) -> [CardsWindowState.Dragged] {
-        guard state.selection.contains(id) else {
-            return [.card(id)]
-        }
-        return tiles.filter { state.selection.contains($0.id) }.map { .card($0.id) }
     }
 
     /// Where the arrow key `key` moves the selection: up and down by a row,
@@ -177,21 +187,41 @@ private struct GridLegend: View {
 /// alone, as the Cards window says it (`FrontCell`), with its dot at its top
 /// corner, on the trailing side; dimmed while it's new, and ringed with the
 /// accent color while it's selected. VoiceOver reads it as its front, and
-/// where it stands.
+/// where it stands. A picture's tile reads its image as it appears, away
+/// from the main actor, and makes a thumbnail of it, which the grid's
+/// `TileThumbnails` keeps while there's room, and the tile while it's in
+/// sight; it reads it again each time the window reads the cards while it
+/// couldn't show it, as while it's on its way from another device.
 private struct CardTile: View {
     /// A picture a tile shows, as it is.
     enum Picture {
-        case shown(NSImage)
-        /// Not read yet, which it is soon after the grid lists the card.
+        case shown(CGImage)
+        /// Not read yet, which it is soon after the tile appears, or on its
+        /// way from another device.
         case unread
         /// Not an image, or its file couldn't be read.
         case unreadable
     }
 
+    /// What a tile reads its picture again for: its image, and when the
+    /// window last read the cards.
+    nonisolated struct PictureRead: Equatable {
+        let name: ImageName
+        let readAt: Date
+    }
+
     let tile: CardsWindowState.Tile
-    /// The picture it shows, when its face is one.
-    let picture: Picture?
     let isSelected: Bool
+    /// The thumbnails the grid's tiles made, which this one's picture comes
+    /// from while they keep it.
+    let thumbnails: TileThumbnails
+    /// What reads the tile's image.
+    let images: CardsWindowState.TileImages
+    /// When the window last read the cards.
+    let readAt: Date
+    /// The picture the tile made of its image, by the image's name, while
+    /// it's in sight.
+    @State private var made: (name: ImageName, picture: Picture)? = nil
 
     private var isNew: Bool {
         tile.mark == .new
@@ -225,30 +255,80 @@ private struct CardTile: View {
             .accessibilityLabel(label)
             .accessibilityValue(tile.mark.name)
             .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+            .task(id: pictureRead) {
+                guard let pictureRead else { return }
+                await makePicture(pictureRead)
+            }
+            .onDisappear {
+                made = nil
+            }
+    }
+
+    /// What the tile reads its picture for, while its face is one.
+    private var pictureRead: PictureRead? {
+        guard case .picture(let name) = tile.face else { return nil }
+        return PictureRead(name: name, readAt: readAt)
+    }
+
+    /// The picture of the image `name`: the one the tile made, or else the
+    /// grid's thumbnail, or else that it isn't read yet.
+    private func picture(named name: ImageName) -> Picture {
+        if let made, made.name == name {
+            return made.picture
+        }
+        return thumbnails.thumbnail(name).map(Picture.shown) ?? .unread
+    }
+
+    /// Makes the tile's picture for `read`: the grid's thumbnail of its
+    /// image while it keeps one, or else one made of the image, which the
+    /// grid keeps; or that it can't be shown, or not yet.
+    private func makePicture(_ read: PictureRead) async {
+        if let thumbnail = thumbnails.thumbnail(read.name) {
+            made = (name: read.name, picture: .shown(thumbnail))
+            return
+        }
+        let thumbnail = await madeThumbnail(of: read.name, readingWith: images)
+        if case .made(let image, let cost) = thumbnail {
+            thumbnails.keep(image, costing: cost, as: read.name)
+        }
+        // Out of sight, or read again, meanwhile.
+        guard !Task.isCancelled else { return }
+        switch thumbnail {
+        case .made(let image, _):
+            made = (name: read.name, picture: .shown(image))
+        case .unreadable:
+            made = (name: read.name, picture: .unreadable)
+        case .onItsWay:
+            made = (name: read.name, picture: .unread)
+        }
     }
 
     /// What fills the tile.
     @ViewBuilder
     private var face: some View {
         switch tile.face {
-        case .picture:
-            switch picture {
-            case .shown(let image)?:
-                Image(nsImage: image)
+        case .picture(let name):
+            switch picture(named: name) {
+            case .shown(let image):
+                Image(decorative: image, scale: 1)
                     .resizable()
                     .scaledToFill()
                     .opacity(isNew ? 0.7 : 1)
-            case .unreadable?:
+            case .unreadable:
                 placeholder("photo.badge.exclamationmark")
-            case .unread?, nil:
+            case .unread:
                 placeholder("photo")
             }
         case .text(let text):
+            // Centered, as the mock draws it: centered lines have no side
+            // to start from, and SwiftUI gives each its text's own direction,
+            // so an Arabic front reads from the right there too.
             Text(text)
                 .font(.title3)
                 .fontWeight(.semibold)
                 .foregroundStyle(isNew ? AnyShapeStyle(.secondary) : AnyShapeStyle(.primary))
-                .alignedAsItReads(text)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .padding(10)
         case .sound:
             Label {
@@ -353,41 +433,76 @@ extension CardsWindowState.Tile.Mark {
     }
 }
 
-/// The tiles' pictures, each made once from its image's data, as a thumbnail
-/// no larger than a tile can be, with ImageIO, as Apple's "Image and Graphics
-/// Best Practices" (WWDC 2018) advises for downsampling, and kept while the
-/// grid shows, which is our own: an image never changes once it's in, named
-/// by its content (`ImageName`), so a selection that redraws the tiles
-/// neither decodes the images again nor holds them at their full size. A
-/// class, so the grid fills it as it draws, which changes nothing SwiftUI
-/// watches.
+/// The thumbnails of the grid's tiles, by their images' names, which the
+/// tiles make as they appear (`madeThumbnail(of:readingWith:)`), kept in an
+/// `NSCache`, which lets go of some once they pass a hundred or 48 MB, a few
+/// screens of tiles, and when the Mac runs short of memory, as Apple's
+/// documentation of `NSCache` says. An image never changes once it's in,
+/// named by its content (`ImageName`), so a thumbnail is never stale. Our
+/// own: the cache's limits. A class, so the tiles fill it as they make
+/// thumbnails, which changes nothing SwiftUI watches.
 @MainActor
-private final class TilePictures {
-    private var pictures: [ImageName: NSImage] = [:]
+private final class TileThumbnails {
+    private let cache = NSCache<NSString, CGImage>()
 
-    /// The longest side of a thumbnail, in pixels: a tile is narrower than
-    /// two of the least ones and the room between them, some 234 points,
-    /// which a Retina display draws with twice the pixels.
-    private static let longestSide = 480
+    init() {
+        cache.countLimit = 100
+        cache.totalCostLimit = 48 * 1024 * 1024
+    }
 
-    /// The picture of the image `name`, made from `data` the first time, or
-    /// nil when it isn't an image.
-    func picture(_ name: ImageName, from data: Data) -> NSImage? {
-        if let picture = pictures[name] {
-            return picture
-        }
+    /// The thumbnail of the image `name`, while the cache keeps it.
+    func thumbnail(_ name: ImageName) -> CGImage? {
+        cache.object(forKey: name.rawValue as NSString)
+    }
+
+    /// Keeps `thumbnail`, of the image `name`, whose pixels take `cost`
+    /// bytes.
+    func keep(_ thumbnail: CGImage, costing cost: Int, as name: ImageName) {
+        cache.setObject(thumbnail, forKey: name.rawValue as NSString, cost: cost)
+    }
+}
+
+/// The longest side of a tile's thumbnail, in pixels: a tile is narrower than
+/// two of the least ones and the room between them, some 234 points, which a
+/// Retina display draws with twice the pixels.
+private nonisolated let thumbnailLongestSide = 480
+
+/// What making a tile's thumbnail came to.
+private nonisolated enum TileThumbnail {
+    /// The thumbnail, with what its pixels take, in bytes.
+    case made(CGImage, cost: Int)
+    /// Not an image, or its file couldn't be read.
+    case unreadable
+    /// On its way from another device, so the tile shows without it.
+    case onItsWay
+}
+
+/// The thumbnail of the image `name`, read with `images`, away from the main
+/// actor: reading and decoding a photo takes a while, while the window goes
+/// on answering. ImageIO makes it no larger than a tile can be, decoding
+/// only what it needs, as Apple's "Image and Graphics Best Practices" (WWDC
+/// 2018) advises for downsampling.
+@concurrent
+private func madeThumbnail(
+    of name: ImageName, readingWith images: CardsWindowState.TileImages
+) async -> sending TileThumbnail {
+    switch images.image(name) {
+    case .success(let data):
         let options: [CFString: Any] = [
             kCGImageSourceCreateThumbnailFromImageAlways: true,
             kCGImageSourceCreateThumbnailWithTransform: true,
-            kCGImageSourceThumbnailMaxPixelSize: Self.longestSide,
+            kCGImageSourceThumbnailMaxPixelSize: thumbnailLongestSide,
+            kCGImageSourceShouldCacheImmediately: true,
         ]
         guard let source = CGImageSourceCreateWithData(data as CFData, nil),
             let thumbnail = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
         else {
-            return nil
+            return .unreadable
         }
-        let picture = NSImage(cgImage: thumbnail, size: .zero)
-        pictures[name] = picture
-        return picture
+        return .made(thumbnail, cost: thumbnail.bytesPerRow * thumbnail.height)
+    case .failure:
+        return .unreadable
+    case nil:
+        return .onItsWay
     }
 }

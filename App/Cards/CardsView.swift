@@ -7,9 +7,10 @@ import SwiftUI
 /// the chosen cards as tiles (`CardGrid.swift`), or a table with one row per
 /// capture and flagged card in the inbox, narrowed by the toolbar's search
 /// field, and the selected card or row whole beside it, with what Lucas can
-/// do with it at its foot. The window opens on the first deck Your Decks
-/// lists, and on nothing while it lists none. The sidebar's Your Decks
-/// section lists every deck as a tree, in the order the state lists them
+/// do with it at its foot. The window opens on the first deck of the queue
+/// new cards come from, the one Lucas is meeting, or else on the first deck
+/// Your Decks lists, and on nothing while it lists none. The sidebar's Your
+/// Decks section lists every deck as a tree, in the order the state lists them
 /// (`CardsWindowDecks.swift`): Default first while it holds cards or has a
 /// switch on, then those at the top of the tree with cards in Lucas's
 /// reviews in the order of the queue new cards come from, a deck listed
@@ -38,15 +39,15 @@ import SwiftUI
 /// with how many cards it brings, which the window reads from the app as it
 /// opens: one chosen shows in the grid's place, with Add Deck…, which asks
 /// How fast? before Start adds it, and its first card, front and back, in the
-/// detail's (#458). The grid lists the cards in the order they came in. He edits a card or a capture right there, in
-/// fields that take the detail's place while the sidebar and the grid or the
-/// inbox wait. He selects several tiles with ⌘ or Shift, as in the Finder, or
-/// all of them with ⌘A, and then the detail says how many, with what he can
-/// do with all of them. New Card in the toolbar, or ⌘N, and Convert to Card
-/// on a capture open the card form, a sheet of its own
-/// (`CardFormSheet.swift`), Import… in the
-/// toolbar opens the Import sheet (`ImportSheet.swift`), which imports a text
-/// file of cards, and Export… opens the Export sheet (`ExportSheet.swift`),
+/// detail's (#458). The grid lists the cards in the order they came in. He
+/// edits a card or a capture right there, in fields that take the detail's
+/// place while the sidebar and the grid or the inbox wait. He selects several
+/// tiles with ⌘ or Shift, as in the Finder, or all of them with Select All,
+/// ⌘A, and then the detail says how many, with what he can do with all of
+/// them. New Card in the toolbar, or ⌘N, and Convert to Card on a capture
+/// open the card form, a sheet of its own (`CardFormSheet.swift`), Import…
+/// in the toolbar opens the Import sheet (`ImportSheet.swift`), which imports
+/// a text file of cards, and Export… opens the Export sheet (`ExportSheet.swift`),
 /// which saves cards to one. `CardsWindowState` decides what the window lists,
 /// shows, offers and asks, and what happens when Lucas acts, and the view
 /// draws it. It reads the cards again whenever the engine says they changed,
@@ -73,7 +74,7 @@ struct CardsView: View {
 
     /// The content for the user's cards in `model`, opening with `state` when
     /// it's given, as `make render` opens it partway through an import, and
-    /// otherwise on the first deck Your Decks lists, once it reads the cards.
+    /// otherwise on the deck the state opens on, once it reads the cards.
     init(model: AppModel, state: CardsWindowState? = nil) {
         self.model = model
         _state = State(initialValue: state ?? model.openCardsWindow())
@@ -223,21 +224,6 @@ struct CardsView: View {
                 Text("Find", comment: "A hidden button of the Cards window: ⌘F, which goes to the search field.")
             }
             .keyboardShortcut("f")
-            .hidden()
-            // ⌘A selects every tile while the grid has the keyboard:
-            // elsewhere, as in the search field or the editor's fields, it
-            // selects their text.
-            Button {
-                state.selectAllTiles()
-            } label: {
-                Text(
-                    "Select All",
-                    comment: """
-                        A hidden button of the Cards window: ⌘A, which selects every card the grid lists, while the \
-                        grid has the keyboard.
-                        """)
-            }
-            .keyboardShortcut(isListingFocused && listsTiles ? KeyboardShortcut("a") : nil)
             .hidden()
             CardSizeKeys(model: model)
         }
@@ -645,8 +631,8 @@ struct CardsView: View {
     }
 
     /// What Lucas chooses from, in the sections the state lists, in its
-    /// order. One is chosen at a time: the first deck as the window opens,
-    /// and none while Your Decks lists none.
+    /// order. One is chosen at a time: the deck the state opens on as the
+    /// window opens, and none while Your Decks lists none.
     private var sidebar: some View {
         List(selection: chosenItem) {
             ForEach(state.sidebarSections) { section in
@@ -805,15 +791,6 @@ struct CardsView: View {
                     "What you capture, and the cards you flag, wait here to be refined.",
                     comment: "In the Cards window, when the inbox is empty."))
         }
-    }
-
-    /// Whether the middle pane lists the grid, with some tile in it, which
-    /// ⌘A selects.
-    private var listsTiles: Bool {
-        guard state.shownFichaDeck == nil, case .success(.cards(let rows)) = state.listing else {
-            return false
-        }
-        return !rows.isEmpty
     }
 
     /// What the middle pane lists: what the state lists, or the one of

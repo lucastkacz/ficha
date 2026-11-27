@@ -27,8 +27,8 @@ struct CardsWindowStateTests {
     }
 
     @Test(
-        "the window offers New Card and Import… while there are no cards, no search, and the sidebar chose nothing, and not once it chose the inbox"
-    )
+        "the window offers New Card and Import… while there are no cards, no search, and the sidebar chose nothing, and not once it chose the inbox",
+        .bug(id: 536))
     func theWindowOffersTheFirstCardsWhileThereAreNone() throws {
         var window = openWindow()
         #expect(window.sidebarItem == nil)
@@ -105,7 +105,9 @@ struct CardsWindowStateTests {
     }
 
     // A set-aside card won't show up, so its tile's dot never says it's due.
-    @Test("a set-aside deck's group holds its set-aside cards, whose tiles say they're met or new, never due")
+    @Test(
+        "a set-aside deck's group holds its set-aside cards, whose tiles say they're met or new, never due",
+        .bug(id: 536))
     func aSetAsideDecksCardsStayListed() throws {
         // eudaimonía gets learned, graduated to wait 21 days or more, and
         // comes due; ataraxia is new.

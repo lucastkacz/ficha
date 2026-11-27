@@ -59,9 +59,10 @@ private struct FlagIcon: View {
     }
 }
 
-/// The mark beside a buried card, in the inbox and the detail: an eye
-/// crossed out, since the card stays out of the reviews until it's
-/// unburied.
+/// The mark beside a buried card in the detail, as beside the card an
+/// expansion or a follow-up is tied to: an eye crossed out, since the card
+/// stays out of the reviews until it's unburied. The inbox lists no buried
+/// card.
 private struct BuriedIcon: View {
     var body: some View {
         Image(systemName: "eye.slash")
@@ -417,8 +418,7 @@ private struct CardWords: View {
                 "Back today at \(time.formatted(date: .omitted, time: .shortened))",
                 comment: """
                     In the Cards window's detail: the card is due again later today, at this time, like “Back today \
-                    at 3:00 PM”. Today runs until Ficha's day starts again, at 4:00, so the time can be after \
-                    midnight.
+                    at 3:00 PM”.
                     """)
         case .on(let day):
             Text(

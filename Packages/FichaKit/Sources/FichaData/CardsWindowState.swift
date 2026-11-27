@@ -2,8 +2,9 @@ import FichaCore
 import Foundation
 
 /// The Cards window while it's open: what its sidebar chose, the first deck
-/// Your Decks lists as it opens, or nothing while it lists none, what Lucas
-/// looks for and what he selected, what the grid lists, a tile for each card
+/// of the queue new cards come from as it opens (`deckToOpenOn`), or nothing
+/// while Your Decks lists none, what Lucas looks for and what he selected,
+/// what the grid lists, a tile for each card
 /// (`CardsWindowGrid.swift`), read from his cards with the scheduling
 /// settings in Settings, and so what the detail shows, a card in words, with
 /// its numbers under Details (`CardWording.swift`), and what Lucas can do
@@ -325,11 +326,11 @@ public struct CardsWindowState: Sendable {
         case readFichaDeck(FichaDeck)
     }
 
-    /// What the sidebar chose: the first deck Your Decks lists, as the window
-    /// opens, until Lucas picks another, or the inbox or one of Ficha's
-    /// decks; or nothing, while Your Decks lists no deck and Lucas picked
-    /// nothing else, as before the window first reads the cards, and when a
-    /// new user opens it.
+    /// What the sidebar chose: the deck the window opens on (`deckToOpenOn`),
+    /// the first of the queue new cards come from, until Lucas picks another,
+    /// or the inbox or one of Ficha's decks; or nothing, while Your Decks
+    /// lists no deck and Lucas picked nothing else, as before the window
+    /// first reads the cards, and when a new user opens it.
     public internal(set) var sidebarItem: SidebarItem?
     /// What Lucas looks for in what the sidebar chose, from the search field.
     public internal(set) var search = ""
@@ -338,16 +339,18 @@ public struct CardsWindowState: Sendable {
     public private(set) var selection: Set<CardRow.ID> = []
     /// The card Shift-click, and Shift with an arrow key, extend the grid's
     /// selection from: the last one clicked, alone or with ⌘, or moved to
-    /// with an arrow key alone, or selected alone (`CardsWindowGrid.swift`).
+    /// with an arrow key alone, or selected alone, and none once a click
+    /// between the tiles selects none (`CardsWindowGrid.swift`).
     var anchorCard: CardRow.ID?
     /// The card the arrow keys move the grid's selection from: the last one
-    /// clicked, moved to or selected alone.
+    /// clicked, moved to or selected alone, and none once a click between
+    /// the tiles selects none.
     var currentCard: CardRow.ID?
     /// The row Lucas selected in the inbox, one at a time, which its table
     /// may no longer list, as with the cards.
     public private(set) var inboxSelection: InboxRow.ID?
-    /// The card the grid scrolls to, until it has: the one Show Card
-    /// selected, which may be far down the grid.
+    /// The card the grid scrolls to, until it has: the one Show Card or Add
+    /// selected, or an arrow key moved to, which may be far down the grid.
     public internal(set) var cardToReveal: CardRow.ID?
     /// The review log of the card the detail shows, while it shows one: read
     /// with the cards, and again when Lucas selects another card.
@@ -415,9 +418,9 @@ public struct CardsWindowState: Sendable {
     /// The images on the sides of the card the user edits, as Save would give
     /// them to it, while they edit one: `CardsWindowImages.swift`.
     public internal(set) var editedImages = SideImages()
-    /// The images the window shows, in the grid's tiles, the detail, the
-    /// editor and the form, each read, or held until it's saved:
-    /// `CardsWindowImages.swift`.
+    /// The images the window shows in the detail, the editor and the form,
+    /// each read, or held until it's saved: `CardsWindowImages.swift`. The
+    /// grid's tiles read theirs on their own (`TileImages`).
     public internal(set) var images = ShownImages()
     /// The sounds on the sides of the card the user edits, as Save would give
     /// them to it, while they edit one: `CardsWindowSounds.swift`.
@@ -636,11 +639,15 @@ public struct CardsWindowState: Sendable {
 
     /// Selects the cards in `selection`, in a group of cards. A card selected
     /// alone is where a Shift-click and the arrow keys go from, as a click
-    /// on it would make it (`CardsWindowGrid.swift`).
+    /// on it would make it, and none selected leaves them nothing to go
+    /// from, so they start afresh (`CardsWindowGrid.swift`).
     public mutating func select(_ selection: Set<CardRow.ID>) {
         if selection.count == 1 {
             anchorCard = selection.first
             currentCard = selection.first
+        } else if selection.isEmpty {
+            anchorCard = nil
+            currentCard = nil
         }
         guard selection != self.selection else { return }
         self.selection = selection
@@ -946,14 +953,14 @@ public struct CardsWindowState: Sendable {
     /// the review log of the card the detail shows.
     /// It follows each deck renamed or deleted since it last read, whoever
     /// did it (`follow(_:)`). While the sidebar chose nothing, as the window
-    /// opens, it chooses the first deck Your Decks lists, as soon as it lists
-    /// one. When the chosen deck is gone, as Default once its last card moved
-    /// out, the sidebar goes back to that first deck, or to nothing while
-    /// Your Decks lists none. It finds which of
+    /// opens, it chooses the deck it opens on (`deckToOpenOn`), as soon as
+    /// Your Decks lists one. When the chosen deck is gone, as Default once its
+    /// last card moved out, the sidebar goes back to that deck, or to nothing
+    /// while Your Decks lists none. It finds which of
     /// Ficha's decks the user has added, as `Engine.hasAdded(_:)` says, and
     /// when the one the sidebar chose is added, by Start or meanwhile from
-    /// another device, the sidebar chooses the deck, or the first deck while
-    /// Your Decks doesn't list it.
+    /// another device, the sidebar chooses the deck, or the deck the window
+    /// opens on while Your Decks doesn't list it.
     /// Then, while nothing's open, it asks How fast? for the one of Ficha's
     /// decks the review panel asked for meanwhile, which chooses it in the
     /// sidebar (`askForTheFichaDeckAskedToAdd()`). This is the app's read,
@@ -994,9 +1001,9 @@ public struct CardsWindowState: Sendable {
                 sidebarItem = listedDeck(deck.name) != nil ? .cards(.deck(deck.name)) : nil
             }
             if sidebarItem == nil {
-                // As the window opens, and once what it chose is gone: the
-                // first deck, as soon as Your Decks lists one.
-                sidebarItem = deckRows.first?.item
+                // As the window opens, and once what it chose is gone, as
+                // soon as Your Decks lists a deck.
+                sidebarItem = deckToOpenOn?.item
             }
             if case .cards(let group) = sidebarItem {
                 listing = .success(.cards(try engine.cardRows(in: group, matching: search, with: scheduler)))
@@ -1050,11 +1057,12 @@ private struct CardReviewLog: Sendable {
 }
 
 extension Engine {
-    /// Opens the Cards window, which chooses the first deck Your Decks lists
-    /// once it reads the cards, with nothing searched or selected, for
-    /// Lucas's cards standing by `scheduler`, the settings in
-    /// Settings, which it reads once the window asks, with `activeHours`,
-    /// Settings' too, or Ficha's own while it's given none, remembering
+    /// Opens the Cards window, which chooses the deck it opens on, the first
+    /// of the queue new cards come from, once it reads the cards, with
+    /// nothing searched or selected, for Lucas's cards standing by
+    /// `scheduler`, the settings in Settings, which it reads once the window
+    /// asks, with `activeHours`, Settings' too, or Ficha's own while it's
+    /// given none, remembering
     /// `lastDeckAddedTo`, the deck he last added a card to, as this device's
     /// preferences keep it: Default when they keep none.
     public func openCardsWindow(

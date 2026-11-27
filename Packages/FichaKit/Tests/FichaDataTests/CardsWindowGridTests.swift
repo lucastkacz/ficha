@@ -5,8 +5,8 @@ import Testing
 
 /// Tests on the Cards window's grid (#536): what each tile shows of its
 /// card, its front's picture or its text, and the dot for where the card
-/// stands, and how clicks and the arrow keys select tiles, as in Photos and
-/// the Finder, on the default scheduler.
+/// stands, how clicks and the arrow keys select tiles, as in Photos and the
+/// Finder, and what dragging a tile drags, on the default scheduler.
 struct CardsWindowGridTests {
     let time = ManualTimeSource(now: Date(timeIntervalSince1970: 1_760_000_000))
     let engine: Engine
@@ -45,7 +45,33 @@ struct CardsWindowGridTests {
             window.tiles.map(\.face) == [
                 .picture(bird), .picture(bird), .text("petricor"), .text("¿Qué nota es?"), .sound,
             ])
+        #expect(try window.tileImages.image(bird)?.get() == engine.image(bird))
+    }
+
+    // The grid's tiles read their pictures as each appears, so the window
+    // reads only the images its detail shows: the hornero's two once it's
+    // selected, and never the egg's tile's.
+    @Test(
+        "the window reads no tile's picture as it lists the cards or as Lucas selects one: each tile reads its own, and the detail its card's",
+        .bug(id: 536))
+    func eachTileReadsItsOwnPicture() throws {
+        let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))
+        let nest = try engine.addImage(picture(width: 800, height: 600, red: 0.3))
+        let egg = try engine.addImage(picture(width: 800, height: 600, red: 0.1))
+        let hornero = try engine.create(
+            card(nil, front: "¿Qué ave es?", back: "El hornero.", frontImage: bird, backImage: nest))
+        try engine.create(card(nil, front: "¿De quién es este huevo?", back: "Del hornero.", frontImage: egg))
+        var window = openWindow()
+        let readOnOpening = [bird, nest, egg].filter { window.images[$0] != nil }
+
+        window.select([hornero.id])
+
+        #expect(window.tiles.map(\.face) == [.picture(bird), .picture(egg)])
+        #expect(readOnOpening.isEmpty)
         #expect(try window.images[bird]?.get() == engine.image(bird))
+        #expect(try window.images[nest]?.get() == engine.image(nest))
+        #expect(window.images[egg] == nil)
+        #expect(try window.tileImages.image(egg)?.get() == engine.image(egg))
     }
 
     // A deck's row counts a card met once its front-first way is, so a
@@ -156,6 +182,85 @@ struct CardsWindowGridTests {
         #expect(runUp == Set(ids[3...6]))
         #expect(longerRun == Set(ids[2...6]))
         #expect(window.cardToReveal == ids[2])
+    }
+
+    // Nine tiles, three a row:
+    //   0 1 2
+    //   3 4 5
+    //   6 7 8
+    @Test(
+        "after a ⌘-click takes a tile out of the selection, an arrow key moves from that tile, the last one Lucas clicked, and not from the first",
+        .bug(id: 536))
+    func anArrowAfterACommandClickMovesFromTheTileClicked() throws {
+        let ids = try (1...9).map { number in
+            try engine.create(card(nil, front: "Carta \(number)", back: "Un número.")).id
+        }
+        var window = openWindow()
+        window.clickTile(ids[2], .adding)
+        window.clickTile(ids[4], .adding)
+        window.clickTile(ids[6], .adding)
+        window.clickTile(ids[6], .adding)
+        let left = window.selection
+
+        window.moveSelection(.forward, tilesPerRow: 3, extending: false)
+        let movedForward = window.selection
+        window.clickTile(ids[0], .adding)
+        window.clickTile(ids[0], .adding)
+        window.moveSelection(.down, tilesPerRow: 3, extending: false)
+
+        #expect(left == [ids[2], ids[4]])
+        #expect(movedForward == [ids[7]])
+        #expect(window.selection == [ids[3]])
+        #expect(window.cardToReveal == ids[3])
+    }
+
+    @Test(
+        "a click between the tiles selects none, and a Shift-click or Shift with an arrow key after it starts afresh, from no tile clicked before",
+        .bug(id: 536))
+    func aClickBetweenTheTilesStartsAfresh() throws {
+        let ids = try (1...7).map { number in
+            try engine.create(card(nil, front: "Carta \(number)", back: "Un número.")).id
+        }
+        var window = openWindow()
+        window.clickTile(ids[5], .alone)
+
+        window.clickBetweenTiles()
+        let none = window.selection
+        let detailOfNone = window.detail
+        window.moveSelection(.forward, tilesPerRow: 3, extending: true)
+        let firstAlone = window.selection
+        window.moveSelection(.forward, tilesPerRow: 3, extending: true)
+        let runFromTheFirst = window.selection
+        window.clickBetweenTiles()
+        window.clickTile(ids[3], .extending)
+        let clickedAlone = window.selection
+        window.clickTile(ids[1], .extending)
+
+        #expect(none.isEmpty)
+        #expect(detailOfNone == .noCardSelected)
+        #expect(firstAlone == [ids[0]])
+        #expect(runFromTheFirst == [ids[0], ids[1]])
+        #expect(clickedAlone == [ids[3]])
+        #expect(window.selection == Set(ids[1...3]))
+    }
+
+    @Test(
+        "dragging a selected tile drags every selected tile, in the grid's order, and dragging another drags it alone, leaving the selection as it is",
+        .bug(id: 536))
+    func draggingATileDragsTheSelectionWithIt() throws {
+        let ids = try ["uno", "dos", "tres", "cuatro"].map { front in
+            try engine.create(card(nil, front: front, back: "Un número.")).id
+        }
+        var window = openWindow()
+        window.clickTile(ids[3], .alone)
+        window.clickTile(ids[1], .adding)
+
+        let draggedSelected = window.draggedCards(from: ids[3])
+        let draggedAlone = window.draggedCards(from: ids[2])
+
+        #expect(draggedSelected == [.card(ids[1]), .card(ids[3])])
+        #expect(draggedAlone == [.card(ids[2])])
+        #expect(window.selection == [ids[1], ids[3]])
     }
 
     @Test("Select All selects every tile the grid lists", .bug(id: 536))

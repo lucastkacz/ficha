@@ -230,8 +230,12 @@ extension CardsWindowState {
     /// capture keeps it as its capture, and the capture stays in the inbox
     /// until the form closes. Then it clears the front and the back, their
     /// images and sounds too, and keeps the deck, the source and Both ways,
-    /// for the next card. When the card can't be saved, it records why, and
-    /// the fields stay as they were.
+    /// for the next card. While the grid lists the card, at its end, as it
+    /// lists cards in the order they came in, the window selects it and
+    /// scrolls to it, unless Lucas is editing a card meanwhile; a card that
+    /// went to a deck the grid doesn't list leaves the selection as it was.
+    /// When the card can't be saved, it records why, and the fields stay as
+    /// they were.
     public mutating func addCard() {
         guard let form = cardForm, form.canAdd, let content = form.content else { return }
         var added: Card?
@@ -248,6 +252,10 @@ extension CardsWindowState {
         // A blank front repeats no card.
         cardForm?.frontWarning = nil
         readAgain()
+        if editing == nil, gridCardIDs.contains(added.id) {
+            select([added.id])
+            cardToReveal = added.id
+        }
     }
 
     /// Shows the card the front repeats, while the form warns about one: the

@@ -5,7 +5,7 @@ import Testing
 
 /// Tests on a deck's color and emoji in the Cards window (ADR 0024): Color
 /// and Emoji… in a deck's menu, Default's too, the same in the sidebar and in
-/// the Actions menu above the card list, and the sidebar's decks showing
+/// the Actions menu above the grid, and the sidebar's decks showing
 /// them, their own or the nearest parent's, on the default scheduler.
 struct CardsWindowDeckLooksTests {
     let engine: Engine
@@ -68,9 +68,9 @@ struct CardsWindowDeckLooksTests {
         #expect(window.failure == nil)
     }
 
-    // The Actions menu above the card list is the keyboard's way to a deck's
-    // menu, so it offers the same Color submenu.
-    @Test("the deck the sidebar chose offers the same menu above the card list, with its color ticked")
+    // The Actions menu above the grid is the keyboard's way to a deck's menu,
+    // so it offers the same Color submenu.
+    @Test("the deck the sidebar chose offers the same menu above the grid, with its color ticked")
     func theChosenDecksMenuHasItsColor() throws {
         try approveInDeck("La Gioconda", deck: "Arte", in: engine)
         try engine.setColor(.purple, ofDeck: "Arte")

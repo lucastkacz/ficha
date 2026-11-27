@@ -3,8 +3,8 @@ import Foundation
 
 // Renaming, moving and deleting decks in the Cards window (ADR 0024), as the
 // engine does them (`RenamingDecks.swift`, `DeletingDecks.swift`). A deck's
-// menu, in the sidebar and in the Actions menu above the card list, which is
-// its keyboard path, offers Rename…, which asks for the deck's whole name in
+// menu, in the sidebar and in the Actions menu above the grid, which is its
+// keyboard path, offers Rename…, which asks for the deck's whole name in
 // the rename sheet, so that a name with other levels moves it, as a drop
 // does, and Delete…, which asks first, saying how many cards and decks it
 // deletes; Default's offers neither. In the sidebar, cards dropped on a deck
@@ -99,9 +99,9 @@ extension CardsWindowState {
         askForTheFichaDeckAskedToAdd()
     }
 
-    /// What Lucas drags onto the sidebar's decks: a card of the card list, by
-    /// its id, each of the selected ones when he drags one of them, or a
-    /// deck's row, by its whole name.
+    /// What Lucas drags onto the sidebar's decks: a card of the grid, by its
+    /// id, each of the selected ones when he drags one of them, or a deck's
+    /// row, by its whole name.
     public enum Dragged: Sendable, Hashable, Codable {
         case card(CardRow.ID)
         case deck(String)
@@ -234,9 +234,9 @@ extension CardsWindowState {
     /// it closed, the deck the card form holds, and the one Show Card set
     /// aside, the editor's, and the one the last card was added to. A deck
     /// deleted lets go: the sidebar chooses nothing, until the read chooses
-    /// the first deck Your Decks lists, the forms' decks go to the deck a new
-    /// card starts in, and the editor's and the one the last card was added
-    /// to, to Default.
+    /// the deck the window opens on (`deckToOpenOn`), the forms' decks go to
+    /// the deck a new card starts in, and the editor's and the one the last
+    /// card was added to, to Default.
     mutating func follow(_ changes: DeckChangesSince) {
         lastDeckChangeFollowed = changes.last
         guard !changes.new.isEmpty else { return }

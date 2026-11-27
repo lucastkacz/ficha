@@ -198,6 +198,8 @@
   cursor: default;
 }
 .window .titlebar .title { font-weight: 700; font-size: var(--text-headline); margin-left: 10px; }
+/* A window's toolbar, at the title bar's trailing end, as macOS's unified toolbar. */
+.window .titlebar .toolbar-items { margin-left: auto; display: flex; gap: 8px; align-items: center; }
 .window .titlebar.centered .title { position: absolute; left: 0; right: 0; text-align: center; margin: 0; pointer-events: none; }
 .window.inactive .titlebar .title { color: var(--secondary-label); }
 .traffic { display: flex; gap: 8px; position: relative; z-index: 1; }
@@ -293,7 +295,7 @@
 /* KeyLabel: a title and the key that presses it. */
 .key { color: var(--secondary-label); font-size: var(--text-subheadline); }
 
-/* A capsule: the app's capsuleLook(tintedWith:), and the deck and tags of the panel's 'today' face. */
+/* A capsule: the app's badges, as AheadBadge, and the deck and tags of the panel's 'today' face. */
 .capsule {
   display: inline-flex;
   align-items: center;

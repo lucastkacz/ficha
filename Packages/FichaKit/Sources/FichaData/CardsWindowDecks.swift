@@ -17,7 +17,7 @@ import Foundation
 // it's open. Choosing a deck lists its cards and those of every deck inside
 // it. A deck's menu,
 // Default's too, the same in its row's context menu and in the Actions menu
-// above the card list while the sidebar chose it, which is its keyboard
+// above the grid while the sidebar chose it, which is its keyboard
 // path, sets it aside or prioritizes it (`DeckSwitches.swift`), and gives it
 // a color or an emoji (`DeckColorAndEmoji.swift`), which its row shows, as
 // the decks inside it that have none do; a set-aside deck is grayed, with
@@ -131,8 +131,8 @@ extension CardsWindowState {
     }
 
     /// What a deck's menu offers, Default's too: in the sidebar, as its row's
-    /// context menu, and above the card list while the sidebar chose it, as
-    /// the Actions menu, which is how the keyboard reaches it. The same menu
+    /// context menu, and above the grid while the sidebar chose it, as the
+    /// Actions menu, which is how the keyboard reaches it. The same menu
     /// in both places, which acts on the one deck: Set Aside, Prioritize,
     /// Color and Emoji…, and Rename… and Delete… while it offers them
     /// (`offersRenameAndDelete`). New Deck…, always above them, acts on no
@@ -220,6 +220,19 @@ extension CardsWindowState {
         return rows.indices.sorted { rank(of: $0) < rank(of: $1) }.map { rows[$0] }
     }
 
+    /// The deck the window opens on, and goes back to once what the sidebar
+    /// chose is gone, as the desktop mock opens on the first of its Your
+    /// Decks: the first deck of the queue new cards come from that Your
+    /// Decks lists, the one the user is meeting, in the order
+    /// `CardsInReviews.topDecksInQueueOrder` gives, Default too when it's
+    /// first there; or else, while no deck holds cards in the user's
+    /// reviews, the first deck Your Decks lists; or nil while it lists none.
+    var deckToOpenOn: DeckRow? {
+        let rows = deckRows
+        let inQueue = placedTopDecks.lazy.compactMap { deck in rows.first { $0.deck.name == deck } }
+        return inQueue.first ?? rows.first
+    }
+
     /// Whether the sidebar's deck `deck` is open, showing the decks inside
     /// it. Each starts open.
     public func isDeckOpen(_ deck: String) -> Bool {
@@ -254,9 +267,9 @@ extension CardsWindowState {
     }
 
     /// The menu of the deck the sidebar chose, which the Actions menu above
-    /// the card list offers, the keyboard's way to a deck's menu: nil while
-    /// the sidebar chose something else. While Lucas edits a card, it stays,
-    /// waiting with the card list, so the list doesn't move.
+    /// the grid offers, the keyboard's way to a deck's menu: nil while the
+    /// sidebar chose something else. While Lucas edits a card, it stays,
+    /// waiting with the grid, so the grid doesn't move.
     public var chosenDeckMenu: DeckMenu? {
         guard case .cards(.deck(let deck)) = sidebarItem else { return nil }
         return menu(forDeck: deck)

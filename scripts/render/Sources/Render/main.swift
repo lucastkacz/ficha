@@ -23,9 +23,9 @@ import SwiftUI
 /// A window the tool can draw, by the name its arguments give it, which the
 /// usage lists.
 enum Window: String, CaseIterable {
-    /// The Cards window as it opens, on Default, the first deck Your Decks
-    /// lists, with the three cards made by hand as tiles, the flag's
-    /// picture first.
+    /// The Cards window as it opens, on Default, the first deck of the queue
+    /// new cards come from, with its four cards as tiles: petricor, which
+    /// Lucas met, and the three made by hand, the flag's picture first.
     case cards
     /// The Cards window on the sample's graduated card that waits longest,
     /// selected in its deck, its detail saying in words when it's back, on a

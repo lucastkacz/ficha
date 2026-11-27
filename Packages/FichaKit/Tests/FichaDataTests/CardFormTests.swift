@@ -262,10 +262,44 @@ struct CardFormTests {
         #expect(try engine.inbox().captures.isEmpty)
     }
 
+    // A deck's grid lists a card just added at its end, which may be far
+    // down it.
+    @Test(
+        "after Add, the grid selects the card added and scrolls to it while it lists it, and a card added to a deck it doesn't list leaves the selection as it was",
+        .bug(id: 536))
+    func addSelectsTheCardAddedAndScrollsToIt() throws {
+        let ojala = try engine.create(card(nil, front: "ojalá", back: "Ojalá que llueva café."), deck: "Palabras")
+        var window = openWindow()
+        window.choose(.cards(.deck("Palabras")))
+        window.clickTile(ojala.id, .alone)
+        window.openNewCardForm()
+
+        window.type(front: "petricor", back: "El olor de la lluvia.")
+        window.addCard()
+        let petricor = try #require(window.cardForm?.addedCards.last)
+        let selectedOnAdding = window.selectedRows.map(\.id)
+        let revealedOnAdding = window.cardToReveal
+        // The grid scrolled to it.
+        window.cardRevealed()
+        var draft = try #require(window.cardForm?.draft)
+        draft.deck = "Historia"
+        window.changeDraft(draft)
+        window.type(front: "Coliseo", back: "En Roma.")
+        window.addCard()
+
+        #expect(petricor.deck == "Palabras")
+        #expect(selectedOnAdding == [petricor.id])
+        #expect(revealedOnAdding == petricor.id)
+        #expect(try engine.cards().map(\.front) == ["ojalá", "petricor", "Coliseo"])
+        #expect(window.listedCardIDs == [ojala.id, petricor.id])
+        #expect(window.selectedRows.map(\.id) == [petricor.id])
+        #expect(window.cardToReveal == nil)
+    }
+
     // So that what was typed isn't lost.
     @Test(
-        "showing the card a front repeats sets the form aside and selects the card in its deck, scrolled to, and New Card brings the form back as it was"
-    )
+        "showing the card a front repeats sets the form aside and selects the card in its deck, scrolled to, and New Card brings the form back as it was",
+        .bug(id: 536))
     func showingTheRepeatedCardSelectsIt() throws {
         let serendipia = try approveInDeck("serendipia", deck: "Palabras", in: engine)
         let ataraxia = try approveCard("ataraxia", in: engine)

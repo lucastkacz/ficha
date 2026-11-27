@@ -87,8 +87,8 @@ struct CardsWindowDeckEditsTests {
 
     // The sidebar chose Arte::Pintura, which goes with Arte.
     @Test(
-        "Delete… asks first, counting the cards it deletes and the decks inside, and Delete deletes them, the sidebar going back to the first deck"
-    )
+        "Delete… asks first, counting the cards it deletes and the decks inside, and Delete deletes them, the sidebar going back to the first deck of the queue new cards come from",
+        .bug(id: 536))
     func deleteAsksFirst() throws {
         try approveInDeck("La Gioconda", deck: "Arte::Pintura", in: engine)
         try approveInDeck("La Piedad", deck: "Arte", in: engine)
@@ -242,8 +242,8 @@ struct CardsWindowDeckEditsTests {
         #expect(window.failure == nil)
     }
 
-    /// The window as it opens, on the first deck the sidebar lists, with the
-    /// cards read.
+    /// The window as it opens, on the first deck of the queue new cards come
+    /// from that the sidebar lists, with the cards read.
     private func openWindow() -> CardsWindowState {
         var window = engine.openCardsWindow(with: scheduler)
         window.read(with: scheduler)
