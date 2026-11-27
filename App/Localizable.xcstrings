@@ -2143,6 +2143,39 @@
     "General" : {
       "comment" : "A tab of the Settings window."
     },
+    "Goes after %@, ahead of %@, which %lld until you've met it all." : {
+      "comment" : "In How fast?, with Put it first ticked, with the names of the priority decks still ahead of it, then of the decks it goes ahead of, and how many those are, which says “waits” or “wait” and doesn't show.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Goes after %1$@, ahead of %2$@, which %#@wait@ until you've met it all."
+          },
+          "substitutions" : {
+            "wait" : {
+              "argNum" : 3,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "waits"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "wait"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "Goes after %@, which you're meeting %lld." : {
       "comment" : "In How fast?, with the names of the decks ahead of the one coming in, in the queue, and how many they are, which says “now” for one and “first” for several, and doesn't show.",
       "localizations" : {

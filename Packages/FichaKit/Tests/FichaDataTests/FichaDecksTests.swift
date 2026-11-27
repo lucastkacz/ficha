@@ -285,7 +285,7 @@ final class FichaDecksTests {
     // deck in another Ficha, on the same clock: its queue, its pace and its
     // move are what the window's must match.
     @Test(
-        "How fast? for one of Ficha's decks says when it's all met at each pace, last in the queue and, ticked, first, after a priority deck's new card, and Start with Faster and Put it first adds it and sets the pace and its place as ficha pace and ficha deck queue --first do",
+        "How fast? for one of Ficha's decks says when it's all met at each pace, last in the queue and, ticked, first, after a priority deck's new card, which Put it first doesn't pass, and Start with Faster and Put it first adds it and sets the pace and its place as ficha pace and ficha deck queue --first do",
         .bug(id: 458), .bug(id: 491))
     func howFastForOneOfFichasDecks() async throws {
         let shipped = try fileInTheRepo(of: .arteArgentino)
@@ -331,6 +331,8 @@ final class FichaDecksTests {
         #expect(asked.line == .fichaDeck(cardCount: 50))
         #expect(asked.pace == .steady)
         #expect(asked.decksAhead == ["Música", "Lenguaje"])
+        #expect(asked.decksPassed == ["Lenguaje"])
+        #expect(asked.decksStillAhead == ["Música"])
         #expect(asked.offersPutItFirst)
         #expect(asked.paces.map(\.finish) == last)
         #expect(ticked?.putsFirst == true)

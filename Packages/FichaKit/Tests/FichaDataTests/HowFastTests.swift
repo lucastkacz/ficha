@@ -82,6 +82,8 @@ final class HowFastTests {
         #expect(asked.paces.map(\.finish) == whereItIs)
         #expect(asked.paces.map(\.wording) == wordings)
         #expect(asked.decksAhead == ["Arte"])
+        #expect(asked.decksPassed == ["Arte"])
+        #expect(asked.decksStillAhead == [])
         #expect(asked.offersPutItFirst)
         #expect(!asked.putsFirst)
         #expect(asked.hasOtherDecks)
@@ -118,6 +120,30 @@ final class HowFastTests {
         #expect(try engine.progressSettings() == progress)
         #expect(try engine.queue(settings) == queue)
         #expect(queue.map(\.deck) == ["Arte", "Historia"])
+    }
+
+    // Música, a priority deck, has a new card from a minute before Historia
+    // comes in, from an import, last.
+    @Test(
+        "How fast? offers no Put it first for a deck whose only deck ahead is a priority deck, whose new cards come first wherever the deck goes",
+        .bug(id: 491))
+    func noPutItFirstPastAPriorityDeck() async throws {
+        try approveInDeck("Bach", deck: "Música", in: engine)
+        try engine.setPriority(true, ofDeck: "Música")
+        time.advance(by: minutes(1))
+        let historiaFile = try write("Historia.txt", historia)
+        var window = openWindow()
+
+        await window.importThroughTheSheet(historiaFile)
+        let asked = try #require(window.howFast)
+        window.putHowFastFirst(true)
+
+        #expect(asked.subject == .deck("Historia"))
+        #expect(asked.decksAhead == ["Música"])
+        #expect(asked.decksPassed == [])
+        #expect(asked.decksStillAhead == ["Música"])
+        #expect(!asked.offersPutItFirst)
+        #expect(window.howFast?.putsFirst == false)
     }
 
     // Three new cards a day are no pace, as a version of Ficha before the

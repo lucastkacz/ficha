@@ -34,8 +34,8 @@ extension View {
 /// "No cards yet"; the three paces, Chill, Steady and Faster, each a tile
 /// with its radio, its new cards a day and, when the deck has new cards,
 /// when they're all met at it, the chosen one in the accent; where the deck
-/// goes in the queue new cards come from, with Put it first, while other
-/// decks with new cards are ahead of it; that one pace is for all the
+/// goes in the queue new cards come from, with Put it first, while it
+/// would pass a deck with new cards ahead of it; that one pace is for all the
 /// user's decks, while they have others; and Cancel, with esc, and Start,
 /// or Create after New Deck…, with ↩. It's never narrower than the mock's,
 /// and widens so that a label fits whole. `CardsWindowState` decides all of
@@ -242,26 +242,46 @@ struct HowFastSheet: View {
     }
 
     /// Where the deck goes in the queue, as Put it first says: after the
-    /// decks ahead of it, or first, with them waiting. How many they are
-    /// picks the words, "waits" or "wait", "now" or "first", as the String
-    /// Catalog's plural variations say, and doesn't show.
+    /// decks ahead of it; or first, with the decks it passes waiting; or,
+    /// while a deck listed first for its priority cards stays ahead of it,
+    /// after that one and ahead of those it passes. How many decks wait, or
+    /// are ahead, picks the words, "waits" or "wait", "now" or "first", as
+    /// the String Catalog's plural variations say, and doesn't show.
     private var whereItGoes: String {
-        let names = howFast.decksAhead.map(Deck.shownName).formatted(.list(type: .and))
-        let count = howFast.decksAhead.count
-        if howFast.putsFirst {
+        guard howFast.putsFirst else {
+            let ahead = Self.names(howFast.decksAhead)
+            let count = howFast.decksAhead.count
             return String(
-                localized: "Goes first: \(names) \(count) until you've met it all.",
+                localized: "Goes after \(ahead), which you're meeting \(count).",
+                comment: """
+                    In How fast?, with the names of the decks ahead of the one coming in, in the queue, and how many \
+                    they are, which says “now” for one and “first” for several, and doesn't show.
+                    """)
+        }
+        let passed = Self.names(howFast.decksPassed)
+        let count = howFast.decksPassed.count
+        guard !howFast.decksStillAhead.isEmpty else {
+            return String(
+                localized: "Goes first: \(passed) \(count) until you've met it all.",
                 comment: """
                     In How fast?, with Put it first ticked, with the names of the decks it goes ahead of, and how \
                     many they are, which says “waits” or “wait” and doesn't show.
                     """)
         }
+        let stillAhead = Self.names(howFast.decksStillAhead)
         return String(
-            localized: "Goes after \(names), which you're meeting \(count).",
+            localized: "Goes after \(stillAhead), ahead of \(passed), which \(count) until you've met it all.",
             comment: """
-                In How fast?, with the names of the decks ahead of the one coming in, in the queue, and how many \
-                they are, which says “now” for one and “first” for several, and doesn't show.
+                In How fast?, with Put it first ticked, with the names of the priority decks still ahead of it, \
+                then of the decks it goes ahead of, and how many those are, which says “waits” or “wait” and \
+                doesn't show.
                 """)
+    }
+
+    /// `decks`, by their whole names, as a list: "Arte, Historia and
+    /// Lenguaje".
+    private static func names(_ decks: [String]) -> String {
+        decks.map(Deck.shownName).formatted(.list(type: .and))
     }
 }
 

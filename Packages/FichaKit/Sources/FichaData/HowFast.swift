@@ -86,9 +86,19 @@ extension CardsWindowState {
         public internal(set) var pace: Pace
         /// The decks at the top of the tree with new cards ahead of the deck
         /// in the queue, in its order, the first the one the user is meeting
-        /// now: "Goes after Arte, which you're meeting now." Put it first is
-        /// offered while there are some, for a deck with new cards.
+        /// now: "Goes after Arte, which you're meeting now."
         public let decksAhead: [String]
+        /// Those of `decksAhead` the deck goes ahead of with Put it first, in
+        /// the queue's order, as FichaCore's queue puts it
+        /// (`CardsInReviews.decksInQueue(putting:at:now:)`), which wait until
+        /// it's all met: "Goes first: Arte waits until you've met it all."
+        /// Put it first is offered while there are some.
+        public let decksPassed: [String]
+        /// The decks at the top of the tree still ahead of the deck once Put
+        /// it first puts it first, in the queue's order: those listed first
+        /// for their priority cards, whose new cards still come first. "Goes
+        /// after Música, ahead of Arte, which waits until you've met it all."
+        public let decksStillAhead: [String]
         /// Whether Put it first is ticked: unticked as the sheet opens.
         public internal(set) var putsFirst: Bool
         /// Whether the user has other decks, so the sheet says one pace is
@@ -101,10 +111,11 @@ extension CardsWindowState {
         /// would put it.
         let pacesFirst: [PaceOption]
 
-        /// Whether the sheet offers Put it first: while other decks with new
-        /// cards are ahead of the deck.
+        /// Whether the sheet offers Put it first: while it passes some deck,
+        /// one with new cards ahead of the deck in the queue that isn't
+        /// listed first for its priority cards.
         public var offersPutItFirst: Bool {
-            !decksAhead.isEmpty
+            !decksPassed.isEmpty
         }
 
         /// Chill, Steady and Faster, in that order, each with when the deck's
@@ -239,9 +250,14 @@ extension CardsWindowState.HowFast {
                 return PaceOption(pace: pace, finish: finish, wording: finish?.wording(now: now, calendar: calendar))
             }
         }
+        // The decks ahead of the deck where it is, and those still ahead
+        // once it's first, as FichaCore's queue puts it, for one deck alone.
         var decksAhead: [String] = []
+        var decksStillAhead: [String] = []
         if names.count == 1, let place = queue.firstIndex(of: names[0]) {
             decksAhead = Array(queue[..<place])
+            let withItFirst = cards.decksInQueue(putting: names[0], at: .first, now: now)
+            decksStillAhead = Array(withItFirst.prefix { $0 != names[0] })
         }
         var subject = names.count == 1 ? Subject.deck(names[0]) : .decks(inQueueOrder)
         var decks = inQueueOrder.compactMap { name in topDecks.first { $0.name == name } }
@@ -252,6 +268,7 @@ extension CardsWindowState.HowFast {
         self.init(
             subject: subject, decks: decks, line: line,
             pace: Pace(newCardsPerDay: settings.newCardsPerDay) ?? .steady, decksAhead: decksAhead,
+            decksPassed: decksAhead.filter { !decksStillAhead.contains($0) }, decksStillAhead: decksStillAhead,
             putsFirst: false, hasOtherDecks: topDecks.contains { !names.contains($0.name) },
             pacesWhereItIs: paces(false), pacesFirst: paces(true))
     }

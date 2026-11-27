@@ -154,6 +154,16 @@ extension CardsInReviews {
             queuedAs: queue.map { PlacedDeck(deck: $0.deck, place: moved[$0.deck] ?? $0.place) }.sorted())
     }
 
+    /// The decks of the queue new cards come from, by their whole names, in
+    /// its order, as `ReviewSettings.queue(of:now:calendar:)` lists them,
+    /// once `deck`, a deck at the top of the tree, is at `position`, as
+    /// `Engine.moveInQueue(deck:to:)` puts it at `now`. A deck listed first
+    /// for its priority cards stays ahead of it, so How fast? tells the
+    /// decks Put it first passes from those still ahead (#491).
+    public func decksInQueue(putting deck: String, at position: QueuePosition, now: Date) -> [String] {
+        decksWithNewWays(putting: deck, at: position, now: now).map(\.deck)
+    }
+
     /// The decks at the top of the tree met in full: those that hold cards in
     /// Lucas's reviews but no new way, as he met every new way they had
     /// there, so the queue new cards come from no longer lists them
