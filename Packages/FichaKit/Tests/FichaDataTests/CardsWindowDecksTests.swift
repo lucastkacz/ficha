@@ -207,8 +207,8 @@ struct CardsWindowDecksTests {
     }
 
     @Test(
-        "New Deck… in the sidebar refuses Default's name, OK makes a deck with no card at the top, not inside any deck, and A::B makes B inside A, each OK followed by How fast?, whose Cancel leaves the deck made; Cancel makes none"
-    )
+        "New Deck… in the sidebar refuses Default's name, OK makes a deck with no card at the top, not inside any deck, and A::B makes B inside A, each OK followed by How fast?, whose Cancel leaves the deck made; Cancel makes none",
+        .bug(id: 491))
     func newDeckFromTheSidebar() throws {
         let petricor = try engine.create(card(.word, front: "petricor", back: "El olor de la lluvia."))
         var window = openWindow()
