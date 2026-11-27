@@ -116,7 +116,7 @@ enum Window: String, CaseIterable {
     /// line about it and the photo's credit.
     case cardsFichaDeckFlower = "cards-ficha-deck-flower"
     /// Settings, on its Advanced tab, scrolled to Backups, as "Last backup
-    /// failed" in the menu opens it, down to Diagnostics' button.
+    /// failed" in the menu opens it.
     case backups
     /// The same once a backup failed.
     case backupsFailed = "backups-failed"
@@ -130,6 +130,9 @@ enum Window: String, CaseIterable {
     /// relearning steps, the desired retention, the longest interval and the
     /// forgotten-often count.
     case advanced
+    /// The same scrolled to its foot, with the button that opens
+    /// Diagnostics.
+    case advancedFoot = "advanced-foot"
     /// Settings, on its Sync tab, once the Mac synced.
     case sync
     /// Settings, on its Sync tab, on a Mac signed out of iCloud.
@@ -1513,7 +1516,7 @@ func model(for name: Window) throws -> AppModel {
         } isShown: {
             $0 == .off(turningOn: .sendsCardsForTheFirstTime(onlyChosenDecks: false), sending: nil)
         }
-    case .advanced: return try progressSettingsModel()
+    case .advanced, .advancedFoot: return try progressSettingsModel()
     case .diagnostics: return try focusHeldBackModel()
     case .backups: return try AppModel(engine: try backupsEngine())
     case .backupsFailed:
@@ -1675,6 +1678,7 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
     case .pace: return settingsTabWindow(model: model, openingOn: .pace)
     case .interruptions: return settingsTabWindow(model: model, openingOn: .interruptions)
     case .advanced: return settingsTabWindow(model: model, openingOn: .advanced)
+    case .advancedFoot: return settingsTabWindow(model: model, openingOn: .advanced, at: .diagnostics)
     case .capture:
         let window = CaptureWindow(model: model)
         if let view = window.contentView {
