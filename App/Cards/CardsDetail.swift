@@ -395,9 +395,9 @@ private struct CardWords: View {
                     "Seen \(times) times",
                     comment: """
                         In the Cards window's detail, under when the card is back: how many times the user reviewed \
-                        it, either way, like “Seen 3 times”. None for a new card out of the user's reviews, and for a \
-                        card an import from Anki brought in with its progress, which the user hasn't reviewed in Ficha \
-                        since.
+                        it, either way, like “Seen 3 times”. None for a new card out of the user's reviews, \
+                        and for a card an import from Anki brought in with its progress, which the user hasn't \
+                        reviewed in Ficha since.
                         """
                 )
                 .foregroundStyle(.secondary)
@@ -429,9 +429,9 @@ private struct CardWords: View {
                 "Back on \(day.formatted(Self.dayFormat(inThisYear: inThisYear)))",
                 comment: """
                     In the Cards window's detail: the card is due again on a later day, by its weekday, month and \
-                    day, and its year when it isn't this year, like “Back on Tue, Dec 15” or “Back on Fri, Jan 21, \
-                    2028”. The day is Ficha's, which starts at 4:00, or the hour the user set, so a card due at 2:00 \
-                    AM on a Friday is back on Thursday.
+                    day, and its year when it isn't this year, like “Back on Tue, Dec 15” or “Back on Fri, \
+                    Jan 21, 2028”. The day is Ficha's, which starts at 4:00, or the hour the user set, so a card due \
+                    at 2:00 AM on a Friday is back on Thursday.
                     """)
         case .outOfReviews:
             Text(
