@@ -417,8 +417,7 @@ private struct CardWords: View {
                 "Back today at \(time.formatted(date: .omitted, time: .shortened))",
                 comment: """
                     In the Cards window's detail: the card is due again later today, at this time, like “Back today \
-                    at 3:00 PM”. Today runs until Ficha's day starts again, at 4:00, so the time can be after \
-                    midnight.
+                    at 3:00 PM”.
                     """)
         case .on(let day):
             Text(
