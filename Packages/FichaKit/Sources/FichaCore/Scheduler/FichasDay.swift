@@ -40,8 +40,10 @@ extension Calendar {
     /// The hour `hour` of the calendar day that starts at `day`, by this
     /// calendar's clock.
     private func date(atHour hour: Int, of day: Date) -> Date {
-        // Foundation finds a time for every hour of a day, the next one when
-        // the clock skips it; the hours added are for a calendar it doesn't.
-        date(bySettingHour: hour, minute: 0, second: 0, of: day) ?? day.addingTimeInterval(Double(hour) * 60 * 60)
+        // Foundation finds a time for every hour from 0 to 23 of a day, the
+        // next one when the clock skips it, and the settings keep the hour in
+        // that range (`ReviewSettings.dayStartsAtHour`). A calendar that found
+        // none would count the day from its start, as Ficha did before ADR 0045.
+        date(bySettingHour: hour, minute: 0, second: 0, of: day) ?? day
     }
 }

@@ -31,7 +31,9 @@ public struct Engine: Sendable {
     /// unique across devices: random ones, except in tests and the render
     /// tool.
     let ids: any IDSource
-    /// The Mac's calendar, by whose clock Ficha's days are counted (ADR 0045).
+    /// The Mac's calendar, by whose clock Ficha's days are counted, from the
+    /// hour the settings say (ADR 0045), and a backup's days and weeks, from
+    /// midnight.
     let calendar: Calendar
     /// Where the images on cards are kept: the Images folder beside the
     /// database, or memory with it.
@@ -53,13 +55,14 @@ public struct Engine: Sendable {
     /// the Backups folder, where it first moves those that versions before
     /// backups left next to the database. A database that a newer version
     /// migrated is refused, and left as it was. The review log's entries it
-    /// writes get their IDs from `ids`, random ones except in tests. Days are
-    /// Ficha's, from the hour the settings say, by `calendar`: the Mac's,
-    /// except in tests (ADR 0045). The files the `ficha` CLI puts on cards come
-    /// from `downloads` alone, the Downloads folder, when it's given, and from
-    /// anywhere when it isn't. An import draws its SVGs with a drawer
-    /// `newSVGDrawer` makes, in the app its XPC service, and without one, as in
-    /// the CLI and on the iPhone, which don't import, it draws none.
+    /// writes get their IDs from `ids`, random ones except in tests. Ficha's
+    /// days start at the hour the settings say (ADR 0045), and a backup's days
+    /// and weeks at midnight, by `calendar`: the Mac's, except in tests. The
+    /// files the `ficha` CLI puts on cards come from `downloads` alone, the
+    /// Downloads folder, when it's given, and from anywhere when it isn't. An
+    /// import draws its SVGs with a drawer `newSVGDrawer` makes, in the app its
+    /// XPC service, and without one, as in the CLI and on the iPhone, which
+    /// don't import, it draws none.
     public init(
         location: DatabaseLocation,
         time: any TimeSource,
@@ -107,9 +110,9 @@ public struct Engine: Sendable {
     /// it: it never creates, migrates or writes it, and a write through it
     /// fails. So it's nil while there's no database there yet, or while its
     /// schema is older than this version's, until the app or the CLI opens it,
-    /// and a database a newer version migrated is refused. Days are Ficha's,
-    /// from the hour the settings say, by `calendar`: the Mac's, except in
-    /// tests (ADR 0045).
+    /// and a database a newer version migrated is refused. Ficha's days start
+    /// at the hour the settings say (ADR 0045), by `calendar`: the Mac's,
+    /// except in tests.
     public init?(
         readingOnlyIn folder: URL,
         time: any TimeSource,

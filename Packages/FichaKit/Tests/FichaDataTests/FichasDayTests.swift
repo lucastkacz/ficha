@@ -8,6 +8,8 @@ import Testing
 /// crosses midnight is one day for the new cards a day and the days Ficha
 /// names. They run at Steady, in Buenos Aires, from 9 in the morning of
 /// Wednesday the 14th.
+/// `mockups/tools/check-engine.js` copies some of these cases into the web
+/// mocks' toy engine: run it after changing one (`mockups/README.md`).
 struct FichasDayTests {
     let calendar: Calendar
     let time: ManualTimeSource

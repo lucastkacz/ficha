@@ -115,17 +115,18 @@ final class ProgressSettingsTests {
         #expect(try app.progressSettings() == kept)
     }
 
-    // A user changed the new cards a day to 3 before Ficha's day, so the
-    // database holds a row of the settings that decide progress, which the
-    // hour joins as Ficha's.
+    // A user changed the new cards a day to 3 before Ficha's day, and sync,
+    // on, sent it, so the database holds a row of the settings that decide
+    // progress, which the hour joins as Ficha's, with nothing to send.
     @Test(
-        "a database from before Ficha's day migrates with its settings and the day starting at 4:00, and keeps an hour saved after",
+        "a database from before Ficha's day migrates with its settings and the day starting at 4:00, as no change to send, and keeps an hour saved after, which syncs",
         .bug(id: 562))
     func aDatabaseFromBeforeFichasDayStartsItAtFour() throws {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         try saveDatabaseBeforeFichasDay(at: folder.appending(path: "Ficha.sqlite"))
 
         let app = try Engine(location: .folder(folder), time: time)
+        let waitingOnceMigrated = try app.changesToSend()
         let migrated = try app.progressSettings()
         var atSix = migrated
         atSix.dayStartsAtHour = 6
@@ -135,6 +136,8 @@ final class ProgressSettingsTests {
         expected.newCardsPerDay = 3
         #expect(migrated == expected)
         #expect(migrated.dayStartsAtHour == 4)
+        #expect(waitingOnceMigrated.isEmpty)
+        #expect(try app.changesToSend().map(\.row) == [.progressSettings])
         #expect(try Engine(location: .folder(folder), time: time).progressSettings() == atSix)
     }
 
@@ -179,11 +182,13 @@ let customParameters: [Float] = [
 
 /// Saves a database at `file` as Ficha left it before Ficha's day
 /// (ADR 0045), through the schema's migrations up to the one before it, with
-/// the settings that decide progress a user changed to 3 new cards a day:
-/// Ficha's otherwise, as Ficha writes the row, the desired retention of a
-/// new install among them, 85%, where the column holds the scheduler's 90%.
+/// sync on, as a database with no cards starts, and nothing waiting to be
+/// sent, and with the settings that decide progress a user changed to 3 new
+/// cards a day: Ficha's otherwise, as Ficha writes the row, the desired
+/// retention of a new install among them, 85%, where the column holds the
+/// scheduler's 90%.
 func saveDatabaseBeforeFichasDay(at file: URL) throws {
-    let database = try DatabaseQueue(path: file.path(percentEncoded: false))
+    let database = try DatabasePool(path: file.path(percentEncoded: false))
     try Schema.migrator.migrate(database, upTo: "v35 a deck's description")
     try database.write { db in
         try db.execute(sql: "UPDATE syncWrite SET recordsChanges = 0")
@@ -193,5 +198,7 @@ func saveDatabaseBeforeFichasDay(at file: URL) throws {
                 VALUES (1, 3, 8, 0.85)
                 """)
         try db.execute(sql: "UPDATE syncWrite SET recordsChanges = 1")
+        try db.execute(sql: "DELETE FROM syncPending")
     }
+    try database.close()
 }

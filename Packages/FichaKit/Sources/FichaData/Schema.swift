@@ -1924,9 +1924,9 @@ enum Schema {
             // Ficha's day starts at an hour of the device's clock, from 0 to
             // 23, 4:00 to start, as Anki's "Next day starts at" (ADR 0045).
             // It's a setting that decides progress, whose column comes in with
-            // Ficha's, which a row already there takes too, as no change. It's
-            // a field of the settings' record, `dayStartsAtHour`, as
-            // `SyncedField` names it, whose latest change wins, as the
+            // Ficha's default, which a row already there takes too, as no
+            // change. It's a field of the settings' record, `dayStartsAtHour`,
+            // as `SyncedField` names it, whose latest change wins, as the
             // others': the trigger of "v33 the scheduler replaces the ladder",
             // made again with it.
             try db.alter(table: "progressSettings") { table in

@@ -216,7 +216,8 @@
   const {
     html, Icon, useStore, useClock, useTheme, useScreen, Stage, MenuBar, Menu, MenuContent,
     ReviewPanelView, CaptureView, DocumentWindow, CallWindow, VideoWindow, Dock, DOCK, Window, Button, Capsule, Divider,
-    DeskToast, MockControls, HudGroup, HudChoice, CardPicture, formatDay, formatTime, formatFinish, metBy,
+    DeskToast, MockControls, HudGroup, HudChoice, CardPicture, formatDay, formatTime, sameCalendarDay, formatFinish,
+    metBy,
   } = FichaUI;
   const E = FichaEngine;
   const listFmt = new Intl.ListFormat('en', { type: 'conjunction' });
@@ -389,7 +390,7 @@
   function nextReview(c, now) {
     if (c.state === 'new') return 'New';
     if (c.due <= now) return 'Due';
-    return E.startOfDay(c.due) === E.startOfDay(now) ? formatTime(c.due) : formatDay(c.due);
+    return sameCalendarDay(c.due, now) ? formatTime(c.due) : formatDay(c.due);
   }
 
   function CardsWindow({ app, state, request, ...win }) {

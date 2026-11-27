@@ -303,7 +303,7 @@ final class HowFastTests {
     // Thursday, from 4:00, all that day at Faster if it has appearances, or
     // by Friday.
     @Test(
-        "How fast? at 2:00 counts days from 4:00: at Faster, a deck that comes in then is all met tomorrow, not today",
+        "How fast? at 2:00 counts days from 4:00: at Faster, a deck that comes in then is all met tomorrow or Friday, not today",
         .bug(id: 562))
     func howFastCountsDaysFromFour() async throws {
         time.move(to: try #require(calendar.date(from: DateComponents(year: 2026, month: 10, day: 15, hour: 2))))
