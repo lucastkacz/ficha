@@ -111,10 +111,10 @@ struct DeleteDeckCommand: EngineCommand {
             Every card in it, or in a deck inside it, buried ones too, is deleted with its review log, on every \
             device, whether or not it syncs, as in Anki; its expansions and follow-ups stay in the inbox. A card \
             another device holds in it that wasn't in it here, and that doesn't sync, moves to Default there. The \
-            decks' switches, colors, emoji, descriptions and choices to sync go too. Nothing undoes it, but the \
-            daily backups keep what it deleted, and `ficha restore` brings one back. Default is never deleted: to \
-            keep a deck's cards, move them first with `ficha change-deck`. It prints the deck in "deck", the decks \
-            inside it that went with it in "decksInside", and how many cards it deleted in "cards".
+            decks' switches, colors, emoji, descriptions, choices to sync and places in the queue go too. Nothing \
+            undoes it, but the daily backups keep what it deleted, and `ficha restore` brings one back. Default is \
+            never deleted: to keep a deck's cards, move them first with `ficha change-deck`. It prints the deck in \
+            "deck", the decks inside it that went with it in "decksInside", and how many cards it deleted in "cards".
             """
     )
 
