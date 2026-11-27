@@ -35,7 +35,7 @@
     retention: 0.85,
     // The decks in use, in the queue's order: a sample deck's id, or a
     // made-up deck with a number of cards.
-    decks: [{ id: 'clouds' }, { id: 'mountains' }],
+    decks: [{ id: 'flores-de-buenos-aires' }, { id: 'palabras-lindas' }],
     // The person: when the Mac is on, meetings, and how they answer.
     life: {
       weekday: [9, 18.5],

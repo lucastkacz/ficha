@@ -9,13 +9,13 @@ No step of `make check` builds or reads this folder: the pages run in a browser,
 1. **A mock decides the look and the feel; FichaCore decides the logic.** The mock's engine is a toy. A rule that comes out of a mock (a number, an order, a condition) goes into the decision's issue as an acceptance criterion, and is built in Swift with its tests.
 2. **A mock is cheap and disposable.** Variants are a switch in the mock's bar, not a new build. Nothing in a mock is kept because it took work.
 3. **Emulate as much as the web allows; what it can't show stays native.** The mock imitates screen sizes, the notch, the Dock, full-screen apps, meetings and videos, and the card size. It can't show whether the review panel takes the keyboard from the app you're typing in (the focus mode), Spaces, how macOS really detects meetings, videos and full screen, or exact pixels. Those still need a prototype on the Mac, as `docs/prototypes/` did.
-4. **Names come from the app.** A screen is named as its SwiftUI view is or will be, and its words come from `GLOSSARY.md`. A mock's UI is in English, Ficha's only language (ADR 0036). Its decks are made up, never Lucas's: those that stand for Ficha's decks are in English, as Ficha's are (ADR 0035), and one that stands for a deck of the user's own is in Spanish, as Lucas's cards are.
+4. **Names come from the app.** A screen is named as its SwiftUI view is or will be, and its words come from `GLOSSARY.md`. A mock's UI is in English, Ficha's only language (ADR 0036). Its decks are in `kit/decks.js`: Ficha's decks, `ficha: true`, with the cards the app ships, in Spanish for now (ADR 0040), and one that stands for a deck of the user's own, made up, never Lucas's, in Spanish too, as Lucas's cards are.
 
 ## The mocks
 
 | Mock | Artifact | What it explores |
 |---|---|---|
-| `desktop/` | [Ficha Desktop Mock](https://claude.ai/artifact/D9dTXwJWK5gNsFp36y2XrU) | Ficha as ADRs 0033 to 0035 decided it: the review panel's card alone with Forgot and Got it (#489), and its four buttons before as a variant; the Welcome page with Ficha's decks (#467, #458); the Cards window's decks in their queue, and How fast? as a deck comes in (#491); Settings in five tabs, each row where Lucas approved it on 2026-11-25 and marked with the tab it was in (#492). As before: the panel over a working day on a fast clock, a meeting, a video or a full-screen app that holds an appearance back, the menu, Capture and the card size, on a Mac's real screen sizes. It starts at the first launch, or twelve days in. |
+| `desktop/` | [Ficha Desktop Mock](https://claude.ai/artifact/D9dTXwJWK5gNsFp36y2XrU) | Ficha as ADRs 0033 to 0035 decided it: the review panel's card alone with Forgot and Got it (#489), and its four buttons before as a variant; the Welcome page with Ficha's decks (#467, #458); the Cards window's decks in their queue, and How fast? as a deck comes in (#491); Settings in five tabs, each row where Lucas approved it on 2026-11-25 and marked with the tab it was in (#492). As before: the panel over a working day on a fast clock, a meeting, a video or a full-screen app that holds an appearance back, the menu, Capture and the card size, on a Mac's real screen sizes. It starts at the first launch, or 25 days in. |
 | `lab/` | [Ficha Lab](https://claude.ai/artifact/9frTfAJnYsNJukGgK8E1jd) | Not a screen: four or twelve weeks of Ficha in a made-up working life, A against B, Ficha as decided against Ficha before the decision to start with. What a setting costs (appearances and minutes a weekday, meetings it waits out) and what it gives (cards met, each deck's day all met, graduated, how often a review is remembered), day by day. |
 
 ## How it's built
@@ -84,7 +84,7 @@ The mocks show how Ficha feels in a minute; the Lab and the terminal tool show w
 
 A number from the Lab is a lead, not a fact: like a rule from a mock, it goes into the decision's issue and is checked by FichaCore's tests. The made-up life is in "How the Lab works" on the page and in `DEFAULTS` in `kit/lab.js`.
 
-How fast?'s range holds in the Lab's made-up life: Ficha's four decks, 56 cards, are all met on day 33 at Steady, against a promise of day 28 to 39, and on day 16 at Faster, against 14 to 20. The Lab's "All cards met" shows both for any setting but "Ficha before", which promised no date.
+How fast?'s range holds in the Lab's made-up life: Ficha's three decks, 120 cards, are all met on day 72 at Steady, against a promise of day 60 to 84, and on day 36 at Faster, against 30 to 42. The Lab's "All cards met" shows both for any setting but "Ficha before", which promised no date.
 
 ## A debate's mock
 

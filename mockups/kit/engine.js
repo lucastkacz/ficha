@@ -327,6 +327,7 @@
             order: i,
             front: c.front,
             back: c.back,
+            picture: Boolean(c.picture),
             source: c.source || null,
             tags: c.tags || [],
             state: 'new',

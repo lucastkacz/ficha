@@ -454,6 +454,14 @@
   const isTyping = (el) => el && (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT');
 
   /**
+   * A stand-in for a card's image, such as a painting's in Arte argentino:
+   * the mock's decks carry no images, so it draws where one goes.
+   */
+  function CardPicture() {
+    return html`<div className="card-picture" role="img" aria-label="The card's image">Image</div>`;
+  }
+
+  /**
    * "You've met them all", when this panel met a deck's last new card: the
    * next deck in the queue starts, or, with none left, one of Ficha's decks
    * is offered (#491, provisional).
@@ -655,7 +663,8 @@
             ${card.tags.map((t) => html`<${Capsule} key=${t}>${t}</${Capsule}>`)}
             ${isNew && html`<${Capsule} tint>New</${Capsule}>`}
           </div>`}
-          <div className="upper">${card.front}</div>
+          ${card.picture && html`<${CardPicture} />`}
+          ${card.front && html`<div className="upper">${card.front}</div>`}
         </div>
         <div className="icons">${icons}</div>
       </div>
@@ -852,6 +861,7 @@
 
   root.FichaUI = {
     html,
+    CardPicture,
     Icon,
     useStore,
     useClock,

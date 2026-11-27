@@ -383,7 +383,12 @@
 .panel .icons { display: flex; gap: 2px; margin: -2px -4px 0 0; }
 .panel .upper { font-size: calc(var(--text-title2) * var(--card-scale, 1)); font-weight: 600; line-height: 1.25; text-wrap: pretty; }
 .panel .lower { display: flex; flex-direction: column; gap: 8px; }
-.panel .lower .text { font-size: calc(var(--text-body) * var(--card-scale, 1)); line-height: 1.4; text-wrap: pretty; }
+.panel .lower .text { font-size: calc(var(--text-body) * var(--card-scale, 1)); line-height: 1.4; text-wrap: pretty; white-space: pre-line; }
+.card-picture {
+  width: min(100%, calc(240px * var(--card-scale, 1))); aspect-ratio: 4 / 3; max-width: 100%; border-radius: 8px;
+  display: grid; place-items: center; background: var(--fill); color: var(--tertiary-label);
+  font-size: calc(var(--text-caption) * var(--card-scale, 1)); letter-spacing: 0.04em;
+}
 .panel .lower .source { font-size: calc(var(--text-caption) * var(--card-scale, 1)); color: var(--secondary-label); }
 .panel .flip-row { display: flex; justify-content: flex-end; }
 .panel .ratings { display: grid; grid-template-columns: repeat(var(--count, 4), 1fr); gap: 8px; }
