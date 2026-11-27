@@ -75,6 +75,13 @@ struct SettingsTabsTests {
         }
     }
 
+    // "Last backup failed" opens Advanced scrolled to its foot, which shows
+    // Backups only while Backups, the copies and Diagnostics end the tab.
+    @Test("Advanced ends with Backups, the copies and Diagnostics, which its foot shows", .bug(id: 492))
+    func advancedEndsWithBackups() {
+        #expect(Array(SettingsTab.advanced.sections.suffix(3)) == [.backups, .copies, .diagnostics])
+    }
+
     @Test("Settings shows its Sync tab only in an app that syncs", .bug(id: 492))
     func itShowsSyncOnlyWhileSyncing() {
         #expect(SettingsTab.shown(syncing: true) == [.general, .pace, .interruptions, .sync, .advanced])

@@ -52,7 +52,8 @@ struct MenuContent: View {
     let openDiagnostics: () -> Void
     /// Opens the Settings window.
     let openSettings: () -> Void
-    /// Opens the Settings window on its Advanced tab, scrolled to Backups.
+    /// Opens the Settings window on its Advanced tab, scrolled to its foot,
+    /// where Backups shows.
     let openBackupSettings: () -> Void
     /// Opens the Settings window on its Sync tab.
     let openSyncSettings: () -> Void

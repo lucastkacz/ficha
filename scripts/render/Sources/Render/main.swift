@@ -115,8 +115,8 @@ enum Window: String, CaseIterable {
     /// photo of a rose alone, with no text, and its back the flower's name, a
     /// line about it and the photo's credit.
     case cardsFichaDeckFlower = "cards-ficha-deck-flower"
-    /// Settings, on its Advanced tab, scrolled to Backups, as "Last backup
-    /// failed" in the menu opens it.
+    /// Settings, on its Advanced tab, scrolled to its foot, where Backups
+    /// shows, as "Last backup failed" in the menu opens it.
     case backups
     /// The same once a backup failed.
     case backupsFailed = "backups-failed"
@@ -1897,10 +1897,10 @@ func menuWindow(model: AppModel) -> NSWindow {
     return window
 }
 
-/// Settings, at the size it opens at, on `tab`, scrolled to `section` when
-/// it's one of the tab's, with its five tabs, as in a build signed for
-/// iCloud, such as Lucas's: a model with no Sync tab gets one, on sync as
-/// the sample's engine has it, off.
+/// Settings, at the size it opens at, on `tab`, scrolled to its foot when
+/// `section` is one of the tab's (`SettingsScroll`), with its five tabs, as
+/// in a build signed for iCloud, such as Lucas's: a model with no Sync tab
+/// gets one, on sync as the sample's engine has it, off.
 func settingsTabWindow(model: AppModel, openingOn tab: SettingsTab, at section: SettingsSection? = nil) -> NSWindow {
     if model.sync == nil {
         model.sync = model.engine.openSyncTab()

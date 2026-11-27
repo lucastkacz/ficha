@@ -139,9 +139,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         openSettings(on: nil)
     }
 
-    /// Opens the Settings window on its Advanced tab, scrolled to Backups,
-    /// as "Last backup failed" in the menu does. When it's open, it comes
-    /// forward there.
+    /// Opens the Settings window on its Advanced tab, scrolled to its foot,
+    /// where Backups shows, as "Last backup failed" in the menu does. When
+    /// it's open, it comes forward there.
     func openBackupSettings() {
         openSettings(on: .advanced, at: .backups)
     }
@@ -152,9 +152,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         openSettings(on: .sync)
     }
 
-    /// Opens the Settings window on `tab`, scrolled to `section` when it's
-    /// one of the tab's, or on the tab Lucas left it on last. When it's open,
-    /// it comes forward, on `tab` if there's one.
+    /// Opens the Settings window on `tab`, scrolled to its foot when
+    /// `section` is one of the tab's (`SettingsScroll`), or on the tab Lucas
+    /// left it on last. When it's open, it comes forward, on `tab` if there's
+    /// one.
     private func openSettings(on tab: SettingsTab?, at section: SettingsSection? = nil) {
         guard let model else { return }
         if let tab, let tabs = settingsWindow?.contentViewController as? SettingsTabViewController {

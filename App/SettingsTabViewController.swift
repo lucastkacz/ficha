@@ -53,7 +53,7 @@ extension SettingsTab {
 /// Where a tab of Settings scrolls to, as Settings is asked to show one of
 /// its sections, such as Advanced's Backups, which "Last backup failed" in
 /// the menu opens, at Advanced's foot (`SettingsTabContent`): each request
-/// scrolls once, even to the section asked for before.
+/// scrolls once, even for the section asked for before.
 @Observable
 final class SettingsScroll {
     /// The section asked for last, or nil while none was.
@@ -61,7 +61,9 @@ final class SettingsScroll {
     /// How many times a section was asked for, so a tab scrolls each time.
     private(set) var requests = 0
 
-    /// Asks the tab that holds `section` to scroll to where it shows.
+    /// Asks the tab that holds `section` to scroll to its foot, which shows
+    /// it when it's one of Advanced's last: Backups, the copies or
+    /// Diagnostics.
     func scroll(to section: SettingsSection) {
         self.section = section
         requests += 1
@@ -76,7 +78,7 @@ final class SettingsScroll {
 /// on the tab Lucas left it on last, unless it's asked to open on another.
 final class SettingsTabViewController: NSTabViewController {
     /// How tall Advanced is, past which it scrolls: Interruptions' height, as
-    /// `make render`'s pictures of the two measured it.
+    /// `make render`'s picture of Interruptions measured it.
     private static let advancedHeight: CGFloat = 739
     /// How wide every tab is, and so the window.
     private var width: CGFloat = 500
@@ -87,8 +89,9 @@ final class SettingsTabViewController: NSTabViewController {
     /// capture shortcut, `captureShortcut`, with the Sync tab in an app that
     /// syncs: Advanced closes the review panel with `closeReviewPanel` before
     /// a restore, and opens the Diagnostics window with `openDiagnostics`.
-    /// It opens on `tab`, scrolled to `section` when it's one of the tab's,
-    /// or on the tab Lucas left it on last, when the window has it.
+    /// It opens on `tab`, scrolled to its foot when `section` is one of the
+    /// tab's (`SettingsScroll`), or on the tab Lucas left it on last, when
+    /// the window has it.
     convenience init(
         model: AppModel, captureShortcut: CaptureShortcutRegistration, closeReviewPanel: @escaping () -> Void,
         openDiagnostics: @escaping () -> Void, openingOn tab: SettingsTab? = nil, at section: SettingsSection? = nil
@@ -125,7 +128,8 @@ final class SettingsTabViewController: NSTabViewController {
         return max(500, toolbar.rounded(.up))
     }
 
-    /// Shows `tab`, scrolled to `section` when it's one of the tab's.
+    /// Shows `tab`, scrolled to its foot when `section` is one of the tab's
+    /// (`SettingsScroll`).
     func select(_ tab: SettingsTab, at section: SettingsSection? = nil) {
         if let index = tabViewItems.firstIndex(where: { SettingsTab(of: $0) == tab }) {
             selectedTabViewItemIndex = index

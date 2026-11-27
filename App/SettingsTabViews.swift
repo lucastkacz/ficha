@@ -7,8 +7,9 @@ import SwiftUI
 /// A tab of Settings, as `SettingsTab` lays it out (#492): a grouped form
 /// with the tab's sections, in their order, each with its rows, in theirs,
 /// under its heading and over its footer, as the desktop mock draws them. It
-/// scrolls to a section Settings is asked to show, once each time it's asked,
-/// and says what Lucas did there that couldn't be done.
+/// scrolls to its foot as Settings is asked to show one of its sections,
+/// once each time it's asked, and says what Lucas did there that couldn't
+/// be done.
 struct SettingsTabContent: View {
     let tab: SettingsTab
     @Bindable var model: AppModel
@@ -45,12 +46,13 @@ struct SettingsTabContent: View {
         .settingsTabActions(tab, model: model, closeReviewPanel: closeReviewPanel)
     }
 
-    /// Shows the section `scroll` asked for last, when it's one of the tab's,
-    /// unless the tab followed that request already, by scrolling to the
-    /// form's foot: the sections Settings is asked for, Backups and
-    /// Diagnostics, are Advanced's last, and Advanced, as tall as
-    /// Interruptions, shows both there, with Backups' heading. Our own: a
-    /// grouped form on macOS 26 scrolls to no row's or section's `id`, with
+    /// Scrolls to the form's foot when `scroll` asked last for one of the
+    /// tab's sections, unless the tab followed that request already. The foot
+    /// shows the section only when it's one of Advanced's last, Backups, the
+    /// copies or Diagnostics, the only ones Settings is asked for, which
+    /// Advanced, as tall as Interruptions, shows there with Backups' heading.
+    /// Our own: the foot in place of the section, since a grouped form on
+    /// macOS 26 scrolls to no row's or section's `id`, with
     /// `ScrollViewReader` or `ScrollPosition`, as `make render`'s pictures
     /// showed, though it scrolls to an edge.
     private func follow(_ scroll: SettingsScroll) {
@@ -59,7 +61,8 @@ struct SettingsTabContent: View {
         guard let section = scroll.section, tab.sections.contains(section) else { return }
         // A turn later, once the form has its rows and the window its
         // toolbar: as Settings opens, the form is first asked only for its
-        // size, before it has any.
+        // size, before it has any, and the toolbar, as it comes in, moves the
+        // form's offset, which undid a scroll made before in `make render`.
         Task {
             position.scrollTo(edge: .bottom)
         }
