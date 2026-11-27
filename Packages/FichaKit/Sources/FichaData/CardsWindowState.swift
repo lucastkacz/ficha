@@ -709,11 +709,14 @@ public struct CardsWindowState: Sendable {
     /// `editedImages` and `editedSounds` hold them, going both ways as
     /// `editedBothWays` says, in the deck `editedDeck` says, and ends the
     /// edit, while Save is on, or records why it couldn't and goes on with
-    /// it. The card keeps its progress and its review log, and its tags and
-    /// its type as the database holds them, whatever `content` says, since
-    /// the editor shows neither (#538); a flagged one is fixed, back in the
-    /// reviews unless it's set aside. The detail shows it as saved at once,
-    /// without waiting for the engine to say it changed.
+    /// it. The card keeps its progress and its review log; and Save writes
+    /// its sides and its source alone of `content`, never its type or its
+    /// tags, since the editor shows neither (#538), so the card keeps both as
+    /// the database holds them, a user type this device doesn't hold yet
+    /// included, which the card reads as no type until it comes. A flagged
+    /// card is fixed, back in the reviews unless it's set aside. The detail
+    /// shows it as saved at once, without waiting for the engine to say it
+    /// changed.
     public mutating func saveCard(_ content: CardContent) {
         guard case .card(let card) = editing, canSaveCard else { return }
         let files = heldFiles(of: content)

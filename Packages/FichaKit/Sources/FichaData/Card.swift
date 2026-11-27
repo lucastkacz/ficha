@@ -230,28 +230,44 @@ func updateCard(
 /// leaves that time as it was. Returns the card as it is then. Every change
 /// to a card's content made on this device goes through here, with content
 /// `CardContent` checked, as every new card goes through `insertCard`, but
-/// three that write a column or two of many cards at once: renaming a tag
-/// writes their tags (`RenamingTags.swift`), turning tags into decks writes
-/// their decks and their tags (`TagsIntoDecks.swift`), and deleting a user
-/// type clears their type (`forgetType`). None can make a card `CardContent`
-/// refuses, and going through here would clean up each card's other fields
-/// as `CardContent` does, changing what the user didn't touch, such as a tag
-/// stored before tags sat inside tags. An image or a sound the card no
-/// longer refers to stays where Ficha keeps it: the engine removes it once
-/// no card uses it. A user type deleted meanwhile is refused.
+/// four. An edit saved in the Cards window writes its sides and its source
+/// alone (`replaceSidesAndSource(of:with:at:in:)`). Three write a column or
+/// two of many cards at once: renaming a tag writes their tags
+/// (`RenamingTags.swift`), turning tags into decks writes their decks and
+/// their tags (`TagsIntoDecks.swift`), and deleting a user type clears their
+/// type (`forgetType`). None can make a card `CardContent` refuses, and going
+/// through here would clean up each card's other fields as `CardContent`
+/// does, changing what the user didn't touch, such as a tag stored before
+/// tags sat inside tags. An image or a sound the card no longer refers to
+/// stays where Ficha keeps it: the engine removes it once no card uses it. A
+/// user type deleted meanwhile is refused.
 func replaceContent(of cardID: Int64, with content: CardContent, at now: Date, in db: Database) throws -> Card {
     try checkExists(content.type, in: db)
+    try db.execute(
+        sql: "UPDATE card SET type = ?, tags = ? WHERE id = ?",
+        arguments: [content.type?.column, try tagsJSON(content.tags), cardID])
+    return try replaceSidesAndSource(of: cardID, with: content, at: now, in: db)
+}
+
+/// Replaces a card's sides and source with `content`'s, as
+/// `replaceContent(of:with:at:in:)` does, at `now`, but leaves its type and
+/// its tags as the database holds them, whatever `content` says: the update
+/// leaves both columns out, so a user type this device doesn't hold yet,
+/// which the card reads as no type until the type's record comes, stays
+/// too. How an edit saved in the Cards window changes a card, since the
+/// window shows neither (#538). Returns the card as it is then.
+func replaceSidesAndSource(of cardID: Int64, with content: CardContent, at now: Date, in db: Database) throws -> Card {
     let before = try existingCard(cardID, in: db)
     return try updateCard(
         cardID,
         setting: """
-            type = ?, front = ?, back = ?, frontImage = ?, backImage = ?, frontSound = ?, backSound = ?, tags = ?, \
-            source = ?, editedAt = ?
+            front = ?, back = ?, frontImage = ?, backImage = ?, frontSound = ?, backSound = ?, source = ?, \
+            editedAt = ?
             """,
         to: [
-            content.type?.column, content.front, content.back, content.frontImage?.rawValue,
-            content.backImage?.rawValue, content.frontSound?.rawValue, content.backSound?.rawValue,
-            try tagsJSON(content.tags), content.source, before.hasSides(of: content) ? before.editedAt : now,
+            content.front, content.back, content.frontImage?.rawValue, content.backImage?.rawValue,
+            content.frontSound?.rawValue, content.backSound?.rawValue, content.source,
+            before.hasSides(of: content) ? before.editedAt : now,
         ],
         in: db
     )

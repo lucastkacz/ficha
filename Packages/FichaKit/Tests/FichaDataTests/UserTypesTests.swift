@@ -1,7 +1,10 @@
 import FichaCore
-import FichaData
 import Foundation
 import Testing
+
+// For `Engine.edit(_:with:deck:bothWays:)`, an edit with a card's whole
+// content, which only the tests make.
+@testable import FichaData
 
 /// Tests on card types of the user's own (#365), beside the four Ficha comes
 /// with: each with a name and an optional emoji, made, renamed and deleted,
