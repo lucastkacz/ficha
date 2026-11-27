@@ -14,6 +14,9 @@ const check = (name, ok, got) => {
 };
 const near = (a, b, tol = 1e-3) => Math.abs(a - b) < tol;
 const start = new Date(2026, 0, 5, 10, 0).getTime();
+// A time on a day of October 2026, as FichaKit's tests of Ficha's day and of
+// night hours name them.
+const at = (day, hour, minute = 0) => new Date(2026, 9, day, hour, minute).getTime();
 const fresh = (id = 'c1') => ({ id, state: 'new', step: 0, mem: null, last: null, reps: 0 });
 const days = (p) => [1, 2, 3, 4].map((g) => Math.round(p[g].wait / DAY));
 const noSteps = { ...SCHEDULER, learningSteps: [] };
@@ -176,6 +179,40 @@ const noSteps = { ...SCHEDULER, learningSteps: [] };
   const days = (f) => f.map((d) => `${d.soonest}-${d.latest}`).join();
   check('at Steady, the finish dates are 1 to 2 days away and 3 to 5', days(steady) === '1-2,3-5', days(steady));
   check('at Faster, they are today and 1 to 2 days away', days(faster) === '0-0,1-2', days(faster));
+}
+// FichasDayTests.aNewCardAnsweredAfterMidnightCountsTowardTheNight,
+// theDayTurnsAtFour and theDayTurnsAtTheHourItStartsAt: Ficha's day starts
+// at 4:00, or at the hour it's set to (ADR 0045).
+{
+  const sameDay = (a, b, s) => E.startOfDay(a, s) === E.startOfDay(b, s);
+  const six = { ...E.SETTINGS, dayStartsAtHour: 6 };
+  check('with the day at 4:00, 23:59 and 0:00 are one day, and 3:59 and 4:00 two',
+    sameDay(at(14, 23, 59), at(15, 0)) && !sameDay(at(15, 3, 59), at(15, 4)),
+    [at(14, 23, 59), at(15, 0), at(15, 3, 59), at(15, 4)].map((t) => E.startOfDay(t)));
+  check('with the day at 6:00, 4:00 and 5:59 are the day before, and 6:00 the next',
+    sameDay(at(15, 4), at(14, 21), six) && sameDay(at(15, 5, 59), at(14, 21), six) && !sameDay(at(15, 6), at(14, 21), six),
+    [at(15, 4), at(15, 5, 59), at(15, 6)].map((t) => E.startOfDay(t, six)));
+}
+// NightHoursTests.appearancesComeFromTwentyToThree: active hours from 20 to
+// 3 cross midnight.
+{
+  const night = { ...E.SETTINGS, activeHours: [20, 3] };
+  const inside = [at(14, 20), at(14, 23, 59), at(15, 2, 59)].map((t) => E.inActiveHours(t, night));
+  const next = [at(15, 3), at(15, 19, 59)].map((t) => E.intoActiveHours(t, night));
+  check('from 20 to 3, appearances may come at 20:00, 23:59 and 2:59, and from 3:00 or 19:59 next at 20:00',
+    inside.every(Boolean) && next.every((t) => t === at(15, 20)), [inside, next]);
+}
+// NightHoursTests.newCardsLeftTodayCountTonight,
+// NightHoursTests.newCardsLeftTodayWaitForTheNextNight and
+// PaceAndQueueTests.aDecksFinishDateCountsWhatTodayStillBrings: today's new
+// cards come until the active hours inside today's Ficha day are over.
+{
+  const night = new ToyFicha({ decks: [], now: at(14, 23), speed: 0, settings: { ...E.SETTINGS, activeHours: [20, 3] } });
+  const day = new ToyFicha({ decks: [], now: at(14, 23), speed: 0 });
+  const tonight = [night.canMeetToday(at(14, 23)), night.canMeetToday(at(15, 3, 30)), night.canMeetToday(at(15, 5))];
+  const daytime = [day.canMeetToday(at(14, 21)), day.canMeetToday(at(14, 23))];
+  check('from 20 to 3, today may bring new cards at 23:00 and at 5:00, and not at 3:30; from 9 to 22, at 21:00, and not at 23:00',
+    tonight.join() === 'true,false,true' && daytime.join() === 'true,false', [tonight, daytime]);
 }
 
 console.log(failed

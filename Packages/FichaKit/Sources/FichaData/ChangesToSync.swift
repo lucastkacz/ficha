@@ -169,6 +169,8 @@ enum SyncedField: String, Sendable, CaseIterable {
     // The settings that decide progress, each on its own. The ladder's, which
     // a version of Ficha before FSRS sent (#404), is read no more.
     case newCardsPerDay
+    /// The hour Ficha's day starts at (ADR 0045).
+    case dayStartsAtHour
     case forgottenOftenAfter
     case learningSteps
     case relearningSteps

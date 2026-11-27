@@ -115,6 +115,32 @@ final class ProgressSettingsTests {
         #expect(try app.progressSettings() == kept)
     }
 
+    // A user changed the new cards a day to 3 before Ficha's day, and sync,
+    // on, sent it, so the database holds a row of the settings that decide
+    // progress, which the hour joins as Ficha's, with nothing to send.
+    @Test(
+        "a database from before Ficha's day migrates with its settings and the day starting at 4:00, as no change to send, and keeps an hour saved after, which syncs",
+        .bug(id: 562))
+    func aDatabaseFromBeforeFichasDayStartsItAtFour() throws {
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try saveDatabaseBeforeFichasDay(at: folder.appending(path: "Ficha.sqlite"))
+
+        let app = try Engine(location: .folder(folder), time: time)
+        let waitingOnceMigrated = try app.changesToSend()
+        let migrated = try app.progressSettings()
+        var atSix = migrated
+        atSix.dayStartsAtHour = 6
+        try app.saveProgressSettings(atSix, changedFrom: migrated)
+
+        var expected = ReviewSettings.defaults.progress
+        expected.newCardsPerDay = 3
+        #expect(migrated == expected)
+        #expect(migrated.dayStartsAtHour == 4)
+        #expect(waitingOnceMigrated.isEmpty)
+        #expect(try app.changesToSend().map(\.row) == [.progressSettings])
+        #expect(try Engine(location: .folder(folder), time: time).progressSettings() == atSix)
+    }
+
     /// The process that opens the database first after the update.
     enum Opener {
         case app
@@ -130,10 +156,10 @@ func saveDatabaseBeforeProgressSettings(at file: URL) throws {
 }
 
 /// Settings that decide progress, made up, none of them Ficha's: the
-/// scheduler's `customScheduler()`; 12 new cards a day; and the offer to
-/// flag a card forgotten often after 4 lapses.
+/// scheduler's `customScheduler()`; 12 new cards a day; Ficha's day starting
+/// at 6:00; and the offer to flag a card forgotten often after 4 lapses.
 func customProgressSettings() throws -> ProgressSettings {
-    ProgressSettings(scheduler: try customScheduler(), newCardsPerDay: 12, forgottenOftenAfter: 4)
+    ProgressSettings(scheduler: try customScheduler(), newCardsPerDay: 12, dayStartsAtHour: 6, forgottenOftenAfter: 4)
 }
 
 /// Scheduling settings made up, none of them Ficha's: learning steps of 10
@@ -153,3 +179,26 @@ let customParameters: [Float] = [
     0.4072, 1.1829, 3.1262, 15.4722, 7.2102, 0.5316, 1.0651, 0.0234, 1.616, 0.1544, 1.0824, 1.9813, 0.0953, 0.2975,
     2.2042, 0.2407, 2.9466, 0.5034, 0.6567, 0.1, 0.1542,
 ]
+
+/// Saves a database at `file` as Ficha left it before Ficha's day
+/// (ADR 0045), through the schema's migrations up to the one before it, with
+/// sync on, as a database with no cards starts, and nothing waiting to be
+/// sent, and with the settings that decide progress a user changed to 3 new
+/// cards a day: Ficha's otherwise, as Ficha writes the row, the desired
+/// retention of a new install among them, 85%, where the column holds the
+/// scheduler's 90%.
+func saveDatabaseBeforeFichasDay(at file: URL) throws {
+    let database = try DatabasePool(path: file.path(percentEncoded: false))
+    try Schema.migrator.migrate(database, upTo: "v35 a deck's description")
+    try database.write { db in
+        try db.execute(sql: "UPDATE syncWrite SET recordsChanges = 0")
+        try db.execute(
+            sql: """
+                INSERT INTO progressSettings (id, newCardsPerDay, forgottenOftenAfter, desiredRetention)
+                VALUES (1, 3, 8, 0.85)
+                """)
+        try db.execute(sql: "UPDATE syncWrite SET recordsChanges = 1")
+        try db.execute(sql: "DELETE FROM syncPending")
+    }
+    try database.close()
+}

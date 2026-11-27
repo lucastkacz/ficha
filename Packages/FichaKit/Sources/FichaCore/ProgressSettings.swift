@@ -1,23 +1,26 @@
 /// The settings that decide a card's progress: the scheduler's settings, how
-/// many new cards a day, and when a card is forgotten often. They sync, so a
-/// card's progress means the same on each of the user's devices (ADR 0017):
-/// the engine keeps them in the database. The rest of `ReviewSettings`, when
-/// Ficha shows up and how the review panel behaves, stays each device's own,
-/// in the app's preferences.
+/// many new cards a day, the hour Ficha's day starts at, and when a card is
+/// forgotten often. They sync, so a card's progress means the same on each of
+/// the user's devices (ADR 0017): the engine keeps them in the database. The
+/// rest of `ReviewSettings`, when Ficha shows up and how the review panel
+/// behaves, stays each device's own, in the app's preferences.
 public struct ProgressSettings: Sendable, Equatable {
     /// The settings FSRS spaces cards with, each of which syncs on its own.
     public var scheduler: Scheduler
-    /// How many new cards the user meets in a day at most, by the device's
-    /// calendar day.
+    /// How many new cards the user meets in a day at most, by Ficha's day.
     public var newCardsPerDay: Int
+    /// The hour Ficha's day starts at, from 0 to 23 (ADR 0045), so a new card
+    /// counts toward the same day on each device.
+    public var dayStartsAtHour: Int
     /// How many lapses of one of a card's ways, since its front or back last
     /// changed, before the review panel offers to flag it as forgotten often,
     /// at least 1, or nil when it never offers.
     public var forgottenOftenAfter: Int?
 
-    public init(scheduler: Scheduler, newCardsPerDay: Int, forgottenOftenAfter: Int?) {
+    public init(scheduler: Scheduler, newCardsPerDay: Int, dayStartsAtHour: Int, forgottenOftenAfter: Int?) {
         self.scheduler = scheduler
         self.newCardsPerDay = newCardsPerDay
+        self.dayStartsAtHour = dayStartsAtHour
         self.forgottenOftenAfter = forgottenOftenAfter
     }
 
@@ -30,6 +33,9 @@ public struct ProgressSettings: Sendable, Equatable {
         settings.scheduler = scheduler.taking(changed.scheduler, changedFrom: old.scheduler)
         if changed.newCardsPerDay != old.newCardsPerDay {
             settings.newCardsPerDay = changed.newCardsPerDay
+        }
+        if changed.dayStartsAtHour != old.dayStartsAtHour {
+            settings.dayStartsAtHour = changed.dayStartsAtHour
         }
         if changed.forgottenOftenAfter != old.forgottenOftenAfter {
             settings.forgottenOftenAfter = changed.forgottenOftenAfter
@@ -44,11 +50,13 @@ extension ReviewSettings {
     public var progress: ProgressSettings {
         get {
             ProgressSettings(
-                scheduler: scheduler, newCardsPerDay: newCardsPerDay, forgottenOftenAfter: forgottenOftenAfter)
+                scheduler: scheduler, newCardsPerDay: newCardsPerDay, dayStartsAtHour: dayStartsAtHour,
+                forgottenOftenAfter: forgottenOftenAfter)
         }
         set {
             scheduler = newValue.scheduler
             newCardsPerDay = newValue.newCardsPerDay
+            dayStartsAtHour = newValue.dayStartsAtHour
             forgottenOftenAfter = newValue.forgottenOftenAfter
         }
     }

@@ -142,11 +142,13 @@ public struct CardsInReviews: Sendable, Equatable {
         Set(log.filter { $0.way == .frontFirst }.map(\.cardID))
     }
 
-    /// The first reviews of new ways Lucas had on `now`'s day, by
-    /// `calendar`, in the order they were written: the new cards a day
-    /// count these.
-    func firstReviews(onTheDayOf now: Date, calendar: Calendar) -> [ReviewLogEntry] {
-        log.filter { $0.isFirstReview && calendar.isDate($0.answeredAt, inSameDayAs: now) }
+    /// The first reviews of new ways Lucas answered in the Ficha's day `now`
+    /// is in, for a day that starts at the hour `hour`, by `calendar`, in the
+    /// order they were written: the new cards a day count these (ADR 0045).
+    func firstReviews(onTheFichasDayOf now: Date, startingAt hour: Int, calendar: Calendar) -> [ReviewLogEntry] {
+        let start = calendar.startOfFichasDay(for: now, startingAt: hour)
+        let end = calendar.startOfNextFichasDay(after: now, startingAt: hour)
+        return log.filter { $0.isFirstReview && start <= $0.answeredAt && $0.answeredAt < end }
     }
 }
 

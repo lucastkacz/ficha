@@ -1,0 +1,150 @@
+import FichaCore
+import FichaData
+import Foundation
+import Testing
+
+/// Tests on active hours that cross midnight (ADR 0045), from 20 to 3 unless
+/// a test says otherwise, with Ficha's other settings: Steady, and Ficha's
+/// day from 4:00. They run in Buenos Aires, from 9 in the morning of
+/// Wednesday the 14th.
+/// `mockups/tools/check-engine.js` copies some of these cases into the web
+/// mocks' toy engine: run it after changing one (`mockups/README.md`).
+struct NightHoursTests {
+    let calendar: Calendar
+    let time: ManualTimeSource
+    let engine: Engine
+    let settings: ReviewSettings
+
+    init() throws {
+        calendar = try buenosAiresCalendar()
+        time = ManualTimeSource(now: try morning(of: 14, in: calendar))
+        engine = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
+        var settings = ReviewSettings.defaults
+        settings.activeHours = try #require(ActiveHours(from: 20, to: 3))
+        self.settings = settings
+    }
+
+    @Test(
+        "with active hours from 20 to 3, an appearance may come at 20:00, 23:59 and 2:59, and none at 3:00 or 19:59",
+        .bug(id: 564))
+    func appearancesComeFromTwentyToThree() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        let moments = try [at(19, 59), at(20, 0), at(23, 59), at(2, 59, day: 15), at(3, 0, day: 15)]
+
+        let decisions = try moments.map { moment in
+            time.move(to: moment)
+            return try engine.checkAppearance(settings, mac: FakeMac())
+        }
+
+        let shows = AppearanceDecision.show([.new(serendipia)])
+        #expect(decisions == [.notNow(.outsideActiveHours), shows, shows, shows, .notNow(.outsideActiveHours)])
+    }
+
+    @Test(
+        "with active hours from 9 to 22, an appearance may come at 9:00 and 21:59, and none at 22:00 or 8:59",
+        .bug(id: 564))
+    func appearancesComeFromNineToTwentyTwoAsBefore() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        let moments = try [at(9, 0), at(21, 59), at(22, 0), at(8, 59, day: 15)]
+
+        let decisions = try moments.map { moment in
+            time.move(to: moment)
+            return try engine.checkAppearance(.defaults, mac: FakeMac())
+        }
+
+        let shows = AppearanceDecision.show([.new(serendipia)])
+        #expect(decisions == [shows, shows, .notNow(.outsideActiveHours), .notNow(.outsideActiveHours)])
+    }
+
+    // Serendipia, met at 22:00, is due at 23:00. Left alone, each planned
+    // appearance brings it again once the separation passed.
+    @Test(
+        "the iPhone's planned appearances for 20 to 3 cross midnight, with none from 3:00 to 19:59",
+        .bug(id: 564))
+    func plannedAppearancesCrossMidnight() throws {
+        let serendipia = try approveCard("serendipia", in: engine)
+        time.move(to: try at(22, 0))
+        try engine.meet(serendipia)
+
+        let planned = try engine.upcomingAppearances(settings).prefix(10).map(\.time)
+
+        let night = try [
+            at(23, 0), at(23, 30), at(0, 0, day: 15), at(0, 30, day: 15), at(1, 0, day: 15), at(1, 30, day: 15),
+            at(2, 0, day: 15), at(2, 30, day: 15),
+        ]
+        #expect(planned == night + [try at(20, 0, day: 15), try at(20, 30, day: 15)])
+    }
+
+    // As the debate's simulation found: the night's first appearance, at
+    // 20:00, and the next, 30 minutes after it closed, bring the day's two
+    // new cards, and the rest bring the reviews.
+    @Test(
+        "a week of 20 to 3 at Steady, with the day at 4:00, brings two new cards a night, in the night's first two appearances from 20:00",
+        .bug(id: 564))
+    func aWeekOfNightsBringsTwoNewCardsANight() throws {
+        let week = try appearances(over: 7, from: try at(12, 0), newCards: 20, settings: settings, calendar: calendar)
+
+        let withNewCards = week.filter { !$0.newCards.isEmpty }
+        let nights = try (14..<21).flatMap { day in try [at(20, 0, day: day), at(20, 31, day: day)] }
+        #expect(withNewCards.map(\.time) == nights)
+        #expect(withNewCards.allSatisfy { $0.newCards.count == 1 })
+    }
+
+    // Arte's La Gioconda met at 22:00, tonight's first new card, and Las
+    // Meninas, tonight's second, so Historia's Coliseo comes tomorrow night:
+    // with two left tonight, it would come tonight too, and with none, Las
+    // Meninas would wait for tomorrow night. At 0:30 it's still tonight.
+    @Test(
+        "the queue's new cards left today count tonight's active hours: at 23:00 and at 0:30, with 20 to 3, Steady and one met tonight, one is left",
+        .bug(id: 564))
+    func newCardsLeftTodayCountTonight() throws {
+        let gioconda = try approveInDeck("La Gioconda", deck: "Arte", in: engine)
+        try approveInDeck("Las Meninas", deck: "Arte", in: engine)
+        try approveInDeck("Coliseo", deck: "Historia", in: engine)
+        time.move(to: try at(22, 0))
+        try engine.meet(gioconda)
+        time.move(to: try at(23, 0))
+        let atEleven = try engine.queue(settings)
+        time.move(to: try at(0, 30, day: 15))
+        let atHalfPastMidnight = try engine.queue(settings)
+
+        let (tonight, tomorrow, friday) = try (startOfDay(14), startOfDay(15), startOfDay(16))
+        let queue = [
+            QueuedDeck(deck: "Arte", newCards: 1, finish: FinishDate(soonest: tonight, latest: tonight)),
+            QueuedDeck(deck: "Historia", newCards: 1, finish: FinishDate(soonest: tomorrow, latest: friday)),
+        ]
+        #expect(atEleven == queue)
+        #expect(atHalfPastMidnight == queue)
+    }
+
+    // At 3:30 the night's active hours are over and Ficha's day, the 14th's,
+    // lasts until 4:00, so Las Meninas waits for the 15th's night. At 5:00
+    // Ficha's day is the 15th's, whose night is still to come.
+    @Test(
+        "the queue's new cards left today wait for active hours inside today's Ficha day: with 20 to 3 and none met, a deck's one new card finishes on the 15th or the 16th at 3:30, and on the 15th at 5:00",
+        .bug(id: 564))
+    func newCardsLeftTodayWaitForTheNextNight() throws {
+        try approveInDeck("Las Meninas", deck: "Arte", in: engine)
+        time.move(to: try at(3, 30, day: 15))
+        let atHalfPastThree = try engine.queue(settings)
+        time.move(to: try at(5, 0, day: 15))
+        let atFive = try engine.queue(settings)
+
+        let (fifteenth, sixteenth) = try (startOfDay(15), startOfDay(16))
+        let finish = [
+            FinishDate(soonest: fifteenth, latest: sixteenth), FinishDate(soonest: fifteenth, latest: fifteenth),
+        ]
+        #expect([atHalfPastThree, atFive] == finish.map { [QueuedDeck(deck: "Arte", newCards: 1, finish: $0)] })
+    }
+
+    /// A time of day on a day in October 2026 by the tests' calendar: the
+    /// 14th, unless another day is given.
+    private func at(_ hour: Int, _ minute: Int, day: Int = 14) throws -> Date {
+        try #require(calendar.date(from: DateComponents(year: 2026, month: 10, day: day, hour: hour, minute: minute)))
+    }
+
+    /// The start of the day `day` of October 2026, by the tests' calendar.
+    private func startOfDay(_ day: Int) throws -> Date {
+        try #require(calendar.date(from: DateComponents(year: 2026, month: 10, day: day)))
+    }
+}

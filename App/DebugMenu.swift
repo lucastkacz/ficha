@@ -118,7 +118,7 @@ struct DebugMenu: View {
         case .asleep:
             "The Mac or its screens are asleep."
         case .outsideActiveHours:
-            "It's outside active hours, from \(settings.activeHours.lowerBound):00 to \(settings.activeHours.upperBound):00."
+            "It's outside active hours, from \(settings.activeHours.start):00 to \(settings.activeHours.end):00."
         case .tooSoonAfterLastOne(let until):
             """
             The last appearance or review now closed less than \(inWords(settings.separation)) ago: the next \

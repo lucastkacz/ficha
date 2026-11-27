@@ -40,11 +40,11 @@ extension ReviewSettings {
     static let mostWidgetEntries = 30
     static let mostWidgetLooks = 200
 
-    /// What the widget shows from `now` on, out of `cards`, by `calendar`'s
-    /// days, as `NextWayTimeline` says: the way review now would start with,
-    /// as `pickCards` picks it, or when the next way comes. What it shows
+    /// What the widget shows from `now` on, out of `cards`, by `calendar`,
+    /// as `NextWayTimeline` says: the way review now would start with, as
+    /// `pickCards` picks it, or when the next way comes. What it shows
     /// changes only as a way comes due, and, while new ways wait for the next
-    /// day's new cards, at the next midnight.
+    /// day's new cards, as Ficha's next day starts (ADR 0045).
     public func nextWayTimeline(
         cards: CardsInReviews,
         from now: Date,
@@ -54,7 +54,7 @@ extension ReviewSettings {
         let newWaysWait = standings.contains { $0.standing == .new } && bringsNewCard(after: 0, metToday: 0)
         let changes = WidgetChanges(
             dueTimes: standings.compactMap(\.standing.due),
-            nextDay: newWaysWait ? calendar.dateInterval(of: .day, for: now)?.end : nil)
+            nextDay: newWaysWait ? calendar.startOfNextFichasDay(after: now, startingAt: dayStartsAtHour) : nil)
         func nextWay(at time: Date) -> NextWay {
             let picked = pickCards(after: standings, of: cards, dueBy: time, now: time, calendar: calendar)
             if let due = picked.reviews.first {
@@ -85,14 +85,14 @@ extension ReviewSettings {
 }
 
 /// The times what the widget shows may change on its own: as a way comes
-/// due, and at the next midnight, when new ways wait for the next day's new
-/// cards. Only that midnight: from then on Lucas has met no new card on any
-/// day, since the timeline has him rate nothing, so the days after it change
-/// nothing.
+/// due, and as Ficha's next day starts, when new ways wait for the next day's
+/// new cards. Only that day's start: from then on Lucas has met no new card
+/// on any day, since the timeline has him rate nothing, so the days after it
+/// change nothing.
 private struct WidgetChanges {
     /// When each started way is due, in order, each time once.
     let dueTimes: [Date]
-    /// The next midnight, when new ways wait, or nil.
+    /// When Ficha's next day starts, when new ways wait, or nil.
     let nextDay: Date?
 
     init(dueTimes: [Date], nextDay: Date?) {

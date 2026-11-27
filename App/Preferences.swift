@@ -68,8 +68,8 @@ enum Preferences {
         write(settings.cardsPerAppearance, for: .cardsPerAppearance, unless: defaults.cardsPerAppearance)
         write(wholeMinutes(settings.lookAhead), for: .lookAhead, unless: wholeMinutes(defaults.lookAhead))
         write(
-            [settings.activeHours.lowerBound, settings.activeHours.upperBound], for: .activeHours,
-            unless: [defaults.activeHours.lowerBound, defaults.activeHours.upperBound])
+            [settings.activeHours.start, settings.activeHours.end], for: .activeHours,
+            unless: [defaults.activeHours.start, defaults.activeHours.end])
         write(wholeMinutes(settings.separation), for: .separation, unless: wholeMinutes(defaults.separation))
         write(
             wholeMinutes(settings.waitAfterWaking), for: .waitAfterWaking,
@@ -261,12 +261,13 @@ private func wholeMinutes(_ duration: Duration) -> Int64 {
 }
 
 /// The active hours stored as two numbers, the first hour and the hour after
-/// the last one, or nil unless they make a part of the day.
-private func activeHours(_ stored: [Int]) -> Range<Int>? {
-    guard stored.count == 2, 0 <= stored[0], stored[0] < stored[1], stored[1] <= 24 else {
+/// the last one, or nil unless they make a part of the day that ends before
+/// midnight or at it: hours stored across midnight are #565's.
+private func activeHours(_ stored: [Int]) -> ActiveHours? {
+    guard stored.count == 2, stored[0] < stored[1] else {
         return nil
     }
-    return stored[0]..<stored[1]
+    return ActiveHours(from: stored[0], to: stored[1])
 }
 
 /// The suppressions stored by their raw values, or nil when one isn't known.

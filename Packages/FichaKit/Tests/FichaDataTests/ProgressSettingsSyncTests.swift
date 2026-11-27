@@ -62,9 +62,33 @@ final class ProgressSettingsSyncTests {
         try await iPhone.syncNow()
         try await mac.syncNow()
 
-        let latest = ProgressSettings(scheduler: .newInstall, newCardsPerDay: 9, forgottenOftenAfter: 12)
+        let latest = ProgressSettings(
+            scheduler: .newInstall, newCardsPerDay: 9, dayStartsAtHour: 4, forgottenOftenAfter: 12)
         #expect(try mac.engine.progressSettings() == latest)
         #expect(try iPhone.engine.progressSettings() == latest)
+    }
+
+    // The Mac sends first: its earlier change, which the iPhone's later one
+    // replaces on both.
+    @Test(
+        "the hour Ficha's day starts at syncs as a field of the settings' record, its latest change winning on both devices",
+        .bug(id: 562))
+    func theDaysHourSyncsAsAField() async throws {
+        time.advance(by: minutes(1))
+        let macChangedAt = time.now
+        let onMac = try mac.engine.progressSettings()
+        try mac.engine.saveProgressSettings(onMac.with(dayStartsAtHour: 6), changedFrom: onMac)
+        let waitingOnMac = try mac.engine.changesToSend()
+        time.advance(by: minutes(1))
+        let onIPhone = try iPhone.engine.progressSettings()
+        try iPhone.engine.saveProgressSettings(onIPhone.with(dayStartsAtHour: 5), changedFrom: onIPhone)
+        try await mac.syncNow()
+        try await iPhone.syncNow()
+        try await mac.syncNow()
+
+        #expect(waitingOnMac.first { $0.row == .progressSettings }?.fieldTimes == [.dayStartsAtHour: macChangedAt])
+        #expect(try mac.engine.progressSettings() == ReviewSettings.defaults.progress.with(dayStartsAtHour: 5))
+        #expect(try iPhone.engine.progressSettings() == ReviewSettings.defaults.progress.with(dayStartsAtHour: 5))
     }
 
     // The Mac's Settings read the settings before the iPhone's count came,
@@ -85,7 +109,8 @@ final class ProgressSettingsSyncTests {
         try await mac.syncNow()
         try await iPhone.syncNow()
 
-        let latest = ProgressSettings(scheduler: .newInstall, newCardsPerDay: 3, forgottenOftenAfter: 12)
+        let latest = ProgressSettings(
+            scheduler: .newInstall, newCardsPerDay: 3, dayStartsAtHour: 4, forgottenOftenAfter: 12)
         #expect(try mac.engine.progressSettings() == latest)
         #expect(try iPhone.engine.progressSettings() == latest)
     }
@@ -248,6 +273,13 @@ extension ProgressSettings {
     fileprivate func with(forgottenOftenAfter: Int?) -> ProgressSettings {
         var settings = self
         settings.forgottenOftenAfter = forgottenOftenAfter
+        return settings
+    }
+
+    /// These settings with `dayStartsAtHour` in place of theirs.
+    fileprivate func with(dayStartsAtHour: Int) -> ProgressSettings {
+        var settings = self
+        settings.dayStartsAtHour = dayStartsAtHour
         return settings
     }
 
