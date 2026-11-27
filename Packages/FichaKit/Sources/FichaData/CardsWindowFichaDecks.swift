@@ -13,25 +13,26 @@ import Foundation
 
 extension CardsWindowState {
     /// Takes Ficha's decks as the app read them from its bundle
-    /// (`Engine.readFichaDeck(_:at:)`), which the sidebar's Ficha's Decks
-    /// section, after Decks, lists while the user hasn't added them, in
-    /// `FichaDeck`'s order, and leaves out once all are, as each read of the
-    /// cards finds them; and asks How fast? for the one the review panel
-    /// asked for meanwhile (`askToAddFichaDeck(_:)`), while it's offered.
-    public mutating func offerFichaDecks(_ files: [FichaDeckFile]) {
-        fichaDeckFiles = FichaDeck.allCases.compactMap { deck in files.first { $0.deck == deck } }
-        read(with: scheduler)
+    /// (`Engine.readFichaDeck(_:at:)`), each deck's file or why it couldn't
+    /// be read, which the sidebar's Ficha's Decks section, after Decks,
+    /// lists while the user hasn't added them, in `FichaDeck`'s order, and
+    /// leaves out once all are, as each read of the cards finds them; and
+    /// asks How fast? for the one the review panel asked for meanwhile
+    /// (`askToAddFichaDeck(_:)`), while it's offered. A deck whose file
+    /// couldn't be read, such as one missing from a damaged copy of the app,
+    /// isn't listed: the window says why the first couldn't until Lucas
+    /// closes it, and the log says each.
+    public mutating func offerFichaDecks(_ read: [FichaDeck: Result<FichaDeckFile, EngineError>]) {
+        let (files, failures) = FichaDeck.files(in: read)
+        fichaDeckFiles = files
+        self.read(with: scheduler)
+        if let failed = failures.first {
+            record(failed.error, for: .readFichaDeck(failed.deck))
+        }
         if let asked = fichaDeckAskedToAdd {
             fichaDeckAskedToAdd = nil
             askToAddFichaDeck(asked)
         }
-    }
-
-    /// Records that the app couldn't read the file of `deck`, as `error`
-    /// says, such as one missing from a damaged copy of the app, which the
-    /// window says until Lucas closes it: the section doesn't list the deck.
-    public mutating func couldNotRead(_ deck: FichaDeck, because error: EngineError) {
-        record(error, for: .readFichaDeck(deck))
     }
 
     /// The one of Ficha's decks the sidebar chose, as its file holds it,

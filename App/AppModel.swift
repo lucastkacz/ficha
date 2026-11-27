@@ -78,8 +78,8 @@ final class AppModel {
     var fichaDeckToAdd: FichaDeck?
     /// Whether `readFichaDecks()` reads Ficha's decks from the app's
     /// resources: always in the app. `make render`, whose app has no bundle
-    /// of its own, turns it off, and gives a picture's Cards window the
-    /// decks itself, read from the repo, so each picture shows the same.
+    /// of its own, turns it off, and gives a picture's windows the decks
+    /// itself, read from the repo, so each picture shows the same.
     var readsFichaDecks = true
 
     /// The real Ficha's way into Lucas's cards, through `engine`, or why the
@@ -208,13 +208,15 @@ final class AppModel {
         engine.changes()
     }
 
-    /// Ficha's decks, in `FichaDeck`'s order, each as its file in the app's
-    /// resources holds it, or why it couldn't be read, such as a file missing
-    /// from a damaged copy of the app (ADR 0040): read away from the main
+    /// Ficha's decks, each as its file in the app's resources holds it, or
+    /// why it couldn't be read, such as a file missing from a damaged copy
+    /// of the app (ADR 0040), which the windows that offer them take as they
+    /// are, to decide what they list and say: read away from the main
     /// actor, since reading them takes a while. Reading one imports nothing.
-    /// None while `readsFichaDecks` is off.
-    func readFichaDecks() async -> [(deck: FichaDeck, read: Result<FichaDeckFile, EngineError>)] {
-        guard readsFichaDecks else { return [] }
+    /// Nil while `readsFichaDecks` is off, when the render tool gives the
+    /// windows the decks itself.
+    func readFichaDecks() async -> [FichaDeck: Result<FichaDeckFile, EngineError>]? {
+        guard readsFichaDecks else { return nil }
         let files = FichaDeck.allCases.map { deck in (deck: deck, file: Self.fileOfFichaDeck(deck)) }
         return await readAwayFromTheMainActor(files, with: engine)
     }
@@ -311,20 +313,19 @@ final class AppModel {
 }
 
 /// Each of Ficha's decks in `files` as `engine` reads its file, or why it
-/// couldn't, in their order, away from the main actor: reading the files'
-/// pictures takes a while, while the windows go on answering. The engine
-/// logs why one couldn't be read.
+/// couldn't, by deck, away from the main actor: reading the files' pictures
+/// takes a while, while the windows go on answering.
 @concurrent
 private func readAwayFromTheMainActor(_ files: [(deck: FichaDeck, file: URL)], with engine: Engine) async
-    -> [(deck: FichaDeck, read: Result<FichaDeckFile, EngineError>)]
+    -> [FichaDeck: Result<FichaDeckFile, EngineError>]
 {
-    var read: [(deck: FichaDeck, read: Result<FichaDeckFile, EngineError>)] = []
+    var read: [FichaDeck: Result<FichaDeckFile, EngineError>] = [:]
     for (deck, file) in files {
         do throws(EngineError) {
             let deckFile = try await engine.readFichaDeck(deck, at: file)
-            read.append((deck: deck, read: .success(deckFile)))
+            read[deck] = .success(deckFile)
         } catch {
-            read.append((deck: deck, read: .failure(error)))
+            read[deck] = .failure(error)
         }
     }
     return read

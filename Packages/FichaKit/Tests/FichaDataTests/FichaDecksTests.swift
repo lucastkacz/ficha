@@ -135,7 +135,7 @@ final class FichaDecksTests {
         let file = try await updated.readFichaDeck(.arteArgentino, at: newer)
         var window = updated.openCardsWindow(with: scheduler)
         window.read(with: scheduler)
-        window.offerFichaDecks([file])
+        window.offerFichaDecks([file.deck: .success(file)])
 
         #expect(try updated.hasAdded(file))
         #expect(window.offeredFichaDecks == [])
@@ -149,10 +149,10 @@ final class FichaDecksTests {
         "the Cards window lists Ficha's decks the user hasn't added after Decks, shows one's first card front and back, and once Add Deck… and How fast?'s Start add it, lists it no longer and chooses the deck",
         .bug(id: 458))
     func theCardsWindowOffersFichasDecks() async throws {
-        var files: [FichaDeckFile] = []
+        var files: [FichaDeck: Result<FichaDeckFile, EngineError>] = [:]
         for deck in FichaDeck.allCases {
             let shipped = try fileInTheRepo(of: deck)
-            files.append(try await engine.readFichaDeck(deck, at: shipped))
+            files[deck] = .success(try await engine.readFichaDeck(deck, at: shipped))
         }
         try approveInDeck("serendipia", deck: "Lenguaje", in: engine)
         var window = engine.openCardsWindow(with: scheduler)
@@ -191,6 +191,24 @@ final class FichaDecksTests {
         #expect(try engine.cards().count { $0.deck == FichaDeck.arteArgentino.name } == 50)
     }
 
+    // Flores de Buenos Aires' file is missing, as from a damaged copy of the
+    // app, and Palabras lindas' wasn't read.
+    @Test(
+        "the Cards window lists those of Ficha's decks the app could read, in their order, and says why the one it couldn't read isn't there",
+        .bug(id: 458))
+    func aDeckThatCouldNotBeReadIsNotListed() async throws {
+        let arte = try await engine.readFichaDeck(.arteArgentino, at: try fileInTheRepo(of: .arteArgentino))
+        let missing = EngineError.fichaDeckMissing(FichaDeck.floresDeBuenosAires.name)
+        var window = engine.openCardsWindow(with: scheduler)
+        window.read(with: scheduler)
+
+        window.offerFichaDecks([.floresDeBuenosAires: .failure(missing), .arteArgentino: .success(arte)])
+
+        #expect(window.offeredFichaDecks == [.arteArgentino])
+        #expect(window.failure?.action == .readFichaDeck(.floresDeBuenosAires))
+        #expect(window.failure?.error == missing)
+    }
+
     // The user is meeting Lenguaje: ubuntu, which goes both ways, was met
     // now, so its back-first way is still to come, and ojalá goes both ways
     // too, new. Música, which came in a minute later, is a priority deck,
@@ -219,7 +237,7 @@ final class FichaDecksTests {
         let file = try await engine.readFichaDeck(.arteArgentino, at: shipped)
         var window = engine.openCardsWindow(with: scheduler)
         window.read(with: scheduler)
-        window.offerFichaDecks([file])
+        window.offerFichaDecks([file.deck: .success(file)])
         window.choose(.fichaDeck(.arteArgentino))
 
         window.askToAddFichaDeck()
@@ -280,7 +298,7 @@ final class FichaDecksTests {
         let file = try await engine.readFichaDeck(.palabrasLindas, at: shipped)
         var window = engine.openCardsWindow(with: scheduler)
         window.read(with: scheduler)
-        window.offerFichaDecks([file])
+        window.offerFichaDecks([file.deck: .success(file)])
         window.choose(.fichaDeck(.palabrasLindas))
 
         window.askToAddFichaDeck()

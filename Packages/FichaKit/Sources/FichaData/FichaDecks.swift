@@ -41,6 +41,32 @@ public enum FichaDeck: String, Sendable, CaseIterable {
         case .floresDeBuenosAires: "💐"
         }
     }
+
+    /// The files of `read`, what the app read of Ficha's decks from its
+    /// bundle (`Engine.readFichaDeck(_:at:)`), each deck's file or why it
+    /// couldn't be read, in `FichaDeck`'s order, which the Cards window and
+    /// the review panel offer them in, and the decks that couldn't be read,
+    /// each with why, in that order too, which the log says.
+    static func files(in read: [FichaDeck: Result<FichaDeckFile, EngineError>])
+        -> (files: [FichaDeckFile], failures: [(deck: FichaDeck, error: EngineError)])
+    {
+        var files: [FichaDeckFile] = []
+        var failures: [(deck: FichaDeck, error: EngineError)] = []
+        for deck in allCases {
+            switch read[deck] {
+            case .success(let file)?:
+                files.append(file)
+            case .failure(let error)?:
+                logger.error(
+                    "Couldn't read \(deck.fileName, privacy: .public): \(String(describing: error), privacy: .public)"
+                )
+                failures.append((deck, error))
+            case nil:
+                break
+            }
+        }
+        return (files, failures)
+    }
 }
 
 /// One of Ficha's decks as its file holds it, read without importing it: what

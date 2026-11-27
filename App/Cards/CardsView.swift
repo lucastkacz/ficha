@@ -171,13 +171,10 @@ struct CardsView: View {
             }
             .task {
                 // Away from the main actor, since reading them takes a while:
-                // none when `make render` gives the window its own.
-                let decks = await model.readFichaDecks()
-                guard !decks.isEmpty else { return }
-                for case (let deck, .failure(let error)) in decks {
-                    state.couldNotRead(deck, because: error)
+                // nil when `make render` gives the window its own.
+                if let read = await model.readFichaDecks() {
+                    state.offerFichaDecks(read)
                 }
-                state.offerFichaDecks(decks.compactMap { try? $0.read.get() })
             }
             // The review panel's "You've met them all" asks for one of
             // Ficha's decks as it opens the window, or while it's open.

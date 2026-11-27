@@ -38,7 +38,7 @@ final class ReviewPanelWindow: NSPanel {
                     self?.close()
                 },
                 readFichaDecks: { [appModel] in
-                    await appModel.readFichaDecks().compactMap { try? $0.read.get() }
+                    await appModel.readFichaDecks()
                 },
                 addFichaDeck: { [weak self] deck in
                     self?.whenAddingFichaDeck(deck)

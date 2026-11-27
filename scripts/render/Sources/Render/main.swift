@@ -753,16 +753,19 @@ func howFastState(of model: AppModel) throws -> CardsWindowState {
 
 /// Ficha's decks as `engine` reads their files in the repo's
 /// `App/FichaDecks/`, found from this file's path, as the app reads those it
-/// bundles: the tool's own bundle has none (`AppModel.readsFichaDecks`).
-func fichaDecksInTheRepo(readBy engine: Engine) throws -> [FichaDeckFile] {
+/// bundles and gives its windows: the tool's own bundle has none
+/// (`AppModel.readsFichaDecks`).
+func fichaDecksInTheRepo(readBy engine: Engine) throws -> [FichaDeck: Result<FichaDeckFile, EngineError>] {
     let folder = URL(filePath: #filePath)
         .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
         .deletingLastPathComponent().deletingLastPathComponent()
         .appending(path: "App/FichaDecks", directoryHint: .isDirectory)
-    return try FichaDeck.allCases.map { deck in
+    var read: [FichaDeck: Result<FichaDeckFile, EngineError>] = [:]
+    for deck in FichaDeck.allCases {
         let file = folder.appending(path: "\(deck.fileName).zip")
-        return try waitFor { try await engine.readFichaDeck(deck, at: file) }
+        read[deck] = .success(try waitFor { try await engine.readFichaDeck(deck, at: file) })
     }
+    return read
 }
 
 /// The Cards window's state partway through importing an Anki package, as

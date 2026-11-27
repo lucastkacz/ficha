@@ -102,10 +102,10 @@ public struct ReviewPanelState: Sendable {
         public let nextInQueue: Deck?
         /// While nothing waits in the queue, the first of Ficha's decks the
         /// user hasn't added, in `FichaDeck`'s order, among those the app
-        /// gave the panel (`offerFichaDecks(_:)`): "Another of Ficha's
-        /// decks?", with a button named after it, which opens the Cards
-        /// window on it with How fast? (#458). Nil while something waits, or
-        /// while the user has added all of them.
+        /// could read for the panel (`offerFichaDecks(_:)`): "Another of
+        /// Ficha's decks?", with a button named after it, which opens the
+        /// Cards window on it with How fast? (#458). Nil while something
+        /// waits, or while the user has added all of them.
         public let fichaDeck: FichaDeck?
     }
 
@@ -181,7 +181,8 @@ public struct ReviewPanelState: Sendable {
     /// through its cards, which `metThemAll` says while the panel's done.
     private var metInFull: MetThemAll?
     /// Ficha's decks, as the app read them from its bundle once the panel
-    /// asked for them (`asksForFichaDecks`): nil until then.
+    /// asked for them (`asksForFichaDecks`), in `FichaDeck`'s order, those
+    /// it could read: nil until then.
     private var fichaDecks: [FichaDeckFile]?
 
     init(
@@ -254,10 +255,13 @@ public struct ReviewPanelState: Sendable {
     }
 
     /// Takes Ficha's decks as the app read them from its bundle
-    /// (`Engine.readFichaDeck(_:at:)`), which `metThemAll` offers the first
-    /// of the user hasn't added, while nothing waits in the queue.
-    public mutating func offerFichaDecks(_ files: [FichaDeckFile]) {
-        fichaDecks = files
+    /// (`Engine.readFichaDeck(_:at:)`), each deck's file or why it couldn't
+    /// be read, which `metThemAll` offers the first of, in `FichaDeck`'s
+    /// order, the user hasn't added, while nothing waits in the queue. One
+    /// whose file couldn't be read, such as one missing from a damaged copy
+    /// of the app, isn't offered, and the log says why.
+    public mutating func offerFichaDecks(_ read: [FichaDeck: Result<FichaDeckFile, EngineError>]) {
+        fichaDecks = FichaDeck.files(in: read).files
         if metInFull != nil {
             readMetThemAll()
         }

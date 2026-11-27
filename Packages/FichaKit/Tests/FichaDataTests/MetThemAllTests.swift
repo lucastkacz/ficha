@@ -125,7 +125,7 @@ struct MetThemAllTests {
         let fronts: [FichaDeck: String] = [
             .palabrasLindas: "ubuntu", .arteArgentino: "Las Meninas", .floresDeBuenosAires: "Jacarandá",
         ]
-        var files: [FichaDeckFile] = []
+        var files: [FichaDeck: Result<FichaDeckFile, EngineError>] = [:]
         for deck in FichaDeck.allCases {
             let front = try #require(fronts[deck])
             let file = folder.appending(path: "\(deck.fileName).txt")
@@ -133,7 +133,7 @@ struct MetThemAllTests {
                 "#separator:tab\n#html:false\n#columns:Front\tBack\tDeck\n#deck column:3\n"
                 + "\(front)\tLo que quiere decir «\(front)».\t\(deck.name)\n"
             try Data(text.utf8).write(to: file)
-            files.append(try await engine.readFichaDeck(deck, at: file))
+            files[deck] = .success(try await engine.readFichaDeck(deck, at: file))
         }
         try engine.meet(try approveInDeck("ubuntu", deck: "Lenguaje", in: engine))
         let gioconda = try approveInDeck("La Gioconda", deck: "Arte", in: engine)

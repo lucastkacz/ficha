@@ -75,9 +75,10 @@ struct ReviewPanelView: View {
     /// shows on: a card taller than that scrolls.
     var maximumHeight = CGFloat.infinity
     /// Reads Ficha's decks from the app, once "You've met them all" asks for
-    /// them, to offer one while nothing waits in the queue: none until the
-    /// window gives the panel a way to.
-    var readFichaDecks: () async -> [FichaDeckFile] = { [] }
+    /// them, to offer one while nothing waits in the queue, each deck's file
+    /// or why it couldn't be read: nil until the window gives the panel a
+    /// way to, or when the render tool reads none.
+    var readFichaDecks: () async -> [FichaDeck: Result<FichaDeckFile, EngineError>]? = { nil }
     /// Opens the Cards window on one of Ficha's decks with How fast?, as its
     /// Add Deck… does, as the panel closes.
     var addFichaDeck: (FichaDeck) -> Void = { _ in }
@@ -140,8 +141,9 @@ struct ReviewPanelView: View {
             }
             .task(id: asksForFichaDecks) {
                 guard asksForFichaDecks, case .success(let panel) = model else { return }
-                let files = await readFichaDecks()
-                panel.state.offerFichaDecks(files)
+                if let read = await readFichaDecks() {
+                    panel.state.offerFichaDecks(read)
+                }
             }
             .padding(20)
             .frame(width: cardSize.panelWidth, alignment: .leading)
