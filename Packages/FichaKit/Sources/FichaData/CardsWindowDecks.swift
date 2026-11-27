@@ -114,7 +114,7 @@ extension CardsWindowState {
     /// What Change Deck… asks, in its sheet, while it asks: which deck the
     /// selected cards move to.
     public struct DeckChange: Sendable, Equatable {
-        /// The cards it moves, as the table listed them when Lucas chose
+        /// The cards it moves, as the grid listed them when Lucas chose
         /// Change Deck….
         public let cards: [CardRow]
         /// The deck the sheet has chosen, which Move moves the cards to: the
@@ -362,7 +362,7 @@ extension CardsWindowState {
         decksToChoose(adding: [held]).flatMap(\.flattened).map(\.deck)
     }
 
-    /// Asks which deck the selected cards the table lists move to, in the
+    /// Asks which deck the selected cards the grid lists move to, in the
     /// Change Deck sheet, which starts on the deck they all live in, while
     /// Change Deck… is offered.
     public mutating func askToChangeDeck() {

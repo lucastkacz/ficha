@@ -164,7 +164,7 @@ struct ExportSheet: View {
         case .cards:
             String(
                 localized: "Selected cards (\(count))",
-                comment: "An item of the Export sheet's menu: the cards selected in the table, with how many.")
+                comment: "An item of the Export sheet's menu: the cards selected in the grid, with how many.")
         case .all:
             String(
                 localized: "All cards (\(count))",

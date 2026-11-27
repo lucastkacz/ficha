@@ -281,8 +281,9 @@ enum BrokenFile {
 /// includes the three that decided a card's progress, which versions before
 /// #315 kept there: the app moves the new cards a day and the offer to flag
 /// a card forgotten often into the database from its preferences while the
-/// database holds none, and reads the ladder's minutes no more (#407). A
-/// dictionary of any values
+/// database holds none, and reads the ladder's minutes no more (#407); and
+/// the Cards window's table's order and columns, which versions before #536
+/// kept there, and the app reads no more. A dictionary of any values
 /// isn't `Sendable`, so each use makes its own.
 var everySetting: [String: Any] {
     [

@@ -17,15 +17,15 @@ struct CardsWindowTests {
         engine = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
     }
 
-    @Test("the Cards window lists every card but the buried ones, flagged ones with their flag")
-    func theWindowListsEveryCardButTheBuriedOnes() throws {
+    @Test("a deck lists every card of its own but the buried ones, flagged ones with their flag")
+    func aDeckListsEveryCardButTheBuriedOnes() throws {
         let serendipia = try approveCard("serendipia", in: engine)
         let ubuntu = try approveCard("ubuntu", in: engine)
         let ojala = try approveCard("ojalá", in: engine)
         try engine.flag(ubuntu.id, note: note("Falta un ejemplo"))
         try engine.bury(ojala.id)
 
-        let rows = try engine.cardRows(in: .all, with: ReviewSettings.defaults.scheduler)
+        let rows = try engine.cardRows(in: .deck(Deck.defaultName), with: ReviewSettings.defaults.scheduler)
 
         #expect(rows.map(\.card.id) == [serendipia.id, ubuntu.id])
         #expect(rows.map(\.card.flag?.note) == [nil, "Falta un ejemplo"])
@@ -108,14 +108,11 @@ struct CardsWindowTests {
     }
 
     // As Anki's Browse says "(learning)" for every card in its learning
-    // steps, and the interval of a relearning one, and sorts learning cards
-    // before every interval, as their interval there is zero. The Interval
-    // and Back-first interval columns sort by it in the app's
-    // `CardRowOrder`, since a table's order stays in the app.
+    // steps, and the interval of a relearning one.
     @Test(
-        "the Interval column says a way is new, or learning whatever its step's interval, or else its interval, and sorts new ways first, then learning ones, then the rest by interval"
+        "the detail's Interval rows say a way is new, or learning whatever its step's interval, or else its interval"
     )
-    func theIntervalColumnSaysLearningAndSortsByInterval() throws {
+    func theIntervalRowsSayLearning() throws {
         let ojala = try approveCard("ojalá", in: engine)
         let petricor = try approveCard("petricor", in: engine)
         let nunca = try approveCard("nunca", in: engine)
@@ -135,89 +132,27 @@ struct CardsWindowTests {
         try engine.climb(petricor, goods: 1, way: .backFirst, movingForward: time)
 
         let rows = try engine.cardRows(in: .all, with: ReviewSettings.defaults.scheduler)
-        let frontFirst = rows.sorted(using: KeyPathComparator(\.frontFirst.intervalColumn))
-        let backFirst = rows.compactMap { row in
-            row.backFirst.map { (front: row.card.front, says: $0.intervalColumn) }
+
+        #expect(rows.map(\.card.front) == ["ojalá", "petricor", "nunca", "serendipia", "ubuntu"])
+        guard case .interval(let learned) = rows.first?.frontFirst.intervalWording else {
+            Issue.record("ojalá's front-first way doesn't say its interval")
+            return
         }
-        .sorted { $0.says < $1.says }
-
-        #expect(frontFirst.map(\.card.front) == ["serendipia", "ubuntu", "petricor", "nunca", "ojalá"])
+        #expect(learned >= .seconds(days(21)))
         #expect(
-            frontFirst.prefix(4).map(\.frontFirst.intervalColumn) == [
-                .new, .learning(.seconds(hours(1))), .learning(.seconds(hours(4))), .interval(.seconds(hours(1))),
+            rows.dropFirst().map(\.frontFirst.intervalWording) == [
+                .learning(.seconds(hours(4))), .interval(.seconds(hours(1))), .new, .learning(.seconds(hours(1))),
             ])
-        #expect(backFirst.map(\.front) == ["ojalá", "ubuntu", "petricor"])
+        #expect(
+            rows.map(\.backFirst?.intervalWording) == [
+                .new, .learning(.seconds(hours(4))), nil, nil, .learning(.seconds(hours(1))),
+            ])
     }
 
-    @Test("New, Due and Learned list the cards in Lucas's reviews only, as the menu counts them")
-    func newDueAndLearnedListCardsInReviews() throws {
-        let settings = ReviewSettings.defaults
-        // Learned: graduated, waiting 21 days or more.
-        let ojala = try approveCard("ojalá", in: engine)
-        try engine.climbUntilLearned(ojala, movingForward: time)
-        let nunca = try approveCard("nunca", in: engine)
-        try engine.climbUntilLearned(nunca, movingForward: time)
-        try engine.bury(nunca.id)
-        let ubuntu = try approveCard("ubuntu", in: engine)
-        try engine.meet(ubuntu)
-        let quizas = try approveCard("quizás", in: engine)
-        try engine.meet(quizas)
-        try engine.bury(quizas.id)
-        let jamas = try approveCard("jamás", in: engine)
-        try engine.meet(jamas)
-        try engine.flag(jamas.id, note: note("El ejemplo no se entiende"))
-        // On the first step, due in an hour, as ubuntu was.
-        time.advance(by: hours(3))
-        let efimero = try approveCard("efímero", in: engine)
-        try engine.meet(efimero)
-        let serendipia = try approveCard("serendipia", in: engine)
-        let acaso = try approveCard("acaso", in: engine)
-        try engine.flag(acaso.id, note: note("Falta un ejemplo"))
-
-        let new = try engine.cardRows(in: .new, with: settings.scheduler)
-        let due = try engine.cardRows(in: .due, with: settings.scheduler)
-        let learned = try engine.cardRows(in: .learned, with: settings.scheduler)
-
-        #expect(new.map(\.card.id) == [serendipia.id])
-        #expect(due.map(\.card.id) == [ubuntu.id])
-        #expect(learned.map(\.card.id) == [ojala.id])
-        let progress = try engine.progress(settings)
-        #expect(progress.due == 1)
-        #expect(progress.learned == 1)
-        #expect(try engine.cardRows(in: .all, with: settings.scheduler).map(\.card.id).contains(efimero.id))
-    }
-
-    @Test("Due lists a card when either of its ways is due, and New and Learned go by its front-first way alone")
-    func dueGoesByEitherWayAndNewAndLearnedByTheFrontFirstWay() throws {
-        let settings = ReviewSettings.defaults
-        let ubuntu = try approveCard("ubuntu", in: engine)
-        let serendipia = try approveCard("serendipia", in: engine)
-        let ojala = try approveCard("ojalá", in: engine)
-        let efimero = try approveCard("efímero", in: engine)
-        try engine.setBothWays(true, of: [ubuntu.id, serendipia.id, efimero.id])
-        // serendipia is learned back first only, and due front first.
-        try engine.meet(serendipia)
-        try engine.climbUntilLearned(serendipia, way: .backFirst, movingForward: time)
-        // ubuntu is learned front first, and due back first only.
-        try engine.climbUntilLearned(ubuntu, movingForward: time)
-        try engine.meet(ubuntu, way: .backFirst)
-        // efímero is new back first only.
-        try engine.meet(efimero)
-        time.advance(by: hours(1))
-
-        let new = try engine.cardRows(in: .new, with: settings.scheduler)
-        let due = try engine.cardRows(in: .due, with: settings.scheduler)
-        let learned = try engine.cardRows(in: .learned, with: settings.scheduler)
-
-        #expect(new.map(\.card.id) == [ojala.id])
-        #expect(due.map(\.card.id) == [ubuntu.id, serendipia.id, efimero.id])
-        #expect(learned.map(\.card.id) == [ubuntu.id])
-    }
-
-    @Test("Flagged lists the flagged cards that aren't buried, and Buried every buried card, flagged ones too")
-    func flaggedAndBuriedListTheirCards() throws {
+    @Test("the flagged group holds the flagged cards that aren't buried, and a deck none of its buried cards")
+    func theFlaggedGroupAndADeckLeaveTheBuriedCardsOut() throws {
         let scheduler = ReviewSettings.defaults.scheduler
-        try approveCard("serendipia", in: engine)
+        let serendipia = try approveCard("serendipia", in: engine)
         let ubuntu = try approveCard("ubuntu", in: engine)
         try engine.flag(ubuntu.id, note: note("Falta un ejemplo"))
         let ojala = try approveCard("ojalá", in: engine)
@@ -227,11 +162,10 @@ struct CardsWindowTests {
         try engine.bury(acaso.id)
 
         let flagged = try engine.cardRows(in: .flagged, with: scheduler)
-        let buried = try engine.cardRows(in: .buried, with: scheduler)
+        let inDefault = try engine.cardRows(in: .deck(Deck.defaultName), with: scheduler)
 
         #expect(flagged.map(\.card.id) == [ubuntu.id])
-        #expect(buried.map(\.card.id) == [ojala.id, acaso.id])
-        #expect(buried.map(\.frontFirst.due) == [nil, nil])
+        #expect(inDefault.map(\.card.id) == [serendipia.id, ubuntu.id])
     }
 
     @Test("a tag lists the cards that have it, and a type the cards of it, flagged ones too but not the buried ones")
@@ -318,15 +252,17 @@ struct CardsWindowTests {
     func aSearchNarrowsTheSidebarsChoice() throws {
         let scheduler = ReviewSettings.defaults.scheduler
         try approve(card(.word, front: "Ubérrimo", back: "Muy fértil.", tags: ["lenguaje"]), in: engine)
-        let fecundo = try approve(card(.word, front: "Fecundo", back: "Fértil, que produce mucho."), in: engine)
-        try engine.bury(fecundo.id)
-        let serendipia = try approveCard("serendipia", in: engine)
-        try engine.bury(serendipia.id)
+        let fecundo = try engine.create(
+            card(.word, front: "Fecundo", back: "Fértil, que produce mucho."), deck: "Palabras")
+        let serendipia = try engine.create(card(nil, front: "serendipia", back: "Un hallazgo."), deck: "Palabras")
 
-        #expect(try engine.cardRows(in: .buried, matching: "fertil", with: scheduler).map(\.card.id) == [fecundo.id])
+        #expect(
+            try engine.cardRows(in: .deck("Palabras"), matching: "fertil", with: scheduler).map(\.card.id) == [
+                fecundo.id
+            ])
         #expect(try engine.cardRows(in: .tag("lenguaje"), matching: "fecundo", with: scheduler).isEmpty)
         #expect(
-            try engine.cardRows(in: .buried, matching: "  ", with: scheduler).map(\.card.id) == [
+            try engine.cardRows(in: .deck("Palabras"), matching: "  ", with: scheduler).map(\.card.id) == [
                 fecundo.id, serendipia.id,
             ])
     }

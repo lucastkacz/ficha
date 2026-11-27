@@ -5,9 +5,9 @@ import Testing
 
 /// Tests on sounds in the Cards window: the card form and the card editor
 /// put a sound file on a side, converted away from the window, replace it or
-/// remove it, the detail shows a card's sounds, the table which sides have
-/// an image or a sound and what a front without text holds, and one sound
-/// plays at a time, on the default scheduler.
+/// remove it, the detail shows a card's sounds, the window names what a
+/// front without text holds, and one sound plays at a time, on the default
+/// scheduler.
 final class CardsWindowSoundTests {
     let time = ManualTimeSource(now: Date(timeIntervalSince1970: 1_760_000_000))
     let engine: Engine
@@ -200,34 +200,8 @@ final class CardsWindowSoundTests {
         #expect(shown.length > .milliseconds(950) && shown.length < .milliseconds(1_050))
     }
 
-    @Test("the table says which sides of each card have an image, and which have a sound")
-    func theTableSaysWhichSidesHaveMedia() async throws {
-        let la = try await addTone(440, to: engine)
-        let mi = try await addTone(330, to: engine)
-        let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))
-        let nest = try engine.addImage(picture(width: 800, height: 600, red: 0.3))
-        let cards = try [
-            card(nil, front: "petricor", back: "El olor de la lluvia."),
-            card(nil, front: "", back: "La.", frontSound: la),
-            card(nil, front: "¿Qué nota es?", back: "Mi.", backSound: mi),
-            card(
-                nil, front: "¿Qué ave canta así?", back: "El hornero.", frontImage: bird, frontSound: la, backSound: mi),
-            card(nil, front: "¿Qué ave es?", back: "El hornero, en su nido.", frontImage: bird, backImage: nest),
-            card(nil, front: "¿De quién es este nido?", back: "Del hornero.", backImage: nest),
-        ].map { try engine.create($0) }
-        let window = openWindow()
-
-        guard case .success(.cards(let rows)) = window.listing else {
-            Issue.record("The table lists no cards")
-            return
-        }
-        let listed = Dictionary(uniqueKeysWithValues: rows.map { ($0.id, $0.card) })
-        #expect(cards.map { listed[$0.id]?.sidesWithImages } == [nil, nil, nil, .front, .both, .back])
-        #expect(cards.map { listed[$0.id]?.sidesWithSounds } == [nil, .front, .back, .both, nil, nil])
-    }
-
-    @Test("the table names a front without text by its image, or else by its sound")
-    func theTableNamesAFrontWithoutText() async throws {
+    @Test("the window names a front without text by its image, or else by its sound, where it lists the front in words")
+    func theWindowNamesAFrontWithoutText() async throws {
         let la = try await addTone(440, to: engine)
         let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))
         let cards = try [
@@ -239,7 +213,7 @@ final class CardsWindowSoundTests {
         let window = openWindow()
 
         guard case .success(.cards(let rows)) = window.listing else {
-            Issue.record("The table lists no cards")
+            Issue.record("The window lists no cards")
             return
         }
         let listed = Dictionary(uniqueKeysWithValues: rows.map { ($0.id, $0.card) })

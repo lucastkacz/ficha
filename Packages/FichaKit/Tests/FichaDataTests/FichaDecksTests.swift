@@ -173,7 +173,7 @@ final class FichaDecksTests {
         let asked = window.howFast
         window.startHowFast()
 
-        #expect(sections == [.cardGroups, .inbox, .decks, .fichaDecks, .tags, .types])
+        #expect(sections == [.inbox, .decks, .fichaDecks, .tags, .types])
         #expect(offered == FichaDeck.allCases)
         #expect(words.deck == .palabrasLindas)
         #expect(words.firstCard?.front.isEmpty == false)
@@ -212,8 +212,8 @@ final class FichaDecksTests {
 
     // The review panel asks for Arte argentino twice while the window asks
     // for a new deck's name: once Lucas cancels it, and once its OK makes
-    // Historia, which How fast? asks about first, with the sidebar on All
-    // cards, where it was.
+    // Historia, which How fast? asks about first, with the sidebar on
+    // Lenguaje, where it was.
     @Test(
         "the review panel's ask for one of Ficha's decks waits while the Cards window asks something else, and How fast? asks for it as soon as that closes, after a new deck's own How fast?, with the sidebar where it was meanwhile",
         .bug(id: 458))
@@ -230,7 +230,7 @@ final class FichaDecksTests {
         window.cancelQuestion()
         let afterCancel = window.howFast?.subject
         window.cancelQuestion()
-        window.choose(.cards(.all))
+        window.choose(.cards(.deck("Lenguaje")))
         window.askToMakeDeck()
         window.askToAddFichaDeck(.arteArgentino)
         window.chooseNewDeck("Historia")
@@ -241,14 +241,14 @@ final class FichaDecksTests {
         #expect(whileNaming == .makeDeck)
         #expect(afterCancel == .fichaDeck(.arteArgentino))
         #expect(forTheNewDeck.0 == .deck("Historia"))
-        #expect(forTheNewDeck.1 == .cards(.all))
+        #expect(forTheNewDeck.1 == .cards(.deck("Lenguaje")))
         #expect(afterStart == .fichaDeck(.arteArgentino))
         #expect(window.sidebarItem == .fichaDeck(.arteArgentino))
     }
 
     // Lenguaje has serendipia, which the card form's front repeats, while
-    // the sidebar lists the new cards; the review panel asks for Arte
-    // argentino meanwhile.
+    // the sidebar chose the inbox; the review panel asks for Arte argentino
+    // meanwhile.
     @Test(
         "the review panel's ask for one of Ficha's decks waits while the card form is open, so Show Card shows the card the front repeats, and How fast? asks for it at the window's next read",
         .bug(id: 458))
@@ -258,7 +258,7 @@ final class FichaDecksTests {
         var window = engine.openCardsWindow(with: scheduler)
         window.read(with: scheduler)
         window.offerFichaDecks([.arteArgentino: .success(arte)])
-        window.choose(.cards(.new))
+        window.choose(.inbox)
         window.openNewCardForm()
         var draft = try #require(window.cardForm?.draft)
         draft.front.text = "Serendipia"
@@ -270,7 +270,7 @@ final class FichaDecksTests {
         window.cardRevealed()
         window.read(with: scheduler)
 
-        #expect(shown.0 == .cards(.all))
+        #expect(shown.0 == .cards(.deck("Lenguaje")))
         #expect(shown.1 == [serendipia.id])
         #expect(shown.2 == serendipia.id)
         #expect(shown.3 == nil)

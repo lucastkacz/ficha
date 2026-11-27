@@ -243,11 +243,16 @@ extension CardsWindowState {
     /// Shows the images and sounds of the card the detail shows, of the card
     /// the user edits, of the card the form makes, and of the first card of
     /// the one of Ficha's decks the window shows, held as its file holds
-    /// them, and lets go of the others.
+    /// them, and the pictures of the grid's tiles, and lets go of the others.
     mutating func showFiles() {
         var names = Set<ImageName>()
         if case .card(let row, _) = detail {
             names.formUnion(row.card.images)
+        }
+        for tile in tiles {
+            if case .picture(let name) = tile.face {
+                names.insert(name)
+            }
         }
         for image in shownFichaDeck?.firstCardImages ?? [] {
             images.hold(image)

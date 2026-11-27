@@ -9,7 +9,7 @@ import SwiftUI
 /// closes, the app lives in the menu bar only again.
 final class CardsWindow: NSWindow {
     /// The least the window's content can be below its toolbar: enough for
-    /// the sidebar, the table and the detail side by side.
+    /// the sidebar, the grid and the detail side by side.
     static let minimumSize = NSSize(width: 880, height: 440)
     /// The window's content the first time it opens.
     private static let firstSize = NSSize(width: 1120, height: 640)
@@ -56,11 +56,10 @@ final class CardsWindow: NSWindow {
 
     /// Gives the window its content, with Lucas's cards as they are now, as
     /// it opens: the app opens it on screen, and `make render` offscreen. The
-    /// content is made each time the window opens, so it starts on All cards,
-    /// with nothing selected or searched, its table with the columns Lucas
-    /// showed and the order he sorted it by, and stops reading the cards once
-    /// it closes. `make render` may give it a
-    /// state to open with instead, partway through an import.
+    /// content is made each time the window opens, so it starts on the first
+    /// deck Your Decks lists, with nothing selected or searched, and stops
+    /// reading the cards once it closes. `make render` may give it a state to
+    /// open with instead, partway through an import.
     func makeContent(opening state: CardsWindowState? = nil) {
         // Once SwiftUI lays it out, a window's hosting view sets the window's
         // minimum whatever contentMinSize says: from its content's least size

@@ -286,7 +286,7 @@ private struct ChartKey: View {
 }
 
 /// The interval a review set, in the review log's list, short, as the
-/// Interval column shows it, and in words for VoiceOver. A placement, whose
+/// detail's Interval row shows it, and in words for VoiceOver. A placement, whose
 /// due date its name says, has nothing there.
 private struct EntryInterval: View {
     let row: ReviewLogRow

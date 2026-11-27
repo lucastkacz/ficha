@@ -117,7 +117,7 @@ final class CardsWindowImportTests {
     }
 
     @Test(
-        "once the import is done, the sheet says how many cards came in, were updated and were skipped, and the table lists them"
+        "once the import is done, the sheet says how many cards came in, were updated and were skipped, and the grid lists them"
     )
     func theSheetSaysWhatTheImportDid() async throws {
         let serendipia = try approveCard("serendipia", in: engine)
@@ -141,7 +141,7 @@ final class CardsWindowImportTests {
     }
 
     @Test(
-        "once a file with a Both ways column is imported, the table lists its cards going both ways as the column says, an updated one too"
+        "once a file with a Both ways column is imported, the grid lists its cards going both ways as the column says, an updated one too"
     )
     func importedCardsGoBothWaysAsTheColumnSays() async throws {
         let serendipia = try approveCard("serendipia", in: engine)
@@ -375,7 +375,7 @@ final class CardsWindowImportTests {
         #expect(window.importing?.busy == nil)
     }
 
-    @Test("while the cards are imported, the sheet says so and Import is off, and once they are, the table lists them")
+    @Test("while the cards are imported, the sheet says so and Import is off, and once they are, the grid lists them")
     func whileTheCardsAreImportedTheSheetSaysSo() async throws {
         var window = try await importSheet(on: "Palabras.txt", "efímero\tQue dura poco.\n")
 
@@ -413,7 +413,7 @@ final class CardsWindowImportTests {
 }
 
 extension CardsWindowState {
-    /// The fronts of the cards the table lists, in the order the engine
+    /// The fronts of the cards the grid lists, in the order the engine
     /// read them, or nil when it lists the inbox or couldn't read them.
     fileprivate var listedFronts: [String]? {
         guard case .success(.cards(let rows)) = listing else {
@@ -422,7 +422,7 @@ extension CardsWindowState {
         return rows.map(\.card.front)
     }
 
-    /// Whether each card the table lists goes both ways, in the order the
+    /// Whether each card the grid lists goes both ways, in the order the
     /// engine read them, or nil when it lists the inbox or couldn't read
     /// them.
     fileprivate var listedBothWays: [Bool]? {

@@ -27,7 +27,8 @@ final class CardsWindowExportTests {
         try? FileManager.default.removeItem(at: folder)
     }
 
-    /// The Cards window, open on All cards with its cards read.
+    /// The Cards window, open on the first deck the sidebar lists, with its
+    /// cards read.
     private func openWindow() -> CardsWindowState {
         var window = engine.openCardsWindow(with: scheduler)
         window.read(with: scheduler)
@@ -46,7 +47,7 @@ final class CardsWindowExportTests {
     )
     func theExportSheetOffersEachChoiceWithItsCount() throws {
         let mayo = try approveCard("Revolución de Mayo", tags: ["historia"])
-        try approveCard("Sócrates", tags: ["historia", "filosofía"])
+        let socrates = try approveCard("Sócrates", tags: ["historia", "filosofía"])
         let ubuntu = try approveCard("ubuntu")
         let cabildo = try approveCard("Cabildo abierto", tags: ["historia"])
         try engine.bury(cabildo.id)
@@ -59,7 +60,8 @@ final class CardsWindowExportTests {
         try engine.makeDeck(named: "Arte")
         var unselected = openWindow()
         var selected = openWindow()
-        selected.select([mayo.id, ubuntu.id])
+        // The window opens on Default, which lists them both.
+        selected.select([socrates.id, ubuntu.id])
 
         unselected.startExport()
         selected.startExport()
@@ -74,7 +76,7 @@ final class CardsWindowExportTests {
         #expect(unselected.exporting?.cardChoices == [all])
         #expect(unselected.exporting?.deckChoices == [defaultDeck, historyDeck, argentina])
         #expect(unselected.exporting?.tagChoices == [philosophy, history])
-        let selectedCards = CardsWindowState.ExportChoice(cards: .cards([mayo.id, ubuntu.id]), cardCount: 2)
+        let selectedCards = CardsWindowState.ExportChoice(cards: .cards([socrates.id, ubuntu.id]), cardCount: 2)
         #expect(
             selected.exporting?.choices == [
                 selectedCards, all, defaultDeck, historyDeck, argentina, philosophy, history,
@@ -89,8 +91,10 @@ final class CardsWindowExportTests {
     func theSavePanelProposesTheTagsName() throws {
         let mayo = try approveCard("Revolución de Mayo", tags: ["historia"])
         let ubuntu = try approveCard("ubuntu")
-        try engine.changeDeck(of: [mayo.id], to: "Historia::Argentina")
+        let socrates = try approveCard("Sócrates", tags: ["historia"])
+        try engine.changeDeck(of: [socrates.id], to: "Historia::Argentina")
         var window = openWindow()
+        // The window opens on Default, which lists them both.
         window.select([mayo.id, ubuntu.id])
 
         window.startExport()
@@ -117,6 +121,7 @@ final class CardsWindowExportTests {
         try approveCard("ubuntu")
         try engine.changeDeck(of: [mayo.id, socrates.id], to: "Historia")
         var several = openWindow()
+        several.choose(.cards(.deck("Historia")))
         several.select([mayo.id, socrates.id])
         var tag = openWindow()
         tag.choose(.cards(.tag("filosofía")))
@@ -124,13 +129,13 @@ final class CardsWindowExportTests {
         var deck = openWindow()
         deck.choose(.cards(.deck("Historia")))
         deck.select([socrates.id])
-        var one = openWindow()
-        one.select([mayo.id])
+        var inbox = openWindow()
+        inbox.choose(.inbox)
 
         several.startExport()
         tag.startExport()
         deck.startExport()
-        one.startExport()
+        inbox.startExport()
 
         #expect(several.exporting?.chosen == .cards([mayo.id, socrates.id]))
         #expect(several.exporting?.cardCount == 2)
@@ -138,8 +143,8 @@ final class CardsWindowExportTests {
         #expect(tag.exporting?.cardCount == 1)
         #expect(deck.exporting?.chosen == .deck("Historia"))
         #expect(deck.exporting?.cardCount == 2)
-        #expect(one.exporting?.chosen == .all)
-        #expect(one.exporting?.cardCount == 3)
+        #expect(inbox.exporting?.chosen == .all)
+        #expect(inbox.exporting?.cardCount == 3)
     }
 
     @Test(
@@ -198,6 +203,7 @@ final class CardsWindowExportTests {
         var window = openWindow()
 
         window.startExport()
+        window.chooseCardsToExport(.all)
         let all = window.exporting?.writesZip
         window.chooseCardsToExport(.tag("filosofía"))
         let philosophy = window.exporting?.writesZip
@@ -216,7 +222,7 @@ final class CardsWindowExportTests {
 
         #expect(window.failure?.action == .export)
         #expect(window.failure?.error == .unwritableFile("Tarjetas.txt"))
-        #expect(window.exporting?.chosen == .all)
+        #expect(window.exporting?.chosen == .deck(Deck.defaultName))
     }
 
     @Test("with no cards, Export is off and writes nothing")

@@ -5,7 +5,7 @@ import Testing
 
 /// Tests on renaming, moving and deleting decks in the Cards window (ADR
 /// 0024): Rename… and Delete… in a deck's menu, which the Actions menu above
-/// the card list offers too, as the keyboard's way to them, and dropping
+/// the grid offers too, as the keyboard's way to them, and dropping
 /// cards and decks on the sidebar's decks. On the default scheduler; they start
 /// at 9 in the morning in Buenos Aires, when active hours start.
 struct CardsWindowDeckEditsTests {
@@ -87,7 +87,7 @@ struct CardsWindowDeckEditsTests {
 
     // The sidebar chose Arte::Pintura, which goes with Arte.
     @Test(
-        "Delete… asks first, counting the cards it deletes and the decks inside, and Delete deletes them, the sidebar going back to All cards"
+        "Delete… asks first, counting the cards it deletes and the decks inside, and Delete deletes them, the sidebar going back to the first deck"
     )
     func deleteAsksFirst() throws {
         try approveInDeck("La Gioconda", deck: "Arte::Pintura", in: engine)
@@ -112,7 +112,7 @@ struct CardsWindowDeckEditsTests {
 
         #expect(window.question == nil)
         #expect(window.failure == nil)
-        #expect(window.sidebarItem == .cards(.all))
+        #expect(window.sidebarItem == .cards(.deck("Historia")))
         #expect(window.deckRows.outline == ["Historia 0"])
         #expect(try engine.cards().map(\.front) == ["Coliseo"])
     }
@@ -151,8 +151,9 @@ struct CardsWindowDeckEditsTests {
         #expect(window.deckFieldChoices(.form).map(\.name) == [Deck.defaultName, "Historia"])
     }
 
-    // petricor and Coliseo are selected; Coliseo lives in Historia already,
-    // and ojalá keeps Default in the sidebar.
+    // The window opens on Default, whose grid lists petricor and ojalá, which
+    // keeps Default in the sidebar; Coliseo lives in Historia already, so
+    // dropping it moves it only from Historia's grid.
     @Test(
         "dropping cards on a deck in the sidebar moves them there, as Change Deck does, Default too, and refuses a drop that moves none"
     )
@@ -170,6 +171,8 @@ struct CardsWindowDeckEditsTests {
             window.drop([.card(99)], onDeck: "Arte"),
         ]
         let moved = try engine.cards().map(\.deck)
+        let toDefaultFromDefault = window.drop([.card(coliseo.id)], onDeck: Deck.defaultName)
+        window.choose(.cards(.deck("Historia")))
         let toDefault = window.drop([.card(coliseo.id)], onDeck: Deck.defaultName)
         window.select([petricor.id])
         window.startEditing()
@@ -178,6 +181,7 @@ struct CardsWindowDeckEditsTests {
 
         #expect(drops == [true, false, false])
         #expect(moved == ["Historia", "Historia", "Arte", Deck.defaultName])
+        #expect(!toDefaultFromDefault)
         #expect(toDefault)
         #expect(!whileEditing)
         #expect(try engine.cards().map(\.deck) == ["Historia", Deck.defaultName, "Arte", Deck.defaultName])
@@ -238,7 +242,8 @@ struct CardsWindowDeckEditsTests {
         #expect(window.failure == nil)
     }
 
-    /// The window as it opens, on All cards, with the cards read.
+    /// The window as it opens, on the first deck the sidebar lists, with the
+    /// cards read.
     private func openWindow() -> CardsWindowState {
         var window = engine.openCardsWindow(with: scheduler)
         window.read(with: scheduler)

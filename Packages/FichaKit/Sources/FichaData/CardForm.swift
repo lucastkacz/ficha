@@ -259,9 +259,10 @@ extension CardsWindowState {
 
     /// Shows the card the front repeats, while the form warns about one: the
     /// form goes, set aside as it is, with the images and sounds on its
-    /// sides, until it's opened the same way again, and the window selects
-    /// the card in All cards, or in Buried when it's buried, with no search,
-    /// and scrolls to it. A capture the form came from stays in the inbox
+    /// sides, until it's opened the same way again, and the window chooses
+    /// the card's deck, with no search, selects the card and scrolls to it,
+    /// while the deck lists it, as it lists every card of its own that isn't
+    /// buried. A capture the form came from stays in the inbox
     /// meanwhile, and one of Ficha's decks the review panel asked for
     /// meanwhile waits for the window's next read (`read(with:)`), so the
     /// window stays on the card.
@@ -269,13 +270,13 @@ extension CardsWindowState {
         guard case .repeats(let card)? = cardForm?.frontWarning else { return }
         setAsideCardForm = cardForm
         cardForm = nil
-        choose(.cards(card.standing.isInAllCards ? .all : .buried))
+        choose(.cards(.deck(card.deck)))
         search(for: "")
         select([card.id])
         cardToReveal = card.id
     }
 
-    /// Says the table scrolled to the card it was to reveal.
+    /// Says the grid scrolled to the card it was to reveal.
     public mutating func cardRevealed() {
         cardToReveal = nil
     }

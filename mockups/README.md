@@ -43,13 +43,14 @@ No build step: React 18.3.1 from cdnjs and htm 3.1.1 from jsDelivr, pinned, so c
 | `--text-title2` semibold, `--text-title3` semibold, `--text-body`, `--text-caption` | `.title2.weight(.semibold)`, `.title3.weight(.semibold)`, `.body`, `.caption` (`CardTextStyle`) |
 | `Button` / `Button prominent` / `Button yellow` | `.buttonStyle(.bordered)` / `.borderedProminent` / `.borderedProminent` with `.tint(.yellow)` and a black title while the panel has the keyboard |
 | `IconButton` | `.labelStyle(.iconOnly)`, `.buttonStyle(.borderless)` |
-| `KeyLabel`, `Capsule` | `KeyLabel`, `TagCapsule` |
+| `KeyLabel`, `Capsule` | `KeyLabel`, `capsuleLook(tintedWith:)` (`App/TagCapsule.swift`) |
 | `Segmented` | `Picker` with `.pickerStyle(.segmented)` |
 | `MenuContent` | `App/MenuContent.swift` |
 | `ReviewPanelView` | `App/ReviewPanelView.swift`, placed as `ReviewPanelWindow` places it: centered, 40 points under the menu bar; its `face` 'new' is the app's since #489, with #517's three buttons, and 'today' the app's before #489 |
 | `CaptureView` | `App/CaptureView.swift` |
 | `WelcomePage`, in `desktop/` | `App/WelcomePage.swift`, with #467's steps |
 | `CardsWindow` and `HowFast`, in `desktop/` | `App/Cards/CardsView.swift`'s deck rows and `App/Cards/HowFastSheet.swift`, since #491 |
+| `CardsWindow`'s grid of tiles, its legend and `dotOf`, in `desktop/` | `App/Cards/CardGrid.swift`, with FichaData's `CardsWindowState.Tile` deciding each tile's face and dot, since #536 |
 | `formatFinish` and `metBy`, a finish date's words | FichaData's `FinishDate.wording(now:calendar:)`, as `App/Cards/HowFastSheet.swift` writes it, since #491 |
 | `SettingsWindow`, in `desktop/` | `App/SettingsTabViewController.swift` and `App/SettingsTabViews.swift`, in #492's five tabs |
 

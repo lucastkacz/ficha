@@ -26,9 +26,12 @@ struct CardsWindowStateTests {
         return window
     }
 
-    @Test("All cards offers New Card and Import… while there are no cards and no search, and no other group does")
-    func allCardsOffersTheFirstCardsWhileThereAreNone() throws {
+    @Test(
+        "the window offers New Card and Import… while there are no cards, no search, and the sidebar chose nothing, and not once it chose the inbox"
+    )
+    func theWindowOffersTheFirstCardsWhileThereAreNone() throws {
         var window = openWindow()
+        #expect(window.sidebarItem == nil)
         #expect(window.offersFirstCards)
 
         window.search(for: "serendipia")
@@ -36,22 +39,20 @@ struct CardsWindowStateTests {
         window.search(for: "  ")
         #expect(window.offersFirstCards)
 
-        window.choose(.cards(.new))
-        #expect(!window.offersFirstCards)
-        window.choose(.inbox)
-        #expect(!window.offersFirstCards)
-        window.choose(.cards(.all))
-        #expect(window.offersFirstCards)
+        var inTheInbox = window
+        inTheInbox.choose(.inbox)
+        #expect(!inTheInbox.offersFirstCards)
 
         try approveCard("serendipia", in: engine)
         window.read(with: scheduler)
+        #expect(window.sidebarItem == .cards(.deck(Deck.defaultName)))
         #expect(!window.offersFirstCards)
     }
 
-    // All cards lists nothing then, but they have cards: the buttons are for
+    // Default lists nothing then, but they have cards: the buttons are for
     // someone who has none yet.
-    @Test("All cards offers no first cards while every card is buried")
-    func allCardsOffersNoFirstCardsWhileEveryCardIsBuried() throws {
+    @Test("the window offers no first cards while every card is buried")
+    func theWindowOffersNoFirstCardsWhileEveryCardIsBuried() throws {
         let serendipia = try approveCard("serendipia", in: engine)
         try engine.bury(serendipia.id)
 
@@ -61,8 +62,8 @@ struct CardsWindowStateTests {
         #expect(!window.offersFirstCards)
     }
 
-    @Test("a tag that loses its last card sends the sidebar back to All cards")
-    func aTagThatLosesItsLastCardSendsTheSidebarBackToAllCards() throws {
+    @Test("a tag that loses its last card sends the sidebar back to the first deck")
+    func aTagThatLosesItsLastCardSendsTheSidebarBackToTheFirstDeck() throws {
         let mayo = try approve(
             card(.concept, front: "Revolución de Mayo", back: "1810.", tags: ["historia"]), in: engine)
         let serendipia = try approveCard("serendipia", in: engine)
@@ -73,14 +74,14 @@ struct CardsWindowStateTests {
         try engine.delete([mayo.id])
         window.read(with: scheduler)
 
-        #expect(window.sidebarItem == .cards(.all))
+        #expect(window.sidebarItem == .cards(.deck(Deck.defaultName)))
         #expect(window.tags.isEmpty)
         #expect(window.listedCardIDs == [serendipia.id])
     }
 
     // So that Lucas can undo it, and a card that moves in later is set aside
     // too.
-    @Test("a set-aside deck stays listed without cards, and choosing it lists no cards rather than All cards")
+    @Test("a set-aside deck stays listed without cards, and choosing it lists no cards rather than another deck's")
     func aSetAsideDeckStaysListedWithoutCards() throws {
         let mayo = try approveInDeck("Revolución de Mayo", deck: "Historia", in: engine)
         try approveCard("serendipia", in: engine)
@@ -140,8 +141,10 @@ struct CardsWindowStateTests {
         #expect(window.tags == [CardTag(name: "argentina")])
     }
 
-    @Test("New, Due and Learned leave set-aside cards out, while All cards, the deck's group and a tag's hold them")
-    func newDueAndLearnedLeaveSetAsideCardsOut() throws {
+    // A set-aside card won't show up, so its tile's dot never says it's due.
+    @Test(
+        "a set-aside deck's group and a tag's hold its set-aside cards, whose tiles say they're met or new, never due")
+    func aSetAsideDecksCardsStayListed() throws {
         // eudaimonía gets learned, graduated to wait 21 days or more, and
         // comes due; ataraxia is new.
         let eudaimonia = try approveInDeck("eudaimonía", deck: "Filosofía", tags: ["ética"], in: engine)
@@ -151,18 +154,17 @@ struct CardsWindowStateTests {
         var window = openWindow()
         window.chooseSetAside(onDeck: "Filosofía")
 
-        for group in [CardGroup.new, .due, .learned] {
-            window.choose(.cards(group))
-            #expect(window.listedCardIDs == [], "\(group)")
-        }
-        for group in [CardGroup.all, .deck("Filosofía"), .tag("ética")] {
-            window.choose(.cards(group))
-            #expect(window.listedCardIDs == [eudaimonia.id, ataraxia.id], "\(group)")
-        }
+        window.choose(.cards(.tag("ética")))
+        let inTheTag = window.listedCardIDs
+        window.choose(.cards(.deck("Filosofía")))
+
+        #expect(inTheTag == [eudaimonia.id, ataraxia.id])
+        #expect(window.listedCardIDs == [eudaimonia.id, ataraxia.id])
+        #expect(window.tiles.map(\.mark) == [.met, .new])
     }
 
-    @Test("the Due column says a set-aside card is set aside, where its due time goes")
-    func theDueColumnSaysASetAsideCardIsSetAside() throws {
+    @Test("the detail's Due row says a set-aside card is set aside, where its due time goes")
+    func theDueRowSaysASetAsideCardIsSetAside() throws {
         let eudaimonia = try approveInDeck("eudaimonía", deck: "Filosofía", in: engine)
         try engine.meet(eudaimonia)
         let serendipia = try approveCard("serendipia", in: engine)
@@ -170,13 +172,18 @@ struct CardsWindowStateTests {
         var window = openWindow()
 
         window.chooseSetAside(onDeck: "Filosofía")
+        let inDefault = try #require(window.listedCardRows)
+        window.choose(.cards(.deck("Filosofía")))
+        let setAside = try #require(window.listedCardRows)
 
-        let rows = try #require(window.listedCardRows)
-        #expect(rows.map(\.frontFirst.dueColumn) == [.setAside, .due(time.now + hours(1))])
+        #expect(inDefault.map(\.id) == [serendipia.id])
+        #expect(inDefault.map(\.frontFirst.dueWording) == [.due(time.now + hours(1))])
+        #expect(setAside.map(\.id) == [eudaimonia.id])
+        #expect(setAside.map(\.frontFirst.dueWording) == [.setAside])
     }
 
-    @Test("selected cards the table no longer lists are left out of the selected rows")
-    func selectedCardsTheTableNoLongerListsAreLeftOut() throws {
+    @Test("selected cards the grid no longer lists are left out of the selected rows")
+    func selectedCardsTheGridNoLongerListsAreLeftOut() throws {
         let serendipia = try approveCard("serendipia", in: engine)
         let ubuntu = try approveCard("ubuntu", in: engine)
         var window = openWindow()
@@ -324,26 +331,20 @@ struct CardsWindowStateTests {
         #expect(window.actions == [.edit, .convertToCard, .discard])
     }
 
-    // No group of the sidebar lists buried cards with others, so a selection
-    // of both, which offers neither, can't be made here.
-    @Test("Bury is offered while none of the selected cards is buried, and Unbury while all of them are")
-    func buryAndUnburyAreOfferedForTheCardsTheyWorkOn() throws {
+    // No group of the sidebar lists a buried card, so the grid's selection
+    // is never one that Unbury takes.
+    @Test("Bury is offered for the selected cards, none of which is buried, and no group lists a buried card")
+    func buryIsOfferedForTheSelectedCards() throws {
         let serendipia = try approveCard("serendipia", in: engine)
         let ubuntu = try approveCard("ubuntu", in: engine)
         let ojala = try approveCard("ojalá", in: engine)
-        let acaso = try approveCard("acaso", in: engine)
         try engine.bury(ojala.id)
-        try engine.bury(acaso.id)
         var window = openWindow()
 
         window.select([serendipia.id, ubuntu.id])
-        let offeredInAllCards = window.actions
-        window.choose(.cards(.buried))
-        window.select([ojala.id, acaso.id])
-        let offeredInBuried = window.actions
 
-        #expect(offeredInAllCards == [.bury, .turnOnBothWays, .changeDeck, .delete])
-        #expect(offeredInBuried == [.unbury, .turnOnBothWays, .changeDeck, .delete])
+        #expect(window.actions == [.bury, .turnOnBothWays, .changeDeck, .delete])
+        #expect(window.listedCardIDs == [serendipia.id, ubuntu.id])
     }
 
     // So that a whole subject goes both ways from its tag, ⌘A and one click.
@@ -375,13 +376,12 @@ struct CardsWindowStateTests {
         #expect(window.actions == [.bury, .turnOnBothWays, .changeDeck, .delete])
     }
 
-    // The Back-first interval and Back-first due columns show `backFirst`, and
-    // sort by it, empty ones last, in the app's `CardRowOrder`, since a
-    // table's order stays in the app.
+    // The detail's Back-first interval and Back-first due rows show
+    // `backFirst`.
     @Test(
-        "turning Both ways on gives the selected cards a back-first way, new, and turning it off takes it from the table, keeping its progress"
+        "turning Both ways on gives the selected cards a back-first way, new, and turning it off takes it from the window, keeping its progress"
     )
-    func turningBothWaysOnAndOffFillsAndEmptiesTheBackFirstColumns() throws {
+    func turningBothWaysOnAndOffGivesAndTakesTheBackFirstWay() throws {
         let serendipia = try approveCard("serendipia", in: engine)
         let ubuntu = try approveCard("ubuntu", in: engine)
         try approveCard("petricor", in: engine)
@@ -429,7 +429,7 @@ struct CardsWindowStateTests {
         let shownOneWay = try #require(window.shownCard)
 
         #expect(shownBothWays.row.frontFirst.standing.stageAndDue == learning(step: 1, due: time.now + hours(4)))
-        #expect(shownBothWays.row.backFirst?.dueColumn == .due(time.now + minutes(10)))
+        #expect(shownBothWays.row.backFirst?.dueWording == .due(time.now + minutes(10)))
         #expect(shownBothWays.row.backFirst?.interval == .seconds(hours(1)))
         #expect(try shownBothWays.reviewLog?.get().map(\.entry.way) == [.frontFirst, .backFirst, .frontFirst])
         #expect(shownOneWay.row.backFirst == nil)
@@ -467,9 +467,7 @@ struct CardsWindowStateTests {
         let serendipia = try approveCard("serendipia", in: engine)
         let ubuntu = try approveCard("ubuntu", in: engine)
         let ojala = try approveCard("ojalá", in: engine)
-        let acaso = try approveCard("acaso", in: engine)
         try engine.flag(ojala.id, note: note("Falta un ejemplo"))
-        try engine.bury(acaso.id)
         var window = openWindow()
 
         window.select([serendipia.id])
@@ -478,18 +476,14 @@ struct CardsWindowStateTests {
         let offeredForTwo = window.actions.contains(.flag)
         window.select([ojala.id])
         let offeredForAFlaggedOne = window.actions.contains(.flag)
-        window.choose(.cards(.buried))
-        window.select([acaso.id])
-        let offeredForABuriedOne = window.actions.contains(.flag)
 
         #expect(offeredForOne)
         #expect(!offeredForTwo)
         #expect(!offeredForAFlaggedOne)
-        #expect(!offeredForABuriedOne)
     }
 
-    @Test("Delete asks only about the selected cards the table lists")
-    func deleteAsksOnlyAboutTheSelectedCardsTheTableLists() throws {
+    @Test("Delete asks only about the selected cards the grid lists")
+    func deleteAsksOnlyAboutTheSelectedCardsTheGridLists() throws {
         let serendipia = try approveCard("serendipia", in: engine)
         let ubuntu = try approveCard("ubuntu", in: engine)
         var window = openWindow()
@@ -537,7 +531,8 @@ struct CardsWindowStateTests {
         #expect(window.listedCardIDs == [petricor.id, ubuntu.id])
     }
 
-    @Test("No Type isn't offered when every card has a type, and once it's gone the sidebar goes back to All cards")
+    @Test(
+        "No Type isn't offered when every card has a type, and once it's gone the sidebar goes back to the first deck")
     func noTypeIsNotOfferedWhenEveryCardHasAType() throws {
         let serendipia = try approveCard("serendipia", in: engine)
         let buried = try engine.create(card(nil, front: "ataraxia", back: "Serenidad."))
@@ -552,7 +547,7 @@ struct CardsWindowStateTests {
         window.read(with: scheduler)
 
         #expect(window.typeGroups == [.type(.word), .type(.concept), .type(.quote), .type(.question)])
-        #expect(window.sidebarItem == .cards(.all))
+        #expect(window.sidebarItem == .cards(.deck(Deck.defaultName)))
         #expect(window.listedCardIDs == [serendipia.id, petricor.id])
     }
 
@@ -594,10 +589,8 @@ struct CardsWindowStateTests {
         #expect(window.shownCard?.row.card.bothWays == true)
     }
 
-    // The Edited column shows and sorts by it, in the app's `CardRowOrder`,
-    // since a table's order stays in the app.
-    @Test("the table lists a card with when its front or back last changed, and one never edited with none")
-    func theTableListsWhenACardWasEdited() throws {
+    @Test("the window lists a card with when its front or back last changed, and one never edited with none")
+    func theWindowListsWhenACardWasEdited() throws {
         let serendipia = try approveCard("serendipia", in: engine)
         let ubuntu = try approveCard("ubuntu", in: engine)
         try approveCard("petricor", in: engine)
@@ -691,14 +684,14 @@ struct CardsWindowStateTests {
 }
 
 extension CardsWindowState {
-    /// The ids of the cards the table lists, in the order the engine read
-    /// them, or nil when it lists the inbox or couldn't read them.
+    /// The ids of the cards the grid lists, in the order the engine read
+    /// them, or nil when the window lists the inbox or couldn't read them.
     fileprivate var listedCardIDs: [Int64]? {
         listedCardRows?.map(\.id)
     }
 
-    /// The cards the table lists, in the order the engine read them, or nil
-    /// when it lists the inbox or couldn't read them.
+    /// The cards the grid lists, in the order the engine read them, or nil
+    /// when the window lists the inbox or couldn't read them.
     fileprivate var listedCardRows: [CardRow]? {
         guard case .success(.cards(let rows)) = listing else {
             return nil
@@ -706,7 +699,7 @@ extension CardsWindowState {
         return rows
     }
 
-    /// What the table lists in the inbox, in the order the engine read it,
+    /// What the window lists in the inbox, in the order the engine read it,
     /// or nil when it lists cards or couldn't read the inbox.
     fileprivate var listedInboxRows: [InboxRow]? {
         guard case .success(.inbox(let rows)) = listing else {

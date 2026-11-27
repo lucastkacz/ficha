@@ -135,14 +135,14 @@ struct CardsWindowDeckSwitchesTests {
     }
 
     @Test(
-        "the Actions menu above the card list is the chosen deck's menu, the keyboard's way to it, while the sidebar chose a deck"
+        "the Actions menu above the grid is the chosen deck's menu, the keyboard's way to it, while the sidebar chose a deck"
     )
     func theActionsMenuIsTheChosenDecksMenu() throws {
         let petricor = try approveInDeck("petricor", deck: Deck.defaultName, in: engine)
         try approveInDeck("La Gioconda", deck: "Arte", in: engine)
         var window = openWindow()
 
-        let onAllCards = window.chosenDeckMenu
+        let onOpening = window.chosenDeckMenu
         window.choose(.cards(.deck("Arte")))
         let onArte = window.chosenDeckMenu
         window.chooseSetAside(onDeck: "Arte")
@@ -155,7 +155,8 @@ struct CardsWindowDeckSwitchesTests {
         window.cancelEditing()
         window.choose(.inbox)
 
-        #expect(onAllCards == nil)
+        // The window opens on the first deck, Default.
+        #expect(onOpening?.deck.name == Deck.defaultName)
         #expect(onArte?.deck.name == "Arte" && onArte?.isSetAsideTicked == false)
         #expect(onArteSetAside?.isSetAsideTicked == true && onArteSetAside?.canPrioritize == false)
         #expect(onDefault?.deck.name == Deck.defaultName)
@@ -163,7 +164,7 @@ struct CardsWindowDeckSwitchesTests {
         #expect(window.chosenDeckMenu == nil)
     }
 
-    /// The window as it opens, on All cards, with the cards read.
+    /// The window as it opens, on the first deck, with the cards read.
     private func openWindow() -> CardsWindowState {
         var window = engine.openCardsWindow(with: scheduler)
         window.read(with: scheduler)

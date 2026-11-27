@@ -380,7 +380,7 @@ extension CardsWindowState {
 
     /// Takes what the work the sheet started did, once the app ran it: the
     /// preview it read, or what the import did, or why it couldn't, as
-    /// `previewImport(of:)` and `importCards()` say. The table lists the
+    /// `previewImport(of:)` and `importCards()` say. The grid lists the
     /// cards as they are once an import is done, even after the sheet
     /// closed. What other work did, which the sheet doesn't wait for, it
     /// leaves alone.

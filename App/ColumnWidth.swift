@@ -3,8 +3,8 @@ import SwiftUI
 
 /// The width a table's column needs for its header and the texts of its cells
 /// to show whole in the language the app shows, as `CODING_STANDARDS.md` asks
-/// of a text that can't wrap: German's header "Hinzugefügt", Spanish's dates
-/// or French's "En apprentissage" run longer than English's. Our own
+/// of a text that can't wrap: German's header "Hinzugefügt" or Spanish's
+/// dates run longer than English's. Our own
 /// measure, since a SwiftUI table sizes a column to the widths its code
 /// gives, never to its texts: each text in the font AppKit draws it in, with
 /// the room around it that `make render`'s pictures showed, beyond the 17
@@ -43,7 +43,7 @@ enum ColumnWidth {
     /// scroller's width, which the scroller takes beside the columns with a
     /// mouse. Our own sum, as `make render`'s pictures and AppKit's frames
     /// measure it: 16.5 at each edge in the inset style the Cards window's
-    /// table has, and 6 in the full-width one SwiftUI gives a table in a
+    /// inbox has, and 6 in the full-width one SwiftUI gives a table in a
     /// grouped form.
     static func tableSpacing(columns count: Int, edges: CGFloat, scroller: Bool) -> CGFloat {
         let scrollerWidth = scroller ? NSScroller.scrollerWidth(for: .regular, scrollerStyle: .legacy) : 0
@@ -86,8 +86,8 @@ extension TableColumn {
 }
 
 extension FormatStyle where Self == Date.FormatStyle {
-    /// How the date columns of the Cards window's tables, the cards' and the
-    /// inbox's, show a day: without the time, to leave the user's texts, a
-    /// card's front or a capture's, their room.
+    /// How the Cards window's inbox's Added column shows a day: without the
+    /// time, to leave the user's texts, a capture's or a flagged card's
+    /// front, their room.
     static var tableDay: Date.FormatStyle { Date.FormatStyle(date: .abbreviated, time: .omitted) }
 }

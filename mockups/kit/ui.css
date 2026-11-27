@@ -293,7 +293,7 @@
 /* KeyLabel: a title and the key that presses it. */
 .key { color: var(--secondary-label); font-size: var(--text-subheadline); }
 
-/* A capsule: TagCapsule, and the deck and tags of the panel's 'today' face. */
+/* A capsule: the app's capsuleLook(tintedWith:), and the deck and tags of the panel's 'today' face. */
 .capsule {
   display: inline-flex;
   align-items: center;

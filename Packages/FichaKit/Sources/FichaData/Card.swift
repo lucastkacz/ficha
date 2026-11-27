@@ -154,42 +154,12 @@ extension Card {
         case .back: backSound
         }
     }
-
-    /// Which sides have an image, as the Cards window's Media column says,
-    /// or nil when neither does.
-    public var sidesWithImages: WhichSides? {
-        WhichSides(front: frontImage != nil, back: backImage != nil)
-    }
-
-    /// Which sides have a sound, as the Cards window's Media column says, or
-    /// nil when neither does.
-    public var sidesWithSounds: WhichSides? {
-        WhichSides(front: frontSound != nil, back: backSound != nil)
-    }
 }
 
 /// What a side without text holds instead: an image or a sound.
 public enum SideMedia: Sendable, Equatable {
     case image
     case sound
-}
-
-/// Which sides of a card have something: its front, its back or both.
-public enum WhichSides: Sendable, Equatable {
-    case front
-    case back
-    case both
-
-    /// The sides that have something, as `front` and `back` say, or nil when
-    /// neither does.
-    init?(front: Bool, back: Bool) {
-        switch (front, back) {
-        case (false, false): return nil
-        case (true, false): self = .front
-        case (false, true): self = .back
-        case (true, true): self = .both
-        }
-    }
 }
 
 /// The file, an image or a sound, a side of card `cardID` refers to in

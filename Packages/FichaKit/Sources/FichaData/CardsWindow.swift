@@ -7,16 +7,17 @@ internal import GRDB
 public struct CardRow: Sendable, Equatable, Identifiable {
     public let card: Card
     /// The card's tags, in its order, each with what it has of its own, as
-    /// the Tags column shows them.
+    /// the detail shows them.
     public let tags: [CardTag]
     /// Where the card stands: in Lucas's reviews, waiting in the inbox to be
     /// fixed, buried, or set aside.
     public let cardStanding: CardStanding
     /// Where its front-first way stands, which every card has, as the
-    /// Interval and Due columns show it.
+    /// detail's Interval and Due rows show it, and its tile's mark in the
+    /// grid (`CardsWindowGrid.swift`).
     public let frontFirst: WayProgress
-    /// Where its back-first way stands, as the Back-first interval and
-    /// Back-first due columns show it, or nil while the card goes one way,
+    /// Where its back-first way stands, as the detail's Back-first interval
+    /// and Back-first due rows show it, or nil while the card goes one way,
     /// also once Lucas switched Both ways off, which keeps that way's
     /// progress.
     public let backFirst: WayProgress?
@@ -24,12 +25,12 @@ public struct CardRow: Sendable, Equatable, Identifiable {
     /// review, or nil while it's new, or while it has only the placement an
     /// import gave it (ADR 0013).
     public let lastSeen: Date?
-    /// How many times the user reviewed it, either way, as the Reviews column
-    /// shows it: its review log's reviews, an import's from another app too,
-    /// the rated points of the card's chart. A placement isn't one, even when
-    /// an import made it from Anki's first review of a card whose learning
-    /// steps Anki lost. A way the card no longer goes keeps its reviews here,
-    /// as the chart still draws them.
+    /// How many times the user reviewed it, either way, as the detail's
+    /// Reviews row shows it: its review log's reviews, an import's from
+    /// another app too, the rated points of the card's chart. A placement
+    /// isn't one, even when an import made it from Anki's first review of a
+    /// card whose learning steps Anki lost. A way the card no longer goes
+    /// keeps its reviews here, as the chart still draws them.
     public let reviews: Int
 
     public var id: Int64 {
@@ -40,19 +41,6 @@ public struct CardRow: Sendable, Equatable, Identifiable {
     /// way's wait over.
     func isDue(at time: Date) -> Bool {
         frontFirst.isDue(at: time) || backFirst?.isDue(at: time) == true
-    }
-
-    /// Whether the card is new in Lucas's reviews: its front-first way
-    /// hasn't had its first review yet, whatever its back-first way did.
-    var isNew: Bool {
-        frontFirst.isNew
-    }
-
-    /// Whether the card is learned in Lucas's reviews: its front-first way
-    /// graduated with an interval of 21 days or more, as the menu counts it,
-    /// so that switching Both ways on changes nothing there.
-    var isLearned: Bool {
-        frontFirst.isLearned
     }
 }
 
@@ -81,28 +69,23 @@ public struct WayProgress: Sendable, Equatable {
         standing.interval
     }
 
-    /// What the Interval column, or the Back-first interval column, and the
-    /// detail's Interval rows say of the way, as Anki's Browse says it, in
-    /// the order the columns sort ways, shortest first: new ways, then those
-    /// in their learning steps, then every other by its interval.
-    public enum IntervalColumn: Sendable, Comparable {
+    /// What the detail's Interval rows say of the way, as Anki's Browse says
+    /// it: that it's new, that it's in its learning steps, or its interval.
+    public enum IntervalWording: Sendable, Equatable {
         /// That it's new.
         case new
         /// That it's in its learning steps, whatever the step's interval,
         /// as Anki's Browse says "(learning)" there: an import's placement
         /// of a card Anki was learning too, whose interval is none when the
-        /// settings have no learning steps. Ways in their learning steps
-        /// sort by that interval among themselves, and before every other
-        /// interval, as Anki's Browse sorts them with an interval of zero.
+        /// settings have no learning steps.
         case learning(Duration)
         /// Its interval: graduated, in days, or in its relearning steps,
         /// the step's.
         case interval(Duration)
     }
 
-    /// What the Interval columns and the detail's Interval rows say of the
-    /// way.
-    public var intervalColumn: IntervalColumn {
+    /// What the detail's Interval rows say of the way.
+    public var intervalWording: IntervalWording {
         switch standing {
         case .new: .new
         case .started(.learning, let interval, _, _): .learning(interval)
@@ -118,8 +101,8 @@ public struct WayProgress: Sendable, Equatable {
         cardStanding.due(given: standing)
     }
 
-    /// What the Due column, or the Back-first due column, says of the way.
-    public enum DueColumn: Sendable, Equatable {
+    /// What the detail's Due rows say of the way.
+    public enum DueWording: Sendable, Equatable {
         /// When it's due: the card is in Lucas's reviews, and the way isn't
         /// new.
         case due(Date)
@@ -127,13 +110,13 @@ public struct WayProgress: Sendable, Equatable {
         /// deck nor any deck that deck sits inside is.
         case setAside
         /// Nothing: the way is new, or the card flagged or buried, which the
-        /// interval's column and the Front column's marks say.
+        /// detail's Interval row and the marks beside its front say.
         case nothing
     }
 
-    /// What the way's due column says of it: when it's due, or that the card
-    /// is set aside, or nothing.
-    public var dueColumn: DueColumn {
+    /// What the way's Due rows say of it: when it's due, or that the card is
+    /// set aside, or nothing.
+    public var dueWording: DueWording {
         if case .setAside = cardStanding {
             .setAside
         } else if let due {
@@ -147,18 +130,6 @@ public struct WayProgress: Sendable, Equatable {
     /// the way's wait is over.
     public func isDue(at time: Date) -> Bool {
         cardStanding.isDue(at: time, given: standing)
-    }
-
-    /// Whether the way is new in Lucas's reviews: it hasn't had its first
-    /// review yet.
-    var isNew: Bool {
-        cardStanding.isNew(given: standing)
-    }
-
-    /// Whether the way is learned in Lucas's reviews: graduated, with an
-    /// interval of 21 days or more.
-    var isLearned: Bool {
-        cardStanding.isLearned(given: standing)
     }
 }
 
@@ -190,24 +161,16 @@ public struct ReviewLogRow: Sendable, Equatable {
     public let interval: Duration
 }
 
-/// A group of cards the Cards window's sidebar offers, which the window lists
-/// one at a time.
+/// A group of cards the engine lists: a deck, a tag or a type the Cards
+/// window's sidebar offers, which the window lists one at a time, or every
+/// card or the flagged ones, which the sidebar doesn't offer.
 public enum CardGroup: Sendable, Hashable {
-    /// Every card that isn't buried, flagged and set-aside ones too.
+    /// Every card that isn't buried, flagged and set-aside ones too, which
+    /// the engine counts each deck's cards from (`Engine.countedDecks`).
     case all
-    /// The cards in Lucas's reviews that haven't had their first review yet,
-    /// front first.
-    case new
-    /// The cards in Lucas's reviews with either of their ways due now: each
-    /// card once, where the menu counts each way that's due.
-    case due
-    /// The cards in Lucas's reviews that he learned, as the menu counts them.
-    case learned
     /// The flagged cards that wait in the inbox to be fixed: those that
-    /// aren't buried.
+    /// aren't buried, which the inbox lists (`Engine.inboxRows`).
     case flagged
-    /// Every buried card, flagged or not.
-    case buried
     /// The cards that live in the deck with this whole name, or in a deck
     /// inside it, and aren't buried, set-aside ones too: Default's, by
     /// `Deck.defaultName`, are those that live in Default alone.
@@ -306,9 +269,9 @@ extension Engine {
     /// What waits in the inbox that mentions `search`, as the Cards window
     /// lists it, the latest added first: the captures, the expansions and the
     /// follow-ups that mention it in their text or source, and the flagged
-    /// cards that mention it in their front, back or source, as Flagged lists
-    /// them, each standing as `scheduler` replays its log. A blank search
-    /// narrows nothing.
+    /// cards that mention it in their front, back or source, as the flagged
+    /// group holds them, each standing as `scheduler` replays its log. A
+    /// blank search narrows nothing.
     public func inboxRows(matching search: String = "", with scheduler: Scheduler) throws(EngineError)
         -> [InboxRow]
     {
@@ -324,7 +287,7 @@ extension Engine {
                 in: .flagged, matching: search, with: scheduler, at: now, in: db
             )
             .map { row in
-                // Flagged lists only cards waiting in the inbox.
+                // The flagged group holds only cards waiting in the inbox.
                 guard case .inInbox(let flag) = row.cardStanding else {
                     throw EngineError.cardNotFlagged(row.id)
                 }
@@ -359,8 +322,8 @@ extension Engine {
             // Each interval is the one the scheduler gives the entry's way
             // after that way's entries up to this one, as it works out the
             // way's standing from its whole log, so the way's last one is the
-            // Interval column's. That goes over the log again for each entry,
-            // but a card has few.
+            // detail's Interval row's. That goes over the log again for each
+            // entry, but a card has few.
             return try entries.indices.map { end in
                 let wayUpToEntry = entries[...end].filter { $0.way == entries[end].way }
                 guard let interval = try scheduler.standing(after: Array(wayUpToEntry)).interval else {
@@ -389,7 +352,7 @@ func cardRows(
     return try allCards(in: db).filter { $0.matches(search) }.map { card in
         try CardRow(card: card, tags: ownTags, after: entries[card.id] ?? [], with: scheduler, at: now)
     }
-    .filter { group.holds($0, at: now) }
+    .filter { group.holds($0) }
 }
 
 extension Card {
@@ -407,22 +370,14 @@ extension Capture {
 }
 
 extension CardGroup {
-    /// Whether the group holds the card in `row`, at `now`.
-    fileprivate func holds(_ row: CardRow, at now: Date) -> Bool {
+    /// Whether the group holds the card in `row`.
+    fileprivate func holds(_ row: CardRow) -> Bool {
         switch self {
         case .all: row.cardStanding.isInAllCards
-        case .new: row.isNew
-        case .due: row.isDue(at: now)
-        case .learned: row.isLearned
         case .flagged:
             switch row.cardStanding {
             case .inInbox: true
             case .inReviews, .buried, .setAside: false
-            }
-        case .buried:
-            switch row.cardStanding {
-            case .buried: true
-            case .inReviews, .inInbox, .setAside: false
             }
         case .deck(let deck): TagPath.isTag(row.card.deck, within: deck) && row.cardStanding.isInAllCards
         case .tag(let tag): row.card.hasTag(within: tag) && row.cardStanding.isInAllCards
@@ -433,9 +388,9 @@ extension CardGroup {
 }
 
 extension CardStanding {
-    /// Whether All cards holds a card standing here, as each tag and type do
-    /// for theirs: unless it's buried, since only Buried holds those. Like
-    /// flagged cards, set-aside cards are there.
+    /// Whether the group of every card holds a card standing here, as each
+    /// deck, tag and type do for theirs: unless it's buried. Like flagged
+    /// cards, set-aside cards are there.
     var isInAllCards: Bool {
         switch self {
         case .inReviews, .inInbox, .setAside: true

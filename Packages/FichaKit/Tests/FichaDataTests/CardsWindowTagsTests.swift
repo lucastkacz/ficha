@@ -36,7 +36,7 @@ struct CardsWindowTagsTests {
     // Every card has a type, so the Types section has no No Type, and lives
     // in Default, which the Your Decks section lists alone.
     @Test(
-        "the sidebar lists the card groups, then Inbox, then the decks, then the pinned tags in their order and All Tags, then the card types"
+        "the sidebar lists Inbox, then the decks, then the pinned tags in their order and All Tags, then the card types"
     )
     func theSidebarsItemsInOrder() throws {
         try approveCard("deuda", tags: ["economía::Argentina", "lenguaje"])
@@ -47,7 +47,6 @@ struct CardsWindowTagsTests {
 
         #expect(
             window.sidebarSections.map(\.items) == [
-                [.cards(.all), .cards(.new), .cards(.due), .cards(.learned), .cards(.flagged), .cards(.buried)],
                 [.inbox],
                 [.cards(.deck(Deck.defaultName))],
                 [.cards(.tag("lenguaje")), .cards(.tag("economía::Argentina")), .allTags],
@@ -232,7 +231,7 @@ struct CardsWindowTagsTests {
 }
 
 extension CardsWindowState {
-    /// The ids of the cards the table lists, in the order the engine read
+    /// The ids of the cards the grid lists, in the order the engine read
     /// them, or nil when it lists the inbox or couldn't read them.
     fileprivate var listedCardIDs: [Int64]? {
         guard case .success(.cards(let rows)) = listing else {

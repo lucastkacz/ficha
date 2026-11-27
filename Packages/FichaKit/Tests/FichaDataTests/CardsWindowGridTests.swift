@@ -1,0 +1,179 @@
+import FichaCore
+import FichaData
+import Foundation
+import Testing
+
+/// Tests on the Cards window's grid (#536): what each tile shows of its
+/// card, its front's picture or its text, and the dot for where the card
+/// stands, and how clicks and the arrow keys select tiles, as in Photos and
+/// the Finder, on the default scheduler.
+struct CardsWindowGridTests {
+    let time = ManualTimeSource(now: Date(timeIntervalSince1970: 1_760_000_000))
+    let engine: Engine
+    let scheduler = ReviewSettings.defaults.scheduler
+
+    init() throws {
+        engine = try Engine(location: .inMemory, time: time)
+    }
+
+    /// Opens the Cards window and reads the cards, as the window does once
+    /// it listens for the reasons to read them again.
+    private func openWindow() -> CardsWindowState {
+        var window = engine.openCardsWindow(with: scheduler)
+        window.read(with: scheduler)
+        return window
+    }
+
+    @Test(
+        "a tile shows its card's front picture, or else the front's text, or a word for a front that holds a sound alone",
+        .bug(id: 536))
+    func aTileShowsTheFrontsPictureOrItsText() async throws {
+        let la = try await addTone(440, to: engine)
+        let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))
+        let cards = try [
+            card(nil, front: "¿Qué ave es?", back: "El hornero.", frontImage: bird),
+            card(nil, front: "", back: "El hornero, que canta.", frontImage: bird, frontSound: la),
+            card(nil, front: "petricor", back: "El olor de la lluvia."),
+            card(nil, front: "¿Qué nota es?", back: "La.", frontSound: la),
+            card(nil, front: "", back: "La.", frontSound: la),
+        ].map { try engine.create($0) }
+
+        let window = openWindow()
+
+        #expect(window.tiles.map(\.id) == cards.map(\.id))
+        #expect(
+            window.tiles.map(\.face) == [
+                .picture(bird), .picture(bird), .text("petricor"), .text("¿Qué nota es?"), .sound,
+            ])
+        #expect(try window.images[bird]?.get() == engine.image(bird))
+    }
+
+    // A deck's row counts a card met once its front-first way is, so a
+    // tile's dot goes by that way too, unless the card is due either way.
+    @Test(
+        "a tile's dot says its card is due when either of its ways is, and else met or new by its front-first way alone",
+        .bug(id: 536))
+    func aTilesDotSaysWhereItsCardStands() throws {
+        let ubuntu = try engine.create(card(nil, front: "ubuntu", back: "Soy porque somos."), bothWays: true)
+        let ojala = try engine.create(card(nil, front: "ojalá", back: "Ojalá que llueva café."))
+        let efimero = try engine.create(card(nil, front: "efímero", back: "Que dura poco."), bothWays: true)
+        let acaso = try engine.create(card(nil, front: "acaso", back: "Quizás."))
+        // ubuntu is learned front first, and due back first only.
+        try engine.climbUntilLearned(ubuntu, movingForward: time)
+        try engine.meet(ubuntu, way: .backFirst)
+        // acaso is met and due, but flagged, so it won't show up.
+        try engine.meet(acaso)
+        try engine.flag(acaso.id, note: note("Falta un ejemplo"))
+        time.advance(by: hours(1))
+        // efímero is met, due in an hour, and new back first.
+        try engine.meet(efimero)
+
+        let window = openWindow()
+
+        #expect(window.tiles.map(\.id) == [ubuntu.id, ojala.id, efimero.id, acaso.id])
+        #expect(window.tiles.map(\.mark) == [.due, .new, .met, .met])
+    }
+
+    @Test(
+        "a click selects a tile alone, a ⌘-click adds one or takes it out, and a Shift-click selects the run from the last one clicked",
+        .bug(id: 536))
+    func clicksSelectTilesAsInTheFinder() throws {
+        let ids = try ["uno", "dos", "tres", "cuatro", "cinco"].map { front in
+            try engine.create(card(nil, front: front, back: "Un número.")).id
+        }
+        var window = openWindow()
+
+        window.clickTile(ids[1], .alone)
+        let clicked = window.selection
+        window.clickTile(ids[3], .adding)
+        let added = window.selection
+        window.clickTile(ids[1], .adding)
+        let takenOut = window.selection
+        window.clickTile(ids[0], .extending)
+        let run = window.selection
+        window.clickTile(ids[4], .extending)
+        let longerRun = window.selection
+
+        #expect(clicked == [ids[1]])
+        #expect(added == [ids[1], ids[3]])
+        #expect(takenOut == [ids[3]])
+        #expect(run == [ids[0], ids[1]])
+        #expect(longerRun == Set(ids[1...4]))
+        guard case .cards(let shown) = window.detail else {
+            Issue.record("The detail doesn't show the selected cards")
+            return
+        }
+        #expect(shown.map(\.id) == Array(ids[1...4]))
+    }
+
+    // Seven tiles, three a row:
+    //   0 1 2
+    //   3 4 5
+    //   6
+    @Test(
+        "the arrow keys select the tile before or after the selected one, or the one above or below it, Shift extending the run, and at an edge the selection stays",
+        .bug(id: 536))
+    func theArrowKeysMoveTheSelection() throws {
+        let ids = try (1...7).map { number in
+            try engine.create(card(nil, front: "Carta \(number)", back: "Un número.")).id
+        }
+        var window = openWindow()
+
+        window.moveSelection(.backward, tilesPerRow: 3, extending: false)
+        let first = window.selection
+        window.moveSelection(.down, tilesPerRow: 3, extending: false)
+        let below = window.selection
+        window.moveSelection(.forward, tilesPerRow: 3, extending: false)
+        window.moveSelection(.forward, tilesPerRow: 3, extending: false)
+        let endOfTheRow = window.selection
+        window.moveSelection(.forward, tilesPerRow: 3, extending: false)
+        let onTheNextRow = window.selection
+        window.moveSelection(.up, tilesPerRow: 3, extending: false)
+        window.moveSelection(.up, tilesPerRow: 3, extending: false)
+        let top = window.selection
+        window.moveSelection(.up, tilesPerRow: 3, extending: false)
+        let stillTop = window.selection
+        window.clickTile(ids[5], .alone)
+        window.moveSelection(.down, tilesPerRow: 3, extending: false)
+        let last = window.selection
+        window.moveSelection(.down, tilesPerRow: 3, extending: false)
+        let stillLast = window.selection
+        window.moveSelection(.up, tilesPerRow: 3, extending: true)
+        let runUp = window.selection
+        window.moveSelection(.backward, tilesPerRow: 3, extending: true)
+        let longerRun = window.selection
+
+        #expect(first == [ids[0]])
+        #expect(below == [ids[3]])
+        #expect(endOfTheRow == [ids[5]])
+        #expect(onTheNextRow == [ids[6]])
+        #expect(top == [ids[0]])
+        #expect(stillTop == [ids[0]])
+        // No tile right below the 6th: down goes to the last, as in the
+        // Finder.
+        #expect(last == [ids[6]])
+        #expect(stillLast == [ids[6]])
+        #expect(runUp == Set(ids[3...6]))
+        #expect(longerRun == Set(ids[2...6]))
+        #expect(window.cardToReveal == ids[2])
+    }
+
+    @Test("Select All selects every tile the grid lists", .bug(id: 536))
+    func selectAllSelectsEveryTile() throws {
+        try engine.create(card(nil, front: "ojalá", back: "Ojalá que llueva café."), deck: "Palabras")
+        let ids = try ["uno", "dos", "tres"].map { front in
+            try engine.create(card(nil, front: front, back: "Un número."), deck: "Números").id
+        }
+        var window = openWindow()
+        window.choose(.cards(.deck("Números")))
+
+        window.selectAllTiles()
+
+        #expect(window.selection == Set(ids))
+        guard case .cards(let shown) = window.detail else {
+            Issue.record("The detail doesn't show the selected cards")
+            return
+        }
+        #expect(shown.map(\.id) == ids)
+    }
+}

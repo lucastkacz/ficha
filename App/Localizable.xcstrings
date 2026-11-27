@@ -580,7 +580,7 @@
       }
     },
     "%lld cards selected" : {
-      "comment" : "In the Cards window's detail, when Lucas selected several cards in the table.",
+      "comment" : "In the Cards window's detail, when Lucas selected several cards in the grid.",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -935,7 +935,7 @@
       }
     },
     "%lld reviews" : {
-      "comment" : "For VoiceOver, in the Cards window's Reviews column and its detail's Reviews row: how many times Lucas reviewed the card, either way.",
+      "comment" : "For VoiceOver, in the Cards window's detail's Reviews row: how many times Lucas reviewed the card, either way.",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -1110,7 +1110,7 @@
       "comment" : "The last item of the Tags section of the Cards window's sidebar: it lists every tag, pinned or not."
     },
     "All cards" : {
-      "comment" : "An item of the Cards window's sidebar: every card but the buried ones.\nThe name the Export sheet's save panel proposes for the file of all cards."
+      "comment" : "The name the Export sheet's save panel proposes for the file of all cards."
     },
     "All cards (%lld)" : {
       "comment" : "An item of the Export sheet's menu: every card, buried ones too, with how many."
@@ -1176,10 +1176,10 @@
       "comment" : "In the Cards window's detail, for a card that goes both ways: FSRS's difficulty back first, as Anki's Card Info says it, how hard the card is to remember back first, as a percentage."
     },
     "Back-first due" : {
-      "comment" : "A column of the Cards window: when a card that goes both ways is due back first.\nIn the Cards window's detail: when a card that goes both ways is due back first."
+      "comment" : "In the Cards window's detail: when a card that goes both ways is due back first."
     },
     "Back-first interval" : {
-      "comment" : "A column of the Cards window: how long a card that goes both ways waits after its last review back first.\nIn the Cards window's detail: how long a card that goes both ways waits after its last review back first."
+      "comment" : "In the Cards window's detail: how long a card that goes both ways waits after its last review back first."
     },
     "Back-first retrievability" : {
       "comment" : "In the Cards window's detail, for a card that goes both ways: FSRS's retrievability back first, as Anki's Card Info says it, the chance of remembering the card back first now."
@@ -1210,12 +1210,6 @@
     },
     "Blue" : {
       "comment" : "One of Finder's tag colors, which a tag can have."
-    },
-    "Both sides have a sound" : {
-      "comment" : "The tooltip of the speaker in the Cards window's Media column, when both sides have one."
-    },
-    "Both sides have an image" : {
-      "comment" : "The tooltip of the photo in the Cards window's Media column, when both sides have one."
     },
     "Both ways" : {
       "comment" : "In the Cards window's detail, after a card's type and tags: it's also reviewed back first, its back, then its front.\nIn the Cards window, the checkbox of a card that is also reviewed back first: its back, then its front."
@@ -1738,7 +1732,7 @@
       "comment" : "The button of How fast? after New Deck…: sets the pace for the new deck."
     },
     "Created" : {
-      "comment" : "A column of the Cards window: when Lucas approved the card.\nIn the Cards window's detail: when Lucas approved the card."
+      "comment" : "In the Cards window's detail: when Lucas approved the card."
     },
     "Deck" : {
       "comment" : "In the Cards window's card form, the label of the card's deck.\nIn the Cards window, the label of a card's deck, while Lucas edits it.\nThe Import sheet's field for a deck the imported cards come into."
@@ -1883,7 +1877,7 @@
       "comment" : "In the empty place for the image on a side of a card."
     },
     "Due" : {
-      "comment" : "A column of the Cards window: when the card is due.\nIn the Cards window's detail: when the card is due."
+      "comment" : "In the Cards window's detail: when the card is due."
     },
     "Each “Forgot” to a card out of its learning and relearning steps counts, since the card's front or back last changed. If you don't flag it, the panel offers again after half as many more." : {
       "comment" : "Settings, under Review panel: below the offer to flag a card forgotten often, which counts Anki's lapses. “Forgot” is the review panel's button that records Anki's Again, also on key 1."
@@ -1896,9 +1890,6 @@
     },
     "Edit (⌘L)" : {
       "comment" : "The tooltip of the Cards window's button that edits the card or the capture."
-    },
-    "Edited" : {
-      "comment" : "A column of the Cards window: when the card's front or back last changed."
     },
     "Emoji" : {
       "comment" : "The field of the sheet that gives a tag, a deck or a card type an emoji."
@@ -2122,7 +2113,7 @@
       }
     },
     "Front" : {
-      "comment" : "A column of the Cards window: the card's front.\nIn the Cards window's card form, the label of the card's front.\nIn the Cards window, the label of a card's front, while Lucas edits it."
+      "comment" : "In the Cards window's card form, the label of the card's front.\nIn the Cards window, the label of a card's front, while Lucas edits it."
     },
     "Front first" : {
       "comment" : "In the key of the Cards window's review log chart: the line of the card's usual way, its front first."
@@ -2332,7 +2323,7 @@
       "comment" : "An item of the Cards window's sidebar: what waits to be refined."
     },
     "Interval" : {
-      "comment" : "A column of the Cards window: how long the card waits after its last review.\nFor VoiceOver, the Cards window's chart: how long the card waited after each entry.\nIn the Cards window's detail: how long the card waits after its last review."
+      "comment" : "For VoiceOver, the Cards window's chart: how long the card waited after each entry.\nIn the Cards window's detail: how long the card waits after its last review."
     },
     "Interval %@" : {
       "comment" : "For VoiceOver, a point of the Cards window's chart: how long the card waited after Lucas's answer, like “Interval 5 days”."
@@ -2383,7 +2374,7 @@
       "comment" : "A menu item while the last backup failed, which opens Settings' Backups tab, where it says why."
     },
     "Last seen" : {
-      "comment" : "A column of the Cards window: when Lucas last reviewed the card.\nIn the Cards window's detail: when Lucas last reviewed the card."
+      "comment" : "In the Cards window's detail: when Lucas last reviewed the card."
     },
     "Last synced %@" : {
       "comment" : "Settings, under Sync: when this Mac last synced, with the date and time."
@@ -2391,11 +2382,8 @@
     "Latest appearances" : {
 
     },
-    "Learned" : {
-      "comment" : "An item of the Cards window's sidebar: the learned cards."
-    },
     "Learning" : {
-      "comment" : "In the Cards window's Interval columns and its detail's Interval rows: a card in its learning steps, the short intervals before it graduates, whatever the step's interval, as Anki's Browse says “(learning)”; or a card an import from Anki brought in while Anki was still learning it."
+      "comment" : "In the Cards window's detail's Interval rows: a card in its learning steps, the short intervals before it graduates, whatever the step's interval, as Anki's Browse says “(learning)”; or a card an import from Anki brought in while Anki was still learning it."
     },
     "Learning steps" : {
       "comment" : "Settings, under Scheduling: the header of the learning steps."
@@ -2513,11 +2501,11 @@
     "Make Card Smaller" : {
       "comment" : "A hidden button of the review panel and the Cards window: ⌘−, which makes a card's text and images smaller."
     },
-    "Media" : {
-      "comment" : "A column of the Cards window: whether the card's sides have an image or a sound."
-    },
     "Meetings" : {
 
+    },
+    "Met" : {
+      "comment" : "In the Cards window, above the grid of cards, and for VoiceOver, on a card's tile: the user met the card, and it isn't due."
     },
     "Met them all" : {
       "comment" : "Under a deck's name in the Cards window's sidebar: every card of the deck is met."
@@ -2672,6 +2660,9 @@
     "New to me" : {
       "comment" : "The review panel's Forgot button on a new card's first turn, for a card the user hadn't met before: it records Anki's Again. Its key is 1."
     },
+    "New: waits its turn" : {
+      "comment" : "In the Cards window, above the grid of cards, and for VoiceOver, on a card's tile: the user hasn't met the card yet, which waits its turn in the queue of new cards."
+    },
     "Next in the queue: %@. Its first card comes with the next new one." : {
       "comment" : "In the review panel, under the decks it met in full: the deck new cards come from now, with its emoji and name."
     },
@@ -2684,9 +2675,6 @@
     "No appearance yet." : {
 
     },
-    "No buried cards" : {
-      "comment" : "In the Cards window: no card is buried."
-    },
     "No card carries them, so no card changes. What you gave them goes with them, a pin, a color or an emoji, and you can't undo this." : {
       "comment" : "Under the title of the Cards window's question before Clear Unused Tags… deletes them."
     },
@@ -2694,13 +2682,10 @@
 
     },
     "No cards" : {
-      "comment" : "In the Cards window: no card that isn't buried."
+      "comment" : "In the Cards window, while it has no deck to show, since the user has no cards."
     },
     "No cards are due right now." : {
 
-    },
-    "No cards due" : {
-      "comment" : "In the Cards window: no card is due now."
     },
     "No cards in %@" : {
       "comment" : "In the Cards window: no card that isn't buried lives in this deck, or a deck inside it, with the deck's whole name, like “Idiomas › Inglés”."
@@ -2726,17 +2711,8 @@
     "No concepts" : {
       "comment" : "In the Cards window: no concept card that isn't buried."
     },
-    "No flagged cards" : {
-      "comment" : "In the Cards window: no card is flagged."
-    },
     "No iCloud account" : {
       "comment" : "Settings, under Sync: this Mac isn't signed into iCloud."
-    },
-    "No learned cards" : {
-      "comment" : "In the Cards window: no card is learned yet."
-    },
-    "No new cards" : {
-      "comment" : "In the Cards window: no card waits for its first review."
     },
     "No questions" : {
       "comment" : "In the Cards window: no question card that isn't buried."
@@ -2996,7 +2972,7 @@
       "comment" : "A tab of the Settings window."
     },
     "Reviews" : {
-      "comment" : "A column of the Cards window: how many times Lucas reviewed the card, either way.\nIn the Cards window's detail: how many times Lucas reviewed the card, either way."
+      "comment" : "In the Cards window's detail: how many times Lucas reviewed the card, either way."
     },
     "Right now" : {
 
@@ -3019,11 +2995,14 @@
     "See more?" : {
 
     },
+    "Select All" : {
+      "comment" : "A hidden button of the Cards window: ⌘A, which selects every card the grid lists, while the grid has the keyboard."
+    },
     "Selected cards" : {
       "comment" : "The name the Export sheet's save panel proposes for the file of the selected cards."
     },
     "Selected cards (%lld)" : {
-      "comment" : "An item of the Export sheet's menu: the cards selected in the table, with how many."
+      "comment" : "An item of the Export sheet's menu: the cards selected in the grid, with how many."
     },
     "Separate tags with commas, and write “::” before a tag inside another, as in “economía::Argentina”." : {
       "comment" : "In the Cards window's card form, under the tags.\nIn the Cards window, under a card's tags, while Lucas edits it."
@@ -3088,7 +3067,7 @@
       "comment" : "Settings, under Backups, below how many copies there are: what the sounds on their cards weigh, each kept once for all the copies."
     },
     "Source" : {
-      "comment" : "A column of the Cards window: where Lucas came across the card's content.\nIn the Cards window's card form, the label of the card's source.\nIn the Cards window's detail: where Lucas came across a capture's text.\nIn the Cards window, the label of a capture's source, while Lucas edits it.\nIn the Cards window, the label of a card's source, while Lucas edits it."
+      "comment" : "In the Cards window's card form, the label of the card's source.\nIn the Cards window's detail: where Lucas came across a capture's text.\nIn the Cards window, the label of a capture's source, while Lucas edits it.\nIn the Cards window, the label of a card's source, while Lucas edits it."
     },
     "Source (optional): a book, a podcast…" : {
 
@@ -3130,7 +3109,7 @@
       "comment" : "In the Import sheet, before the field for the tag every card it imports gets."
     },
     "Tags" : {
-      "comment" : "A column of the Cards window: the card's tags.\nA section of the Cards window's sidebar: the tags Lucas pinned, then All Tags….\nIn the Cards window's card form, the label of the card's tags.\nIn the Cards window, the label of a card's tags, while Lucas edits it."
+      "comment" : "A section of the Cards window's sidebar: the tags Lucas pinned, then All Tags….\nIn the Cards window's card form, the label of the card's tags.\nIn the Cards window, the label of a card's tags, while Lucas edits it."
     },
     "Take the keyboard" : {
       "comment" : "Settings, under Review panel: when the panel takes the keyboard as it shows up on its own."
@@ -3243,12 +3222,6 @@
         }
       }
     },
-    "The back has a sound" : {
-      "comment" : "The tooltip of the speaker in the Cards window's Media column, when the card's back has one."
-    },
-    "The back has an image" : {
-      "comment" : "The tooltip of the photo in the Cards window's Media column, when the card's back has one."
-    },
     "The camera or the microphone in use" : {
 
     },
@@ -3271,18 +3244,12 @@
     "The cards get these tags, from Anki's notes:" : {
       "comment" : "In the Import sheet's preview of an Anki package, above the tags its cards get."
     },
-    "The cards you create with New Card show up here, and the ones you bury, in Buried." : {
-      "comment" : "In the Cards window, when All cards is empty."
+    "The cards you create with New Card show up here, each in its deck." : {
+      "comment" : "In the Cards window, while it has no deck to show, since the user has no cards."
     },
     "The deck “%@” isn't there any more, maybe since another of your devices renamed or deleted it, so nothing changed. Look for it among your decks under its new name, or pick another." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
-    },
-    "The front has a sound" : {
-      "comment" : "The tooltip of the speaker in the Cards window's Media column, when the card's front has one."
-    },
-    "The front has an image" : {
-      "comment" : "The tooltip of the photo in the Cards window's Media column, when the card's front has one."
     },
     "The tags you write on your cards show up here." : {
       "comment" : "In the Cards window's All Tags, when no card has a tag."
@@ -3364,7 +3331,7 @@
       "comment" : "Settings, under Sync, while sync is off: what the images and sounds turning sync on sends weigh, said from 100 MB."
     },
     "Type" : {
-      "comment" : "A column of the Cards window: the card's type.\nIn the Cards window's card form, the label of the card's type.\nIn the Cards window, the label of a card's type, while Lucas edits it."
+      "comment" : "In the Cards window's card form, the label of the card's type.\nIn the Cards window, the label of a card's type, while Lucas edits it."
     },
     "Type a shortcut…" : {
       "comment" : "Settings: the capture shortcut, while Lucas types a new one."
@@ -3553,6 +3520,18 @@
     "esc" : {
       "comment" : "The Esc key's name, next to the button it presses."
     },
+    "grid.due" : {
+      "comment" : "In the Cards window, above the grid of cards, and for VoiceOver, on a card's tile: the card is due.",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Due"
+          }
+        }
+      }
+    },
     "iCloud is full" : {
       "comment" : "A menu item while iCloud is full, which opens Settings' Sync tab, where it says changes wait until there's room."
     },
@@ -3646,58 +3625,10 @@
       "comment" : "A finish date in the days 11 to 20 of a month."
     },
     "now" : {
-      "comment" : "In the Cards window's Due and Back-first due columns: the card is due, front first or back first."
+      "comment" : "In the Cards window's detail's Due and Back-first due rows: the card is due, front first or back first."
     },
     "set aside" : {
-      "comment" : "In the Cards window's Due and Back-first due columns: the card won't show up, since its deck, or a deck it sits inside, is set aside. Lowercase, like “now”."
-    },
-    "sidebar.buried" : {
-      "comment" : "An item of the Cards window's sidebar: the buried cards.",
-      "extractionState" : "extracted_with_value",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Buried"
-          }
-        }
-      }
-    },
-    "sidebar.due" : {
-      "comment" : "An item of the Cards window's sidebar: the cards due now.",
-      "extractionState" : "extracted_with_value",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Due"
-          }
-        }
-      }
-    },
-    "sidebar.flagged" : {
-      "comment" : "An item of the Cards window's sidebar: the flagged cards.",
-      "extractionState" : "extracted_with_value",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Flagged"
-          }
-        }
-      }
-    },
-    "sidebar.new" : {
-      "comment" : "An item of the Cards window's sidebar: the cards not seen yet.",
-      "extractionState" : "extracted_with_value",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "New"
-          }
-        }
-      }
+      "comment" : "In the Cards window's detail's Due and Back-first due rows: the card won't show up, since its deck, or a deck it sits inside, is set aside. Lowercase, like “now”."
     },
     "space" : {
       "comment" : "The Space key's name, next to the button it presses."

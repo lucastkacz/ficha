@@ -27,6 +27,7 @@ struct CardsWindowDeckTagsTests {
         try approveInDeck("Gioconda", deck: "Arte", tags: ["renacimiento"], in: engine)
         try engine.setColor(.blue, of: "política")
         var window = openWindow()
+        window.choose(.inbox)
         #expect(window.deckTags.isEmpty)
 
         window.choose(.cards(.deck("Historia")))
@@ -137,7 +138,7 @@ struct CardsWindowDeckTagsTests {
             window.deckTagsRows.map { $0.more.map(\.id) } == [
                 [], ["c"], ["b", "c"], ["a", "b", "c"], ["a", "b", "c", "d"],
             ])
-        window.choose(.cards(.all))
+        window.choose(.inbox)
         #expect(window.deckTagsRows.isEmpty)
     }
 
@@ -171,7 +172,7 @@ struct CardsWindowDeckTagsTests {
 }
 
 extension CardsWindowState {
-    /// The ids of the cards the table lists, in the order the engine read
+    /// The ids of the cards the grid lists, in the order the engine read
     /// them, or nil when it lists the inbox or couldn't read them.
     fileprivate var listedCardIDs: [Int64]? {
         guard case .success(.cards(let rows)) = listing else {

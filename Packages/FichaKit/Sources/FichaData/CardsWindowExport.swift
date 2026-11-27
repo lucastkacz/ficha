@@ -6,7 +6,7 @@ extension CardsWindowState {
     /// export, each with how many cards it takes, and what the user chose.
     public struct Exporting: Sendable, Equatable {
         /// What the sheet offers, in its menu's order: the selected cards
-        /// while the table lists some, all cards, then each deck the sidebar
+        /// while the grid lists some, all cards, then each deck the sidebar
         /// lists that holds a card, in its order, and each tag All Tags lists
         /// that a card has, in its order.
         public let choices: [ExportChoice]

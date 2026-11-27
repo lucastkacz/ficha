@@ -63,7 +63,10 @@ struct CardsWindowImageTests {
         #expect(try pixelSize(of: engine.image(nest)) == (1600, 1067))
         #expect(window.cardForm?.draft.front.image == nil)
         #expect(window.cardForm?.draft.back.image == nil)
-        #expect(window.images[bird] == nil)
+        // The window, on Default once the card is in it, shows the front's
+        // image on the card's tile, and the back's nowhere.
+        #expect(try window.images[bird]?.get() == shownBird)
+        #expect(window.images[nest] == nil)
     }
 
     @Test("what isn't an image stays off the side, and the window says why")

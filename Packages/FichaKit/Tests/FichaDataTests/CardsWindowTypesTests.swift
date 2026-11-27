@@ -40,7 +40,7 @@ struct CardsWindowTypesTests {
     }
 
     @Test(
-        "choosing a user type lists its cards, and it stays chosen once it's renamed; once it's deleted, the sidebar goes back to All cards"
+        "choosing a user type lists its cards, and it stays chosen once it's renamed; once it's deleted, the sidebar goes back to the first deck"
     )
     func choosingAUserType() throws {
         let formula = try engine.makeUserType(named: "Fórmula")
@@ -57,7 +57,7 @@ struct CardsWindowTypesTests {
 
         try engine.deleteUserType(formula.id)
         window.read(with: scheduler)
-        #expect(window.sidebarItem == .cards(.all))
+        #expect(window.sidebarItem == .cards(.deck(Deck.defaultName)))
     }
 
     @Test(
@@ -237,14 +237,15 @@ struct CardsWindowTypesTests {
 
         #expect(window.question == nil)
         #expect(window.failure == nil)
-        #expect(window.sidebarItem == .cards(.all))
+        #expect(window.sidebarItem == .cards(.deck(Deck.defaultName)))
         #expect(window.pickerTypes == CardType.builtIn)
         #expect(window.typeGroups.last == .noType)
         #expect(try engine.cards().map(\.type) == [nil, nil])
         #expect(try engine.cards().map(\.id) == [water.id, salt.id])
     }
 
-    /// The window as it opens, on All cards, with the cards read.
+    /// The window as it opens, on the first deck the sidebar lists, with the
+    /// cards read.
     private func openWindow() -> CardsWindowState {
         var window = engine.openCardsWindow(with: scheduler)
         window.read(with: scheduler)
@@ -253,7 +254,7 @@ struct CardsWindowTypesTests {
 }
 
 extension CardsWindowState {
-    /// The ids of the cards the table lists, or nil when it lists the inbox
+    /// The ids of the cards the grid lists, or nil when it lists the inbox
     /// or couldn't read them.
     fileprivate var listedCardIDs: [Int64]? {
         guard case .success(.cards(let rows)) = listing else {

@@ -584,7 +584,7 @@ final class AnkiReviewsTests {
 
         let liver = try card("hígado").id
         let pancreas = try card("páncreas").id
-        let intervalColumns = try engine.cardRows(in: .all, with: scheduler).map(\.frontFirst.intervalColumn)
+        let intervals = try engine.cardRows(in: .all, with: scheduler).map(\.frontFirst.intervalWording)
         #expect(
             try log(of: "hígado").last
                 == ReviewLogEntry(
@@ -597,7 +597,7 @@ final class AnkiReviewsTests {
                     placing: pancreas, on: Placement(interval: .seconds(hours(1)), due: try october(23, at: 4)),
                     at: time.now))
         #expect(try standing(of: "páncreas") == relearning(step: 0, due: try october(23, at: 4)))
-        #expect(intervalColumns == [.learning(.seconds(hours(4))), .interval(.seconds(hours(1)))])
+        #expect(intervals == [.learning(.seconds(hours(4))), .interval(.seconds(hours(1)))])
     }
 
     // Anki's learning steps here are 10 minutes and a day, as in Anki's v3

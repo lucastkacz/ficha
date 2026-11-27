@@ -69,9 +69,10 @@ final class CardsWindowDeckChangesTests {
             ])
     }
 
-    // The window opened with the last card added to Arte::Pintura, where
-    // the card form started, and Show Card set it aside on petricor.
-    // Coliseo's editor holds Arte::Escultura, which New Deck… named.
+    // The window opened with the last card added to Arte::Pintura, which the
+    // sidebar chose, so the card form started there, and Show Card set it
+    // aside on petricor. The sidebar then chose Historia, and Coliseo's
+    // editor holds Arte::Escultura, which New Deck… named.
     @Test(
         "a deletion the CLI makes is let go of once the window reads again: the form Show Card set aside goes to the deck a new card starts in, and the editor and the last deck added to go to Default"
     )
@@ -83,11 +84,13 @@ final class CardsWindowDeckChangesTests {
         let coliseo = try approveInDeck("Coliseo", deck: "Historia", in: app)
         var window = app.openCardsWindow(with: scheduler, lastDeckAddedTo: "Arte::Pintura")
         window.read(with: scheduler)
+        window.choose(.cards(.deck("Arte::Pintura")))
         window.openNewCardForm()
         var draft = try #require(window.cardForm?.draft)
         draft.front.text = "petricor"
         window.changeDraft(draft)
         window.showRepeatedCard()
+        window.choose(.cards(.deck("Historia")))
         window.select([coliseo.id])
         window.startEditing()
         window.setDeckInEditor("Arte::Escultura")
@@ -100,13 +103,14 @@ final class CardsWindowDeckChangesTests {
         window.cancelEditing()
         window.openNewCardForm()
         #expect(window.cardForm?.draft.front.text == "petricor")
-        #expect(window.cardForm?.draft.deck == Deck.defaultName)
+        #expect(window.cardForm?.draft.deck == "Historia")
         #expect(window.deckFieldChoices(.form).map(\.name) == [Deck.defaultName, "Historia"])
     }
 
     // Every card syncs. The window on the Mac opened with the last card
-    // added to Idiomas::Inglés, where the card form started, and Coliseo's
-    // editor holds Arte.
+    // added to Idiomas::Inglés, which the sidebar chose, so the card form
+    // started there; the sidebar then chose Historia, and Coliseo's editor
+    // holds Arte.
     @Test(
         "a rename and a deletion another device made, heard in a fetch, are followed once the window reads again"
     )
@@ -121,7 +125,9 @@ final class CardsWindowDeckChangesTests {
         try await syncBoth(mac, iPhone)
         var window = mac.engine.openCardsWindow(with: scheduler, lastDeckAddedTo: "Idiomas::Inglés")
         window.read(with: scheduler)
+        window.choose(.cards(.deck("Idiomas::Inglés")))
         window.openNewCardForm()
+        window.choose(.cards(.deck("Historia")))
         window.select([coliseo.id])
         window.startEditing()
         window.setDeckInEditor("Arte")

@@ -3,33 +3,13 @@ import FichaData
 import SwiftUI
 
 extension CardGroup {
-    /// The group's name in the sidebar. New, Due, Flagged and Buried have keys
-    /// of their own, since a language can name the group apart from one card,
-    /// as Spanish does in the plural.
+    /// The group's name in the sidebar. Every card and the flagged ones,
+    /// which the engine counts, are groups the sidebar never offers (#536),
+    /// so the app names neither.
     var title: String {
         switch self {
-        case .all:
-            String(
-                localized: "All cards",
-                comment: "An item of the Cards window's sidebar: every card but the buried ones.")
-        case .new:
-            String(
-                localized: "sidebar.new", defaultValue: "New",
-                comment: "An item of the Cards window's sidebar: the cards not seen yet.")
-        case .due:
-            String(
-                localized: "sidebar.due", defaultValue: "Due",
-                comment: "An item of the Cards window's sidebar: the cards due now.")
-        case .learned:
-            String(localized: "Learned", comment: "An item of the Cards window's sidebar: the learned cards.")
-        case .flagged:
-            String(
-                localized: "sidebar.flagged", defaultValue: "Flagged",
-                comment: "An item of the Cards window's sidebar: the flagged cards.")
-        case .buried:
-            String(
-                localized: "sidebar.buried", defaultValue: "Buried",
-                comment: "An item of the Cards window's sidebar: the buried cards.")
+        case .all, .flagged:
+            ""
         case .deck(let deck):
             Deck.shownName(deck)
         case .tag(let tag):
@@ -46,11 +26,7 @@ extension CardGroup {
     var symbol: String {
         switch self {
         case .all: "rectangle.stack"
-        case .new: "sparkles"
-        case .due: "clock"
-        case .learned: "checkmark.seal"
         case .flagged: "flag"
-        case .buried: "eye.slash"
         case .deck: "rectangle.portrait.on.rectangle.portrait"
         case .tag: "tag"
         case .type(let type): type.symbol
@@ -58,21 +34,12 @@ extension CardGroup {
         }
     }
 
-    /// What the table says when the group has no cards.
+    /// What the grid's place says when the group has no cards: nothing for
+    /// the groups the sidebar never offers.
     var emptyTitle: String {
         switch self {
-        case .all:
-            String(localized: "No cards", comment: "In the Cards window: no card that isn't buried.")
-        case .new:
-            String(localized: "No new cards", comment: "In the Cards window: no card waits for its first review.")
-        case .due:
-            String(localized: "No cards due", comment: "In the Cards window: no card is due now.")
-        case .learned:
-            String(localized: "No learned cards", comment: "In the Cards window: no card is learned yet.")
-        case .flagged:
-            String(localized: "No flagged cards", comment: "In the Cards window: no card is flagged.")
-        case .buried:
-            String(localized: "No buried cards", comment: "In the Cards window: no card is buried.")
+        case .all, .flagged:
+            ""
         case .deck(Deck.defaultName):
             String(
                 localized: "No cards in Default",
@@ -125,7 +92,7 @@ extension Deck {
 }
 
 /// A tag or a deck, which the app names and draws alike where it stands
-/// alone, in a capsule, a menu, the sidebar or the bar above the card list:
+/// alone, in a capsule, a menu, the sidebar or the bar above the grid:
 /// its emoji before its name, and its group's symbol, filled and tinted with
 /// its color, each its own or else that of the tags or the decks it sits
 /// inside.
@@ -156,7 +123,7 @@ extension GroupWithLook {
     }
 
     /// The SF Symbol drawn before its name, in the sidebar, All Tags, the
-    /// Change Deck sheet and the bar above the card list: its group's,
+    /// Change Deck sheet and the bar above the grid: its group's,
     /// filled while it shows a color, or outlined while it shows none.
     var symbolName: String {
         shownColor == nil ? group.symbol : "\(group.symbol).fill"
@@ -243,8 +210,8 @@ nonisolated enum InboxKind: CaseIterable {
 }
 
 extension CardType {
-    /// The type's name, as the Cards window shows it, and as its table sorts
-    /// by it: one of the four's from the app's String Catalog, as the engine also
+    /// The type's name, as the Cards window shows it: one of the four's from
+    /// the app's String Catalog, as the engine also
     /// knows it (`CardType.builtInNames`), and a user type's as the user
     /// wrote it.
     nonisolated var name: String {

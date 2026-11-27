@@ -1,10 +1,12 @@
 import FichaCore
 import Foundation
 
-/// The Cards window while it's open: what its sidebar chose, what Lucas looks
-/// for and what he selected, what the table lists, read from his cards with
-/// the scheduling settings in Settings, and so what the detail shows and what
-/// Lucas can do with it. It reads his cards whenever the window asks: once
+/// The Cards window while it's open: what its sidebar chose, the first deck
+/// Your Decks lists as it opens, or nothing while it lists none, what Lucas
+/// looks for and what he selected, what the grid lists, a tile for each card
+/// (`CardsWindowGrid.swift`), read from his cards with the scheduling
+/// settings in Settings, and so what the detail shows and what Lucas can do
+/// with it. It reads his cards whenever the window asks: once
 /// the window listens for the reasons to read them again, and then for each
 /// of them, the engine's changes, the passing of time, new scheduling
 /// settings, and Ficha Dev moving the time. What Lucas does in the window goes through it too,
@@ -41,15 +43,15 @@ import Foundation
 /// offers Ficha's decks the user hasn't added, each with its first card, which
 /// Add Deck… adds after How fast? (`CardsWindowFichaDecks.swift`).
 public struct CardsWindowState: Sendable {
-    /// What the sidebar offers, one at a time: a group of cards, the inbox,
-    /// All Tags, or one of Ficha's decks.
+    /// What the sidebar offers, one at a time: a group of cards, a deck's, a
+    /// tag's or a type's, the inbox, All Tags, or one of Ficha's decks.
     public enum SidebarItem: Sendable, Hashable {
         case cards(CardGroup)
         case inbox
         /// Every tag, pinned or not (ADR 0022).
         case allTags
         /// One of Ficha's decks the user hasn't added, which the window shows
-        /// in the table's and the detail's place, with Add Deck…:
+        /// in the grid's and the detail's place, with Add Deck…:
         /// `CardsWindowFichaDecks.swift`.
         case fichaDeck(FichaDeck)
     }
@@ -57,9 +59,6 @@ public struct CardsWindowState: Sendable {
     /// A section of the sidebar, as `sidebarSections` lists them, with what
     /// it offers.
     public enum SidebarSection: Sendable, Equatable, Identifiable {
-        /// The cards by where they stand: All cards, New, Due, Learned,
-        /// Flagged and Buried.
-        case cardGroups([CardGroup])
         /// The inbox.
         case inbox
         /// The Your Decks section: every deck as a tree, as `deckRows` lists
@@ -76,7 +75,6 @@ public struct CardsWindowState: Sendable {
 
         /// Which section it is, whatever it lists.
         public enum ID: Sendable, Hashable {
-            case cardGroups
             case inbox
             case decks
             case fichaDecks
@@ -86,7 +84,6 @@ public struct CardsWindowState: Sendable {
 
         public var id: ID {
             switch self {
-            case .cardGroups: .cardGroups
             case .inbox: .inbox
             case .decks: .decks
             case .fichaDecks: .fichaDecks
@@ -98,7 +95,7 @@ public struct CardsWindowState: Sendable {
         /// What it offers, in its order.
         public var items: [SidebarItem] {
             switch self {
-            case .cardGroups(let groups), .types(let groups): groups.map(SidebarItem.cards)
+            case .types(let groups): groups.map(SidebarItem.cards)
             case .inbox: [.inbox]
             case .decks(let rows): rows.flatMap(\.flattened).map(\.item)
             case .fichaDecks(let files): files.map(\.deck).map(SidebarItem.fichaDeck)
@@ -107,9 +104,11 @@ public struct CardsWindowState: Sendable {
         }
     }
 
-    /// What the table lists: the cards of a group, what waits in the inbox,
-    /// or All Tags' every tag, as a tree (`CardsWindowAllTags.swift`); no
-    /// card while one of Ficha's decks shows in its place.
+    /// What the window lists between the sidebar and the detail: the cards of
+    /// a group, which the grid shows as tiles, what waits in the inbox, or
+    /// All Tags' every tag, as a tree (`CardsWindowAllTags.swift`); no card
+    /// while one of Ficha's decks shows in the grid's place, or while the
+    /// sidebar chose nothing.
     public enum Listing: Sendable, Equatable {
         case cards([CardRow])
         case inbox([InboxRow])
@@ -431,9 +430,12 @@ public struct CardsWindowState: Sendable {
         case readFichaDeck(FichaDeck)
     }
 
-    /// What the sidebar chose: All cards, until Lucas picks another group,
-    /// the inbox, All Tags or one of Ficha's decks.
-    public internal(set) var sidebarItem = SidebarItem.cards(.all)
+    /// What the sidebar chose: the first deck Your Decks lists, as the window
+    /// opens, until Lucas picks another, or a tag, a type, the inbox, All
+    /// Tags or one of Ficha's decks; or nothing, while Your Decks lists no
+    /// deck and Lucas picked nothing else, as before the window first reads
+    /// the cards, and when a new user opens it.
+    public internal(set) var sidebarItem: SidebarItem?
     /// What Lucas looks for in what the sidebar chose, from the search field.
     public internal(set) var search = ""
     /// The tag whose cards All Tags lists in its place, after Lucas
@@ -464,24 +466,32 @@ public struct CardsWindowState: Sendable {
     /// The tags Clear Unused Tags would delete, as All Tags last read them:
     /// it's offered while there are some.
     var unusedTags: [String] = []
-    /// The cards Lucas selected, which can include cards the table no longer
+    /// The cards Lucas selected, which can include cards the grid no longer
     /// lists: the detail and the actions take only those it lists.
     public private(set) var selection: Set<CardRow.ID> = []
-    /// The row Lucas selected in the inbox, one at a time, which the table
+    /// The card Shift-click, and Shift with an arrow key, extend the grid's
+    /// selection from: the last one clicked, alone or with ⌘, or moved to
+    /// with an arrow key alone, or selected alone (`CardsWindowGrid.swift`).
+    var anchorCard: CardRow.ID?
+    /// The card the arrow keys move the grid's selection from: the last one
+    /// clicked, moved to or selected alone.
+    var currentCard: CardRow.ID?
+    /// The row Lucas selected in the inbox, one at a time, which its table
     /// may no longer list, as with the cards.
     public private(set) var inboxSelection: InboxRow.ID?
-    /// The card the table scrolls to, until it has: the one Show Card
-    /// selected, which may be far down the list.
+    /// The card the grid scrolls to, until it has: the one Show Card
+    /// selected, which may be far down the grid.
     public internal(set) var cardToReveal: CardRow.ID?
     /// The review log of the card the detail shows, while it shows one: read
     /// with the cards, and again when Lucas selects another card.
     private var reviewLog: CardReviewLog?
-    /// What the table lists, or why it couldn't be read: nil until the window
-    /// first reads Lucas's cards.
+    /// What the window lists, or why it couldn't be read: nil until the
+    /// window first reads Lucas's cards.
     public private(set) var listing: Result<Listing, EngineError>?
-    /// Whether the table offers New Card and Import… in plain sight: on All
-    /// cards with no search, while the user has no cards at all, buried ones
-    /// included, as when they just started.
+    /// Whether the window offers New Card and Import… in plain sight, in the
+    /// grid's place: while the sidebar chose nothing, with no search, and the
+    /// user has no cards at all, buried ones included, as when they just
+    /// started.
     public private(set) var offersFirstCards = false
     /// Every tag the window offers, with what each has of its own and takes
     /// from the tags it sits inside, as All Tags lists them: those of the
@@ -524,8 +534,8 @@ public struct CardsWindowState: Sendable {
     /// alphabetical order, and No Type after them while a card that isn't
     /// buried has no type.
     public private(set) var typeGroups = CardType.builtIn.map(CardGroup.type)
-    /// The engine's time when the cards were read, which the Due and
-    /// Back-first due columns count from.
+    /// The engine's time when the cards were read, which the tiles' marks
+    /// and the detail's Due rows count from.
     public private(set) var now: Date
     /// The scheduling settings in Settings, which the cards stand by, and
     /// which give the intervals of a card's review log.
@@ -554,8 +564,9 @@ public struct CardsWindowState: Sendable {
     /// The images on the sides of the card the user edits, as Save would give
     /// them to it, while they edit one: `CardsWindowImages.swift`.
     public internal(set) var editedImages = SideImages()
-    /// The images the window shows, in the detail, the editor and the form,
-    /// each read, or held until it's saved: `CardsWindowImages.swift`.
+    /// The images the window shows, in the grid's tiles, the detail, the
+    /// editor and the form, each read, or held until it's saved:
+    /// `CardsWindowImages.swift`.
     public internal(set) var images = ShownImages()
     /// The sounds on the sides of the card the user edits, as Save would give
     /// them to it, while they edit one: `CardsWindowSounds.swift`.
@@ -614,35 +625,34 @@ public struct CardsWindowState: Sendable {
         now = engine.now
     }
 
-    /// The sidebar's sections, in its order: the cards by where they stand,
-    /// the inbox, the decks as a tree, Ficha's decks the user hasn't added,
-    /// while there are some, the pinned tags with All Tags… after them, and
-    /// the type groups.
+    /// The sidebar's sections, in its order: the inbox, the decks as a tree,
+    /// Ficha's decks the user hasn't added, while there are some, the pinned
+    /// tags with All Tags… after them, and the type groups. No group of cards
+    /// by where they stand, such as every card, the new ones or the buried
+    /// ones: a deck's cards show where each stands on its tile (ADR 0041).
     public var sidebarSections: [SidebarSection] {
-        var sections: [SidebarSection] = [
-            .cardGroups([.all, .new, .due, .learned, .flagged, .buried]), .inbox, .decks(deckRows),
-        ]
+        var sections: [SidebarSection] = [.inbox, .decks(deckRows)]
         if !fichaDecksNotAdded.isEmpty {
             sections.append(.fichaDecks(fichaDecksNotAdded))
         }
         return sections + [.tags(pinned: pinnedTags), .types(typeGroups)]
     }
 
-    // Stub for #536: the code round replaces it.
-    /// A stub for #536, which says no deck is selected yet: the deck the
-    /// sidebar chose, by its whole name, whose cards the window lists, or nil
-    /// while it chose none.
+    /// The deck the sidebar chose, by its whole name, or Default by
+    /// `Deck.defaultName`, whose cards the grid lists, those of the decks
+    /// inside it too: nil while it chose something else, or nothing.
     public var selectedDeck: String? {
-        nil
+        guard case .cards(.deck(let deck))? = sidebarItem else { return nil }
+        return deck
     }
 
-    /// Whether Lucas is looking for something, which narrows the table: a
+    /// Whether Lucas is looking for something, which narrows the grid: a
     /// search that isn't blank.
     public var hasSearch: Bool {
         !search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
-    /// The selected cards the table lists, which the detail shows and the
+    /// The selected cards the grid lists, which the detail shows and the
     /// actions act on: those Lucas selected in a group of cards, or the
     /// flagged card he selected in the inbox.
     public var selectedRows: [CardRow] {
@@ -656,7 +666,7 @@ public struct CardsWindowState: Sendable {
         }
     }
 
-    /// The row Lucas selected in the inbox, while the table lists it.
+    /// The row Lucas selected in the inbox, while its table lists it.
     private var selectedInboxRow: InboxRow? {
         guard case .success(.inbox(let rows))? = listing else {
             return nil
@@ -679,15 +689,15 @@ public struct CardsWindowState: Sendable {
         }
     }
 
-    /// The selected card the table lists, while it's the only one.
+    /// The selected card the grid lists, while it's the only one.
     private var shownCard: CardRow? {
         let rows = selectedRows
         return rows.count == 1 ? rows.first : nil
     }
 
     /// What the detail shows: the capture, the expansion or the follow-up
-    /// selected in the inbox, the selected cards the table lists, that
-    /// nothing is selected, or that it lists All Tags.
+    /// selected in the inbox, the selected cards the grid lists, that
+    /// nothing is selected, or that the window lists All Tags.
     public var detail: Detail {
         switch selectedInboxRow?.item {
         case .capture(let capture):
@@ -708,9 +718,9 @@ public struct CardsWindowState: Sendable {
             return .card(row, reviewLog: reviewLog?.cardID == row.id ? reviewLog?.rows : nil)
         }
         switch sidebarItem {
-        case .inbox: return .nothingSelectedInInbox
-        case .allTags where tagShownFromAllTags == nil: return .allTags(selected: selectedListedTags)
-        case .allTags, .cards, .fichaDeck: return .noCardSelected
+        case .inbox?: return .nothingSelectedInInbox
+        case .allTags? where tagShownFromAllTags == nil: return .allTags(selected: selectedListedTags)
+        case .allTags?, .cards?, .fichaDeck?, nil: return .noCardSelected
         }
     }
 
@@ -776,8 +786,8 @@ public struct CardsWindowState: Sendable {
         readAgain()
     }
 
-    /// Narrows what the table lists to what mentions `search`. A blank search
-    /// narrows nothing.
+    /// Narrows what the window lists to what mentions `search`. A blank
+    /// search narrows nothing.
     public mutating func search(for search: String) {
         guard search != self.search else { return }
         self.search = search
@@ -787,8 +797,14 @@ public struct CardsWindowState: Sendable {
         readAgain()
     }
 
-    /// Selects the cards in `selection`, in a group of cards.
+    /// Selects the cards in `selection`, in a group of cards. A card selected
+    /// alone is where a Shift-click and the arrow keys go from, as a click
+    /// on it would make it (`CardsWindowGrid.swift`).
     public mutating func select(_ selection: Set<CardRow.ID>) {
+        if selection.count == 1 {
+            anchorCard = selection.first
+            currentCard = selection.first
+        }
         guard selection != self.selection else { return }
         self.selection = selection
         readReviewLog()
@@ -916,7 +932,7 @@ public struct CardsWindowState: Sendable {
         }
     }
 
-    /// Buries the selected cards the table lists, all at once, while Bury is
+    /// Buries the selected cards the window lists, all at once, while Bury is
     /// offered, or records why it couldn't.
     public mutating func bury() {
         guard actions.contains(.bury) else { return }
@@ -924,7 +940,7 @@ public struct CardsWindowState: Sendable {
         perform(.bury(cardCount: cardIDs.count)) { engine throws(EngineError) in try engine.bury(cardIDs) }
     }
 
-    /// Unburies the selected cards the table lists, all at once, while
+    /// Unburies the selected cards the window lists, all at once, while
     /// Unbury is offered, or records why it couldn't.
     public mutating func unbury() {
         guard actions.contains(.unbury) else { return }
@@ -943,7 +959,7 @@ public struct CardsWindowState: Sendable {
     /// window lists back where they stood, all at once, as Unbury does today.
     public mutating func putBack() {}
 
-    /// Turns Both ways on for the selected cards the table lists, all at
+    /// Turns Both ways on for the selected cards the window lists, all at
     /// once, while Turn On Both Ways is offered, and reads them again, so
     /// that the window offers Turn Off at once; or records why it couldn't.
     public mutating func turnOnBothWays() {
@@ -951,7 +967,7 @@ public struct CardsWindowState: Sendable {
         setBothWays(true)
     }
 
-    /// Turns Both ways off for the selected cards the table lists, all at
+    /// Turns Both ways off for the selected cards the window lists, all at
     /// once, while Turn Off Both Ways is offered, and reads them again, so
     /// that the window offers Turn On at once; or records why it couldn't.
     public mutating func turnOffBothWays() {
@@ -959,7 +975,7 @@ public struct CardsWindowState: Sendable {
         setBothWays(false)
     }
 
-    /// Turns Both ways on or off for the selected cards the table lists, as
+    /// Turns Both ways on or off for the selected cards the window lists, as
     /// `bothWays` says, and reads them again, or records why it couldn't.
     private mutating func setBothWays(_ bothWays: Bool) {
         let cardIDs = Set(selectedRows.map(\.id))
@@ -971,7 +987,7 @@ public struct CardsWindowState: Sendable {
         }
     }
 
-    /// Asks whether to delete the selected cards the table lists, while Delete
+    /// Asks whether to delete the selected cards the window lists, while Delete
     /// is offered.
     public mutating func askToDelete() {
         guard actions.contains(.delete) else { return }
@@ -1116,21 +1132,23 @@ public struct CardsWindowState: Sendable {
     /// the settings in Settings, which may have changed since the last read,
     /// and the review log of the card the detail shows.
     /// It follows each deck renamed or deleted since it last read, whoever
-    /// did it (`follow(_:)`). When the chosen deck is gone, as Default once
-    /// its last card moved out,
-    /// or the chosen tag is gone, because its last card was edited or
-    /// deleted while it has nothing of its own, the sidebar goes back to All
-    /// cards, and so it does when No Type is gone, once every card that isn't
-    /// buried has a type, and when the chosen user type is deleted; and when
-    /// the tag whose cards All Tags lists is gone, All Tags lists its tree
-    /// again, as after Back. A user type renamed, or given another emoji,
-    /// stays chosen. All Tags' selection keeps only the tags there are. A
-    /// tag chosen among the chosen deck's tags that none of its cards carries
-    /// anymore is no longer chosen, and the deck lists all its cards again.
-    /// It finds which of Ficha's decks the user has added, as
-    /// `Engine.hasAdded(_:)` says, and when the one the sidebar chose is
-    /// added, by Start or meanwhile from another device, the sidebar chooses
-    /// the deck, or All cards while Your Decks doesn't list it.
+    /// did it (`follow(_:)`). While the sidebar chose nothing, as the window
+    /// opens, it chooses the first deck Your Decks lists, as soon as it lists
+    /// one. When the chosen deck is gone, as Default once its last card moved
+    /// out, or the chosen tag is gone, because its last card was edited or
+    /// deleted while it has nothing of its own, the sidebar goes back to that
+    /// first deck, or to nothing while Your Decks lists none, and so it does
+    /// when No Type is gone, once every card that isn't buried has a type,
+    /// and when the chosen user type is deleted; and when the tag whose cards
+    /// All Tags lists is gone, All Tags lists its tree again, as after Back.
+    /// A user type renamed, or given another emoji, stays chosen. All Tags'
+    /// selection keeps only the tags there are. A tag chosen among the chosen
+    /// deck's tags that none of its cards carries anymore is no longer
+    /// chosen, and the deck lists all its cards again. It finds which of
+    /// Ficha's decks the user has added, as `Engine.hasAdded(_:)` says, and
+    /// when the one the sidebar chose is added, by Start or meanwhile from
+    /// another device, the sidebar chooses the deck, or the first deck while
+    /// Your Decks doesn't list it.
     /// Then, while nothing's open, it asks How fast? for the one of Ficha's
     /// decks the review panel asked for meanwhile, which chooses it in the
     /// sidebar (`askForTheFichaDeckAskedToAdd()`). This is the app's read,
@@ -1175,11 +1193,16 @@ public struct CardsWindowState: Sendable {
             typeGroups = try engine.sidebarTypeGroups()
             followUserTypes()
             if case .cards(let group) = sidebarItem, !offers(group) {
-                sidebarItem = .cards(.all)
+                sidebarItem = nil
             }
             fichaDecksNotAdded = try fichaDeckFiles.isEmpty ? [] : engine.fichaDecks(among: fichaDeckFiles)
             if case .fichaDeck(let deck) = sidebarItem, !fichaDecksNotAdded.contains(where: { $0.deck == deck }) {
-                sidebarItem = .cards(listedDeck(deck.name) != nil ? .deck(deck.name) : .all)
+                sidebarItem = listedDeck(deck.name) != nil ? .cards(.deck(deck.name)) : nil
+            }
+            if sidebarItem == nil {
+                // As the window opens, and once what it chose is gone: the
+                // first deck, as soon as Your Decks lists one.
+                sidebarItem = deckRows.first?.item
             }
             try readDeckTags()
             if let shown = tagShownFromAllTags, !offers(.tag(shown)) {
@@ -1191,17 +1214,19 @@ public struct CardsWindowState: Sendable {
             if let group = listedGroup {
                 let rows = narrowedToChosenDeckTag(try engine.cardRows(in: group, matching: search, with: scheduler))
                 listing = .success(.cards(rows))
-                if group == .all, !hasSearch, rows.isEmpty {
-                    offersFirstCards = try engine.cards().isEmpty
-                }
             } else if let counted {
                 listing = .success(.allTags(allTagsRows(of: counted)))
                 unusedTags = try engine.unusedTags()
-            } else if case .fichaDeck = sidebarItem {
-                // The deck shows in the table's place (`shownFichaDeck`).
-                listing = .success(.cards([]))
-            } else {
+            } else if sidebarItem == .inbox {
                 listing = .success(.inbox(try engine.inboxRows(matching: search, with: scheduler)))
+            } else {
+                // One of Ficha's decks shows in the grid's place
+                // (`shownFichaDeck`), and while the sidebar chose nothing,
+                // New Card and Import… may.
+                listing = .success(.cards([]))
+                if sidebarItem == nil, !hasSearch {
+                    offersFirstCards = try engine.cards().isEmpty
+                }
             }
         } catch {
             listing = .failure(error)
@@ -1212,15 +1237,16 @@ public struct CardsWindowState: Sendable {
 
     /// Whether the sidebar offers `group`, as last read: a deck while the
     /// Your Decks section lists it, a tag while All Tags lists it, pinned or
-    /// not, No Type while some card has none, a user type while it lists it,
-    /// and every other group always.
+    /// not, No Type while some card has none, and a user type while it lists
+    /// it. It never offers every card, nor the flagged ones, which only the
+    /// engine's counts and the inbox read.
     private func offers(_ group: CardGroup) -> Bool {
         switch group {
         case .deck(let deck): listedDeck(deck) != nil
         case .tag(let tag): tags.contains { $0.name == tag }
         case .noType: typeGroups.contains(.noType)
         case .type(let type): offersType(type)
-        case .all, .new, .due, .learned, .flagged, .buried: true
+        case .all, .flagged: false
         }
     }
 
@@ -1246,8 +1272,9 @@ private struct CardReviewLog: Sendable {
 }
 
 extension Engine {
-    /// Opens the Cards window on All cards, with nothing searched or
-    /// selected, for Lucas's cards standing by `scheduler`, the settings in
+    /// Opens the Cards window, which chooses the first deck Your Decks lists
+    /// once it reads the cards, with nothing searched or selected, for
+    /// Lucas's cards standing by `scheduler`, the settings in
     /// Settings, which it reads once the window asks, with `activeHours`,
     /// Settings' too, or Ficha's own while it's given none, remembering
     /// `lastDeckAddedTo`, the deck he last added a card to, as this device's

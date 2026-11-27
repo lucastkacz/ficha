@@ -2,22 +2,11 @@ import AppKit
 import FichaData
 import SwiftUI
 
-/// A tag as a small capsule, like the "Ahead" badge: its emoji before its
-/// whole name, as in "economía › Argentina", tinted with its color, or gray
-/// like "Ahead" when it has none, its own or else the tags' it sits inside.
-/// The name always shows, so neither the color nor the emoji is the only cue.
-/// The Cards window's Tags column draws a card's tags with it, in a row.
-struct TagCapsule: View {
-    let tag: CardTag
-
-    var body: some View {
-        Text(verbatim: tag.title)
-            .capsuleLook(tintedWith: tag.shownColor)
-            .fixedSize()
-    }
-}
-
-/// How a tag looks as a capsule, in its color or gray.
+/// How a tag looks as a small capsule, like the "Ahead" badge, as the deck's
+/// tags above the Cards window's grid show (`DeckTagsRow`): its emoji before
+/// its name, tinted with its color, or gray like "Ahead" when it has none,
+/// its own or else the tags' it sits inside. The name always shows, so
+/// neither the color nor the emoji is the only cue.
 private struct CapsuleLook: ViewModifier {
     let color: TagColor?
     @Environment(\.colorScheme) private var colorScheme

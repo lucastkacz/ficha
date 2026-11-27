@@ -23,6 +23,9 @@ import SwiftUI
 /// A window the tool can draw, by the name its arguments give it, which the
 /// usage lists.
 enum Window: String, CaseIterable {
+    /// The Cards window as it opens, on Default, the first deck Your Decks
+    /// lists, with the three cards made by hand as tiles, the flag's
+    /// picture first.
     case cards
     /// The Cards window with no cards at all, as a new user's opens: it
     /// offers New Card and Import… in plain sight, and its sidebar's Ficha's
@@ -46,13 +49,13 @@ enum Window: String, CaseIterable {
     /// each with how many of its cards are due, Idiomas and Ciencias with a
     /// color and an emoji, which the decks inside them show too, Ciencias,
     /// Humanidades and Idiomas › Español closed, so that Sociedad shows, set
-    /// aside and grayed; the bar above the card list, with Idiomas's name, its
+    /// aside and grayed; the bar above the grid, with Idiomas's name, its
     /// Actions menu and its cards' tags; and two of Idiomas's cards selected,
     /// which `--key cmd+d` asks to move in the Change Deck sheet.
     case cardsDecks = "cards-decks"
     /// The same on Idiomas › Español, with historia, one of its
-    /// tags, chosen above the card list, which lists only the deck's cards
-    /// that carry it.
+    /// tags, chosen above the grid, which lists only the deck's cards that
+    /// carry it.
     case cardsDeckTag = "cards-deck-tag"
     /// The same on Idiomas, with the question Delete… in its menu asks,
     /// which the tool can't open, counting the cards it deletes and the
@@ -103,7 +106,7 @@ enum Window: String, CaseIterable {
     /// sidebar's Ficha's Decks section lists after Your Decks with the other
     /// two, all three read from the repo's `App/FichaDecks/`, its sidebar
     /// scrolled to the deck's row: its emoji, its name and how many cards it
-    /// brings in the table's place, with Add Deck…, which `--key return` asks
+    /// brings in the grid's place, with Add Deck…, which `--key return` asks
     /// How fast? for, and its first card, a word, front and back, in the
     /// detail's.
     case cardsFichaDeckWords = "cards-ficha-deck-words"
@@ -197,9 +200,9 @@ enum Window: String, CaseIterable {
     /// sample, as `panel-card` draws it: its text reads, and is aligned, right
     /// to left, in a window that reads left to right. `--key space` flips it.
     case panelArabic = "panel-arabic"
-    /// The Cards window with that card in Arabic first in the table and
-    /// selected, its detail showing it, which `--key cmd+l` edits in the
-    /// detail's fields.
+    /// The Cards window on Default with that card in Arabic selected, the
+    /// last of its tiles, its detail showing it, which `--key cmd+l` edits
+    /// in the detail's fields.
     case cardsArabic = "cards-arabic"
 }
 
@@ -1050,7 +1053,7 @@ func chooseUserType(_ name: String, selecting front: String, in state: inout Car
 /// `makeContent(opening:)` opens it, the tool's click stops it with an
 /// exception about an observer of the window it can't remove.
 func scrollSidebarToEnd(of window: NSWindow) throws {
-    // The table is an outline view too: the sidebar is the one at the
+    // All Tags' tree is an outline view too: the sidebar is the one at the
     // leading side.
     let sidebar = outlineViews(in: window.contentView).min { isNearerLeadingSide($0, than: $1, in: window) }
     guard let sidebar, sidebar.numberOfRows > 0 else {
@@ -1093,7 +1096,7 @@ func isNearerLeadingSide(_ view: NSView, than other: NSView, in window: NSWindow
 /// end, where a card's chart and its key show below the rows of its ways,
 /// for the same reason as `scrollSidebarToEnd(of:)`.
 func scrollDetailToEnd(of window: NSWindow) throws {
-    // The sidebar and the table scroll too: the detail is the one at the
+    // The sidebar and the grid scroll too: the detail is the one at the
     // trailing side.
     let detail = scrollViews(in: window.contentView).max { isNearerLeadingSide($0, than: $1, in: window) }
     guard let detail, let document = detail.documentView else {
@@ -1225,17 +1228,12 @@ func zipFiles(_ files: [URL], into file: URL, describing described: String) thro
     }
 }
 
-/// The Cards window's state once the sample Anki package came in, with the
-/// card of the femur selected, so the detail shows its review log.
+/// The Cards window's state once the sample Anki package came in, on the
+/// femur's deck, with its card selected, so the detail shows its review log.
 func ankiImportedState(of model: AppModel) throws -> CardsWindowState {
-    var state = model.openCardsWindow()
-    state.read(with: state.scheduler)
-    guard case .success(.cards(let rows)) = state.listing, let femur = rows.first(where: { $0.card.front == "fémur" })
-    else {
-        throw RenderError(description: "The Cards window doesn't list the sample Anki package's card of the femur.")
-    }
-    state.select([femur.id])
-    return state
+    try cardsState(
+        of: model, selectingFirst: { $0.card.front == "fémur" },
+        orElse: "The Cards window doesn't list the sample Anki package's card of the femur.")
 }
 
 /// Writes the sample Anki package to `file`, as current Anki exports a deck
@@ -1708,22 +1706,37 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
     }
 }
 
-/// The Cards window of `model` on every card, its cards read, with the first
-/// row `isWanted` picks selected, its detail showing it, as
-/// `cards-both-ways` and `cards-arabic` open; `missing`, a failure that
-/// says what to fix, when no row is.
+/// The Cards window of `model`, its cards read, on the deck of the first
+/// card `isWanted` picks among all of them, with that card selected, its
+/// detail showing it, as `cards-both-ways` and `cards-arabic` open;
+/// `missing`, a failure that says what to fix, when no card is.
 func cardsWindow(
     of model: AppModel, selectingFirst isWanted: (CardRow) -> Bool, orElse missing: String
 ) throws -> NSWindow {
+    let window = CardsWindow(model: model)
+    window.makeContent(opening: try cardsState(of: model, selectingFirst: isWanted, orElse: missing))
+    return window
+}
+
+/// The Cards window's state on the deck of the first card of `model`
+/// `isWanted` picks, with that card selected, as
+/// `cardsWindow(of:selectingFirst:orElse:)` and `ankiImportedState(of:)`
+/// open it; `missing`, a failure that says what to fix, when no card is, or
+/// its deck's grid doesn't list it.
+func cardsState(
+    of model: AppModel, selectingFirst isWanted: (CardRow) -> Bool, orElse missing: String
+) throws -> CardsWindowState {
     var state = model.openCardsWindow()
     state.read(with: state.scheduler)
-    guard case .success(.cards(let rows)) = state.listing, let wanted = rows.first(where: isWanted) else {
+    guard let wanted = try model.engine.cardRows(in: .all, with: state.scheduler).first(where: isWanted) else {
+        throw RenderError(description: missing)
+    }
+    state.choose(.cards(.deck(wanted.card.deck)))
+    guard case .success(.cards(let rows)) = state.listing, rows.contains(where: { $0.id == wanted.id }) else {
         throw RenderError(description: missing)
     }
     state.select([wanted.id])
-    let window = CardsWindow(model: model)
-    window.makeContent(opening: state)
-    return window
+    return state
 }
 
 /// The front of the card in Arabic `addSampleArabicCard(in:)` adds: the
@@ -1731,9 +1744,9 @@ func cardsWindow(
 let sampleArabicFront = "أثر الفراشة"
 
 /// Adds a card in Arabic to the sample cards, made by hand, as two in
-/// Spanish are, so that the newest, it comes first in the Cards window. Its
-/// back holds a name in Latin letters and a year, which read left to right
-/// inside its Arabic.
+/// Spanish are, so that it lives in Default with them, the last to come in.
+/// Its back holds a name in Latin letters and a year, which read left to
+/// right inside its Arabic.
 func addSampleArabicCard(in engine: Engine) throws {
     guard
         let content = CardContent(
@@ -1758,8 +1771,8 @@ func longestWaitingSampleCard(in engine: Engine) throws -> (row: CardRow, due: D
     let graduated = rows.filter { $0.frontFirst.standing.stage == .graduated }.compactMap { row in
         row.frontFirst.due.map { (row: row, due: $0) }
     }
-    guard let longest = graduated.max(by: { $0.row.frontFirst.intervalColumn < $1.row.frontFirst.intervalColumn })
-    else {
+    let interval = { (way: WayProgress) in way.standing.interval ?? .zero }
+    guard let longest = graduated.max(by: { interval($0.row.frontFirst) < interval($1.row.frontFirst) }) else {
         throw RenderError(description: "No sample card graduated: fix sampleEngine(at:).")
     }
     return longest
@@ -2274,7 +2287,7 @@ do {
         throw RenderError(description: "Run the tool through make render, which gives it a scratch home.\n\(usage)")
     }
     // Its preferences don't: macOS keeps the tool's, such as the window's
-    // frame and the Cards window's columns and order, in your home's
+    // frame and the deck the last card was added to, in your home's
     // Library/Preferences/Render.plist, whatever CFFIXED_USER_HOME says. The
     // tool empties them as it starts, so the window opens as it does the first
     // time, and as it ends, so none is left there.

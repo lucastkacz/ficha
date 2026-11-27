@@ -34,14 +34,16 @@ struct DeckFieldTests {
 
     // As Anki's Add window does, so that a series of cards needs no extra
     // step. Each device remembers that deck on its own, as a preference the
-    // app keeps and opens the window with.
+    // app keeps and opens the window with. The window opens on a deck, so
+    // each chooses the inbox first.
     @Test(
-        "with no deck chosen in the sidebar, a new card's form starts in the deck the last card was added to, kept for the next window, or in Default once that deck is gone"
+        "with no deck chosen in the sidebar, as with the inbox, a new card's form starts in the deck the last card was added to, kept for the next window, or in Default once that deck is gone"
     )
     func aNewCardStartsInTheLastDeckAddedTo() throws {
         try engine.makeDeck(named: "Arte")
         try engine.makeDeck(named: "Música::Tango")
         var window = openWindow()
+        window.choose(.inbox)
         let rememberedAtFirst = window.lastDeckAddedTo
 
         window.openNewCardForm()
@@ -53,8 +55,10 @@ struct DeckFieldTests {
         window.openNewCardForm()
         let afterAdding = window.cardForm?.draft.deck
         var nextWindow = openWindow(lastDeckAddedTo: window.lastDeckAddedTo)
+        nextWindow.choose(.inbox)
         nextWindow.openNewCardForm()
         var windowAfterTheDeckWent = openWindow(lastDeckAddedTo: "Cine")
+        windowAfterTheDeckWent.choose(.inbox)
         windowAfterTheDeckWent.openNewCardForm()
 
         #expect(rememberedAtFirst == Deck.defaultName)
@@ -214,8 +218,9 @@ struct DeckFieldTests {
         #expect(window.lastDeckAddedTo == "Sociedad::Política")
     }
 
-    /// The window as it opens, on All cards, with the cards read, remembering
-    /// `lastDeckAddedTo` as the deck the last card was added to.
+    /// The window as it opens, on the first deck the sidebar lists, with the
+    /// cards read, remembering `lastDeckAddedTo` as the deck the last card
+    /// was added to.
     private func openWindow(lastDeckAddedTo: String = Deck.defaultName) -> CardsWindowState {
         var window = engine.openCardsWindow(with: scheduler, lastDeckAddedTo: lastDeckAddedTo)
         window.read(with: scheduler)

@@ -1,7 +1,7 @@
 import FichaCore
 import Foundation
 
-// All Tags (ADR 0022), where the Cards window's table was: every tag as a
+// All Tags (ADR 0022), in the Cards window's grid's place: every tag as a
 // tree, each with how many cards it holds and how many are due, and whether
 // it's pinned; a tag only labels its cards (ADR 0024), so Set Aside and
 // Prioritize are a deck's. Lucas sorts each level by a column, narrows
@@ -110,14 +110,15 @@ extension CardsWindowState {
         case clearUnused
     }
 
-    /// The group of cards the table lists: the one the sidebar chose, or the
+    /// The group of cards the grid lists: the one the sidebar chose, or the
     /// tag whose cards All Tags lists in its place; nil while it lists the
-    /// inbox or All Tags' tree, or the sidebar chose one of Ficha's decks.
+    /// inbox or All Tags' tree, or the sidebar chose one of Ficha's decks, or
+    /// nothing.
     public var listedGroup: CardGroup? {
         switch sidebarItem {
-        case .cards(let group): group
-        case .allTags: tagShownFromAllTags.map(CardGroup.tag)
-        case .inbox, .fichaDeck: nil
+        case .cards(let group)?: group
+        case .allTags?: tagShownFromAllTags.map(CardGroup.tag)
+        case .inbox?, .fichaDeck?, nil: nil
         }
     }
 

@@ -289,14 +289,12 @@ struct CardFormTests {
 
     // So that what was typed isn't lost.
     @Test(
-        "showing the card a front repeats sets the form aside and selects the card where the sidebar lists it, scrolled to, and New Card brings the form back as it was"
+        "showing the card a front repeats sets the form aside and selects the card in its deck, scrolled to, and New Card brings the form back as it was"
     )
     func showingTheRepeatedCardSelectsIt() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try approveInDeck("serendipia", deck: "Palabras", in: engine)
         let ataraxia = try approveCard("ataraxia", in: engine)
-        try engine.bury(ataraxia.id)
         var window = openWindow()
-        window.choose(.cards(.due))
         window.search(for: "algo")
 
         window.openNewCardForm()
@@ -305,14 +303,14 @@ struct CardFormTests {
         window.showRepeatedCard()
         let shownFirst = (window.sidebarItem, window.search, window.selectedRows.map(\.id), window.cardForm)
         let revealedFirst = window.cardToReveal
-        // The table scrolled to it.
+        // The grid scrolled to it.
         window.cardRevealed()
         window.openNewCardForm()
         let broughtBack = try #require(window.cardForm)
         window.type(front: "ataraxia")
         window.showRepeatedCard()
 
-        #expect(shownFirst.0 == .cards(.all))
+        #expect(shownFirst.0 == .cards(.deck("Palabras")))
         #expect(shownFirst.1 == "")
         #expect(shownFirst.2 == [serendipia.id])
         #expect(shownFirst.3 == nil)
@@ -322,7 +320,7 @@ struct CardFormTests {
         #expect(broughtBack.frontWarning == .repeats(serendipia))
         let image = try #require(broughtBack.draft.back.image)
         #expect(try window.images[image]?.get() != nil)
-        #expect(window.sidebarItem == .cards(.buried))
+        #expect(window.sidebarItem == .cards(.deck(Deck.defaultName)))
         #expect(window.selectedRows.map(\.id) == [ataraxia.id])
         #expect(window.cardToReveal == ataraxia.id)
     }
@@ -409,7 +407,7 @@ extension CardsWindowState {
         changeDraft(draft)
     }
 
-    /// The ids of the cards the table lists, or nil when it lists the inbox
+    /// The ids of the cards the grid lists, or nil when it lists the inbox
     /// or couldn't read them.
     fileprivate var listedCardIDs: [Int64]? {
         guard case .success(.cards(let rows)) = listing else {

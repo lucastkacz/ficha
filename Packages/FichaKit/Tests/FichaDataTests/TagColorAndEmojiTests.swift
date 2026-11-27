@@ -16,7 +16,7 @@ struct TagColorAndEmojiTests {
             location: .inMemory, time: ManualTimeSource(now: try morning(of: 14, in: calendar)), calendar: calendar)
     }
 
-    @Test("a tag's color and emoji are stored and read back with All Tags' tags and the table's rows")
+    @Test("a tag's color and emoji are stored and read back with All Tags' tags and the cards' rows")
     func aTagsColorAndEmojiAreStoredAndReadBack() throws {
         try approveCard("Revolución de Mayo", tags: ["historia", "argentina"])
         try approveCard("fotosíntesis", tags: ["ciencia", "lenguaje"])

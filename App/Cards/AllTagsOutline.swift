@@ -3,7 +3,7 @@ import FichaCore
 import FichaData
 import SwiftUI
 
-/// All Tags, where the Cards window's table was: every tag as a tree, in
+/// All Tags, where the Cards window's grid was: every tag as a tree, in
 /// AppKit's outline view, since SwiftUI's `Table` with children takes a drop
 /// neither onto one row nor between two, and an outline view draws its
 /// insertion line at the level a drop goes to, as Finder's and Mail's do.

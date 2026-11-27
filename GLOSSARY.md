@@ -166,7 +166,7 @@ _Avoid_: status, state
 ### Managing cards
 
 **Cards window**:
-The window where the user sees all their cards and everything in the inbox, creates cards, and acts on them.
+The window where the user sees their decks, each deck's cards as cards, with their fronts, and everything in the inbox, creates cards, and acts on them.
 _Avoid_: browser, card list
 
 **All Tags**:

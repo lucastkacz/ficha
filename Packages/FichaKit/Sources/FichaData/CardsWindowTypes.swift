@@ -151,8 +151,8 @@ extension CardsWindowState {
 
     /// Deletes `type`, a user type the window asked about and Lucas
     /// confirmed: its cards have no type then, and keep everything else; and
-    /// reads the cards again, the sidebar going back to All cards when it
-    /// chose the type; or records why it couldn't. The dialog that asked
+    /// reads the cards again, the sidebar going back to the first deck when
+    /// it chose the type; or records why it couldn't. The dialog that asked
     /// hands `type` back, as Delete's hands its cards.
     public mutating func deleteType(_ type: UserType) {
         question = nil
@@ -210,7 +210,7 @@ extension CardsWindowState {
     /// and the editor's, at the type as it was last read, renamed or given
     /// another emoji since, while the sidebar lists it. A type gone from the
     /// sidebar, deleted, stays in the forms and the editor, where Save says
-    /// so, and the sidebar goes back to All cards (`read(on:)`).
+    /// so, and the sidebar goes back to the first deck (`read(with:)`).
     mutating func followUserTypes() {
         if case .cards(.type(.user(let type))) = sidebarItem, let listed = listedUserType(type.id) {
             sidebarItem = .cards(.type(.user(listed)))

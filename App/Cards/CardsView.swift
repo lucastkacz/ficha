@@ -4,10 +4,12 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 /// The Cards window's content, in three panes as Mail lays out its own: a
-/// sidebar to choose a group of cards, the inbox, a deck or All Tags, a table
-/// with one row per card in it, or per capture and flagged card in the inbox,
-/// narrowed by the toolbar's search field, and the selected row whole beside
-/// it, with what Lucas can do with it at its foot. The sidebar's Your Decks
+/// sidebar to choose the inbox, a deck, a tag, a type or All Tags, a grid of
+/// the chosen cards as tiles (`CardGrid.swift`), or a table with one row per
+/// capture and flagged card in the inbox, narrowed by the toolbar's search
+/// field, and the selected card or row whole beside it, with what Lucas can
+/// do with it at its foot. The window opens on the first deck Your Decks
+/// lists, and on nothing while it lists none. The sidebar's Your Decks
 /// section lists every deck as a tree, in the order the state lists them
 /// (`CardsWindowDecks.swift`): Default first while it holds cards or has a
 /// switch on, then those at the top of the tree with cards in Lucas's
@@ -18,10 +20,10 @@ import UniformTypeIdentifiers
 /// reviews, and with its emoji and color, and each at the top of the tree
 /// with a line under its title, in up to two lines, of how far it is and when
 /// it's all met (#491); a deck's context menu, and the Actions menu above the
-/// card list while the sidebar chose it (`DeckMenu.swift`), set it aside or
+/// grid while the sidebar chose it (`DeckMenu.swift`), set it aside or
 /// prioritize it, give it a color and an emoji, rename it, in the rename sheet,
 /// which moves it too, and delete it, with its cards, asking first; and under
-/// that menu the deck's tags narrow the card list to one of them
+/// that menu the deck's tags narrow the grid to one of them
 /// (`DeckTagsRow.swift`). Change
 /// Deck… moves the selected cards to the deck Lucas picks in its sheet, or
 /// names there with New Deck… (`ChangeDeckSheet.swift`), and so does dragging
@@ -35,16 +37,16 @@ import UniformTypeIdentifiers
 /// (`HowFastSheet.swift`). The sidebar's Ficha's Decks section, after Your
 /// Decks, lists the decks that come with Ficha that Lucas hasn't added, each
 /// with how many cards it brings, which the window reads from the app as it
-/// opens: one chosen shows in the table's place, with Add Deck…, which asks
+/// opens: one chosen shows in the grid's place, with Add Deck…, which asks
 /// How fast? before Start adds it, and its first card, front and back, in the
 /// detail's (#458). The sidebar's Tags section lists the tags he pins, in the
 /// order he drags them into, and ends with All Tags…, which lists every tag
-/// where the table was, as a tree with columns and a checkbox
+/// where the grid was, as a tree with columns and a checkbox
 /// (`AllTagsOutline.swift`, ADR 0022), and a tag's cards in its place, with
 /// Back. A tag's context menu, in either place, and the detail's Actions menu
 /// beside All Tags, act on the tags selected there: they pin them to the
 /// sidebar or unpin them, give them a color and an emoji, which the sidebar
-/// and the table's Tags column show, rename one, in the rename sheet
+/// and the tags' capsules show, rename one, in the rename sheet
 /// (`RenameSheet.swift`), and delete them, asking first; and in All Tags Lucas
 /// drags tags into the sidebar to pin them there, onto another to move them
 /// inside, or between two rows to move them to that level. The sidebar's Types
@@ -52,14 +54,14 @@ import UniformTypeIdentifiers
 /// its emoji, whose context menu renames it, gives it an emoji, in the same
 /// sheets, and deletes it, asking first; New Type…, in a card's type picker,
 /// in the context menu of any row of that section or of its title, makes one,
-/// in the New Type sheet (`NewTypeSheet.swift`). The cards' table opens with
-/// the columns Lucas showed and the order he sorted it by, which he changes in
-/// its headers, each column at a width that fits its pane. He edits a card or
-/// a capture right there, in fields that take the detail's place while the
-/// sidebar and the table wait. He selects several cards with ⌘ or Shift, as in
-/// Finder, and then the detail says how many, with what he can do with all of
-/// them. New Card in the toolbar, or ⌘N, and Convert to Card on a capture open
-/// the card form, a sheet of its own (`CardFormSheet.swift`), Import… in the
+/// in the New Type sheet (`NewTypeSheet.swift`). The grid lists the cards in
+/// the order they came in. He edits a card or a capture right there, in
+/// fields that take the detail's place while the sidebar and the grid or the
+/// inbox wait. He selects several tiles with ⌘ or Shift, as in the Finder, or
+/// all of them with ⌘A, and then the detail says how many, with what he can
+/// do with all of them. New Card in the toolbar, or ⌘N, and Convert to Card
+/// on a capture open the card form, a sheet of its own
+/// (`CardFormSheet.swift`), Import… in the
 /// toolbar opens the Import sheet (`ImportSheet.swift`), which imports a text
 /// file of cards, and Export… opens the Export sheet (`ExportSheet.swift`),
 /// which saves cards to one. `CardsWindowState` decides what the window lists,
@@ -71,31 +73,24 @@ import UniformTypeIdentifiers
 struct CardsView: View {
     let model: AppModel
     /// What the sidebar chose, what Lucas looks for and selected, and so what
-    /// the table lists, the detail shows and its actions offer, and what he
+    /// the grid lists, the detail shows and its actions offer, and what he
     /// edits, what the window asks and what failed.
     @State private var state: CardsWindowState
     @FocusState private var isSearchFocused: Bool
-    /// The table's order: the one Lucas left it in with a click on a column's
-    /// header, and at first the newest cards first.
-    @State private var sortOrder = Preferences.cardsSortOrder
-    /// The table's columns: which ones show, as Lucas left them, in the
-    /// table's order and at widths that fit the pane, as the preferences
-    /// read them back. At first Front, Media, Interval and Due, until he adds
-    /// others from the headers' menu.
-    @State private var columns = Preferences.cardsColumns
     /// The inbox's order: the latest added first, until Lucas clicks a
     /// column's header.
     @State private var inboxSortOrder = [InboxRowOrder(.added, order: .reverse)]
-    /// Whether the table has the keyboard, which it gets back once Lucas
-    /// saves or cancels an edit, for him to go on with the arrow keys.
-    @FocusState private var isTableFocused: Bool
+    /// Whether the grid, or the inbox's table, has the keyboard, which it
+    /// gets back once Lucas saves or cancels an edit, for him to go on with
+    /// the arrow keys.
+    @FocusState private var isListingFocused: Bool
     /// Plays the sound the window says plays, in the form, the editor or the
     /// detail.
     @State private var player = SoundPlayer()
 
     /// The content for the user's cards in `model`, opening with `state` when
     /// it's given, as `make render` opens it partway through an import, and
-    /// on All cards otherwise.
+    /// otherwise on the first deck Your Decks lists, once it reads the cards.
     init(model: AppModel, state: CardsWindowState? = nil) {
         self.model = model
         _state = State(initialValue: state ?? model.openCardsWindow())
@@ -208,35 +203,27 @@ struct CardsView: View {
 
     /// The window's three panes, with the toolbar's search field, Import…
     /// and Export…, ⌘F, and the keys that change the card size, which only the
-    /// detail's card or capture shows at; and, while the table lists a tag's
+    /// detail's card or capture shows at; and, while the grid lists a tag's
     /// cards in All Tags' place, the tag's name as the window's title, and
-    /// Back. While the
-    /// table's pane lists All Tags' tree, it's at least wide enough for its
-    /// six columns to leave the tag's some room, and the detail beside it,
-    /// a few buttons, can be narrower to give it: a minimum the split view
-    /// keeps whenever it changes, where an ideal width counts only as the
-    /// window first opens, and only for a pane whose content is there by
-    /// then, which is why the window opens with the cards already read
-    /// (`AppModel.openCardsWindow()`): the table's pane opens wide enough
-    /// for Media, Interval and Due in the app's language and for Front about
-    /// as wide as in English beside them (`CardTableColumns.openingPaneWidth`),
-    /// taking the points from the detail. The sidebar opens wide enough for the
-    /// sample decks' names to read whole beside their counts, after their
-    /// emoji, two levels down too, like Idiomas › Español › Rioplatense. The
-    /// panes' least widths add up to the window's either way.
+    /// Back. While the middle pane lists All Tags' tree, it's at least wide
+    /// enough for its six columns to leave the tag's some room, and the
+    /// detail beside it, a few buttons, can be narrower to give it: a minimum
+    /// the split view keeps whenever it changes, where an ideal width counts
+    /// only as the window first opens, and only for a pane whose content is
+    /// there by then, which is why the window opens with the cards already
+    /// read (`AppModel.openCardsWindow()`): the middle pane opens wide enough
+    /// for three tiles a row. The sidebar opens wide enough for the sample
+    /// decks' names to read whole beside their counts, after their emoji, two
+    /// levels down too, like Idiomas › Español › Rioplatense. The panes'
+    /// least widths add up to the window's either way.
     private var panes: some View {
-        // The cards' table's columns, fitted to their texts in the app's
-        // language, which the table's pane opens to fit too.
-        let cardColumns = CardTableColumns(now: state.now)
-        return NavigationSplitView {
+        NavigationSplitView {
             sidebar
                 .navigationSplitViewColumnWidth(min: 160, ideal: 260, max: 280)
                 .waiting(while: state.editing != nil)
         } content: {
-            table(cardColumns: cardColumns)
-                .navigationSplitViewColumnWidth(
-                    min: listsAllTagsTree ? 500 : 380, ideal: cardColumns.openingPaneWidth
-                )
+            middlePane
+                .navigationSplitViewColumnWidth(min: listsAllTagsTree ? 500 : 380, ideal: 440)
                 .waiting(while: state.editing != nil)
         } detail: {
             detail
@@ -265,6 +252,21 @@ struct CardsView: View {
                 Text("Find", comment: "A hidden button of the Cards window: ⌘F, which goes to the search field.")
             }
             .keyboardShortcut("f")
+            .hidden()
+            // ⌘A selects every tile while the grid has the keyboard:
+            // elsewhere, as in the search field or the editor's fields, it
+            // selects their text.
+            Button {
+                state.selectAllTiles()
+            } label: {
+                Text(
+                    "Select All",
+                    comment: """
+                        A hidden button of the Cards window: ⌘A, which selects every card the grid lists, while the \
+                        grid has the keyboard.
+                        """)
+            }
+            .keyboardShortcut(isListingFocused && listsTiles ? KeyboardShortcut("a") : nil)
             .hidden()
             CardSizeKeys(model: model)
         }
@@ -952,7 +954,8 @@ struct CardsView: View {
     }
 
     /// What Lucas chooses from, in the sections the state lists, in its
-    /// order. One is chosen at a time, always.
+    /// order. One is chosen at a time: the first deck as the window opens,
+    /// and none while Your Decks lists none.
     private var sidebar: some View {
         List(selection: chosenItem) {
             ForEach(state.sidebarSections) { section in
@@ -981,9 +984,9 @@ struct CardsView: View {
         .makeTypeSheet($state, failure: failure(overSheet: true))
     }
 
-    /// The sidebar's section `section`: the cards by where they stand; the
-    /// inbox, with how many things wait in it, as the menu counts them; the
-    /// decks as a tree, each parent open or closed as Lucas left it, each
+    /// The sidebar's section `section`: the inbox, with how many things wait
+    /// in it, as the menu counts them; the decks as a tree, each parent open
+    /// or closed as Lucas left it, each
     /// deck with how many of its cards are due; Ficha's decks he hasn't
     /// added, each with how many cards it brings; the
     /// cards of each pinned tag, in Lucas's order, each with its context
@@ -995,13 +998,6 @@ struct CardsView: View {
     @ViewBuilder
     private func sidebarSection(_ section: CardsWindowState.SidebarSection) -> some View {
         switch section {
-        case .cardGroups(let groups):
-            Section {
-                ForEach(groups, id: \.self) { group in
-                    Label(group.title, systemImage: group.symbol)
-                        .tag(SidebarItem.cards(group))
-                }
-            }
         case .inbox:
             Section {
                 Label(
@@ -1155,7 +1151,7 @@ struct CardsView: View {
         }
     }
 
-    /// All Tags, where the table was: every tag as a tree, with its columns
+    /// All Tags, where the grid was: every tag as a tree, with its columns
     /// and checkboxes, each tag's context menu acting on the tags selected
     /// with it; or what it says while there's no tag, or the search finds
     /// none.
@@ -1285,20 +1281,36 @@ struct CardsView: View {
         }
     }
 
-    /// What the table says when `group`, or the search in it, brings no
-    /// cards, with New Card and Import… in plain sight, which do what the
-    /// toolbar's do, while the state offers them.
+    /// What the middle pane says when `group`, or the search in it, brings
+    /// no cards.
     @ViewBuilder
     private func noCards(in group: CardGroup) -> some View {
         if state.hasSearch {
             ContentUnavailableView.search(text: state.search)
-        } else if group == .all {
+        } else {
+            ContentUnavailableView(group.emptyTitle, systemImage: group.symbol)
+        }
+    }
+
+    /// What the middle pane says while the sidebar chose nothing, since Your
+    /// Decks lists no deck: that the cards show up here, with New Card and
+    /// Import… in plain sight, which do what the toolbar's do, while the
+    /// state offers them.
+    @ViewBuilder
+    private var nothingChosen: some View {
+        if state.hasSearch {
+            ContentUnavailableView.search(text: state.search)
+        } else {
             ContentUnavailableView {
-                Label(group.emptyTitle, systemImage: group.symbol)
+                Label(
+                    String(
+                        localized: "No cards",
+                        comment: "In the Cards window, while it has no deck to show, since the user has no cards."),
+                    systemImage: "rectangle.portrait.on.rectangle.portrait")
             } description: {
                 Text(
-                    "The cards you create with New Card show up here, and the ones you bury, in Buried.",
-                    comment: "In the Cards window, when All cards is empty.")
+                    "The cards you create with New Card show up here, each in its deck.",
+                    comment: "In the Cards window, while it has no deck to show, since the user has no cards.")
             } actions: {
                 if state.offersFirstCards {
                     Button {
@@ -1314,13 +1326,11 @@ struct CardsView: View {
                     }
                 }
             }
-        } else {
-            ContentUnavailableView(group.emptyTitle, systemImage: group.symbol)
         }
     }
 
-    /// What the table says when the inbox, or the search in it, brings
-    /// nothing.
+    /// What the inbox's table says when the inbox, or the search in it,
+    /// brings nothing.
     @ViewBuilder
     private var emptyInbox: some View {
         if state.hasSearch {
@@ -1335,24 +1345,33 @@ struct CardsView: View {
         }
     }
 
-    /// Whether the table's pane lists All Tags' tree, whose six columns want
-    /// more room than the cards' table.
+    /// Whether the middle pane lists All Tags' tree, whose six columns want
+    /// more room than the grid.
     private var listsAllTagsTree: Bool {
         if case .success(.allTags) = state.listing { true } else { false }
     }
 
-    /// What the table's pane lists, the cards' table with `cardColumns`, or
-    /// the one of Ficha's decks the sidebar chose, in its place.
+    /// Whether the middle pane lists the grid, with some tile in it, which
+    /// ⌘A selects.
+    private var listsTiles: Bool {
+        guard state.shownFichaDeck == nil, case .success(.cards(let rows)) = state.listing else {
+            return false
+        }
+        return !rows.isEmpty
+    }
+
+    /// What the middle pane lists: what the state lists, or the one of
+    /// Ficha's decks the sidebar chose, in its place.
     @ViewBuilder
-    private func table(cardColumns: CardTableColumns) -> some View {
+    private var middlePane: some View {
         if let file = state.shownFichaDeck {
             fichaDeckHead(file)
         } else {
-            listing(cardColumns: cardColumns)
+            listing
         }
     }
 
-    /// One of Ficha's decks, in the table's place while the sidebar chose it,
+    /// One of Ficha's decks, in the grid's place while the sidebar chose it,
     /// as the mock draws it: its emoji and name, with "40 cards · one of
     /// Ficha's decks" under them, and Add Deck…, on Return while the search
     /// field doesn't have it, which asks How fast? for the deck before it
@@ -1391,17 +1410,27 @@ struct CardsView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
-    /// What the table's pane lists, the cards' table with `cardColumns`, as
-    /// the state lists it.
+    /// What the middle pane lists, as the state lists it: the cards of the
+    /// deck the sidebar chose, or of a tag or a type, or of the tag Lucas
+    /// opened in All Tags, in the grid, under the chosen deck's Actions menu
+    /// and tags; the inbox; or All Tags' tree.
     @ViewBuilder
-    private func listing(cardColumns: CardTableColumns) -> some View {
+    private var listing: some View {
         switch state.listing {
         case .success(.cards(let rows)):
             VStack(spacing: 0) {
                 if let menu = state.chosenDeckMenu {
                     DeckBar(menu: menu, state: $state)
                 }
-                cardTable(rows, columns: cardColumns)
+                if !rows.isEmpty {
+                    CardGrid(state: $state, isFocused: $isListingFocused)
+                } else if let group = state.listedGroup {
+                    noCards(in: group)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    nothingChosen
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
             }
         case .success(.inbox(let rows)):
             inboxTable(rows)
@@ -1415,133 +1444,6 @@ struct CardsView: View {
             }
         case nil:
             EmptyView()
-        }
-    }
-
-    /// The cards of the group the sidebar chose, or of the tag Lucas opened
-    /// in All Tags, one per row, which he drags onto a deck in the sidebar,
-    /// with the other selected cards when it's one of them. A right click on
-    /// the headers shows SwiftUI's menu of the columns, as in Finder, which
-    /// adds or removes all of them but Front. Its columns have `fitted`'s
-    /// headers and widths.
-    private func cardTable(_ rows: [CardRow], columns fitted: CardTableColumns) -> some View {
-        Table(of: CardRow.self, selection: selectedCards, sortOrder: $sortOrder, columnCustomization: $columns) {
-            TableColumn(Text(fitted.front.header), sortUsing: CardRowOrder(.front)) { row in
-                FrontCell(card: row.card)
-            }
-            // Narrows below its texts, the user's fronts, as Type, Tags and
-            // Source do: `CardTableColumns` says why.
-            .width(fitting: fitted.front)
-            .customizationID(CardRowOrder.Column.front.rawValue)
-            // Always there, as Finder's Name: it says which card a row is.
-            .disabledCustomizationBehavior(.visibility)
-            TableColumn(Text(fitted.media.header), sortUsing: CardRowOrder(.media)) { row in
-                MediaCell(card: row.card)
-            }
-            .width(fitting: fitted.media)
-            .customizationID(CardRowOrder.Column.media.rawValue)
-            // In a group, since a table's builder takes ten columns at most.
-            Group {
-                TableColumn(Text(fitted.interval.header), sortUsing: CardRowOrder(.interval)) { row in
-                    WayIntervalText(way: row.frontFirst)
-                }
-                .width(fitting: fitted.interval)
-                .customizationID(CardRowOrder.Column.interval.rawValue)
-                TableColumn(Text(fitted.due.header), sortUsing: CardRowOrder(.due)) { row in
-                    Text(DueText.of(row.frontFirst, at: state.now))
-                }
-                .width(fitting: fitted.due)
-                .customizationID(CardRowOrder.Column.due.rawValue)
-                TableColumn(Text(fitted.backFirstInterval.header), sortUsing: CardRowOrder(.backFirstInterval)) {
-                    row in
-                    // Blank for a card that goes one way.
-                    if let backFirst = row.backFirst {
-                        WayIntervalText(way: backFirst)
-                    }
-                }
-                .width(fitting: fitted.backFirstInterval)
-                .customizationID(CardRowOrder.Column.backFirstInterval.rawValue)
-                .defaultVisibility(.hidden)
-                TableColumn(Text(fitted.backFirstDue.header), sortUsing: CardRowOrder(.backFirstDue)) { row in
-                    // Blank for a card that goes one way.
-                    Text(row.backFirst.map { DueText.of($0, at: state.now) } ?? "")
-                }
-                .width(fitting: fitted.backFirstDue)
-                .customizationID(CardRowOrder.Column.backFirstDue.rawValue)
-                .defaultVisibility(.hidden)
-            }
-            TableColumn(Text(fitted.type.header), sortUsing: CardRowOrder(.type)) { row in
-                // Blank for a card with no type.
-                Text(row.card.type?.title ?? "")
-            }
-            .width(fitting: fitted.type)
-            .customizationID(CardRowOrder.Column.type.rawValue)
-            .defaultVisibility(.hidden)
-            TableColumn(Text(fitted.tags.header), sortUsing: CardRowOrder(.tags)) { row in
-                HStack(spacing: 4) {
-                    ForEach(row.tags, id: \.name) { tag in
-                        TagCapsule(tag: tag)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .clipped()
-            }
-            .width(fitting: fitted.tags)
-            .customizationID(CardRowOrder.Column.tags.rawValue)
-            .defaultVisibility(.hidden)
-            TableColumn(Text(fitted.source.header), sortUsing: CardRowOrder(.source)) { row in
-                TextAsItReads(row.card.source ?? "")
-                    .lineLimit(1)
-            }
-            .width(fitting: fitted.source)
-            .customizationID(CardRowOrder.Column.source.rawValue)
-            .defaultVisibility(.hidden)
-            TableColumn(Text(fitted.lastSeen.header), sortUsing: CardRowOrder(.lastSeen)) { row in
-                Text(row.lastSeen?.formatted(.tableDay) ?? "")
-            }
-            .width(fitting: fitted.lastSeen)
-            .customizationID(CardRowOrder.Column.lastSeen.rawValue)
-            .defaultVisibility(.hidden)
-            TableColumn(Text(fitted.reviews.header), sortUsing: CardRowOrder(.reviews)) { row in
-                ReviewsText(count: row.reviews)
-            }
-            .width(fitting: fitted.reviews)
-            .customizationID(CardRowOrder.Column.reviews.rawValue)
-            .defaultVisibility(.hidden)
-            TableColumn(Text(fitted.created.header), sortUsing: CardRowOrder(.created)) { row in
-                Text(row.card.createdAt.formatted(.tableDay))
-            }
-            .width(fitting: fitted.created)
-            .customizationID(CardRowOrder.Column.created.rawValue)
-            .defaultVisibility(.hidden)
-            TableColumn(Text(fitted.edited.header), sortUsing: CardRowOrder(.edited)) { row in
-                // Blank for a card never edited.
-                Text(row.card.editedAt?.formatted(.tableDay) ?? "")
-            }
-            .width(fitting: fitted.edited)
-            .customizationID(CardRowOrder.Column.edited.rawValue)
-            .defaultVisibility(.hidden)
-        } rows: {
-            ForEach(rows.sorted(using: sortOrder)) { row in
-                TableRow(row)
-                    .draggable(SidebarDrag(dragged: .card(row.id)))
-            }
-        }
-        .focused($isTableFocused)
-        // The card Show Card selected, which may be far down the list.
-        .revealingRow(state.cardToReveal) { state.cardRevealed() }
-        .overlay {
-            if rows.isEmpty, let group = state.listedGroup {
-                noCards(in: group)
-            }
-        }
-        // The window opens the next time with the columns Lucas shows and
-        // the order he sorts by.
-        .onChange(of: sortOrder) {
-            Preferences.cardsSortOrder = sortOrder
-        }
-        .onChange(of: columns) {
-            Preferences.cardsColumns = columns
         }
     }
 
@@ -1573,20 +1475,11 @@ struct CardsView: View {
             }
             .width(fitting: fitted.added)
         }
-        .focused($isTableFocused)
+        .focused($isListingFocused)
         .overlay {
             if rows.isEmpty {
                 emptyInbox
             }
-        }
-    }
-
-    /// The cards' table's selection: the cards Lucas selected.
-    private var selectedCards: Binding<Set<CardRow.ID>> {
-        Binding {
-            state.selection
-        } set: {
-            state.select($0)
         }
     }
 
@@ -1635,18 +1528,18 @@ struct CardsView: View {
                 state.askForNewDeck(in: .editor)
             } save: { content in
                 state.saveCard(content)
-                focusTableOnceEditEnds()
+                focusListingOnceEditEnds()
             } cancel: {
                 state.cancelEditing()
-                focusTableOnceEditEnds()
+                focusListingOnceEditEnds()
             }
         case .capture(let capture):
             CaptureEditor(capture: capture, isSearching: isSearchFocused) { text, note, source in
                 state.saveCapture(text: text, note: note, source: source)
-                focusTableOnceEditEnds()
+                focusListingOnceEditEnds()
             } cancel: {
                 state.cancelEditing()
-                focusTableOnceEditEnds()
+                focusListingOnceEditEnds()
             }
         case nil:
             Group {
@@ -1849,12 +1742,12 @@ struct CardsView: View {
         }
     }
 
-    /// Gives the table the keyboard back once Lucas's edit ended, saved or
-    /// not. A save that failed goes on with the edit, and the keyboard stays
-    /// in its fields.
-    private func focusTableOnceEditEnds() {
+    /// Gives the grid, or the inbox's table, the keyboard back once Lucas's
+    /// edit ended, saved or not. A save that failed goes on with the edit,
+    /// and the keyboard stays in its fields.
+    private func focusListingOnceEditEnds() {
         if state.editing == nil {
-            isTableFocused = true
+            isListingFocused = true
         }
     }
 
@@ -1896,7 +1789,7 @@ struct CardsView: View {
             Label(
                 String(
                     localized: "\(rows.count) cards selected",
-                    comment: "In the Cards window's detail, when Lucas selected several cards in the table."),
+                    comment: "In the Cards window's detail, when Lucas selected several cards in the grid."),
                 systemImage: "rectangle.stack")
         } actions: {
             VStack {
@@ -2369,7 +2262,7 @@ extension View {
     }
 
     /// The view, dimmed and taking no clicks while `isWaiting`: the sidebar
-    /// and the table, while Lucas edits a card or a capture.
+    /// and the middle pane, while Lucas edits a card or a capture.
     fileprivate func waiting(while isWaiting: Bool) -> some View {
         disabled(isWaiting)
             .opacity(isWaiting ? 0.5 : 1)

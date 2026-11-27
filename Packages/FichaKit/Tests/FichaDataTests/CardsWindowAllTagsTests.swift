@@ -162,7 +162,7 @@ struct CardsWindowAllTagsTests {
         window.setOpen(true, "economía::Argentina")
         window.setOpen(true, "historia")
         window.setOpen(false, "historia")
-        window.choose(.cards(.due))
+        window.choose(.cards(.deck(Deck.defaultName)))
         window.choose(.allTags)
 
         #expect(
@@ -543,7 +543,7 @@ extension CardsWindowState {
         return window.canDropDraggedTags(into: parent)
     }
 
-    /// The ids of the cards the table lists, in the order the engine read
+    /// The ids of the cards the grid lists, in the order the engine read
     /// them, or nil when it lists the inbox, All Tags' tree, or couldn't
     /// read them.
     fileprivate var listedCardIDs: [Int64]? {

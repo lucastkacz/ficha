@@ -7,9 +7,11 @@ import os
 /// The settings' log, which says when a stored setting can't be read.
 private let logger = Logger(subsystem: "com.lucastkacz.ficha", category: "settings")
 
-/// Where the app keeps what Lucas changes in Settings, and how he leaves the
-/// Cards window's table: its preferences, which are its own for each app
-/// (`AppVariant`), so Ficha Dev's never touch the real Ficha's. Only what
+/// Where the app keeps what Lucas changes in Settings, and the deck he last
+/// added a card to in the Cards window: its preferences, which are its own
+/// for each app (`AppVariant`), so Ficha Dev's never touch the real Ficha's.
+/// Versions before #536 kept the Cards window's table's order and columns
+/// there too, which stay as they were, read no more. Only what
 /// differs from a default is stored, so a setting Lucas never changed follows
 /// its default. A stored value the app can't read, as when it was edited by
 /// hand, goes into `unreadable`, for the app to say so: a setting reads as
@@ -150,47 +152,6 @@ enum Preferences {
         set { write(newValue.rawValue, for: .settingsTab, unless: SettingsTab.general.rawValue) }
     }
 
-    /// The order the Cards window's table lists the cards in: the one Lucas
-    /// left it in, and at first the newest cards first. One that can't be
-    /// read is only logged, as the tab Settings opens on: the window opens
-    /// with the newest first, and the next column Lucas sorts by replaces it.
-    static var cardsSortOrder: [CardRowOrder] {
-        get { read(.cardsSortOrder, decoding: [CardRowOrder].self) ?? CardRowOrder.newestFirst }
-        set { write(newValue, encodedFor: .cardsSortOrder, unless: CardRowOrder.newestFirst) }
-    }
-
-    /// The Cards window's table columns: which ones show, as Lucas left them,
-    /// at first the table's own, Front, Media, Interval and Due, in the table's
-    /// order and at its widths. SwiftUI keeps their order and widths too,
-    /// which aren't kept here, nor read back from a version before #391: a
-    /// width saved in a wider pane, which the table gave its columns as the
-    /// pane grew, opened them past the pane's edge, behind a horizontal
-    /// scroll bar, since the table fits its columns to its pane only as the
-    /// pane changes size, and SwiftUI has no way to keep the order without
-    /// the widths. One that can't be read is only logged, as the tab Settings
-    /// opens on: the window opens with its first columns, and Lucas's next
-    /// change to them replaces it. Keeping them here, with the other
-    /// preferences, rather than through SwiftUI's `@AppStorage`, is our own.
-    static var cardsColumns: TableColumnCustomization<CardRow> {
-        get {
-            read(.cardsColumns, decoding: TableColumnCustomization<CardRow>.self).map(visibility(of:))
-                ?? TableColumnCustomization()
-        }
-        set { write(visibility(of: newValue), encodedFor: .cardsColumns, unless: TableColumnCustomization()) }
-    }
-
-    /// Which of the Cards window's table columns show in `columns`, as Lucas
-    /// left them, without their order or widths.
-    private static func visibility(
-        of columns: TableColumnCustomization<CardRow>
-    ) -> TableColumnCustomization<CardRow> {
-        var shown = TableColumnCustomization<CardRow>()
-        for column in CardRowOrder.Column.allCases where columns[visibility: column.rawValue] != .automatic {
-            shown[visibility: column.rawValue] = columns[visibility: column.rawValue]
-        }
-        return shown
-    }
-
     /// The deck Lucas last added a card to in the Cards window's card form,
     /// by its whole name, which a new card's form starts in while the
     /// sidebar chose no deck, as Anki's Add window does (ADR 0024): this
@@ -242,10 +203,6 @@ enum Preferences {
         case startsAtLoginIsSetUp = "StartsAtLoginIsSetUp"
         /// The raw value of the tab Settings opens on.
         case settingsTab = "SettingsTab"
-        /// The columns the Cards window's table sorts by, in JSON.
-        case cardsSortOrder = "CardsSortOrder"
-        /// The Cards window's table columns, in JSON, as SwiftUI encodes them.
-        case cardsColumns = "CardsColumns"
         /// The whole name of the deck the last card was added to in the
         /// Cards window's card form.
         case lastDeckAddedTo = "LastDeckAddedTo"
@@ -274,21 +231,6 @@ enum Preferences {
         read(key, as: stored) { (least...longest).contains($0) ? .minutes($0) : nil }
     }
 
-    /// The value stored for `key` in JSON, or nil when none is stored, or
-    /// when it can't be decoded: then the log says why, and it goes into
-    /// `unreadable`.
-    private static func read<Value: Decodable>(_ key: Key, decoding type: Value.Type) -> Value? {
-        read(key, as: Data.self) { data in
-            do {
-                return try JSONDecoder().decode(type, from: data)
-            } catch {
-                logger.error(
-                    "Couldn't decode the setting \(key.rawValue, privacy: .public): \(error, privacy: .public)")
-                return nil
-            }
-        }
-    }
-
     /// Stores `value` for `key`, unless it's the default, `defaultValue`:
     /// then it removes what's stored, so the setting follows its default.
     private static func write<Value: Equatable>(_ value: Value, for key: Key, unless defaultValue: Value) {
@@ -296,24 +238,6 @@ enum Preferences {
             UserDefaults.standard.removeObject(forKey: key.rawValue)
         } else {
             UserDefaults.standard.set(value, forKey: key.rawValue)
-        }
-    }
-
-    /// Stores `value` for `key` in JSON, unless it's the default,
-    /// `defaultValue`: then it removes what's stored, as `write` does. When
-    /// it can't be encoded, what's stored stays, and the log says why.
-    private static func write<Value: Encodable & Equatable>(
-        _ value: Value, encodedFor key: Key, unless defaultValue: Value
-    ) {
-        if value == defaultValue {
-            UserDefaults.standard.removeObject(forKey: key.rawValue)
-        } else {
-            do {
-                UserDefaults.standard.set(try JSONEncoder().encode(value), forKey: key.rawValue)
-            } catch {
-                logger.error(
-                    "Couldn't encode the setting \(key.rawValue, privacy: .public): \(error, privacy: .public)")
-            }
         }
     }
 }

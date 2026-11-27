@@ -3,7 +3,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 // Dragging in the Cards window onto its sidebar's decks (ADR 0024): cards
-// from the card list, which move to the deck they're dropped on, as Change
+// from the grid, which move to the deck they're dropped on, as Change
 // Deck moves them, and a deck's row, which goes inside the deck it's dropped
 // on, or to the top on the Your Decks section's title. `CardsWindowState`
 // decides which drops it takes (`CardsWindowDeckEdits.swift`); this file
@@ -12,12 +12,12 @@ import UniformTypeIdentifiers
 // of their own (`AllTagsOutline.swift`).
 
 /// What Lucas drags onto the sidebar's decks, as the window's state names
-/// it: a card of the card list, each of the selected ones when he drags one
-/// of them, or a deck's row. It stays within Ficha, under a type of its own,
-/// so no other app takes it, and the sidebar's pinned tags, which take text,
-/// don't either.
+/// it: a tile of the grid, with the other selected ones when it's one of
+/// them, all in one drag, or a deck's row. It stays within Ficha, under a
+/// type of its own, so no other app takes it, and the sidebar's pinned
+/// tags, which take text, don't either.
 nonisolated struct SidebarDrag: Codable, Sendable, Transferable {
-    let dragged: CardsWindowState.Dragged
+    let dragged: [CardsWindowState.Dragged]
 
     static var transferRepresentation: some TransferRepresentation {
         CodableRepresentation(contentType: .sidebarDrag)
@@ -48,7 +48,7 @@ private struct SidebarDropTarget: ViewModifier {
                 isTargeted ? AnyShapeStyle(.tint.opacity(0.3)) : AnyShapeStyle(.clear), in: .rect(cornerRadius: 4)
             )
             .dropDestination(for: SidebarDrag.self) { items, _ in
-                drop(items.map(\.dragged))
+                drop(items.flatMap(\.dragged))
             } isTargeted: {
                 isTargeted = $0
             }
@@ -63,13 +63,14 @@ extension View {
         modifier(SidebarDropTarget(drop: drop))
     }
 
-    /// The view, which Lucas drags as `dragged`, a card onto a deck's row, or
-    /// a deck onto another's row or the Your Decks section's title; or as it
-    /// is, when `dragged` is nil, as for Default, which stays where it is.
+    /// The view, which Lucas drags as `dragged`, a deck onto another's row or
+    /// the Your Decks section's title; or as it is, when `dragged` is nil, as
+    /// for Default, which stays where it is. A tile of the grid drags its
+    /// cards itself (`CardGrid`).
     @ViewBuilder
     func dragging(_ dragged: CardsWindowState.Dragged?) -> some View {
         if let dragged {
-            draggable(SidebarDrag(dragged: dragged))
+            draggable(SidebarDrag(dragged: [dragged]))
         } else {
             self
         }

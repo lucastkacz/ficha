@@ -4,7 +4,7 @@ import Foundation
 // The Cards window's Ficha's Decks (#458): a sidebar section after Your Decks
 // lists the decks of Ficha's the user hasn't added (`FichaDecks.swift`), each
 // with its emoji, name and how many cards it holds, until all are added.
-// Choosing one shows it in the table's and the detail's place: its emoji,
+// Choosing one shows it in the grid's and the detail's place: its emoji,
 // name and "40 cards · one of Ficha's decks", its first card, front and
 // back, and Add Deck…, which asks How fast? for it before it comes in
 // (`HowFast.swift`). Start adds it, sets the pace and its place, and the
@@ -33,7 +33,7 @@ extension CardsWindowState {
     }
 
     /// The one of Ficha's decks the sidebar chose, as its file holds it,
-    /// which the window shows in the table's and the detail's place, with its
+    /// which the window shows in the grid's and the detail's place, with its
     /// first card's images among the images it shows (`images`): nil while
     /// the sidebar chose something else.
     public var shownFichaDeck: FichaDeckFile? {

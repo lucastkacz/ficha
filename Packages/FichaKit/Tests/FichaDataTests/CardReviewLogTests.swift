@@ -114,7 +114,7 @@ struct CardReviewLogTests {
     // As in Anki, a change to the scheduling settings keeps each review's
     // interval, and spaces the reviews after it (#404).
     @Test(
-        "the last interval in a card's review log is the card's own, as the Interval column says it, with the settings Lucas set, which keep it"
+        "the last interval in a card's review log is the card's own, as the detail's Interval row says it, with the settings Lucas set, which keep it"
     )
     func theReviewLogEndsOnTheCardsInterval() throws {
         let serendipia = try approveCard("serendipia", in: engine)
