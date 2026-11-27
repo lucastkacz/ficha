@@ -78,7 +78,7 @@ struct DeckRowsTests {
     @Test(
         "the sidebar lists the decks at the top of the tree with cards in the user's reviews in the order of their places in the queue, one met in full at its own, then the others alphabetically, and those set aside last, each with the decks inside it alphabetically",
         .bug(id: 491))
-    func theDecksAreListedInTheQueuesOrder() throws {
+    func theDecksAreListedByTheirPlacesInTheQueue() throws {
         time.move(to: try morning(of: 13, in: calendar))
         try approveInDeck("tiburón", deck: "Zoología::Mar", in: engine)
         try approveInDeck("abeja", deck: "Zoología::Aire", in: engine)
@@ -100,6 +100,48 @@ struct DeckRowsTests {
         #expect(byTheQueue.first?.children.map(\.title) == ["Aire", "Mar"])
         #expect(byTheQueue.first { $0.id == "Botánica" }?.line == .metThemAll(cards: 1, days: 1))
         #expect(window.deckRows.map(\.id) == ["Arte", "Botánica", "Zoología", "Geografía", "Cocina"])
+    }
+
+    // Botánica's one card came in the day before and is met, and Zoología's
+    // came in a minute after it. Música's one card came in this morning, and
+    // it's a priority deck, so its new card comes first and the queue lists
+    // it first, while Botánica, met in full, keeps its place, ahead of
+    // Zoología. Once Bach is met, Música is met in full too, and goes back
+    // to its own place, after Zoología.
+    @Test(
+        "the sidebar lists a deck whose new cards are all priority cards first while they come first, as the queue lists it, one met in full at its place among the others, and the priority deck at its own once its new cards are met",
+        .bug(id: 491))
+    func aPriorityDeckIsListedFirstWhileItsNewCardsComeFirst() throws {
+        time.move(to: try morning(of: 13, in: calendar))
+        try engine.meet(try approveInDeck("rosa", deck: "Botánica", in: engine))
+        time.advance(by: minutes(1))
+        try approveInDeck("tiburón", deck: "Zoología", in: engine)
+        time.move(to: try morning(of: 14, in: calendar))
+        let bach = try approveInDeck("Bach", deck: "Música", in: engine)
+        try engine.setPriority(true, ofDeck: "Música")
+        var window = engine.openCardsWindow(with: scheduler)
+        window.read(with: scheduler)
+        let beforeBach = window.deckRows
+        let queue = try engine.queue(.defaults).map(\.deck)
+
+        try engine.meet(bach)
+        window.read(with: scheduler)
+
+        #expect(queue == ["Música", "Zoología"])
+        #expect(beforeBach.map(\.id) == ["Música", "Botánica", "Zoología"])
+        #expect(
+            beforeBach.map(\.line) == [
+                .first(met: 0, of: 1, finish: .day(.today)),
+                .metThemAll(cards: 1, days: 1),
+                .next(finish: .day(.today)),
+            ])
+        #expect(window.deckRows.map(\.id) == ["Botánica", "Zoología", "Música"])
+        #expect(
+            window.deckRows.map(\.line) == [
+                .metThemAll(cards: 1, days: 1),
+                .first(met: 0, of: 1, finish: .day(.today)),
+                .metThemAll(cards: 1, days: 1),
+            ])
     }
 
     // ubuntu goes both ways, and its front-first way was met the day before,

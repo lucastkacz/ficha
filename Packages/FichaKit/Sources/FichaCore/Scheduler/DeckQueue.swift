@@ -177,13 +177,26 @@ extension CardsInReviews {
     }
 
     /// The decks at the top of the tree that hold cards in Lucas's reviews,
-    /// by their whole names, in the order of their places in the queue
-    /// (ADR 0034): those met in full too, which keep theirs, though
-    /// `ReviewSettings.queue(of:now:calendar:)` no longer lists them. The
-    /// Cards window's Your Decks lists its decks at the top of the tree in
-    /// this order (#491).
-    public var topDecksByPlace: [String] {
-        queue.map(\.deck)
+    /// by their whole names, or `""` for Default, in the queue's order
+    /// (ADR 0034): first those listed first for their priority cards alone,
+    /// as `ReviewSettings.queue(of:now:calendar:)` lists them, and then the
+    /// others in the order of their places, those met in full too, which
+    /// keep theirs though the queue no longer lists them. So every deck with
+    /// new cards comes where the queue lists it, and a deck met in full at
+    /// its place among them. The Cards window's Your Decks lists its decks
+    /// at the top of the tree in this order (#491).
+    public var topDecksInQueueOrder: [String] {
+        let withOtherNewWays = decksWithOtherNewWays
+        let firstForPriority = decksWithNewWays().map(\.deck).filter { !withOtherNewWays.contains($0) }
+        return firstForPriority + queue.map(\.deck).filter { !firstForPriority.contains($0) }
+    }
+
+    /// The decks at the top of the tree with new ways of cards that aren't
+    /// priority cards: every deck with new ways but those listed first for
+    /// their priority cards alone, whose new ways come first wherever the
+    /// deck is.
+    private var decksWithOtherNewWays: Set<String> {
+        Set(splitByPriority(newWays).others.compactMap { topDecks[$0.cardID] })
     }
 
     /// The decks at the top of the tree that have new ways, as
@@ -249,7 +262,7 @@ extension CardsInReviews {
         case .at(let index):
             order.insert(deck, at: min(max(index, 0), order.count))
         }
-        let withOtherNewWays = Set(splitByPriority(newWays).others.compactMap { topDecks[$0.cardID] })
+        let withOtherNewWays = decksWithOtherNewWays
         order = order.filter { $0 == deck || withOtherNewWays.contains($0) }
         // The same decks in the order their places put them now; the move
         // passes those between the first and the last that it changes.

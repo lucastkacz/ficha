@@ -42,8 +42,8 @@ enum Window: String, CaseIterable {
     /// The Cards window on Idiomas, one of the decks the sample's cards sit
     /// in, with its sidebar's Your Decks section: Default first, then every
     /// deck as a tree, those at the top with cards in the reviews in the
-    /// order of their places in the queue new cards come from, met in full
-    /// or not, the rest after them and those set aside last, each with how
+    /// order of the queue new cards come from, one met in full at its place
+    /// among them, the rest after them and those set aside last, each with how
     /// many of its cards are due, Idiomas and Ciencias with a color and an
     /// emoji, which the decks inside them show too, Ciencias and Humanidades
     /// closed, so that Sociedad shows, set aside, grayed with the deck inside

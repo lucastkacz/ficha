@@ -4,17 +4,18 @@ import Foundation
 // The Cards window's decks (ADR 0024): the sidebar's Your Decks section, after
 // Inbox and before Tags, lists every deck as a tree, Default first while it
 // holds cards or has a switch on, where it always was, then the decks at the
-// top of the tree with cards in the user's reviews, in the order of their
-// places in the queue new cards come from, a deck met in full at its own, as
-// the mock's Your Decks lists them, then the others in alphabetical order,
-// and those set aside last, each with the decks inside it in alphabetical
-// order, and each with how many of its cards are due, those of the decks
-// inside it counted, and each at the top of the tree, Default too, with a
-// line under its title that says how far it is and when it's all met, from
-// the queue new cards come from (ADR 0034, #491). Each parent starts open,
-// as in Anki's deck list, and the window remembers the ones Lucas closes
-// while it's open. Choosing a deck lists its cards and those of every deck
-// inside it. A deck's menu,
+// top of the tree with cards in the user's reviews, in the order of the
+// queue new cards come from, a deck listed first for its priority cards
+// alone first, and a deck met in full at its place among them, as the mock's
+// Your Decks lists them, then the others in alphabetical order, and those
+// set aside last, each with the decks inside it in alphabetical order, and
+// each with how many of its cards are due, those of the decks inside it
+// counted, and each at the top of the tree, Default too, with a line under
+// its title that says how far it is and when it's all met, from the queue
+// new cards come from (ADR 0034, #491). Each parent starts open, as in
+// Anki's deck list, and the window remembers the ones Lucas closes while
+// it's open. Choosing a deck lists its cards and those of every deck inside
+// it. A deck's menu,
 // Default's too, the same in its row's context menu and in the Actions menu
 // above the card list while the sidebar chose it, which is its keyboard
 // path, sets it aside or prioritizes it (`DeckSwitches.swift`), and gives it
@@ -193,18 +194,20 @@ extension CardsWindowState {
     }
 
     /// The sidebar's Your Decks section, as last read: every deck as a tree,
-    /// Default first while it holds cards or has a switch on, then the other
-    /// decks at the top of the tree with cards in the user's reviews, in the
-    /// order of their places in the queue new cards come from, as FichaCore
-    /// keeps them (`CardsInReviews.topDecksByPlace`), those met in full at
-    /// theirs too, then the rest in alphabetical order, and those set aside
-    /// last, each with its counts, and each at the top of the tree with its
-    /// line.
+    /// Default first while it holds cards or has a switch on, wherever the
+    /// queue has it, then the other decks at the top of the tree with cards
+    /// in the user's reviews, in the order of the queue new cards come from,
+    /// as FichaCore keeps it (`CardsInReviews.topDecksInQueueOrder`): those
+    /// listed first for their priority cards alone, in the queue's order,
+    /// and then the others in the order of their places, those met in full
+    /// at theirs too; then the rest in alphabetical order, and those set
+    /// aside last, each with its counts, and each at the top of the tree
+    /// with its line.
     public var deckRows: [DeckRow] {
         let places = Dictionary(placedTopDecks.enumerated().map { ($1, $0) }, uniquingKeysWith: { first, _ in first })
         let rows = Self.deckRows(of: decks, lines: deckLines)
-        // Default, the decks at their places, the rest, and those set aside,
-        // each group in its order: the places', or the tree's.
+        // Default, the decks in the queue's order, the rest, and those set
+        // aside, each group in its order: the queue's, or the tree's.
         func rank(of index: Int) -> (Int, Int, Int) {
             let deck = rows[index].deck
             if deck.isDefault {
@@ -501,8 +504,8 @@ extension CardsWindowState {
     /// Reads what the row of each deck at the top of the tree the sidebar
     /// lists says under its title, as last read, from where it stands now and
     /// the queue new cards come from, with the pace the database holds and
-    /// the window's active hours, and the order of the decks' places in it,
-    /// which the sidebar lists them in.
+    /// the window's active hours, and the decks' order in it, which the
+    /// sidebar lists them in.
     mutating func readDeckLines() throws(EngineError) {
         let settings = try engine.cardsWindowQueueSettings(activeHours: activeHours)
         let lines = try engine.deckLines(of: listedTopDecks, with: settings)
@@ -554,8 +557,8 @@ extension Engine {
     /// come from, with `settings`' pace, as `queue(_:)` reads it, with its
     /// finish dates as they read by the engine's calendar; and the decks at
     /// the top of the tree with cards in the user's reviews, by their whole
-    /// names, in the order of their places in that queue, as
-    /// `CardsInReviews.topDecksByPlace` says.
+    /// names, in that queue's order, those met in full at their places, as
+    /// `CardsInReviews.topDecksInQueueOrder` says.
     fileprivate func deckLines(of decks: [Deck], with settings: ReviewSettings) throws(EngineError)
         -> (lines: [String: CardsWindowState.DeckRow.Line], places: [String])
     {
@@ -620,7 +623,7 @@ extension Engine {
                     }
                 lines[deck.name] = line
             }
-            return (lines: lines, places: inReviews.topDecksByPlace)
+            return (lines: lines, places: inReviews.topDecksInQueueOrder)
         }
     }
 }

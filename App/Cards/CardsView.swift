@@ -8,17 +8,21 @@ import UniformTypeIdentifiers
 /// with one row per card in it, or per capture and flagged card in the inbox,
 /// narrowed by the toolbar's search field, and the selected row whole beside
 /// it, with what Lucas can do with it at its foot. The sidebar's Your Decks
-/// section lists every deck as a tree, Default first while it holds cards or
-/// has a switch on, then the others in the order the state lists them, the
-/// queue's first (`CardsWindowDecks.swift`), each with how many of its cards
-/// are due, grayed while its cards are out of Lucas's reviews, and with its
-/// emoji and color, and each at the top of the tree with a line under its
-/// title that says how far it is and when it's all met (#491); a deck's
-/// context menu, and the Actions menu above the card list while the sidebar
-/// chose it (`DeckMenu.swift`), set it aside or prioritize it, give it a color
-/// and an emoji, rename it, in the rename sheet, which moves it too, and
-/// delete it, with its cards, asking first; and under that menu the deck's
-/// tags narrow the card list to one of them (`DeckTagsRow.swift`). Change
+/// section lists every deck as a tree, in the order the state lists them
+/// (`CardsWindowDecks.swift`): Default first while it holds cards or has a
+/// switch on, then those at the top of the tree with cards in Lucas's
+/// reviews in the order of the queue new cards come from, a deck listed
+/// first for its priority cards alone first and one met in full at its
+/// place, then the rest alphabetically, and those set aside last; each with
+/// how many of its cards are due, grayed while its cards are out of Lucas's
+/// reviews, and with its emoji and color, and each at the top of the tree
+/// with a line under its title that says how far it is and when it's all
+/// met (#491); a deck's context menu, and the Actions menu above the card
+/// list while the sidebar chose it (`DeckMenu.swift`), set it aside or
+/// prioritize it, give it a color and an emoji, rename it, in the rename
+/// sheet, which moves it too, and delete it, with its cards, asking first;
+/// and under that menu the deck's tags narrow the card list to one of them
+/// (`DeckTagsRow.swift`). Change
 /// Deck… moves the selected cards to the deck Lucas picks in its sheet, or
 /// names there with New Deck… (`ChangeDeckSheet.swift`), and so does dragging
 /// them onto a deck in the sidebar, where a deck dragged onto another goes
