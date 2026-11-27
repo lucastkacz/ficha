@@ -146,6 +146,18 @@ const noSteps = { ...SCHEDULER, learningSteps: [] };
   app.setAside('arte', false);
   check('a deck set aside leaves the queue and comes back to its place', setAside === 'lenguaje,historia,musica' && queue() === 'lenguaje,arte,historia,musica', [setAside, queue()]);
 }
+// DeckRowsTests.theDecksAreListedByTheirPlacesInTheQueue: put first, Arte
+// takes Zoología's place and Zoología Arte's, and Botánica, met in full
+// between them, keeps its own.
+{
+  const deckOf = (id, count = 1) => ({ id, name: id, cards: Array.from({ length: count }, (_, i) => ({ front: `${id}-${i}`, back: '' })) });
+  const app = new ToyFicha({ decks: [deckOf('zoologia', 2), deckOf('botanica'), deckOf('arte')], now: start, speed: 0 });
+  ['zoologia', 'botanica', 'arte'].forEach((id) => app.addDeck(id));
+  Object.assign(app.card('botanica-0'), rate(app.card('botanica-0'), 1, start));
+  app.putFirst('arte');
+  const queue = app.queueDecks().map((d) => d.id).join();
+  check('a deck put first takes the first place of a deck with cards not met, and a deck met in full keeps its own', queue === 'arte,botanica,zoologia', queue);
+}
 // PaceAndQueueTests.aDecksFinishDateCountsWhatTodayStillBrings: Arte's 2
 // new ways left once La Gioconda is met today, with 1 still to come today at
 // Steady, 3 at Faster, and none once active hours are over.
