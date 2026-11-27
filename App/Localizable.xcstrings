@@ -38,8 +38,30 @@
     "%@ never does, so it doesn't get in the real Ficha's way." : {
 
     },
+    "%@ or %@" : {
+      "comment" : "A finish date of two days in a row, in the Cards window: “today or tomorrow”.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ or %2$@"
+          }
+        }
+      }
+    },
     "%@ shows you cards only while it's open. You can change this later in Settings." : {
       "comment" : "On the Welcome page, under whether the app opens at login. The name is the app's."
+    },
+    "%@ to %@" : {
+      "comment" : "A finish date from one day or third of a month to another, in the Cards window.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ to %2$@"
+          }
+        }
+      }
     },
     "%@ · %@" : {
       "comment" : "An appearance log entry in Diagnostics: when it showed, or was held back, and what opened the review panel.",
@@ -569,6 +591,52 @@
         }
       }
     },
+    "%lld cards · imported" : {
+      "comment" : "In How fast?, under the name of the deck an import brought: how many cards it holds.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld card · imported"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld cards · imported"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld cards · one of Ficha's decks" : {
+      "comment" : "In How fast?, under the name of one of Ficha's decks: how many cards it brings.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld card · one of Ficha's decks"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld cards · one of Ficha's decks"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld copies, %@ in all" : {
       "comment" : "Settings, under Backups: how many copies there are, and what they weigh in all.",
       "localizations" : {
@@ -624,6 +692,9 @@
           }
         }
       }
+    },
+    "%lld new a day" : {
+      "comment" : "In How fast?, beside a pace's name: how many new cards a day it brings."
     },
     "%lld new cards came in, %lld cards were updated and %lld were skipped." : {
       "comment" : "In the Import sheet once it's done, with how many cards came in, were updated and skipped.",
@@ -793,6 +864,28 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "%lld of %lld" : {
+      "comment" : "Under a deck's name in the Cards window's sidebar: how many of its cards are met.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld of %2$lld"
+          }
+        }
+      }
+    },
+    "%lld of %lld · on track for %@" : {
+      "comment" : "Under the name of the deck new cards come from now, in the Cards window's sidebar: how many of its cards are met, and when they'll all be.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld of %2$lld · on track for %3$@"
           }
         }
       }
@@ -1227,6 +1320,9 @@
     "Checking your iCloud account…" : {
       "comment" : "Settings, under Sync: the app is asking whether this Mac is signed into iCloud."
     },
+    "Chill" : {
+      "comment" : "A pace in How fast?, the slowest: 1 new card a day."
+    },
     "Choose Another File…" : {
       "comment" : "The Import sheet's button that opens another text file of cards instead."
     },
@@ -1480,6 +1576,9 @@
     },
     "Couldn't save the change" : {
       "comment" : "An alert's title in Settings, when a change to the scheduling settings, the new cards per day or the forgotten-often count couldn't be saved; the alert says why under it."
+    },
+    "Couldn't save the pace or the deck's place in the queue" : {
+      "comment" : "An alert's title over How fast?, the Cards window's sheet as a deck comes in, on Start."
     },
     "Couldn't save your answer" : {
 
@@ -1809,6 +1908,9 @@
     "Failed: %@" : {
       "comment" : "Settings, under Backups: the last backup failed, and why."
     },
+    "Faster" : {
+      "comment" : "A pace in How fast?, the fastest: 4 new cards a day."
+    },
     "Ficha can't make sense of the review log of card %lld, so it doesn't know when the card is due. Your cards are still saved: report it." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
@@ -1982,6 +2084,18 @@
     "General" : {
       "comment" : "A tab of the Settings window."
     },
+    "Goes after %@, which you're meeting first." : {
+      "comment" : "In How fast?, with the names of the decks ahead of the one coming in, in the queue."
+    },
+    "Goes after %@, which you're meeting now." : {
+      "comment" : "In How fast?, with the name of the deck ahead of the one coming in, in the queue."
+    },
+    "Goes first: %@ wait until you've met it all." : {
+      "comment" : "In How fast?, with Put it first ticked, with the names of the decks it goes ahead of."
+    },
+    "Goes first: %@ waits until you've met it all." : {
+      "comment" : "In How fast?, with Put it first ticked, with the name of the one deck it goes ahead of."
+    },
     "Good" : {
       "comment" : "A rating, Anki's third button, as the Cards window's review log shows it: Lucas knew the card. Anki's own name for it, “Bien” in Spanish."
     },
@@ -2026,6 +2140,9 @@
     },
     "Holds back appearances while this Focus is on. Review now still works." : {
       "comment" : "What the app's filter in a Focus does, in System Settings."
+    },
+    "How fast?" : {
+      "comment" : "The title of How fast?, the Cards window's sheet as a deck comes in."
     },
     "Idle for" : {
       "comment" : "Settings, under Review panel: how long Lucas must be idle before the panel takes the keyboard, in the \"Once you're idle\" focus mode."
@@ -2260,6 +2377,9 @@
     "Meetings" : {
 
     },
+    "Met them all" : {
+      "comment" : "Under a deck's name in the Cards window's sidebar: every card of the deck is met."
+    },
     "Microphone" : {
       "comment" : "A detector in Diagnostics: the microphones in use."
     },
@@ -2357,6 +2477,12 @@
     "New to me" : {
       "comment" : "The review panel's Forgot button on a new card's first turn, for a card the user hadn't met before: it records Anki's Again. Its key is 1."
     },
+    "Next in the queue: %@. Its first card comes with the next new one." : {
+      "comment" : "In the review panel, under the decks it met in full: the deck new cards come from now, with its emoji and name."
+    },
+    "Next · on track for %@" : {
+      "comment" : "Under the name of a deck that waits its turn in the queue of new cards, in the Cards window's sidebar: when its cards will all be met."
+    },
     "No Type" : {
       "comment" : "An item of the Cards window's sidebar: the cards that have no type."
     },
@@ -2398,6 +2524,9 @@
     },
     "No cards without a type" : {
       "comment" : "In the Cards window: every card that isn't buried has a type."
+    },
+    "No cards yet" : {
+      "comment" : "Under a deck's name in the Cards window's sidebar, or in How fast?: the deck has no card."
     },
     "No concepts" : {
       "comment" : "In the Cards window: no concept card that isn't buried."
@@ -2474,6 +2603,9 @@
     "Nothing selected" : {
       "comment" : "In the Cards window's detail, when nothing in the inbox is selected."
     },
+    "Nothing waits in the queue." : {
+      "comment" : "In the review panel, under the decks it met in full: no deck has new cards."
+    },
     "OK" : {
 
     },
@@ -2512,6 +2644,9 @@
         }
       }
     },
+    "One pace for all your decks. A deck waits its turn for new cards, so what Ficha asks a day stays the same." : {
+      "comment" : "At the foot of How fast?, while the user has other decks."
+    },
     "Only cards in the decks you choose" : {
       "comment" : "Settings, under Sync: the choice that syncs only the cards in ticked decks."
     },
@@ -2532,6 +2667,9 @@
     },
     "Orange" : {
       "comment" : "One of Finder's tag colors, which a tag can have."
+    },
+    "Pace" : {
+      "comment" : "The name of How fast?'s radio group of paces, which VoiceOver reads."
     },
     "Paste" : {
       "comment" : "A hidden button of the Cards window: ⌘V in a side's text, which takes a copied image too."
@@ -2568,6 +2706,9 @@
     },
     "Put every card in" : {
       "comment" : "In the Import sheet, before the menu of the deck every card it imports comes into."
+    },
+    "Put it first" : {
+      "comment" : "A checkbox of How fast?: the deck coming in goes first in the queue."
     },
     "Question" : {
       "comment" : "A card type.\nThe label of the field where the user writes a question about the card the review panel shows."
@@ -2695,6 +2836,17 @@
     "Set aside with %@" : {
       "comment" : "In the Cards window's detail: the card is out of Lucas's reviews for now, since these decks are set aside, its own or decks it sits inside, outermost first, each by its whole name, like “Set aside with Historia and Historia › Roma”."
     },
+    "Set aside · %lld of %lld met" : {
+      "comment" : "Under a set-aside deck's name in the Cards window's sidebar: how many of its cards are met.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Set aside · %1$lld of %2$lld met"
+          }
+        }
+      }
+    },
     "Settings…" : {
 
     },
@@ -2746,11 +2898,17 @@
     "Stability" : {
       "comment" : "In the Cards window's detail, as Anki's Card Info says it: FSRS's stability, how many days it takes the chance of remembering the card to fall to 90%."
     },
+    "Start" : {
+      "comment" : "The button of How fast? that sets the pace, and puts the deck first when ticked."
+    },
     "Start at" : {
       "comment" : "Settings, under Appearances: the hour active hours start at."
     },
     "Start at login" : {
 
+    },
+    "Steady" : {
+      "comment" : "A pace in How fast?, the one Ficha starts at: 2 new cards a day."
     },
     "Step %lld" : {
       "comment" : "Settings, under Scheduling: a learning or relearning step, counted from 1."
@@ -3105,12 +3263,21 @@
     "You went through every card. More can come: the ones that didn't fit, then the closest to being due." : {
 
     },
+    "You've met them all: %@" : {
+      "comment" : "In the review panel, once it went through its cards, for each deck whose last new card an answer in it met, with the deck's emoji and name."
+    },
     "Your cards, their progress and the inbox stay the same on each of your devices, through your own iCloud. Each device keeps its own backups." : {
       "comment" : "Settings, under Sync, below the switch: what sync does."
     },
     "Your question about card %lld was approved or discarded outside the review panel, so ⌘Z can't take it back. If it became cards you don't want, delete them in the Cards window." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
+    },
+    "all met %@" : {
+      "comment" : "In How fast?, beside a pace: when the deck's new cards are all met, starting with today."
+    },
+    "all met by %@" : {
+      "comment" : "In How fast?, beside a pace: when the deck's new cards are all met, as a day or a month."
     },
     "all-tags.due" : {
       "comment" : "A column of the Cards window's All Tags: how many of the tag's cards are due now.",
@@ -3172,6 +3339,12 @@
         }
       }
     },
+    "early" : {
+      "comment" : "A finish date's start, as in “early to mid-December”."
+    },
+    "early %@" : {
+      "comment" : "A finish date in the first ten days of a month."
+    },
     "esc" : {
       "comment" : "The Esc key's name, next to the button it presses."
     },
@@ -3229,6 +3402,12 @@
         }
       }
     },
+    "late" : {
+      "comment" : "A finish date's start, a month's last third, before “to”."
+    },
+    "late %@" : {
+      "comment" : "A finish date from the day 21 of a month on."
+    },
     "macOS didn't let %@ start at login (%@). Try again, or add it in System Settings > General > Login Items." : {
       "localizations" : {
         "en" : {
@@ -3254,6 +3433,12 @@
     },
     "macOS refused the shortcut (error %d). Restart the app, and if it keeps failing, report it." : {
 
+    },
+    "mid" : {
+      "comment" : "A finish date's start, as in “mid to late December”."
+    },
+    "mid-%@" : {
+      "comment" : "A finish date in the days 11 to 20 of a month."
     },
     "now" : {
       "comment" : "In the Cards window's Due and Back-first due columns: the card is due, front first or back first."
@@ -3311,6 +3496,12 @@
     },
     "space" : {
       "comment" : "The Space key's name, next to the button it presses."
+    },
+    "today" : {
+      "comment" : "A finish date's day, in the Cards window: “on track for today”."
+    },
+    "tomorrow" : {
+      "comment" : "A finish date's day, in the Cards window: “all met by tomorrow”."
     },
     "toolbar.back" : {
       "comment" : "A toolbar button of the Cards window, while it lists a tag's cards: back to All Tags.",

@@ -10,7 +10,9 @@ import UniformTypeIdentifiers
 /// it, with what Lucas can do with it at its foot. The sidebar's Decks
 /// section lists every deck as a tree, Default first while it holds cards or
 /// has a switch on, each with how many of its cards are due, grayed while
-/// its cards are out of Lucas's reviews, and with its emoji and color; a
+/// its cards are out of Lucas's reviews, and with its emoji and color, and
+/// each at the top of the tree with a line under its title that says how far
+/// it is and when it's all met (#491); a
 /// deck's context menu, and the Actions menu above the card list while the
 /// sidebar chose it (`DeckMenu.swift`), set it aside or prioritize it, give
 /// it a color and an emoji, rename it, in the rename sheet, which moves it
@@ -23,7 +25,9 @@ import UniformTypeIdentifiers
 /// (`SidebarDrops.swift`). The card form and the editor have a
 /// Deck field, whose New Deck… names a deck in the New Deck sheet
 /// (`NewDeckSheet.swift`), which New Deck… in a deck's menu or the Decks
-/// title's opens too, to make the deck. The sidebar's Tags section
+/// title's opens too, to make the deck. As a deck comes in, made there or
+/// brought by an import, How fast? asks for the pace and where the deck goes
+/// in the queue new cards come from (`HowFastSheet.swift`). The sidebar's Tags section
 /// lists the tags he pins, in the order he drags them into, and ends with All
 /// Tags…, which lists every tag where the table was, as a tree with columns
 /// and a checkbox (`AllTagsOutline.swift`, ADR 0022), and a tag's cards in
@@ -94,6 +98,7 @@ struct CardsView: View {
         askingAboutDecks(askingAboutTags(askingAboutTypes(panes)))
             .creatingCards($state, failure: failure(overSheet: true), newTypeFailure: failure(over: .newTypeSheet))
             .changeDeckSheet($state, failure: failure(overSheet: true))
+            .howFastSheet($state, failure: failure(overSheet: true))
             // The card form's opens over the form.
             .newDeckSheet(for: .editor, $state)
             .sheet(item: Binding(get: { cardToFlag }, set: { if $0 == nil { state.cancelQuestion() } })) { row in
@@ -567,10 +572,10 @@ struct CardsView: View {
 
     /// Where the alert shows now: over the New Type sheet while a card's type
     /// picker opened it; over the flag sheet, the emoji sheet, the rename
-    /// sheet, the Change Deck sheet, the card form, the Export sheet or the
-    /// New Deck or New Type sheet the sidebar opened while one is open, since
-    /// the window's own alert can't show over its sheet; and over the window
-    /// otherwise.
+    /// sheet, the Change Deck sheet, the card form, the Export sheet, How
+    /// fast? or the New Deck or New Type sheet the sidebar opened while one
+    /// is open, since the window's own alert can't show over its sheet; and
+    /// over the window otherwise.
     private var alertPlace: AlertPlace {
         if case .newType = state.question {
             return .newTypeSheet
@@ -578,7 +583,7 @@ struct CardsView: View {
         let isSheetOpen =
             cardToFlag != nil || emojiSubject != nil || renameSubject != nil || state.deckChange != nil
             || state.cardForm != nil || state.exporting != nil || state.question == .makeDeck
-            || state.question == .makeType
+            || state.question == .makeType || state.howFast != nil
         return isSheetOpen ? .sheet : .window
     }
 
@@ -866,6 +871,13 @@ struct CardsView: View {
                     "Couldn't make the deck",
                     comment:
                         "An alert's title in the Cards window's New Deck sheet, after New Deck… in the sidebar and OK."
+                ),
+                error: error)
+        case .startHowFast:
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't save the pace or the deck's place in the queue",
+                    comment: "An alert's title over How fast?, the Cards window's sheet as a deck comes in, on Start."
                 ),
                 error: error)
         case .makeType:
@@ -1998,10 +2010,11 @@ private typealias SidebarItem = CardsWindowState.SidebarItem
 /// its color, with how many of its cards are
 /// due, grayed while its cards are out of Lucas's reviews, as it's set aside
 /// on its own or sits inside a deck that is, with the deck's menu on a right
-/// click; and the decks inside it under a disclosure triangle, open or closed
-/// as the window remembers it. Lucas drags it, unless it's Default, onto
-/// another deck's row, and drops cards and decks on it, as the state takes
-/// them.
+/// click, and, at the top of the tree, a line under its title that says how
+/// far it is and when it's all met (#491); and the decks inside it under a
+/// disclosure triangle, open or closed as the window remembers it. Lucas
+/// drags it, unless it's Default, onto another deck's row, and drops cards
+/// and decks on it, as the state takes them.
 private struct DeckBranch: View {
     let row: CardsWindowState.DeckRow
     @Binding var state: CardsWindowState
@@ -2024,10 +2037,18 @@ private struct DeckBranch: View {
 
     /// Its own row, which choosing lists its cards: its emoji before its
     /// title, and its symbol in its color, its own or else the decks' it sits
-    /// inside, as a pinned tag's row shows a tag's.
+    /// inside, as a pinned tag's row shows a tag's, and, for a deck at the
+    /// top of the tree, its line under its title, smaller and secondary.
     private var label: some View {
         Label {
-            Text(verbatim: row.shownTitle)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(verbatim: row.shownTitle)
+                if let line = row.line {
+                    Text(verbatim: line.text)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
         } icon: {
             row.deck.symbol
         }
@@ -2040,6 +2061,44 @@ private struct DeckBranch: View {
             if let menu = state.menu(forDeck: row.id) {
                 DeckMenuItems(menu: menu, state: $state)
             }
+        }
+    }
+}
+
+extension CardsWindowState.DeckRow.Line {
+    /// What a deck's row says under its title in the sidebar, as the state
+    /// words it: "9 of 14 · on track for early December", "Next · on track
+    /// for mid-December".
+    var text: String {
+        switch self {
+        case .noCards:
+            Deck.noCardsYet
+        case .setAside(let met, let total):
+            String(
+                localized: "Set aside · \(met) of \(total) met",
+                comment: "Under a set-aside deck's name in the Cards window's sidebar: how many of its cards are met.")
+        case .metThemAll:
+            String(
+                localized: "Met them all",
+                comment: "Under a deck's name in the Cards window's sidebar: every card of the deck is met.")
+        case .first(let met, let total, let finish):
+            String(
+                localized: "\(met) of \(total) · on track for \(finish.text)",
+                comment: """
+                    Under the name of the deck new cards come from now, in the Cards window's sidebar: how many of \
+                    its cards are met, and when they'll all be.
+                    """)
+        case .next(let finish):
+            String(
+                localized: "Next · on track for \(finish.text)",
+                comment: """
+                    Under the name of a deck that waits its turn in the queue of new cards, in the Cards window's \
+                    sidebar: when its cards will all be met.
+                    """)
+        case .progress(let met, let total):
+            String(
+                localized: "\(met) of \(total)",
+                comment: "Under a deck's name in the Cards window's sidebar: how many of its cards are met.")
         }
     }
 }

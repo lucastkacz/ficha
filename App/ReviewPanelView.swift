@@ -20,7 +20,9 @@ import SwiftUI
 /// it shows, or else the upper side's. When 1 makes a card forgotten often,
 /// the panel offers to flag it, its note written: Enter flags it, and Esc
 /// leaves it in his reviews. Once Lucas went through every card, the
-/// panel stays open until he closes it, and offers more cards if there are
+/// panel stays open until he closes it, says "You've met them all" for each
+/// deck whose last new card he met in it, with the next deck in the queue,
+/// and offers more cards if there are
 /// any, which Enter brings; review now with nothing due offers to review
 /// ahead the same way. A card taller than the panel's maximum
 /// height scrolls between the line at its top and what's under it, which
@@ -249,6 +251,7 @@ struct ReviewPanelView: View {
             .background {
                 menuKeys(of: panel)
             }
+            metThemAll(of: panel)
             enterButton(Text("See more")) {
                 panel.state.seeMore()
             }
@@ -262,9 +265,49 @@ struct ReviewPanelView: View {
             .background {
                 menuKeys(of: panel)
             }
+            metThemAll(of: panel)
             enterButton(
                 Text("Done", comment: "A button that closes the review panel once every card was gone through."),
                 action: closeByLucas)
+        }
+    }
+
+    /// What the done panel says it met in full, under its title (ADR 0034,
+    /// #491), as the state says it: "You've met them all", for each deck an
+    /// answer in it met in full, and then the next deck in the queue new
+    /// cards come from, or that nothing waits there. Nothing while it met
+    /// none.
+    @ViewBuilder
+    private func metThemAll(of panel: ReviewPanelModel) -> some View {
+        if let met = panel.state.metThemAll {
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(met.decks, id: \.name) { deck in
+                    Text(
+                        "You've met them all: \(deck.title)",
+                        comment: """
+                            In the review panel, once it went through its cards, for each deck whose last new card \
+                            an answer in it met, with the deck's emoji and name.
+                            """
+                    )
+                    .fontWeight(.semibold)
+                }
+                Group {
+                    if let next = met.nextInQueue {
+                        Text(
+                            "Next in the queue: \(next.title). Its first card comes with the next new one.",
+                            comment: """
+                                In the review panel, under the decks it met in full: the deck new cards come from \
+                                now, with its emoji and name.
+                                """)
+                    } else {
+                        Text(
+                            "Nothing waits in the queue.",
+                            comment: "In the review panel, under the decks it met in full: no deck has new cards.")
+                    }
+                }
+                .foregroundStyle(.secondary)
+            }
+            .fixedSize(horizontal: false, vertical: true)
         }
     }
 
