@@ -215,8 +215,10 @@
     // decks, ADR 0034's "one pace split between them". The app itself takes
     // them as 'queue' does (ReviewNow.pickCards).
     newCardsFrom: 'queue',
-    // New cards a day count by the calendar day, as ReviewNow's metToday does.
-    dayStartsAtHour: 0,
+    // New cards a day count by Ficha's day, from 4:00 to 4:00, as
+    // ReviewNow's metToday does, and so do the finish date and the days the
+    // mock names (ADR 0045).
+    dayStartsAtHour: 4,
   };
 
   /**

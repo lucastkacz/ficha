@@ -72,14 +72,16 @@ extension FinishDate {
         }
     }
 
-    /// How the app says this finish date on `now`'s day, by `calendar`, the
-    /// engine's: when the latest day is less than 7 days from the start of
-    /// today, one day when soonest and latest are the same day, and else both
-    /// ends, joined by "or" when they're one day apart and by "to" otherwise;
-    /// and else each end by the third of its month it falls in, one third
-    /// when both are in the same one, two of one month, or two months.
+    /// How the app says this finish date in the Ficha's day `now` is in, for a
+    /// day that starts at the hour `dayStartsAtHour`, by `calendar`, the
+    /// engine's, whose today is the calendar day it started on (ADR 0045): when
+    /// the latest day is less than 7 days from the start of today, one day when
+    /// soonest and latest are the same day, and else both ends, joined by "or"
+    /// when they're one day apart and by "to" otherwise; and else each end by
+    /// the third of its month it falls in, one third when both are in the same
+    /// one, two of one month, or two months.
     public func wording(now: Date, dayStartsAtHour: Int, calendar: Calendar) -> Wording {
-        let today = calendar.startOfDay(for: now)
+        let today = calendar.calendarDay(ofFichasDayOf: now, startingAt: dayStartsAtHour)
         let daysFromToday = { (date: Date) in
             calendar.dateComponents([.day], from: today, to: calendar.startOfDay(for: date)).day ?? 0
         }

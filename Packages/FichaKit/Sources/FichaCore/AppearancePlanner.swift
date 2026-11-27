@@ -168,8 +168,8 @@ extension ReviewSettings {
                 next = startOfActiveHours(after: time, calendar: calendar)
             case .notNow(.nothingDue):
                 var changes = dueTimes.filter { $0 > time }
-                if mayMeetNewCards, let nextDay = calendar.dateInterval(of: .day, for: time)?.end {
-                    changes.append(nextDay)
+                if mayMeetNewCards {
+                    changes.append(calendar.startOfNextFichasDay(after: time, startingAt: dayStartsAtHour))
                 }
                 next = changes.min()
             case .notNow(let reason):

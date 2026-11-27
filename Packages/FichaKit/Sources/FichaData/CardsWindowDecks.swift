@@ -81,8 +81,8 @@ extension CardsWindowState {
             case setAside(met: Int, of: Int)
             /// "Met them all · 14 cards in 9 days": the deck is met in full,
             /// out of the queue, as `CardsInReviews.decksMetInFull` says,
-            /// with its cards, all of them, whatever their standing, and the
-            /// calendar days from the one its first card came in to the one
+            /// with its cards, all of them, whatever their standing, and
+            /// Ficha's days from the one its first card came in to the one
             /// its last way was met, both counted; or "Met them all" alone
             /// without them, as when an import's reviews from Anki come
             /// before its cards came in.
@@ -585,18 +585,19 @@ extension Engine {
                     }
                 }
             }
-            /// The calendar days `deck` took to be met in full, counting the
-            /// day its first card came in and the day its last way was met:
-            /// nil without both, or when the log's last first entry comes
-            /// before the first card, as an import's reviews from Anki can.
+            let dayStartsAtHour = settings.dayStartsAtHour
+            /// Ficha's days `deck` took to be met in full (ADR 0045), counting
+            /// the day its first card came in and the day its last way was
+            /// met: nil without both, or when the log's last first entry
+            /// comes before the first card, as an import's reviews from Anki
+            /// can.
             func daysToMeet(_ deck: String) -> Int? {
                 guard let first = cameIn[deck], let last = lastMet[deck] else {
                     return nil
                 }
-                let start = calendar.startOfDay(for: first)
-                guard let days = calendar.dateComponents([.day], from: start, to: calendar.startOfDay(for: last)).day,
-                    days >= 0
-                else {
+                let start = calendar.calendarDay(ofFichasDayOf: first, startingAt: dayStartsAtHour)
+                let end = calendar.calendarDay(ofFichasDayOf: last, startingAt: dayStartsAtHour)
+                guard let days = calendar.dateComponents([.day], from: start, to: end).day, days >= 0 else {
                     return nil
                 }
                 return days + 1
@@ -604,7 +605,6 @@ extension Engine {
             let inReviews = try cardsThatShowUp(in: db).inReviews
             let metInFull = inReviews.decksMetInFull
             let queue = settings.queue(of: inReviews, now: now, calendar: calendar)
-            let dayStartsAtHour = settings.dayStartsAtHour
             var lines: [String: CardsWindowState.DeckRow.Line] = [:]
             for deck in decks {
                 let count = counts[deck.name, default: (0, 0)]

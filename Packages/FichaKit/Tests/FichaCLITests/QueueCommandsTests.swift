@@ -10,9 +10,10 @@ import Testing
 
 /// Tests on the `ficha` CLI's pace and queue (ADR 0034): each command parsed
 /// from its arguments, as a refine session types them, run on an engine in
-/// memory at the start of 1970 in UTC, and the JSON it prints.
+/// memory at noon on the first day of 1970 in UTC, inside Ficha's active
+/// hours, and the JSON it prints.
 struct QueueCommandsTests {
-    let time = ManualTimeSource(now: Date(timeIntervalSince1970: 0))
+    let time = ManualTimeSource(now: Date(timeIntervalSince1970: 12 * 60 * 60))
     let engine: Engine
 
     init() throws {

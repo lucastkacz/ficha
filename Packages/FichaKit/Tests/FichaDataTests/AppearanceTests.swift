@@ -181,9 +181,10 @@ struct AppearanceTests {
         #expect(try appearance() == .show([.new(ockham)]))
     }
 
-    // 21:00 in Buenos Aires is already the next day in UTC.
-    @Test("the day's new cards start over at midnight, by the Mac's calendar")
-    func newCardsStartOverAtMidnight() throws {
+    // 21:00 in Buenos Aires is already the next day in UTC, and 9:00 on the
+    // 15th is past 4:00, when Ficha's day starts there.
+    @Test("the day's new cards start over as Ficha's day does, by the Mac's clock", .bug(id: 562))
+    func newCardsStartOverAsFichasDayDoes() throws {
         time.move(to: try at(21, 0))
         let met = try ["ubuntu", "petricor", "serendipia", "Schadenfreude", "navaja de Ockham"].map {
             try approveCard($0, in: engine)

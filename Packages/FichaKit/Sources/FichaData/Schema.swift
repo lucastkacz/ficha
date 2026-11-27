@@ -1920,6 +1920,42 @@ enum Schema {
                     END;
                     """)
         }
+        migrator.registerMigration("v36 Ficha's day") { db in
+            // Ficha's day starts at an hour of the device's clock, from 0 to
+            // 23, 4:00 to start, as Anki's "Next day starts at" (ADR 0045).
+            // It's a setting that decides progress, whose column comes in with
+            // Ficha's, which a row already there takes too, as no change. It's
+            // a field of the settings' record, `dayStartsAtHour`, as
+            // `SyncedField` names it, whose latest change wins, as the
+            // others': the trigger of "v33 the scheduler replaces the ladder",
+            // made again with it.
+            try db.alter(table: "progressSettings") { table in
+                table.add(column: "dayStartsAtHour", .integer).notNull().defaults(to: 4)
+            }
+            let settingsFields = [
+                "newCardsPerDay", "dayStartsAtHour", "forgottenOftenAfter", "learningSteps", "relearningSteps",
+                "desiredRetention", "longestIntervalInDays", "fsrsParameters",
+            ]
+            let changedSettingsFields = settingsFields.map {
+                "SELECT '\($0)' AS field WHERE OLD.\($0) IS NOT NEW.\($0)"
+            }
+            .joined(separator: " UNION ALL ")
+            let anySettingChanged = settingsFields.map { "OLD.\($0) IS NOT NEW.\($0)" }.joined(separator: " OR ")
+            try db.execute(
+                sql: """
+                    DROP TRIGGER sync_progressSettings_updated;
+                    CREATE TRIGGER sync_progressSettings_updated AFTER UPDATE ON progressSettings
+                    WHEN (SELECT recordsChanges FROM syncWrite) AND (\(anySettingChanged)) BEGIN
+                    INSERT INTO syncFieldTime (recordType, recordName, field, changedAt)
+                    SELECT 'progressSettings', 'progressSettings', field, (SELECT at FROM syncWrite)
+                    FROM (\(changedSettingsFields)) WHERE true
+                    ON CONFLICT (recordType, recordName, field) DO UPDATE SET changedAt = excluded.changedAt;
+                    DELETE FROM syncPending WHERE recordType = 'progressSettings' AND recordName = 'progressSettings';
+                    INSERT INTO syncPending (recordType, recordName, isDeletion)
+                    SELECT 'progressSettings', 'progressSettings', 0 WHERE (SELECT isOn FROM syncDevice);
+                    END;
+                    """)
+        }
         return migrator
     }()
 }
