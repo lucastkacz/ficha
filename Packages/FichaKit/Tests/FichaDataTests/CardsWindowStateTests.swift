@@ -622,6 +622,35 @@ struct CardsWindowStateTests {
         #expect(rows.map(\.card.front) == ["serendipia", "ubuntu", "petricor"])
         #expect(rows.map(\.card.editedAt) == [serendipiaEditedAt, time.now, nil])
     }
+
+    // serendipia gets learned, graduated to wait 21 days or more, and comes
+    // due. Set aside, it stays in its deck, Default, where Put back is.
+    @Test(
+        "setting a card aside in the Cards window takes it out of the reviews, still listed in its deck, and putting it back leaves it where it stood, as unburying does",
+        .bug(id: 539))
+    func settingACardAsideAndPuttingItBack() throws {
+        let settings = ReviewSettings.defaults
+        let serendipia = try engine.create(card(nil, front: "serendipia", back: "Un hallazgo por accidente."))
+        try engine.climbUntilLearned(serendipia, movingForward: time)
+        let standing = try engine.standing(of: serendipia.id, with: scheduler)
+        time.move(to: try #require(standing.due))
+        var window = openWindow()
+        window.select([serendipia.id])
+
+        window.setAside()
+        // As the window does once the engine says the cards changed.
+        window.read(with: scheduler)
+        let inTheReviews = try engine.reviewNow(settings).map(\.card.id)
+        let listed = window.listedCardIDs
+        window.putBack()
+        window.read(with: scheduler)
+
+        #expect(inTheReviews == [])
+        #expect(listed == [serendipia.id])
+        #expect(try engine.standing(of: serendipia.id, with: scheduler) == standing)
+        #expect(try engine.reviewNow(settings).map(\.card.id) == [serendipia.id])
+        #expect(window.failure == nil)
+    }
 }
 
 extension CardsWindowState {

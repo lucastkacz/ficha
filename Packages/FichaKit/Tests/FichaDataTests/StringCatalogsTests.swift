@@ -85,6 +85,31 @@ struct StringCatalogsTests {
             again.
             """)
     }
+
+    // The words: "bury", "buries", "buried", "burying", "unbury" and its
+    // forms, and "burial", in any case, as a whole word, in a text's key and
+    // in its English values, its plural variations too, since Set aside and
+    // Put back say it now, for a deck and a card alike (#539). Every
+    // catalog, the App Shortcuts', the widget's and the iPhone's too, since
+    // an error the engine words, such as a buried card's, shows up in each.
+    @Test(
+        "no String Catalog says Bury, which Set aside and Put back say now", .bug(id: 539),
+        arguments: StringCatalog.paths)
+    func noCatalogSaysBury(catalogPath: String) throws {
+        let catalog = try StringCatalog.read(at: catalogPath)
+        let bury = try NSRegularExpression(
+            pattern: #"\b(un)?bur(y|ies|ied|ying)\b|\bburials?\b"#, options: .caseInsensitive)
+        let saying = catalog.strings
+            .filter { key, entry in ([key] + entry.englishTexts).contains { bury.matches($0) } }
+            .keys.sorted()
+        #expect(
+            saying.isEmpty,
+            """
+            \(catalogPath) still says Bury, which Set aside and Put back say now, for a deck and a card alike (#539): \
+            \(saying.map { "“\($0)”" }.joined(separator: ", ")). Say it as Set aside or Put back, run make strings, \
+            and run the test again.
+            """)
+    }
 }
 
 /// The parts of a String Catalog FichaKit's tests read, from the repo.
@@ -109,6 +134,16 @@ struct StringCatalog: Decodable {
     struct Entry: Decodable {
         let extractionState: String?
         let localizations: [String: Localization]?
+
+        /// Its values in English, its own and its plural variations', when it
+        /// has any of its own.
+        var englishTexts: [String] {
+            guard let english = localizations?["en"] else {
+                return []
+            }
+            let plural = english.variations?.plural?.values.compactMap { $0.stringUnit?.value } ?? []
+            return [english.stringUnit?.value].compactMap { $0 } + plural
+        }
     }
 
     /// A text's value in a language, when it has one of its own: one, or its

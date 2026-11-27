@@ -932,6 +932,17 @@ public struct CardsWindowState: Sendable {
         perform(.unbury(cardCount: cardIDs.count)) { engine throws(EngineError) in try engine.unbury(cardIDs) }
     }
 
+    // Stub for #539: the code round replaces it.
+    /// A stub for #539, which does nothing yet: sets the selected cards the
+    /// window lists aside, all at once, out of the user's reviews, as Bury
+    /// buries them today.
+    public mutating func setAside() {}
+
+    // Stub for #539: the code round replaces it.
+    /// A stub for #539, which does nothing yet: puts the selected cards the
+    /// window lists back where they stood, all at once, as Unbury does today.
+    public mutating func putBack() {}
+
     /// Turns Both ways on for the selected cards the table lists, all at
     /// once, while Turn On Both Ways is offered, and reads them again, so
     /// that the window offers Turn Off at once; or records why it couldn't.
