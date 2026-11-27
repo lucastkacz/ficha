@@ -8,7 +8,7 @@ import SwiftUI
 /// (#536): the cards the sidebar chose, narrowed by the search, as tiles in
 /// the order the state lists them, under a legend of their dots, as many a
 /// row as fit the pane. A tile shows its front's picture, filling it, or
-/// else its front's text, at the side it starts reading from, with a dot for
+/// else its front's text, centered, with a dot for
 /// where its card stands: green once Lucas met it, orange while it's due, and
 /// none while it's new, whose tile is dimmed (`CardsWindowGrid.swift`
 /// decides which). Lucas selects tiles as in Photos and the Finder, and the
@@ -244,11 +244,15 @@ private struct CardTile: View {
                 placeholder("photo")
             }
         case .text(let text):
+            // Centered, as the mock draws it: centered lines have no side
+            // to start from, and SwiftUI gives each its text's own direction,
+            // so an Arabic front reads from the right there too.
             Text(text)
                 .font(.title3)
                 .fontWeight(.semibold)
                 .foregroundStyle(isNew ? AnyShapeStyle(.secondary) : AnyShapeStyle(.primary))
-                .alignedAsItReads(text)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .padding(10)
         case .sound:
             Label {
