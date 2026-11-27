@@ -370,11 +370,12 @@ struct CardDetail: View {
 
 /// Where a card is, in words, as FichaData says it (`CardRow.Wording`), as
 /// the desktop mock's card pane says it: that a new card waits its turn in
-/// the queue, as the grid's legend says "New: waits its turn"; and of a card
-/// Lucas has seen, when it's back, "Due now", as the grid's dot says, "Back
-/// today at" a time, "Back on" a day, by its weekday, month and day, as the
-/// Mac's locale writes them, or that it's out of his reviews; and under it,
-/// how many times he saw it, "Seen 3 times".
+/// the queue, as the grid's legend says "New: waits its turn"; and of any
+/// other card, when it's back, "Due now", as the grid's dot says, "Back today
+/// at" a time, "Back on" a day, by its weekday, month and day, and its year
+/// when it isn't this year's, as the Mac's locale writes them, or that it's
+/// out of Lucas's reviews; and under it, how many times he saw it, "Seen 3
+/// times".
 private struct CardWords: View {
     let wording: CardRow.Wording
 
@@ -394,8 +395,9 @@ private struct CardWords: View {
                     "Seen \(times) times",
                     comment: """
                         In the Cards window's detail, under when the card is back: how many times the user reviewed \
-                        it, either way, like “Seen 3 times”. None for a card an import from Anki brought in with its \
-                        progress, which the user hasn't reviewed in Ficha since.
+                        it, either way, like “Seen 3 times”. None for a new card out of the user's reviews, and for a \
+                        card an import from Anki brought in with its progress, which the user hasn't reviewed in Ficha \
+                        since.
                         """
                 )
                 .foregroundStyle(.secondary)
@@ -419,14 +421,17 @@ private struct CardWords: View {
                 "Back today at \(time.formatted(date: .omitted, time: .shortened))",
                 comment: """
                     In the Cards window's detail: the card is due again later today, at this time, like “Back today \
-                    at 3:00 PM”.
+                    at 3:00 PM”. Today is Ficha's day, which runs until 4:00 the next morning, or the hour the user \
+                    set, so at 11:00 PM a card due at 2:00 AM is back today.
                     """)
-        case .on(let day):
+        case .on(let day, let inThisYear):
             Text(
-                "Back on \(day.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()))",
+                "Back on \(day.formatted(Self.dayFormat(inThisYear: inThisYear)))",
                 comment: """
                     In the Cards window's detail: the card is due again on a later day, by its weekday, month and \
-                    day, like “Back on Tue, Dec 15”.
+                    day, and its year when it isn't this year, like “Back on Tue, Dec 15” or “Back on Fri, Jan 21, \
+                    2028”. The day is Ficha's, which starts at 4:00, or the hour the user set, so a card due at 2:00 \
+                    AM on a Friday is back on Thursday.
                     """)
         case .outOfReviews:
             Text(
@@ -436,6 +441,13 @@ private struct CardWords: View {
                     reviews, and the box above the card says why, so it isn't due until it's back in them.
                     """)
         }
+    }
+
+    /// How "Back on" writes a later day: by its weekday, month and day, and
+    /// its year too when it isn't this year's.
+    private static func dayFormat(inThisYear: Bool) -> Date.FormatStyle {
+        let format: Date.FormatStyle = .dateTime.weekday(.abbreviated).month(.abbreviated).day()
+        return inThisYear ? format : format.year()
     }
 }
 

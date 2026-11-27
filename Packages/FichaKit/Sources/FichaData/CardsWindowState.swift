@@ -392,6 +392,11 @@ public struct CardsWindowState: Sendable {
     /// the detail's words for when a card is back and its Due rows count
     /// from.
     public private(set) var now: Date
+    /// The hour Ficha's day starts at (ADR 0045), as the settings that decide
+    /// progress held it when the cards were read, which the detail's words
+    /// for when a card is back count days by: Ficha's own until the window
+    /// first reads them (`readDeckLines()`).
+    var dayStartsAtHour = ReviewSettings.defaults.dayStartsAtHour
     /// The scheduling settings in Settings, which the cards stand by, and
     /// which give the intervals of a card's review log.
     public private(set) var scheduler: Scheduler

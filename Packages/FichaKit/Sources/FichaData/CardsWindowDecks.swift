@@ -518,12 +518,14 @@ extension CardsWindowState {
     /// lists says under its title, as last read, from where it stands now and
     /// the queue new cards come from, with the pace the database holds and
     /// the window's active hours, and the decks' order in it, which the
-    /// sidebar lists them in.
+    /// sidebar lists them in; and the hour Ficha's day starts at, among the
+    /// same settings, which the detail's words count days by.
     mutating func readDeckLines() throws(EngineError) {
         let settings = try engine.cardsWindowQueueSettings(activeHours: activeHours)
         let lines = try engine.deckLines(of: listedTopDecks, with: settings)
         deckLines = lines.lines
         placedTopDecks = lines.places
+        dayStartsAtHour = settings.dayStartsAtHour
     }
 
     /// The decks at the top of the tree the sidebar lists, as last read, in

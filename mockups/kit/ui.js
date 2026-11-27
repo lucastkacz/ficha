@@ -30,10 +30,12 @@
   const clockFmt = fmt({ weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
   const timeFmt = fmt({ hour: 'numeric', minute: '2-digit' });
   const dayFmt = fmt({ weekday: 'short', month: 'short', day: 'numeric' });
+  const dayYearFmt = fmt({ weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
   const monthDayFmt = fmt({ month: 'short', day: 'numeric' });
   const formatClock = (t) => clockFmt.format(t).replace(/,/g, '').replace(/ at /, '  ');
   const formatTime = (t) => timeFmt.format(t);
-  const formatDay = (t) => dayFmt.format(t);
+  /** "Tue, Dec 15", or with its year, "Fri, Jan 21, 2028". */
+  const formatDay = (t, withYear = false) => (withYear ? dayYearFmt : dayFmt).format(t);
   /** Whether two times fall on one calendar day, from midnight, as a clock time's day is named, not Ficha's day. */
   const sameCalendarDay = (a, b) => new Date(a).toDateString() === new Date(b).toDateString();
   /** "Nov 23", "Nov 23 – 25" or "Nov 29 – Dec 2". */
