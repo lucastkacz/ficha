@@ -19,11 +19,11 @@ struct TagsCommand: EngineCommand {
         discussion: """
             Tags come in the order a tree lists them, each tag inside another right after it. Each says its whole \
             name in "name", with "::" between a tag and a tag inside it, as in "economía::Argentina"; in "cards", \
-            how many cards carry it, those with a tag inside it too, buried ones left out; in "due", how many of \
-            those are due now and in your reviews, which those of a set-aside deck never are; in "pinned" \
-            whether it's pinned, and in "pinPlace" its place among the pinned tags, \
-            counted from 0, left out while it isn't; and its own "color" and "emoji", left out when it has none. \
-            `ficha tag` changes them.
+            how many cards carry it, those with a tag inside it too, those set aside on their own left out; in \
+            "due", how many of those are due now and in your reviews, which those of a set-aside deck never are; \
+            in "pinned" whether it's pinned, and in "pinPlace" its place among the pinned tags, counted from 0, \
+            left out while it isn't; and its own "color" and "emoji", left out when it has none. `ficha tag` \
+            changes them.
             """
     )
 

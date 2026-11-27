@@ -116,8 +116,8 @@ struct CountsView: View {
     }
 }
 
-/// How many cards there are, buried, flagged and set-aside ones too, and how
-/// many are due.
+/// How many cards there are, flagged and set-aside ones too, and how many
+/// are due.
 private struct Counts {
     let cards: Int
     let due: Int

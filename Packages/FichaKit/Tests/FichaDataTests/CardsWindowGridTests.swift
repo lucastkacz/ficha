@@ -5,8 +5,9 @@ import Testing
 
 /// Tests on the Cards window's grid (#536): what each tile shows of its
 /// card, its front's picture or its text, and the dot for where the card
-/// stands, how clicks and the arrow keys select tiles, as in Photos and the
-/// Finder, and what dragging a tile drags, on the default scheduler.
+/// stands, or the mark of a card set aside on its own (#539), how clicks and
+/// the arrow keys select tiles, as in Photos and the Finder, and what
+/// dragging a tile drags, on the default scheduler.
 struct CardsWindowGridTests {
     let time = ManualTimeSource(now: Date(timeIntervalSince1970: 1_760_000_000))
     let engine: Engine
@@ -98,6 +99,36 @@ struct CardsWindowGridTests {
 
         #expect(window.tiles.map(\.id) == [ubuntu.id, ojala.id, efimero.id, acaso.id])
         #expect(window.tiles.map(\.mark) == [.due, .new, .met, .met])
+    }
+
+    // A card set aside on its own won't show up until it's put back, so its
+    // tile says so in its dot's place, met or new, due or not, while a card
+    // whose deck is set aside keeps its dot, never due (#539). The legend
+    // names the mark while a tile has it.
+    @Test(
+        "a tile marks its card set aside on its own, met or not, and the legend names the mark while a tile has it",
+        .bug(id: 539))
+    func aTileMarksACardSetAsideOnItsOwn() throws {
+        let ubuntu = try engine.create(card(nil, front: "ubuntu", back: "Soy porque somos."))
+        let ojala = try engine.create(card(nil, front: "ojalá", back: "Ojalá que llueva café."))
+        let acaso = try engine.create(card(nil, front: "acaso", back: "Quizás."))
+        // ubuntu is met and due, and acaso new; both are set aside.
+        try engine.meet(ubuntu)
+        time.advance(by: hours(2))
+        try engine.bury([ubuntu.id, acaso.id])
+        var window = openWindow()
+        let legendWithThem = window.legendMarks
+        let tilesWithThem = window.tiles.map(\.mark)
+
+        window.select([ubuntu.id, acaso.id])
+        window.putBack()
+        window.read(with: scheduler)
+
+        #expect(window.tiles.map(\.id) == [ubuntu.id, ojala.id, acaso.id])
+        #expect(tilesWithThem == [.setAside, .new, .setAside])
+        #expect(legendWithThem == [.met, .due, .new, .setAside])
+        #expect(window.tiles.map(\.mark) == [.due, .new, .new])
+        #expect(window.legendMarks == [.met, .due, .new])
     }
 
     @Test(

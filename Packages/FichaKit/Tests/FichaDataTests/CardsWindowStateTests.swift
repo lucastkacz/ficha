@@ -49,16 +49,17 @@ struct CardsWindowStateTests {
         #expect(!window.offersFirstCards)
     }
 
-    // Default lists nothing then, but they have cards: the buttons are for
-    // someone who has none yet.
-    @Test("the window offers no first cards while every card is buried")
-    func theWindowOffersNoFirstCardsWhileEveryCardIsBuried() throws {
+    // Default lists the card, dimmed, as a deck lists every card of its own
+    // (#539), and the user has cards: the buttons are for someone who has
+    // none yet.
+    @Test("the window offers no first cards while every card is set aside", .bug(id: 539))
+    func theWindowOffersNoFirstCardsWhileEveryCardIsSetAside() throws {
         let serendipia = try approveCard("serendipia", in: engine)
         try engine.bury(serendipia.id)
 
         let window = openWindow()
 
-        #expect(window.listedCardIDs == [])
+        #expect(window.listedCardIDs == [serendipia.id])
         #expect(!window.offersFirstCards)
     }
 
@@ -173,7 +174,7 @@ struct CardsWindowStateTests {
         #expect(window.selectedRows.map(\.id) == [ubuntu.id])
         #expect(shown.row.id == ubuntu.id)
         #expect(try shown.reviewLog?.get().map(\.entry.kind) == [.review(.again), .review(.good)])
-        #expect(window.actions == [.edit, .bury, .changeDeck, .delete])
+        #expect(window.actions == [.edit, .setAside, .changeDeck, .delete])
     }
 
     @Test("selecting an expansion in the inbox shows it, with the card it expands, and offers Edit and Discard")
@@ -292,10 +293,14 @@ struct CardsWindowStateTests {
         #expect(window.actions == [.edit, .convertToCard, .discard])
     }
 
-    // No group of the sidebar lists a buried card, so the grid's selection
-    // is never one that Unbury takes.
-    @Test("Bury is offered for the selected cards, none of which is buried, and no group lists a buried card")
-    func buryIsOfferedForTheSelectedCards() throws {
+    // A deck lists the cards set aside on their own too, dimmed (#539), so
+    // the grid's selection can hold one: Set Aside is offered while none of
+    // the selected cards is, Put Back once they all are, and neither for a
+    // mix, so that one action never does half its job.
+    @Test(
+        "Set Aside is offered for cards none of them set aside, Put Back for cards all set aside, a deck listing both",
+        .bug(id: 539))
+    func setAsideOrPutBackIsOfferedForTheSelectedCards() throws {
         let serendipia = try approveCard("serendipia", in: engine)
         let ubuntu = try approveCard("ubuntu", in: engine)
         let ojala = try approveCard("ojalá", in: engine)
@@ -303,9 +308,15 @@ struct CardsWindowStateTests {
         var window = openWindow()
 
         window.select([serendipia.id, ubuntu.id])
+        let offeredForNoneSetAside = window.actions
+        window.select([ojala.id])
+        let offeredForOneSetAside = window.actions
+        window.select([ubuntu.id, ojala.id])
 
-        #expect(window.actions == [.bury, .turnOnBothWays, .changeDeck, .delete])
-        #expect(window.listedCardIDs == [serendipia.id, ubuntu.id])
+        #expect(offeredForNoneSetAside == [.setAside, .turnOnBothWays, .changeDeck, .delete])
+        #expect(offeredForOneSetAside == [.edit, .putBack, .changeDeck, .delete])
+        #expect(window.actions == [.turnOnBothWays, .changeDeck, .delete])
+        #expect(window.listedCardIDs == [serendipia.id, ubuntu.id, ojala.id])
     }
 
     // So that a whole subject goes both ways from its tag, ⌘A and one click.
@@ -328,13 +339,13 @@ struct CardsWindowStateTests {
         let offeredForBothWays = window.actions
         window.turnOffBothWays()
 
-        #expect(offeredForOne == [.edit, .flag, .bury, .changeDeck, .delete])
-        #expect(offeredForOneWay == [.bury, .turnOnBothWays, .changeDeck, .delete])
-        #expect(offeredForAMix == [.bury, .turnOnBothWays, .changeDeck, .delete])
+        #expect(offeredForOne == [.edit, .flag, .setAside, .changeDeck, .delete])
+        #expect(offeredForOneWay == [.setAside, .turnOnBothWays, .changeDeck, .delete])
+        #expect(offeredForAMix == [.setAside, .turnOnBothWays, .changeDeck, .delete])
         #expect(turnedOn == [true, true, true])
-        #expect(offeredForBothWays == [.bury, .turnOffBothWays, .changeDeck, .delete])
+        #expect(offeredForBothWays == [.setAside, .turnOffBothWays, .changeDeck, .delete])
         #expect(try engine.cards().map(\.bothWays) == [false, false, false])
-        #expect(window.actions == [.bury, .turnOnBothWays, .changeDeck, .delete])
+        #expect(window.actions == [.setAside, .turnOnBothWays, .changeDeck, .delete])
     }
 
     // The detail's Back-first interval and Back-first due rows show
@@ -470,9 +481,9 @@ struct CardsWindowStateTests {
         // Deleted outside the window, before it reads the cards again.
         try engine.delete([ubuntu.id])
 
-        window.bury()
+        window.setAside()
 
-        #expect(window.failure?.action == .bury(cardCount: 2))
+        #expect(window.failure?.action == .setCardsAside(cardCount: 2))
         #expect(window.failure?.error == .cardNotFound(ubuntu.id))
     }
 

@@ -488,15 +488,17 @@ struct CardsView: View {
                 error: error)
         case .flag:
             return Failure(title: "Couldn't flag the card", message: error.messageInCardsWindow(actingOn: 1))
-        case .bury(let count):
+        case .setCardsAside(let count):
             return Failure(
                 title: LocalizedStringResource(
-                    "Couldn't bury \(count) cards", comment: "An alert's title in the Cards window."),
+                    "Couldn't set \(count) cards aside",
+                    comment: "An alert's title in the Cards window, after Set Aside."),
                 message: error.messageInCardsWindow(actingOn: count))
-        case .unbury(let count):
+        case .putCardsBack(let count):
             return Failure(
                 title: LocalizedStringResource(
-                    "Couldn't unbury \(count) cards", comment: "An alert's title in the Cards window."),
+                    "Couldn't put \(count) cards back",
+                    comment: "An alert's title in the Cards window, after Put Back."),
                 message: error.messageInCardsWindow(actingOn: count))
         case .turnOnBothWays(let count):
             return Failure(
@@ -1083,13 +1085,13 @@ struct CardsView: View {
     }
 
     /// A button for each thing Lucas can do with what the detail shows, as
-    /// the state offers them: Edit, Convert to Card, Flag…, Bury or Unbury,
-    /// Turn On or Turn Off Both Ways, Change Deck…, Delete… and Discard…, in
-    /// that order.
+    /// the state offers them: Edit, Convert to Card, Flag…, Set Aside or Put
+    /// Back, Turn On or Turn Off Both Ways, Change Deck…, Delete… and
+    /// Discard…, in that order.
     /// Each button calls the state, which reads the
     /// selection as it is when Lucas acts, never as the button had it: SwiftUI
     /// keeps the action a keyboard shortcut had when its button first showed,
-    /// so ⌘E would bury the cards selected back then.
+    /// so ⌘E would set aside the cards selected back then.
     @ViewBuilder
     private var actionButtons: some View {
         let actions = state.actions
@@ -1104,11 +1106,11 @@ struct CardsView: View {
         if actions.contains(.flag) {
             flagButton
         }
-        if actions.contains(.bury) {
-            buryButton
+        if actions.contains(.setAside) {
+            setAsideButton
         }
-        if actions.contains(.unbury) {
-            unburyButton
+        if actions.contains(.putBack) {
+            putBackButton
         }
         if actions.contains(.turnOnBothWays) {
             turnOnBothWaysButton
@@ -1176,34 +1178,35 @@ struct CardsView: View {
         .help(Text("Delete… (⌘⌫)", comment: "The tooltip of the Cards window's button that deletes the cards."))
     }
 
-    /// Bury, which takes the selected cards out of Lucas's reviews: ⌘E, as
-    /// Unbury, since the two never show together.
-    private var buryButton: some View {
+    /// Set Aside, which takes the selected cards out of Lucas's reviews until
+    /// he puts them back, each still in its deck's grid: ⌘E, as Put Back,
+    /// since the two never show together (#539).
+    private var setAsideButton: some View {
         Button(
             String(
-                localized: "Bury",
-                comment: "A button of the Cards window that buries the selected cards: they leave Lucas's reviews."
+                localized: "Set Aside",
+                comment: "A button of the Cards window that sets the selected cards aside, until Lucas puts them back."
             )
         ) {
-            state.bury()
+            state.setAside()
         }
         .keyboardShortcut("e", modifiers: .command)
-        .help(Text("Bury (⌘E)", comment: "The tooltip of the Cards window's button that buries the cards."))
+        .help(Text("Set Aside (⌘E)", comment: "The tooltip of the Cards window's button that sets the cards aside."))
     }
 
-    /// Unbury, which puts each selected card back where it was: ⌘E, as Bury.
-    private var unburyButton: some View {
+    /// Put Back, which puts each selected card back where it was: ⌘E, as Set
+    /// Aside.
+    private var putBackButton: some View {
         Button(
             String(
-                localized: "Unbury",
-                comment:
-                    "A button of the Cards window that unburies the selected cards: each goes back where it was."
+                localized: "Put Back",
+                comment: "A button of the Cards window that puts the selected cards back: each goes back where it was."
             )
         ) {
-            state.unbury()
+            state.putBack()
         }
         .keyboardShortcut("e", modifiers: .command)
-        .help(Text("Unbury (⌘E)", comment: "The tooltip of the Cards window's button that unburies the cards."))
+        .help(Text("Put Back (⌘E)", comment: "The tooltip of the Cards window's button that puts the cards back."))
     }
 
     /// Turn On Both Ways, which has the selected cards also reviewed back

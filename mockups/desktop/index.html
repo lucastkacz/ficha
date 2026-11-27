@@ -127,6 +127,8 @@
     display: flex; align-items: center; justify-content: center; text-align: center;
   }
   .cards .tile.new { background: var(--fill); box-shadow: none; color: var(--secondary-label); }
+  /* A card set aside on its own (#539): dimmed, with an eye crossed out where the dot goes. */
+  .cards .tile.aside { background: var(--fill); box-shadow: none; color: var(--tertiary-label); }
   .cards .tile[aria-pressed='true'] { box-shadow: 0 0 0 2px var(--accent), 0 2px 8px rgba(0, 0, 0, 0.12); }
   .cards .tile .f { font-weight: 600; font-size: 15px; line-height: 1.25; overflow-wrap: anywhere; }
   .cards .tile.picture { padding: 0; }
@@ -135,10 +137,14 @@
     background: var(--fill); color: var(--tertiary-label); font-size: var(--text-caption); letter-spacing: 0.04em;
   }
   .cards .tile.new .tile-picture { opacity: 0.7; }
+  .cards .tile.aside .tile-picture { opacity: 0.4; }
   .cards .tile .dot { position: absolute; top: 8px; right: 9px; width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 0 2px var(--window-bg); }
   .cards .dot.met, .cards .legend i.met { background: var(--green); }
   .cards .dot.due, .cards .legend i.due { background: var(--orange); }
   .cards .legend i.new { background: var(--tertiary-label); }
+  .cards .tile .aside-mark { position: absolute; top: 5px; right: 6px; display: flex; padding: 1px; border-radius: 50%; background: var(--window-bg); color: var(--secondary-label); }
+  .cards .legend .aside-mark { display: inline-flex; margin-right: 4px; vertical-align: -3px; }
+  .cards .card-pane .aside-note { display: flex; gap: 6px; align-items: center; padding: 6px 8px; border-radius: 8px; background: var(--fill); color: var(--secondary-label); font-size: var(--text-callout); }
   .cards.with-detail { grid-template-columns: 230px 1fr 240px; }
   .cards .card-pane { min-width: 0; margin-bottom: 10px; padding: 6px 14px 18px; border-left: 1px solid var(--separator); overflow: auto; display: flex; flex-direction: column; gap: 8px; }
   .cards .card-pane .none { margin: auto; color: var(--secondary-label); font-size: var(--text-callout); text-align: center; }
@@ -426,10 +432,11 @@
 
   // ---------------------------------------------------------------------
   // CardsWindow: the decks, in their queue, and Ficha's decks to add; a
-  // deck's cards as a grid, each its front's picture or its text (#536);
-  // and the selected card's detail, which says in words when it's back and
-  // how many times it was seen, with its numbers under Details (#537); and
-  // the card form, with no tags and no type (#538).
+  // deck's cards as a grid, each its front's picture or its text (#536),
+  // a card set aside dimmed among them (#539); the selected card's detail,
+  // which says in words when it's back and how many times it was seen,
+  // with its numbers under Details (#537), and offers Set Aside or Put Back
+  // (#539); and the card form, with no tags and no type (#538).
   // ---------------------------------------------------------------------
   /** A deck's line, as its row says it (#491). */
   function deckStatus(app, state, d) {
@@ -448,13 +455,19 @@
     if (app.currentDeck() && app.currentDeck().id === d.id) return { line: `${met} of ${total} · on track for ${when}`, share: met / total };
     return { line: `Next · on track for ${when}`, share: met / total };
   }
-  /** A tile's dot: met, due, or none while the card is new. */
-  const dotOf = (c, now) => (c.state === 'new' ? null : c.due <= now ? 'due' : 'met');
+  /**
+   * A tile's mark, as the app's `Tile.Mark`: set aside, when the card is on
+   * its own, dimmed with an eye crossed out (#539); else its dot, met or
+   * due, or none while the card is new. A card of a set-aside deck keeps
+   * its dot, never due, since its deck's row says it's set aside.
+   */
+  const markOf = (app, c, deck, now) =>
+    app.isSetAside(c.id) ? 'aside' : c.state === 'new' ? null : c.due <= now && !deck.setAside ? 'due' : 'met';
   /**
    * When a card the user has met is back, as the app's detail says it
    * (#537): due now, later today at a time, on a later day, or not while
-   * it's out of the reviews, buried or with its deck set aside. Its days
-   * are Ficha's, as the engine's startOfDay counts them.
+   * it's out of the reviews, set aside on its own or with its deck. Its
+   * days are Ficha's, as the engine's startOfDay counts them.
    */
   function backWords(c, outOfReviews, now) {
     if (outOfReviews) return 'Out of your reviews';
@@ -606,7 +619,9 @@
     const current = app.currentDeck();
     const cards = making ? [] : app.deckCards(deck.id);
     const chosenCard = cards.find((c) => c.id === cardId);
-    const chosenOutOfReviews = Boolean(chosenCard) && (deck.setAside || state.buried[chosenCard.id] > state.now);
+    const chosenSetAsideAt = chosenCard ? state.cardsSetAside[chosenCard.id] : null;
+    const chosenOutOfReviews = Boolean(chosenCard) && (deck.setAside || chosenSetAsideAt != null);
+    const marks = cards.map((c) => markOf(app, c, deck, state.now));
     const sheetDeck = sheet && (sheet === NEW ? deck : app.deck(sheet));
     const row = (d) => {
       const st = deckStatus(app, state, d);
@@ -640,19 +655,22 @@
               <div className="row-actions">
                 ${!deck.setAside && !status.done && !status.empty && !(current && current.id === deck.id) &&
                 html`<${Button} title="Put it first" onClick=${() => app.putFirst(deck.id)} />`}
-                ${!status.done && !status.empty && html`<${Button} title=${deck.setAside ? 'Back in the queue' : 'Set aside'}
+                ${!status.done && !status.empty && html`<${Button} title=${deck.setAside ? 'Put back' : 'Set aside'}
                   onClick=${() => app.setAside(deck.id, !deck.setAside)} />`}
               </div>
               ${status.empty ? html`<p className="sub">Add cards with Capture, from the menu bar. Each new card waits its turn in the queue.</p>` : html`
               <div className="legend"><span><i className="met" />Met</span><span><i className="due" />Due</span>
-                <span><i className="new" />New: waits its turn</span></div>
-              <div className="gridwrap"><div className="grid" role="list" aria-label=${`${deck.name}'s cards`}>${cards.map((c) => {
-                const dot = dotOf(c, state.now);
+                <span><i className="new" />New: waits its turn</span>
+                ${marks.includes('aside') && html`<span><span className="aside-mark">${Icon.setAside(12)}</span>Set aside</span>`}</div>
+              <div className="gridwrap"><div className="grid" role="list" aria-label=${`${deck.name}'s cards`}>${cards.map((c, i) => {
+                const mark = marks[i];
                 return html`<button type="button" role="listitem" key=${c.id} aria-pressed=${c.id === cardId}
-                  className=${['tile', c.state === 'new' && 'new', c.picture && 'picture'].filter(Boolean).join(' ')}
+                  className=${['tile', mark === 'aside' ? 'aside' : c.state === 'new' && 'new', c.picture && 'picture'].filter(Boolean).join(' ')}
                   onClick=${() => setCardId(c.id === cardId ? null : c.id)}>
                   ${c.picture ? html`<${CardPicture} card=${c} className="tile-picture" />` : html`<span className="f">${c.front}</span>`}
-                  ${dot && html`<span className=${`dot ${dot}`} aria-label=${dot === 'met' ? 'Met' : 'Due'} />`}</button>`;
+                  ${mark === 'aside'
+                    ? html`<span className="aside-mark" aria-label="Set aside">${Icon.setAside(12)}</span>`
+                    : mark && html`<span className=${`dot ${mark}`} aria-label=${mark === 'met' ? 'Met' : 'Due'} />`}</button>`;
               })}</div></div>`}`
             : deck.ficha
               ? html`<div className="one-card">${cards[0].picture ? html`<${CardPicture} card=${cards[0]} />` : html`<div className="front">${cards[0].front}</div>`}
@@ -665,13 +683,19 @@
                 onClick=${() => openSheet(deck.id)} /></div>`}
         </div>
         ${browsing && html`<aside className="card-pane" aria-label="The card's detail">
-          ${chosenCard ? html`<div className="sides"><div className="side"><small>Front</small>${chosenCard.picture ? html`<${CardPicture} card=${chosenCard} />` : chosenCard.front}</div>
+          ${chosenCard ? html`${chosenSetAsideAt != null
+              ? html`<p className="aside-note">${Icon.setAside(13)}Set aside on ${formatDay(chosenSetAsideAt)}, ${formatTime(chosenSetAsideAt)}</p>`
+              : deck.setAside && html`<p className="aside-note">${Icon.setAside(13)}Set aside with ${deck.name}</p>`}
+            <div className="sides"><div className="side"><small>Front</small>${chosenCard.picture ? html`<${CardPicture} card=${chosenCard} />` : chosenCard.front}</div>
               <div className="side"><small>Back</small>${chosenCard.back}</div></div>
             <div className="words">${chosenCard.state === 'new'
               ? html`<p>New: it waits its turn in the queue.</p>`
               : html`<p>${backWords(chosenCard, chosenOutOfReviews, state.now)}</p><p className="sub">${seenWords(chosenCard.reps || 0)}</p>`}</div>
             <${DisclosureGroup} label="Details" open=${detailsOpen} onChange=${setDetailsOpen}>
-              <${CardNumbers} card=${chosenCard} outOfReviews=${chosenOutOfReviews} now=${state.now} /></${DisclosureGroup}>`
+              <${CardNumbers} card=${chosenCard} outOfReviews=${chosenOutOfReviews} now=${state.now} /></${DisclosureGroup}>
+            <div className="row-actions">${chosenSetAsideAt != null
+              ? html`<${Button} title="Put Back" k="⌘E" onClick=${() => app.setCardAside(chosenCard.id, false)} />`
+              : html`<${Button} title="Set Aside" k="⌘E" onClick=${() => app.setCardAside(chosenCard.id)} />`}</div>`
           : html`<p className="none">No card selected</p>`}</aside>`}
         ${sheetDeck && html`<div className="sheet-cover"><div className="sheet" role="dialog" aria-label="How fast?">
           <div className="deck-head"><span className="deck-emoji">${sheetDeck.emoji}</span>
@@ -988,7 +1012,7 @@
     <ul>
       <li>The review panel: the card alone, and once it's flipped, Forgot, a yellow Kind of and Got it (New to me, Kind
         of and Knew it on a new card's first flip). Keys 1, 2, and Space or 3 record Again, Hard and Good; 4 records
-        nothing. Ask, flag, bury, undo and close sit in the ⋯ menu. The app has it since #517; "Panel: Before" in this
+        nothing. Ask, flag, set aside, undo and close sit in the ⋯ menu. The app has it since #517; "Panel: Before" in this
         bar shows its four buttons before #489.</li>
       <li>The pace, one for all decks: Chill, Steady or Faster, 1, 2 or 4 new cards a day. New cards come from the first
         deck in the queue until you've met them all, then from the next. A finish date is a range: the soonest if every
@@ -996,7 +1020,8 @@
       <li>Ficha's three decks, in Spanish for now, offered at the Welcome page and in the Cards window; the first card
         comes a minute after the Welcome page. "I have Anki" stands for the Import sheet with a made-up file.</li>
       <li>The Cards window, ADR 0041's: the decks alone in the sidebar, each with its row, and the chosen deck's cards
-        as a grid, each its front's picture or its text, a dot for met or due. Click one for its front and back, in the detail beside the grid.
+        as a grid, each its front's picture or its text, a dot for met or due. Click one for its front and back, in the detail beside the grid,
+        with Set Aside, which takes it out of your reviews: it stays in its deck, dimmed, with Put Back.
         New Card opens the card form: the deck, a front and a back, each with its picture and its sound, the source
         and Both ways, with no tags and no type.</li>
       <li>Settings in five tabs, as Lucas approved them. "Settings: Show where from" marks each row with the tab it

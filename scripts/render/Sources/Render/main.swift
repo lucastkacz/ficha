@@ -196,6 +196,11 @@ enum Window: String, CaseIterable {
     /// last of its tiles, its detail showing it, which `--key cmd+l` edits
     /// in the detail's fields.
     case cardsArabic = "cards-arabic"
+    /// The Cards window on the deck of the sample's card set aside on its
+    /// own, with that card selected: its tile dimmed, with an eye crossed out
+    /// in its dot's place, the legend above the grid naming it, and its
+    /// detail saying when it was set aside, with Put Back (#539).
+    case cardsSetAside = "cards-set-aside"
 }
 
 /// What the tool was asked to draw.
@@ -560,8 +565,8 @@ func request(from arguments: [String]) throws(RenderError) -> Request {
 /// them after twelve days of reviews, starting on 8 October 2026: twenty met
 /// the first day, rated Good, Again or Hard, sixteen of them graduated since
 /// at different paces, two rated Easy and two after a lapse, and four still in
-/// their learning steps, one flagged with a note and one buried, and the
-/// rest new, with a capture waiting in the inbox; and then a new card with a
+/// their learning steps, one flagged with a note and one set aside on its
+/// own, and the rest new, with a capture waiting in the inbox; and then a new card with a
 /// flag on its front and the Sun of May and a sound on its back, and two new
 /// cards made by hand, with no type and no capture. The time it's on stays
 /// where the twelve days left it. FSRS fuzzes each interval by the review
@@ -1343,6 +1348,7 @@ func model(for name: Window) throws -> AppModel {
         time.advance(by: due.timeIntervalSince(time.now))
         return try AppModel(engine: engine)
     case .cardsBothWays: return try bothWaysModel()
+    case .cardsSetAside: return try AppModel(engine: try sampleEngine(at: .inMemory).engine)
     case .panelArabic, .cardsArabic:
         let engine = try sampleEngine(at: .inMemory).engine
         try addSampleArabicCard(in: engine)
@@ -1567,7 +1573,32 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         return try cardsWindow(
             of: model, selectingFirst: { $0.card.front == sampleArabicFront },
             orElse: "The Cards window doesn't list the card in Arabic: fix addSampleArabicCard(in:).")
+    case .cardsSetAside: return try setAsideCardWindow(of: model)
     }
+}
+
+/// The Cards window of `model`, its cards read, on the deck of its first
+/// card set aside on its own, with that card's tile selected, as
+/// `cards-set-aside` opens it. All Cards leaves such a card out, so it finds
+/// it among the cards, and its tile in its deck's grid.
+func setAsideCardWindow(of model: AppModel) throws -> NSWindow {
+    var state = model.openCardsWindow()
+    state.read(with: state.scheduler)
+    guard let deck = try model.engine.cards().first(where: { $0.buriedAt != nil })?.deck else {
+        throw RenderError(description: "No sample card is set aside on its own: fix sampleEngine(at:).")
+    }
+    state.choose(.cards(.deck(deck)))
+    guard let tile = state.tiles.first(where: { $0.mark == .setAside }) else {
+        throw RenderError(
+            description: """
+                The Cards window's grid doesn't mark the sample's card set aside on its own: fix \
+                CardsWindowState.Tile.
+                """)
+    }
+    state.select([tile.id])
+    let window = CardsWindow(model: model)
+    window.makeContent(opening: state)
+    return window
 }
 
 /// The Cards window of `model`, its cards read, on the deck of the first

@@ -15,8 +15,8 @@ public struct FichaCommand: ParsableCommand {
         discussion: "Every command prints its result as JSON.",
         subcommands: [
             AddCommand.self, CaptureCommand.self, InboxCommand.self, ApproveCommand.self, ApproveExpansionCommand.self,
-            DiscardCommand.self, FixCommand.self, AttachCommand.self, DetachCommand.self, BuryCommand.self,
-            UnburyCommand.self, CardsCommand.self, ChangeDeckCommand.self, DecksCommand.self, DeckCommand.self,
+            DiscardCommand.self, FixCommand.self, AttachCommand.self, DetachCommand.self, SetCardAsideCommand.self,
+            CardsCommand.self, ChangeDeckCommand.self, DecksCommand.self, DeckCommand.self,
             TagsCommand.self, TagCommand.self, TypesCommand.self, TypeCommand.self, PaceCommand.self, QueueCommand.self,
             RestoreCommand.self,
         ]

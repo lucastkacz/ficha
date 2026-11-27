@@ -25,8 +25,8 @@ extension CardRow {
             /// which the app writes with its weekday, month and day: "Back
             /// on Tue, Dec 15".
             case on(Date)
-            /// Not while it's out of the user's reviews, flagged, buried or
-            /// set aside, which the detail says above the card.
+            /// Not while it's out of the user's reviews, flagged or set aside,
+            /// which the detail says above the card.
             case outOfReviews
         }
 

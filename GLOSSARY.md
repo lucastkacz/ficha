@@ -66,8 +66,8 @@ A deck the user chose so that its cards, and those of every deck inside it, come
 _Avoid_: focus, exam mode, filter, priority tag
 
 **Set aside**:
-Taking every card of a deck, and of every deck inside it, out of the user's reviews for now, also those that move in later, as when they're done with a subject, without burying them. Once the deck is no longer set aside, its cards stand where they would without it.
-_Avoid_: pause, suspend, archive, hide, inactive
+Taking a card out of the user's reviews for now, and out of the inbox if it's flagged, as when they no longer want to see it; or every card of a deck, and of every deck inside it, also those that move in later, as when they're done with a subject. Nothing is deleted: a card keeps its progress and its review log, and its deck still lists it, a card set aside on its own dimmed. Putting it back, in the Cards window or through the `ficha` CLI, puts each card where it would stand without it, so a card stays set aside while it, or its deck, still is.
+_Avoid_: bury, pause, suspend, archive, hide, inactive
 
 **Source**:
 Where the user came across what a capture or a card holds, like a book or a podcast.
@@ -151,12 +151,8 @@ _Avoid_: mark, report
 A card with eight lapses, or as many as the user set, since its front or back last changed, counting each way apart. The review panel offers to flag it, so it gets fixed, unless the user turned that off.
 _Avoid_: leech, hard card
 
-**Bury**:
-Taking a card the user no longer wants out of reviews for good, and out of the inbox if it's flagged, without deleting it. Unburying it, in the Cards window or through the `ficha` CLI, puts it back where it would be without the burial.
-_Avoid_: archive, suspend
-
 **Standing**:
-Where a card stands, the first of these that holds: buried; waiting in the inbox to be fixed; set aside with its deck; or in the user's reviews: new, in its learning or relearning steps, or graduated, until it's due. Out of their reviews, a card keeps its progress, or stays new, and returns to them that way.
+Where a card stands, the first of these that holds: set aside on its own; waiting in the inbox to be fixed; set aside with its deck; or in the user's reviews: new, in its learning or relearning steps, or graduated, until it's due. Out of their reviews, a card keeps its progress, or stays new, and returns to them that way.
 _Avoid_: status, state
 
 ### Managing cards
@@ -170,7 +166,7 @@ Changing the content of a card or a capture. A card keeps its progress and its r
 _Avoid_: modify, update
 
 **Delete**:
-Taking a card out of Ficha for good, with its review log, which burying keeps. An expansion attached to it, or a follow-up tied to it, stays in the inbox as a capture. Deleting a deck deletes every card in it and in the decks inside it, as Anki does. Deleting a tag, or a card type, which the `ficha` CLI does, deletes no card: it only comes off the cards that carry it, a tag with every tag inside it.
+Taking a card out of Ficha for good, with its review log, which setting it aside keeps. An expansion attached to it, or a follow-up tied to it, stays in the inbox as a capture. Deleting a deck deletes every card in it and in the decks inside it, as Anki does. Deleting a tag, or a card type, which the `ficha` CLI does, deletes no card: it only comes off the cards that carry it, a tag with every tag inside it.
 _Avoid_: remove, erase
 
 **Import**:

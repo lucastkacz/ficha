@@ -1019,7 +1019,7 @@
       "comment" : "The name the Export sheet's save panel proposes for the file of all cards."
     },
     "All cards (%lld)" : {
-      "comment" : "An item of the Export sheet's menu: every card, buried ones too, with how many."
+      "comment" : "An item of the Export sheet's menu: every card, set-aside ones too, with how many."
     },
     "Allow it in System Settings, in Login Items." : {
 
@@ -1132,18 +1132,6 @@
     "Bring progress" : {
       "comment" : "In the Import sheet's preview of an Anki package, the checkbox that keeps Anki's progress."
     },
-    "Buried" : {
-      "comment" : "The icon beside a buried card, in the Cards window."
-    },
-    "Buried on %@" : {
-      "comment" : "In the Cards window's detail: when Lucas buried the card, like Oct 14, 2026 at 9:00 AM."
-    },
-    "Bury" : {
-      "comment" : "A button of the Cards window that buries the selected cards: they leave Lucas's reviews.\nAn item of the review panel's ⋯ menu, whose key is E: it buries the card the panel shows, which never shows up again."
-    },
-    "Bury (⌘E)" : {
-      "comment" : "The tooltip of the Cards window's button that buries the cards."
-    },
     "Camera" : {
       "comment" : "A detector in Diagnostics: the cameras in use."
     },
@@ -1200,10 +1188,6 @@
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },
-    "Card %lld is buried. To bring it back, unbury it." : {
-      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
-      "extractionState" : "manual"
-    },
     "Card %lld is flagged: it waits in the inbox to be fixed. Close the review panel and open “Review now” again." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
@@ -1216,7 +1200,7 @@
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },
-    "Card %lld isn't buried, so there's nothing to unbury. Check the card's id." : {
+    "Card %lld is set aside. To bring it back, choose Put Back on it in the Cards window." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },
@@ -1229,6 +1213,10 @@
       "extractionState" : "manual"
     },
     "Card %lld isn't one of the cards its appearance brought, so its answer wasn't recorded. Report it." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual"
+    },
+    "Card %lld isn't set aside on its own, so there's nothing to put back. Check the card's id." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },
@@ -1245,7 +1233,7 @@
     "Cards" : {
       "comment" : "The Cards window's title."
     },
-    "Cards come in with Anki's reviews of them: those Anki was reviewing keep their interval and due date, those it was learning go on with your learning steps, due when Anki said, and suspended cards come in buried. Unticked, every card comes in new." : {
+    "Cards come in with Anki's reviews of them: those Anki was reviewing keep their interval and due date, those it was learning go on with your learning steps, due when Anki said, and suspended cards come in set aside. Unticked, every card comes in new." : {
       "comment" : "In the Import sheet's preview of an Anki package, under Bring progress: what it does."
     },
     "Cards in %@" : {
@@ -1328,32 +1316,6 @@
     },
     "Couldn't add “%@”" : {
       "comment" : "An alert's title in the Cards window, after Add Deck… or How fast?'s Start on one of Ficha's decks, with its name."
-    },
-    "Couldn't bury %lld cards" : {
-      "comment" : "An alert's title in the Cards window.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Couldn't bury the card"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Couldn't bury the %lld cards"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "Couldn't bury the card" : {
-
     },
     "Couldn't change the color of “%@”" : {
       "comment" : "An alert's title in the Cards window, after a color in a deck's menu, with the deck."
@@ -1484,6 +1446,29 @@
     "Couldn't put %@ first in the queue" : {
       "comment" : "An alert's title in Settings' Pace tab, with the name of the deck Put it first was for; the alert says why under it."
     },
+    "Couldn't put %lld cards back" : {
+      "comment" : "An alert's title in the Cards window, after Put Back.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Couldn't put the card back"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Couldn't put the %lld cards back"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "Couldn't read Ficha's deck “%@”" : {
       "comment" : "An alert's title in the Cards window as it opens, when the file of one of the decks that come with Ficha couldn't be read, with the deck's name."
     },
@@ -1515,6 +1500,32 @@
 
     },
     "Couldn't save your question" : {
+
+    },
+    "Couldn't set %lld cards aside" : {
+      "comment" : "An alert's title in the Cards window, after Set Aside.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Couldn't set the card aside"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Couldn't set the %lld cards aside"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Couldn't set the card aside" : {
 
     },
     "Couldn't set “%@” aside" : {
@@ -1580,29 +1591,6 @@
     },
     "Couldn't turn sync on" : {
       "comment" : "An alert's title in Settings' Sync tab."
-    },
-    "Couldn't unbury %lld cards" : {
-      "comment" : "An alert's title in the Cards window.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Couldn't unbury the card"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Couldn't unbury the %lld cards"
-                }
-              }
-            }
-          }
-        }
-      }
     },
     "Couldn't undo" : {
 
@@ -2388,7 +2376,7 @@
       "comment" : "A detector in Diagnostics: the microphones in use."
     },
     "More" : {
-      "comment" : "The review panel's ⋯ menu, which asks about the card, flags it or buries it, undoes the last thing the user did, or closes the panel."
+      "comment" : "The review panel's ⋯ menu, which asks about the card, flags it or sets it aside, undoes the last thing the user did, or closes the panel."
     },
     "Move" : {
       "comment" : "The button of the Cards window's Change Deck sheet that moves the cards to the chosen deck."
@@ -2556,10 +2544,10 @@
 
     },
     "No cards in %@" : {
-      "comment" : "In the Cards window: no card that isn't buried lives in this deck, or a deck inside it, with the deck's whole name, like “Idiomas › Inglés”."
+      "comment" : "In the Cards window: no card lives in this deck, or a deck inside it, set-aside ones too, with the deck's whole name, like “Idiomas › Inglés”."
     },
     "No cards in Default" : {
-      "comment" : "In the Cards window: no card that isn't buried lives in Default, the deck of cards with no other."
+      "comment" : "In the Cards window: no card lives in Default, the deck of cards with no other."
     },
     "No cards to review right now." : {
 
@@ -2781,6 +2769,12 @@
     "Purple" : {
       "comment" : "One of Finder's tag colors, which a deck can have."
     },
+    "Put Back" : {
+      "comment" : "A button of the Cards window that puts the selected cards back: each goes back where it was."
+    },
+    "Put Back (⌘E)" : {
+      "comment" : "The tooltip of the Cards window's button that puts the cards back."
+    },
     "Put every card in" : {
       "comment" : "In the Import sheet, before the menu of the deck every card it imports comes into."
     },
@@ -2916,7 +2910,16 @@
       "comment" : "An item of the Export sheet's menu: the cards selected in the grid, with how many."
     },
     "Set Aside" : {
-      "comment" : "An item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu above the grid, ticked while the deck is set aside: its cards, and those of the decks inside it, are out of Lucas's reviews for now."
+      "comment" : "A button of the Cards window that sets the selected cards aside, until Lucas puts them back.\nAn item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu above the grid, ticked while the deck is set aside: its cards, and those of the decks inside it, are out of Lucas's reviews for now.\nAn item of the review panel's ⋯ menu, whose key is E: it sets aside the card the panel shows, which shows up no more until the user puts it back in the Cards window."
+    },
+    "Set Aside (⌘E)" : {
+      "comment" : "The tooltip of the Cards window's button that sets the cards aside."
+    },
+    "Set aside" : {
+      "comment" : "In the Cards window, above the grid of cards, and for VoiceOver, on a card's tile: the user set the card aside on its own, out of their reviews until they put it back.\nThe icon beside a card set aside on its own, in the Cards window."
+    },
+    "Set aside on %@" : {
+      "comment" : "In the Cards window's detail: when Lucas set the card aside on its own, like Oct 14, 2026 at 9:00 AM."
     },
     "Set aside with %@" : {
       "comment" : "In the Cards window's detail: the card is out of Lucas's reviews for now, since these decks are set aside, its own or decks it sits inside, outermost first, each by its whole name, like “Set aside with Historia and Historia › Roma”."
@@ -3186,12 +3189,6 @@
     "Type a shortcut…" : {
       "comment" : "Settings: the capture shortcut, while Lucas types a new one."
     },
-    "Unbury" : {
-      "comment" : "A button of the Cards window that unburies the selected cards: each goes back where it was."
-    },
-    "Unbury (⌘E)" : {
-      "comment" : "The tooltip of the Cards window's button that unburies the cards."
-    },
     "Undo" : {
 
     },
@@ -3445,7 +3442,7 @@
       "comment" : "In the Cards window's detail's Due and Back-first due rows: the card is due, front first or back first."
     },
     "set aside" : {
-      "comment" : "In the Cards window's detail's Due and Back-first due rows: the card won't show up, since its deck, or a deck it sits inside, is set aside. Lowercase, like “now”."
+      "comment" : "In the Cards window's detail's Due and Back-first due rows: the card won't show up, since it's set aside, on its own or with its deck, or a deck it sits inside. Lowercase, like “now”."
     },
     "space" : {
       "comment" : "The Space key's name, next to the button it presses."
