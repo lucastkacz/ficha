@@ -5,20 +5,22 @@ import Testing
 /// `kVK_ANSI_5`, `kVK_ANSI_Keypad1` to `kVK_ANSI_Keypad4`, and the US
 /// keyboard's R and Q.
 struct RatingKeyTests {
-    @Test("the number row's 1 to 4 keys are the rating keys 1 to 4, whatever the layout types with them")
+    @Test(
+        "the number row's 1 to 3 keys are the rating keys 1 to 3, whatever the layout types, and its 4 is none",
+        .bug(id: 517))
     func theNumberRowRatesByPlace() {
         #expect(RatingKey.digit(forKeyCode: 0x12) == "1")
         #expect(RatingKey.digit(forKeyCode: 0x13) == "2")
         #expect(RatingKey.digit(forKeyCode: 0x14) == "3")
-        #expect(RatingKey.digit(forKeyCode: 0x15) == "4")
+        #expect(RatingKey.digit(forKeyCode: 0x15) == nil)
     }
 
-    @Test("the numeric keypad's 1 to 4 keys are the rating keys 1 to 4 too")
+    @Test("the numeric keypad's 1 to 3 keys are the rating keys 1 to 3 too, and its 4 is none", .bug(id: 517))
     func theKeypadRatesByPlace() {
         #expect(RatingKey.digit(forKeyCode: 0x53) == "1")
         #expect(RatingKey.digit(forKeyCode: 0x54) == "2")
         #expect(RatingKey.digit(forKeyCode: 0x55) == "3")
-        #expect(RatingKey.digit(forKeyCode: 0x56) == "4")
+        #expect(RatingKey.digit(forKeyCode: 0x56) == nil)
     }
 
     @Test("any other key, as the number row's 5 or a letter, is no rating key")

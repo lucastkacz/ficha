@@ -59,10 +59,11 @@ struct CardNotificationTests {
         #expect(try engine.cardRows(in: .all, with: settings.scheduler).map(\.reviews) == [2])
     }
 
-    // Anki's four, which the iPhone's category offers as the Mac's review
-    // panel does, from `Rating.allCases` (#404): again on a card on the
-    // first learning step keeps it there, hard waits halfway to the second
-    // step, good moves it there, and easy graduates it.
+    // Anki's four, which the iPhone's category offers from `Rating.allCases`
+    // (#404), until it takes the Mac's review panel's three buttons (ADR
+    // 0039): again on a card on the first learning step keeps it there, hard
+    // waits halfway to the second step, good moves it there, and easy
+    // graduates it.
     @Test("each of a card notification's four actions, again, hard, good and easy, answers its card")
     func eachOfACardNotificationsFourActionsAnswersItsCard() throws {
         let cards = try ["ubuntu", "serendipia", "petricor", "Schadenfreude"].map { front in

@@ -355,6 +355,6 @@ function layout(lim) {
 })().catch((e) => {
   // What failed before it stopped is likely why: say it first.
   if (failures.length) { console.log(`${failures.length} failed before it stopped:`); failures.forEach((f) => console.log('- ' + f)); }
-  console.error(`The inspection stopped: ${e.message.split('\n')[0]}. Fix what's listed, if anything, and run it again; if it stops at the same place, look at the page's script, and then at inspect.js.`);
+  console.error(`The inspection stopped: ${e.message.split('\n')[0]}. Find why from this message, and from what's listed above, if anything, in the page's script or in inspect.js, and fix it, even if a run again passes: a stop has a reason.`);
   process.exit(failures.length ? 1 : 2);
 });

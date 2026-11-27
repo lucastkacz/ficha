@@ -12,7 +12,7 @@ Six commands take an idea, or a bug, from the user's words to the code and back 
 | `/entregar` | Everything as built, and a retro only if something went sideways |
 | `/recorrida` | Where the work stands, outside the flow above: what was done since the user last looked and why, and the next command, on one page |
 
-The user sees the seven at a glance in the method's map, [`map.html`](map.html), published where the pliego's How it's drawn says. A change to a command or a word changes the map in the same PR, which publishes it again there before it's ready.
+The user sees the seven at a glance in the method's map, [`map.html`](map.html), published where the pliego's How it's drawn says. A change to the commands, such as one added or what one leaves the user, or to what a word means, changes the map in the same PR, which publishes it again there before it's ready. A change to how a command's step does its work leaves the map and the words as they are.
 
 The project's own facts (its areas, commands, pictures, tests, machines, guards and plano) come from its pliego, never from these files: the same method serves a Swift app or a Python service, each with its pliego.
 
@@ -26,12 +26,12 @@ The user's words, from building works, kept in Spanish where the user sees them.
 - **Cloud first** (nube primero): the work runs off the user's computer wherever another machine can do it. A session in the cloud writes and reviews, and builds and tests what its own tools reach; a rented machine, such as a CI runner, builds, tests and draws the rest; the user's computer does only what needs it, such as the user's hands, their signed-in accounts, a device plugged in, or a tool no other machine has. A session elsewhere asks the user before it runs anything on their computer, and a session running on it runs there only what the pliego places there. A machine that costs money runs only where the user chose it. Every command sends each step to the machine the pliego's "Where it runs" names.
 - **Area** (área): where an issue or a decision belongs, as a path in the pliego's tree of areas: `Mac › UI › Settings`.
 - **Node** (nodo): one point of that tree, of any size: a leaf, or `Mac › UI` whole. `/construir` builds a node.
-- **Replanteo**: before building, `/construir` sets each issue against today's code, and stops to ask when something changed since it was decided. What the node will need from the user, such as an OK to run on their computer, `/construir` asks for as soon as it shows, from the replanteo on, and builds on while the answer comes.
-- **Change order** (orden de cambio): when the plano must change while building, `/construir` stops and shows the user the plano before and after, and which of the node's active issues the change touches, for them to approve. A big one goes back to `/debate`.
-- **As built** (conforme a obra): after the merge, the decision, its issues, the pliego and the plano tell what was built, not what was planned.
-- **Probe** (prueba): a Task that settles an open item before the issue that depends on it is written, by trying it on the machine it's about, such as whether a rented machine can draw the pictures, once the decision says what the piece does with each answer. Its PR says what it found, and `/decision`, typed again, settles the pliego's open item and writes the waiting piece's issues with it.
-- **Sideways** (se torció): a check that failed more than once, a replanteo or a change order that stopped the work, the user correcting the work, a procedure written for agents that couldn't run on its machine, whose own issue stands as its retro's Task, or a node that took far longer than its size. `/construir`'s PR says what went sideways, and `/entregar` looks back at it.
-- **Recorrida**: a walk through the work as it stands, as a site's director walks the site before work resumes: what was done since the last one and why, where each node stands, and what comes next.
+- **Replanteo**: setting each issue against today's code before it's built, as a site's layout is set out again before work starts, to find what changed since it was decided: `/construir`'s step 2.
+- **Change order** (orden de cambio): a change to the plano, found while building, that the user approves before the work goes on: `/construir`'s step 2 makes one, and [`artifacts.md`](artifacts.md) shows its page.
+- **As built** (conforme a obra): after the merge, the decision, its issues, the pliego and the plano tell what was built, not what was planned: `/entregar`'s step 1.
+- **Probe** (prueba): a Task that settles an open item by trying it on the machine it's about, such as whether a rented machine can draw the pictures, before the issue that depends on it is written: `/decision`'s step 3 writes one, and takes up what its PR found.
+- **Sideways** (se torció): a check that failed more than once, a replanteo or a change order that stopped the work, the user correcting the work, a procedure written for agents that couldn't run on its machine, or a node that took far longer than its size: what `/construir`'s step 5 writes in the PR, and `/entregar`'s step 3 looks back at.
+- **Recorrida**: a walk through the work as it stands, as a site's director walks the site before work resumes: what was done since the last one and why, where each node stands, and what comes next: `/recorrida`.
 
 ## What the user sees
 
@@ -50,7 +50,7 @@ The user's words, from building works, kept in Spanish where the user sees them.
   2. `Qué buscamos`: the outcome, in a line. The review checks the PR against it.
   3. `Antes y después`: pictures, as the pliego says how the product is drawn, or a line each.
   4. `El artifact`: the link to the debate or the decision it came from.
-  5. A folded part for the agent, in English: `<details><summary>Para el agente</summary>`, then the decision records it follows and its acceptance criteria, one line each, each naming its proof: `Accept (test): …`, a test that runs; `Accept (picture): …`, a picture, as the pliego says how the product is drawn; or `Accept (hand): …`, a check by hand. The pliego says which machine runs each.
+  5. A folded part for the agent, in English: `<details><summary>Para el agente</summary>`, then the decision records it follows and its acceptance criteria, one line each, each naming its proof: `Accept (test): …`, a test that runs; `Accept (review): …`, what a document says, which `/construir`'s review against the issue reads, since a test reads a document only for its exact words, such as a command or a file's name; `Accept (picture): …`, a picture, as the pliego says how the product is drawn; or `Accept (hand): …`, a check by hand. The pliego says which machine runs each.
 
   An Idea needs only the first two. Files and tests stay out of the issue: the replanteo sets them against the code.
 - **Through `gh`** 2.94 or later, whose `issue` commands take the type: `gh issue create --type <Type> --label <area>` creates one, `gh issue edit <n> --type <Type>` changes its type, and `gh issue list --limit 1000 --json number,title,issueType,labels` lists them all, or those of one type with `--type <Type>`.

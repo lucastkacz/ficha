@@ -170,12 +170,13 @@ enum Window: String, CaseIterable {
     case diagnostics
     /// The review panel on a new card, alone, drawn on a gradient in a
     /// window, since the panel's own has nothing behind its Liquid Glass below
-    /// the desktop picture. `--key space` flips it, showing its two buttons as
-    /// a new card's first review names them, New to me and Knew it.
+    /// the desktop picture. `--key space` flips it, showing its three buttons
+    /// as a new card's first review names them, New to me, Kind of and Knew
+    /// it.
     case panelCard = "panel-card"
     /// The same on the sample's graduated card that waits longest, once it's
-    /// due, which `--key space` flips, showing its two buttons, Forgot and Got
-    /// it.
+    /// due, which `--key space` flips, showing its three buttons, Forgot, Kind
+    /// of and Got it.
     case panelReview = "panel-review"
     /// The review panel done, as `panel-card` draws it, once its one card,
     /// the only one of Arte, a deck the tool adds to the sample and puts
@@ -1780,12 +1781,16 @@ func panelWindow(
 /// The review panel as `panel` shows it, on a gradient in a window, as
 /// `panelWindow(model:on:as:)` draws it. When it asks for Ficha's decks, it
 /// reads them as `fichaDecks` holds them, as the app gives it those of its
-/// bundle; none while that's nil, since the tool's own bundle has none.
+/// bundle; none while that's nil, since the tool's own bundle has none. Its
+/// controls draw as in the key window (`appearsActive`), which `actAsKey`
+/// doesn't reach: Flip and Got it in the accent color and Kind of in yellow,
+/// as with the keyboard.
 func panelWindow(
     showing panel: Result<ReviewPanelModel, EngineError>,
     readingFichaDecks fichaDecks: [FichaDeck: Result<FichaDeckFile, EngineError>]? = nil
 ) -> NSWindow {
     let content = ReviewPanelView(model: panel, player: SoundPlayer(), closeWindow: {}, readFichaDecks: { fichaDecks })
+        .environment(\.appearsActive, true)
         .padding(32)
         .background(LinearGradient(colors: [.teal, .indigo], startPoint: .topLeading, endPoint: .bottomTrailing))
     let window = AppWindow(title: "Review", content: content)

@@ -166,9 +166,11 @@
   /** KeyLabel: a button's title and the key that presses it. */
   const KeyLabel = ({ title, k }) => html`<span>${title}</span>${k != null && html`<span className="key">${k}</span>`}`;
 
-  /** Button with .bordered, or .borderedProminent when `prominent`. */
-  function Button({ title, k, prominent, wide, disabled, pressed, onClick, children, ...rest }) {
-    const cls = ['btn', prominent && 'prominent', wide && 'wide', pressed && 'pressed'].filter(Boolean).join(' ');
+  /** Button with .bordered, .borderedProminent when `prominent`, or yellow .borderedProminent when `yellow`. */
+  function Button({ title, k, prominent, yellow, wide, disabled, pressed, onClick, children, ...rest }) {
+    const cls = ['btn', prominent && 'prominent', yellow && 'yellow', wide && 'wide', pressed && 'pressed']
+      .filter(Boolean)
+      .join(' ');
     return html`<button type="button" className=${cls} disabled=${disabled} onClick=${onClick} ...${rest}>
       ${children || html`<${KeyLabel} title=${title} k=${k} />`}</button>`;
   }
@@ -432,17 +434,20 @@
   // ReviewPanelView.
   // ---------------------------------------------------------------------
   /**
-   * The panel's two faces. The new one, ADR 0033's, the app's since #489:
-   * the card alone, and once it's flipped two buttons, Forgot for Again and
-   * Got it for Good, named New to me and Knew it on a new card's first flip.
-   * 'today', the app's before #489, ADR 0025's, kept as a variant: the deck
-   * and tags, the icons, and Anki's four buttons with their intervals. Both
-   * store Anki's four ratings, and both take keys 1 to 4, and Space.
+   * The panel's two faces. The new one, ADR 0039's, the app's since #517:
+   * the card alone, and once it's flipped three buttons, Forgot for Again, a
+   * yellow Kind of for Hard and Got it for Good, named New to me, Kind of and
+   * Knew it on a new card's first flip; keys 1, 2 and 3 press them, Space
+   * Got it too, and 4 rates nothing. 'today', the app's before #489, ADR
+   * 0025's, kept as a variant: the deck and tags, the icons, and Anki's four
+   * buttons with their intervals, on keys 1 to 4. Both store Anki's ratings.
+   * `digit` is a button's rating key, where its label shows another.
    */
   const FACES = {
     new: [
       { g: 1, name: 'Forgot', first: 'New to me', key: '1' },
-      { g: 3, name: 'Got it', first: 'Knew it', key: 'space', prominent: true },
+      { g: 2, name: 'Kind of', first: 'Kind of', key: '2', yellow: true },
+      { g: 3, name: 'Got it', first: 'Knew it', key: 'space', digit: '3', prominent: true },
     ],
     today: [
       { g: 1, name: 'Again', key: '1' },
@@ -524,6 +529,9 @@
     moreOpen.current = more;
     const field = useRef(null);
     const buttons = FACES[face] || FACES.new;
+    // The keys read the face's buttons, which the bar above can change.
+    const faceButtons = useRef(buttons);
+    faceButtons.current = buttons;
 
     // The keys, as the real panel takes them while it has the keyboard.
     useEffect(() => {
@@ -555,8 +563,10 @@
           return;
         }
         if (e.key === ' ') return handled(), p.flipped ? app.rate(3) : app.flip();
-        // Keys 1 to 4 record Anki's four ratings in either face (ADR 0033).
-        if (p.flipped && ['1', '2', '3', '4'].includes(e.key)) return handled(), app.rate(Number(e.key));
+        // Each button's rating key records its rating: 1 to 3 in the new face,
+        // where 4 rates nothing (ADR 0039), and 1 to 4 in 'today'.
+        const rated = p.flipped && faceButtons.current.find((b) => (b.digit || b.key) === e.key);
+        if (rated) return handled(), app.rate(rated.g);
         const k = e.key.toLowerCase();
         if (k === 'a') return handled(), setMore(false), setText(''), app.setMode('ask');
         if (k === 'm') return handled(), setMore(false), setText(''), app.setMode('flag');
@@ -636,12 +646,9 @@
     } else if (!panel.flipped) {
       controls = html`<div className="flip-row"><${Button} prominent title="Flip" k="space" onClick=${() => app.flip()} /></div>`;
     } else if (face === 'new') {
-      controls = html`<div className="controls two">
-        <div className="ratings" style=${{ '--count': 2 }}>
-          ${buttons.map((b) => html`<${Button} key=${b.g} wide prominent=${b.prominent} title=${isNew ? b.first : b.name} k=${b.key}
-            onClick=${() => app.rate(b.g)} />`)}
-        </div>
-        <div className="alt-keys">Also 2 Hard and 4 Easy, as in Anki</div>
+      controls = html`<div className="ratings controls" style=${{ '--count': buttons.length }}>
+        ${buttons.map((b) => html`<${Button} key=${b.g} wide prominent=${b.prominent} yellow=${b.yellow}
+          title=${isNew ? b.first : b.name} k=${b.key} onClick=${() => app.rate(b.g)} />`)}
       </div>`;
     } else {
       const previews = E.preview(card, state.now, app.scheduler);
