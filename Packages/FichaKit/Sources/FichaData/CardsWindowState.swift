@@ -35,12 +35,16 @@ import Foundation
 /// from what it offers to export to the file it writes.
 public struct CardsWindowState: Sendable {
     /// What the sidebar offers, one at a time: a group of cards, the inbox,
-    /// or All Tags.
+    /// All Tags, or one of Ficha's decks.
     public enum SidebarItem: Sendable, Hashable {
         case cards(CardGroup)
         case inbox
         /// Every tag, pinned or not (ADR 0022).
         case allTags
+        /// One of Ficha's decks the user hasn't added, which the window shows
+        /// in the table's and the detail's place, with Add Deck…:
+        /// `CardsWindowFichaDecks.swift`.
+        case fichaDeck(FichaDeck)
     }
 
     /// A section of the sidebar, as `sidebarSections` lists them, with what
@@ -54,6 +58,9 @@ public struct CardsWindowState: Sendable {
         /// The Decks section: every deck as a tree, as `deckRows` lists them
         /// (`CardsWindowDecks.swift`).
         case decks([DeckRow])
+        /// The Ficha's Decks section: the decks of Ficha's the user hasn't
+        /// added, in `FichaDeck`'s order (`CardsWindowFichaDecks.swift`).
+        case fichaDecks([FichaDeckFile])
         /// The Tags section: the pinned tags, as `pinnedTags` lists them,
         /// then All Tags….
         case tags(pinned: [PinnedTagRow])
@@ -65,6 +72,7 @@ public struct CardsWindowState: Sendable {
             case cardGroups
             case inbox
             case decks
+            case fichaDecks
             case tags
             case types
         }
@@ -74,6 +82,7 @@ public struct CardsWindowState: Sendable {
             case .cardGroups: .cardGroups
             case .inbox: .inbox
             case .decks: .decks
+            case .fichaDecks: .fichaDecks
             case .tags: .tags
             case .types: .types
             }
@@ -85,6 +94,7 @@ public struct CardsWindowState: Sendable {
             case .cardGroups(let groups), .types(let groups): groups.map(SidebarItem.cards)
             case .inbox: [.inbox]
             case .decks(let rows): rows.flatMap(\.flattened).map(\.item)
+            case .fichaDecks(let files): files.map(\.deck).map(SidebarItem.fichaDeck)
             case .tags(let pinned): pinned.map(\.item) + [.allTags]
             }
         }
@@ -646,7 +656,7 @@ public struct CardsWindowState: Sendable {
         switch sidebarItem {
         case .inbox: return .nothingSelectedInInbox
         case .allTags where tagShownFromAllTags == nil: return .allTags(selected: selectedListedTags)
-        case .allTags, .cards: return .noCardSelected
+        case .allTags, .cards, .fichaDeck: return .noCardSelected
         }
     }
 

@@ -969,6 +969,9 @@ struct CardsView: View {
                         NewDeckItem(state: $state)
                     }
             }
+        case .fichaDecks:
+            // Ficha's decks, which the state doesn't list yet (#458).
+            EmptyView()
         case .tags(let pinned):
             Section {
                 ForEach(pinned) { tag in

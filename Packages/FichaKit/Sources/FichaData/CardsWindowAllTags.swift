@@ -112,12 +112,12 @@ extension CardsWindowState {
 
     /// The group of cards the table lists: the one the sidebar chose, or the
     /// tag whose cards All Tags lists in its place; nil while it lists the
-    /// inbox or All Tags' tree.
+    /// inbox or All Tags' tree, or the sidebar chose one of Ficha's decks.
     public var listedGroup: CardGroup? {
         switch sidebarItem {
         case .cards(let group): group
         case .allTags: tagShownFromAllTags.map(CardGroup.tag)
-        case .inbox: nil
+        case .inbox, .fichaDeck: nil
         }
     }
 

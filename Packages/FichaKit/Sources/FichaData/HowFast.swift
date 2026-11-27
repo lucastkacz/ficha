@@ -25,6 +25,10 @@ extension CardsWindowState {
             /// into, when they're several, in the queue's order: the paces
             /// then say when the last of them is all met.
             case decks([String])
+            /// One of Ficha's decks, after its Add Deck…, before it comes in
+            /// (#458): its cards counted as if they came in now, last, and
+            /// Start adds it.
+            case fichaDeck(FichaDeck)
         }
 
         /// What the line under the deck's name says.
@@ -34,6 +38,9 @@ extension CardsWindowState {
             /// "14 cards · imported": the deck an import's new cards came
             /// into, with its cards and those of the decks inside it.
             case imported(cardCount: Int)
+            /// "40 cards · one of Ficha's decks": one of Ficha's decks, with
+            /// the cards its file holds (#458).
+            case fichaDeck(cardCount: Int)
         }
 
         /// A pace, as How fast? offers it, in its radio group.
