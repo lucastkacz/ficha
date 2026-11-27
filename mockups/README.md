@@ -28,7 +28,7 @@ No build step: React 18.3.1 from cdnjs and htm 3.1.1 from jsDelivr, pinned, so c
 | `kit/ui.css` | The look of macOS 26 controls, Liquid Glass, the review panel, and the mock's own bar. |
 | `kit/ui.js` | React components named after their SwiftUI counterparts, the fake Mac, and `MockControls`. |
 | `kit/engine.js` | The toy engine: FSRS-6, the learning steps, the appearance rules, the clock, and the pace, the queue and the finish date. Plain JavaScript, so it also runs in Node. |
-| `kit/decks.js` | Sample decks, made up. |
+| `kit/decks.js` | Ficha's three decks, `ficha: true`, with the cards the app ships in `App/FichaDecks/`, which the Claude project's `build_decks.py` writes between its `// <ficha-decks>` lines, from `/mnt/project-files/mazos-ficha/build/` in its sessions (`PLIEGO.md`, An artifact's sources), and a made-up deck of the user's own. |
 | `kit/lab.js` | The Lab's simulator: weeks of the toy engine in a made-up life (the Mac's hours, meetings, snoozed appearances, ratings as FSRS predicts), run several times and averaged. Plain JavaScript; the Lab page and `tools/simulate.js` share it. |
 
 ### From the mock to SwiftUI
@@ -65,6 +65,14 @@ No build step: React 18.3.1 from cdnjs and htm 3.1.1 from jsDelivr, pinned, so c
 - The review panel's two buttons, its ⋯ menu and its keys, as `App/ReviewPanelView.swift` has them since #489: `FACES`' 'new' and `MoreMenu` in `kit/ui.js`, where keys 1 to 4 record Anki's four ratings in either face. And how an interval reads, as `App/IntervalText.swift` writes it (`formatInterval`).
 - The card size (`CardSize`): ⌘+, ⌘− and ⌘0, in `CardSize`'s steps. The card's text grows, the review panel widens with it and its buttons keep their size, as `CardSize` sets them; the review panel grows up to `ReviewPanelWindow.maximumShareOfScreen` of the screen's free height, and a taller card scrolls between its top line and its buttons.
 - The suppressions a mock can act out, as `AppearancePlanner.swift` names them: a meeting, a video, an app in full screen.
+
+### What it acts out ahead of the app
+
+What `desktop/` shows that the app doesn't yet, or not where the mock has it, so a picture of the app differs from the mock there. `tools/check-engine.js` checks only the toy engine against FichaKit's tests, so it can't check these.
+
+- The Welcome page's steps, `WelcomePage` (#467), and Settings in five tabs, `SettingsWindow` (#492).
+- In the Cards window, a deck's bar, with Put it first and Set aside: the app has Set Aside in the deck's menu, and Put it first in How fast? alone.
+- The Cards window's "Your own" section, with New Deck… and Import an Anki file…, which the app keeps elsewhere: New Deck… in a deck's menu and the Your Decks title's, and Import… in the toolbar, on ⇧⌘I.
 
 ### Sizes
 
