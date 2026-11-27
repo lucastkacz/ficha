@@ -298,11 +298,17 @@ extension Pace {
     var name: String {
         switch self {
         case .chill:
-            String(localized: "Chill", comment: "A pace in How fast?, the slowest: 1 new card a day.")
+            String(
+                localized: "Chill",
+                comment: "A pace in How fast? and in Settings' Pace tab, the slowest: 1 new card a day.")
         case .steady:
-            String(localized: "Steady", comment: "A pace in How fast?, the one Ficha starts at: 2 new cards a day.")
+            String(
+                localized: "Steady",
+                comment: "A pace in How fast? and in Settings' Pace tab, the one Ficha starts at: 2 new cards a day.")
         case .faster:
-            String(localized: "Faster", comment: "A pace in How fast?, the fastest: 4 new cards a day.")
+            String(
+                localized: "Faster",
+                comment: "A pace in How fast? and in Settings' Pace tab, the fastest: 4 new cards a day.")
         }
     }
 
@@ -386,7 +392,7 @@ extension FinishDate.Wording {
     private static func either(_ day: String, _ next: String) -> String {
         String(
             localized: "\(day) or \(next)",
-            comment: "A finish date of two days in a row, in the Cards window: “today or tomorrow”.")
+            comment: "A finish date of two days in a row, in the Cards window and Settings' Pace tab: “today or tomorrow”.")
     }
 
     /// Two ends of a finish date, joined by "to": "Wednesday to Saturday",
@@ -394,7 +400,7 @@ extension FinishDate.Wording {
     private static func range(_ first: String, _ last: String) -> String {
         String(
             localized: "\(first) to \(last)",
-            comment: "A finish date from one day or third of a month to another, in the Cards window.")
+            comment: "A finish date from one day or third of a month to another, in the Cards window and Settings' Pace tab.")
     }
 }
 
@@ -404,9 +410,13 @@ extension FinishDate.Wording.Day {
     var text: String {
         switch self {
         case .today:
-            String(localized: "today", comment: "A finish date's day, in the Cards window: “on track for today”.")
+            String(
+                localized: "today",
+                comment: "A finish date's day, in the Cards window and Settings' Pace tab: “on track for today”.")
         case .tomorrow:
-            String(localized: "tomorrow", comment: "A finish date's day, in the Cards window: “all met by tomorrow”.")
+            String(
+                localized: "tomorrow",
+                comment: "A finish date's day, in the Cards window and Settings' Pace tab: “all met by tomorrow”.")
         case .weekday(let day):
             day.formatted(.dateTime.weekday(.wide))
         }

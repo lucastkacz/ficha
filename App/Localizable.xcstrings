@@ -50,7 +50,7 @@
 
     },
     "%@ or %@" : {
-      "comment" : "A finish date of two days in a row, in the Cards window: “today or tomorrow”.",
+      "comment" : "A finish date of two days in a row, in the Cards window and Settings' Pace tab: “today or tomorrow”.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -64,7 +64,7 @@
       "comment" : "On the Welcome page, under whether the app opens at login. The name is the app's."
     },
     "%@ to %@" : {
-      "comment" : "A finish date from one day or third of a month to another, in the Cards window.",
+      "comment" : "A finish date from one day or third of a month to another, in the Cards window and Settings' Pace tab.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1385,7 +1385,7 @@
       "comment" : "Settings, under Sync: the app is asking whether this Mac is signed into iCloud."
     },
     "Chill" : {
-      "comment" : "A pace in How fast?, the slowest: 1 new card a day."
+      "comment" : "A pace in How fast? and in Settings' Pace tab, the slowest: 1 new card a day."
     },
     "Choose Another File…" : {
       "comment" : "The Import sheet's button that opens another text file of cards instead."
@@ -1982,7 +1982,7 @@
       "comment" : "Settings, under Backups: the last backup failed, and why."
     },
     "Faster" : {
-      "comment" : "A pace in How fast?, the fastest: 4 new cards a day."
+      "comment" : "A pace in How fast? and in Settings' Pace tab, the fastest: 4 new cards a day."
     },
     "Ficha can't make sense of the review log of card %lld, so it doesn't know when the card is due. Your cards are still saved: report it." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
@@ -3248,7 +3248,7 @@
 
     },
     "Steady" : {
-      "comment" : "A pace in How fast?, the one Ficha starts at: 2 new cards a day."
+      "comment" : "A pace in How fast? and in Settings' Pace tab, the one Ficha starts at: 2 new cards a day."
     },
     "Step %lld" : {
       "comment" : "Settings, under Advanced: a learning or relearning step, counted from 1."
@@ -3857,10 +3857,10 @@
       "comment" : "The Space key's name, next to the button it presses."
     },
     "today" : {
-      "comment" : "A finish date's day, in the Cards window: “on track for today”."
+      "comment" : "A finish date's day, in the Cards window and Settings' Pace tab: “on track for today”."
     },
     "tomorrow" : {
-      "comment" : "A finish date's day, in the Cards window: “all met by tomorrow”."
+      "comment" : "A finish date's day, in the Cards window and Settings' Pace tab: “all met by tomorrow”."
     },
     "toolbar.back" : {
       "comment" : "A toolbar button of the Cards window, while it lists a tag's cards: back to All Tags.",

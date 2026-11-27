@@ -76,7 +76,7 @@ final class SettingsScroll {
 /// on the tab Lucas left it on last, unless it's asked to open on another.
 final class SettingsTabViewController: NSTabViewController {
     /// How tall Advanced is, past which it scrolls: about Interruptions'
-    /// height, as `make render`'s pictures measure it.
+    /// height, our estimate of it until `make render`'s pictures measure it.
     private static let advancedHeight: CGFloat = 620
     /// How wide every tab is, and so the window.
     private var width: CGFloat = 500
@@ -97,7 +97,7 @@ final class SettingsTabViewController: NSTabViewController {
         // Read before adding the tabs, since adding the first one selects it.
         let firstTab = tab ?? Preferences.settingsTab
         tabStyle = .toolbar
-        let tabs = SettingsTab.allCases.filter { $0 != .sync || model.sync != nil }
+        let tabs = SettingsTab.shown(syncing: model.sync != nil)
         width = Self.width(showing: tabs)
         for shown in tabs {
             add(
@@ -136,8 +136,9 @@ final class SettingsTabViewController: NSTabViewController {
     }
 
     /// Adds `tab`, which shows `content`, as wide as every tab, and, for
-    /// Advanced, `advancedHeight` tall. The tab follows the content's height
-    /// as it changes, as when Lucas turns on the offer to flag a card.
+    /// Advanced, `advancedHeight` tall. Each other tab follows its content's
+    /// height as it changes, as Sync does when Lucas picks to sync only the
+    /// cards in chosen decks.
     private func add(_ tab: SettingsTab, content: some View) {
         let sized = content.frame(width: width).frame(idealHeight: tab == .advanced ? Self.advancedHeight : nil)
         let controller = NSHostingController(rootView: sized)

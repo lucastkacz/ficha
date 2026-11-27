@@ -8,7 +8,7 @@ import SwiftUI
 /// what its images and sounds weigh (ADR 0020, ADR 0024). What the switch
 /// shows, the line says and the list holds, the model's `SyncTabState`
 /// decides. Its rows are drawn as `SettingsTab.sync` lays them out (#492).
-enum SyncSettings {
+enum SyncSection {
     /// What the tab says under its switch and its choice of cards.
     static var footer: some View {
         Text(

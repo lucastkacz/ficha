@@ -40,6 +40,7 @@ struct PaceTabTests {
         #expect(tab.paces.map(\.finish) == finishes)
         #expect(tab.paces.map(\.wording) == finishes.map { $0?.wording(now: time.now, calendar: calendar) })
         #expect(finishes.allSatisfy { $0 != nil })
+        #expect(tab.queueMet == tab.paces[1].wording)
         #expect(tab.unreadable == nil)
     }
 
@@ -94,6 +95,25 @@ struct PaceTabTests {
         #expect(try engine.queue(settings) == ficha.queue(settings))
         #expect(tab.queue.map(\.deck.name) == ["Historia", "Arte"])
         #expect(tab.queue.map(\.isNow) == [true, false])
+        #expect(tab.failure == nil)
+    }
+
+    // A name of nothing but the separator is no deck's, so the engine
+    // refuses to move it, as `ficha deck queue --first` would.
+    @Test(
+        "when Put it first fails, the Pace tab says why for that deck, with the queue as it was, until the user closes it",
+        .bug(id: 492))
+    func putItFirstSaysWhyItFailed() throws {
+        try meetArte(in: engine)
+        var tab = engine.openPaceTab(settings)
+
+        tab.putFirst("::", with: settings)
+        let failure = tab.failure
+        tab.dismissFailure()
+
+        #expect(failure?.deck == "::")
+        #expect(failure?.error == .blankDeckName)
+        #expect(tab.queue.map(\.deck.name) == ["Arte"])
         #expect(tab.failure == nil)
     }
 

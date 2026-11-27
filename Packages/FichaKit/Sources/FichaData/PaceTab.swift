@@ -62,6 +62,13 @@ public struct PaceTabState: Sendable {
     public private(set) var queue: [QueueRow] = []
     /// Why the queue couldn't be read, while it can't.
     public private(set) var unreadable: EngineError?
+    /// When the user will have met every deck in the queue, at their pace,
+    /// as How fast? says it under the paces: when the last deck is all met,
+    /// or nil while no deck waits, the queue can't be read, or with no new
+    /// cards a day.
+    public var queueMet: FinishDate.Wording? {
+        queue.last?.wording
+    }
     /// Why Put it first failed, while the tab says so.
     public private(set) var failure: Failure?
     private let engine: Engine
@@ -79,7 +86,7 @@ public struct PaceTabState: Sendable {
         let calendar = engine.calendar
         pace = Pace(newCardsPerDay: settings.newCardsPerDay)
         do throws(EngineError) {
-            let (cards, decks) = try engine.paceTabCards()
+            let (cards, own) = try engine.paceTabCards()
             paces = Pace.allCases.map { pace in
                 var paced = settings
                 paced.newCardsPerDay = pace.newCardsPerDay
@@ -96,7 +103,7 @@ public struct PaceTabState: Sendable {
                 let withItFirst = cards.decksInQueue(putting: queued.deck, at: .first, now: now)
                 let stillAhead = withItFirst.prefix { $0 != queued.deck }
                 return QueueRow(
-                    deck: decks.first { $0.name == queued.deck } ?? Deck(name: queued.deck),
+                    deck: own.deck(queued.deck),
                     newCards: queued.newCards, finish: queued.finish,
                     wording: queued.finish?.wording(now: now, calendar: calendar), isNow: place == 0,
                     offersPutItFirst: ahead.contains { !stillAhead.contains($0) })
@@ -134,14 +141,11 @@ extension Engine {
     }
 
     /// What the Pace tab reads, in one read: the cards in the user's
-    /// reviews, as the planners take them, and every deck the device lists,
-    /// as `decks()` lists them, for their emoji.
-    fileprivate func paceTabCards() throws(EngineError) -> (cards: CardsInReviews, decks: [Deck]) {
+    /// reviews, as the planners take them, and what each deck has of its
+    /// own, for its emoji.
+    fileprivate func paceTabCards() throws(EngineError) -> (cards: CardsInReviews, own: OwnDecks) {
         try read { db in
-            let own = try OwnDecks(in: db)
-            let cards = try allCards(in: db)
-            let decks = try listedDeckNames(of: own, livedInBy: cards, in: db).map(own.deck)
-            return (cards: try cardsThatShowUp(in: db).inReviews, decks: decks)
+            (cards: try cardsThatShowUp(in: db).inReviews, own: try OwnDecks(in: db))
         }
     }
 }

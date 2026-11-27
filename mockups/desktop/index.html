@@ -530,7 +530,7 @@
 
   function GeneralTab({ app, state, prefs, setPrefs }) {
     return html`
-      <${Group} footer="A capture shortcut needs two of Control, Option and Command at least, so it doesn't take what you type or another app's shortcut.">
+      <${Group} footer="A capture shortcut needs two of Control, Option and Command at least, so it doesn't take what you type or another app's shortcut. While you type one, Esc keeps the old one and Delete turns it off.">
         <${Row} label="Start at login" from="General"><${Toggle} label="Start at login" on=${prefs.login} onChange=${(login) => setPrefs({ ...prefs, login })} /></${Row}>
         <${Row} label="Show how many cards are due in the menu bar" from="General">
           <${Toggle} label="Show how many cards are due" on=${prefs.showsDueCount} onChange=${(showsDueCount) => setPrefs({ ...prefs, showsDueCount })} /></${Row}>
@@ -620,7 +620,7 @@
   function SyncTab({ state, prefs, setPrefs }) {
     const added = state.decks.filter((d) => d.added);
     return html`
-      <${Group} footer="Your cards go only to your own iCloud, which the developer can't see.">
+      <${Group} footer="Your cards, their progress and the inbox stay the same on each of your devices, through your own iCloud. Each device keeps its own backups.">
         <${Row} label="Sync with iCloud" from="Sync"><${Toggle} label="Sync with iCloud" on=${prefs.sync} onChange=${(sync) => setPrefs({ ...prefs, sync })} /></${Row}>
         <${Row} label="Cards to sync" from="Sync"><${Popup} label="Cards to sync" value=${prefs.syncWhat} disabled=${!prefs.sync}
           onChange=${(syncWhat) => setPrefs({ ...prefs, syncWhat })}
@@ -643,11 +643,11 @@
         <${Row} label="Steps" from="Scheduling"><span className="chips"><${Capsule}>1h</${Capsule}></span></${Row}>
       </${Group}>
       <${Group} footer="A higher retention means shorter intervals and more reviews a day. A change applies from each card's next review.">
-        <${Row} label="Desired retention" sub="From 70% to 99% · 85% on a new install" from="Scheduling">
+        <${Row} label="Desired retention" sub="From 70% to 99%" from="Scheduling">
           <span className="num">${Math.round(r * 100)}%</span><${Stepper} label="Desired retention" onStep=${step} /></${Row}>
         <${Row} label="Longest interval" sub="In days, up to 36,500" from="Scheduling"><span className="num">36500</span></${Row}>
       </${Group}>
-      <${Group} footer="Each Again to a card out of its learning and relearning steps counts, since its front or back last changed.">
+      <${Group} footer="Each “Forgot” to a card out of its learning and relearning steps counts, since the card's front or back last changed. If you don't flag it, the panel offers again after half as many more.">
         <${Row} label="Offer to flag a card you forget often" sub="So it gets fixed. Ficha never flags a card on its own."
           from="Review panel">
           <${Toggle} label="Offer to flag" on=${prefs.offerFlag} onChange=${(offerFlag) => setPrefs({ ...prefs, offerFlag })} /></${Row}>

@@ -8,7 +8,7 @@ import SwiftUI
 /// are, and every copy, which Lucas can restore or move to the Trash. The
 /// list of copies scrolls inside the tab. What it lists, offers and asks, the
 /// model's `BackupsState` decides.
-enum BackupsSettings {
+enum BackupsSection {
     /// Backups' heading.
     static var header: some View {
         Text(
@@ -362,6 +362,9 @@ struct CopiesTable: View {
 /// weigh, when they share any; then Restore… and Delete….
 struct CopiesFooter: View {
     let model: AppModel
+    /// Whether the keyboard is in Advanced's Longest interval field, which
+    /// keeps ⌘⌫ for itself.
+    @FocusedValue(\.isEditingLongestInterval) private var isEditingLongestInterval
 
     var body: some View {
         HStack {
@@ -414,7 +417,9 @@ struct CopiesFooter: View {
     }
 
     /// Delete…, which asks whether to move the selected copies to the Trash:
-    /// ⌘⌫, as Delete… in the Cards window.
+    /// ⌘⌫, as Delete… in the Cards window, but while the keyboard is in the
+    /// Longest interval field, where it deletes what's before the insertion
+    /// point, as the Cards window's ⌘⌫ leaves its search field alone.
     private var deleteButton: some View {
         Button {
             model.backups.askToDelete()
@@ -422,7 +427,7 @@ struct CopiesFooter: View {
             Text("Delete…", comment: "Settings, under Backups: moves the selected copies to the Trash, asking first.")
         }
         .disabled(!model.backups.actions.contains(.delete))
-        .keyboardShortcut(.deleteKey, modifiers: .command)
+        .keyboardShortcut(isEditingLongestInterval == true ? nil : KeyboardShortcut(.deleteKey, modifiers: .command))
         .help(Text("Delete… (⌘⌫)", comment: "The tooltip of Settings' Backups button that deletes copies."))
     }
 }

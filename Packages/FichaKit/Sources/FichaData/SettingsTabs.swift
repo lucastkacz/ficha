@@ -34,6 +34,12 @@ public enum SettingsTab: String, Sendable, CaseIterable {
         }
     }
 
+    /// The tabs Settings shows, in their order: Sync only in an app that
+    /// syncs.
+    public static func shown(syncing: Bool) -> [SettingsTab] {
+        allCases.filter { $0 != .sync || syncing }
+    }
+
     /// The tab's sections, in the order it shows them.
     public var sections: [SettingsSection] {
         switch self {

@@ -58,7 +58,11 @@ struct SettingsTabContent: View {
         guard let section = scroll.section, tab.sections.contains(section), let row = section.rows.first else {
             return
         }
-        proxy.scrollTo(row, anchor: Self.sectionAnchor)
+        // A turn later, once the form has its rows: as Settings opens, the
+        // form is first asked only for its size, before it has any.
+        Task {
+            proxy.scrollTo(row, anchor: Self.sectionAnchor)
+        }
     }
 }
 
@@ -230,16 +234,16 @@ private struct SettingsSectionView: View {
             Section {
                 rows
             } footer: {
-                SyncSettings.footer
+                SyncSection.footer
             }
         case .decksToSync:
             if model.sync?.onlyChosenDecks == true {
                 Section {
                     rows
                 } header: {
-                    SyncSettings.decksHeader
+                    SyncSection.decksHeader
                 } footer: {
-                    SyncSettings.decksFooter
+                    SyncSection.decksFooter
                 }
             }
         case .learningSteps:
@@ -298,9 +302,9 @@ private struct SettingsSectionView: View {
             Section {
                 rows
             } header: {
-                BackupsSettings.header
+                BackupsSection.header
             } footer: {
-                BackupsSettings.footer
+                BackupsSection.footer
             }
         case .copies:
             Section {
@@ -600,7 +604,7 @@ private struct HowFastFooter: View {
                 Text(
                     "No deck waits for new cards.",
                     comment: "Settings, under How fast?, in the Pace tab: no deck in the queue has new cards.")
-            } else if let wording = pace.queue.last?.wording {
+            } else if let wording = pace.queueMet {
                 wording.startsToday
                     ? Text(
                         "At this pace, you'll have met every deck in your queue \(wording.text).",
@@ -937,6 +941,12 @@ private struct ForgottenOftenRow: View {
     }
 }
 
+extension FocusedValues {
+    /// Whether the keyboard is in Advanced's Longest interval field, where
+    /// ⌘⌫ deletes what's before the insertion point, not Backups' copies.
+    @Entry var isEditingLongestInterval: Bool?
+}
+
 /// Advanced's desired retention, which Settings steps a percent at a time,
 /// within what the scheduler takes, as `Scheduler`'s changes decide.
 private struct DesiredRetentionRow: View {
@@ -988,6 +998,7 @@ private struct LongestIntervalRow: View {
                     name
                 }
                 .labelsHidden()
+                .focusedValue(\.isEditingLongestInterval, true)
                 .multilineTextAlignment(.trailing)
                 .monospacedDigit()
                 .frame(width: 64)

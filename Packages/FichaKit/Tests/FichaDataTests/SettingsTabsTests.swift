@@ -75,6 +75,12 @@ struct SettingsTabsTests {
         }
     }
 
+    @Test("Settings shows its Sync tab only in an app that syncs", .bug(id: 492))
+    func itShowsSyncOnlyWhileSyncing() {
+        #expect(SettingsTab.shown(syncing: true) == [.general, .pace, .interruptions, .sync, .advanced])
+        #expect(SettingsTab.shown(syncing: false) == [.general, .pace, .interruptions, .advanced])
+    }
+
     // The raw values the app's preferences kept for the seven tabs before:
     // Scheduling's was the Ladder tab's it replaced (#404).
     @Test("Settings opens on the tab that took the rows of the tab it was left on", .bug(id: 492))
