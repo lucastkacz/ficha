@@ -45,8 +45,38 @@ extension CardsWindowState {
         /// reviews, as it's set aside on its own or sits inside a deck that
         /// is.
         public let isGrayed: Bool
+        /// What its row says under its title, in the sidebar's Decks section,
+        /// for a deck at the top of the tree, Default included (#491): nil
+        /// for a deck inside another, and in the Change Deck sheet's tree.
+        /// Not worked out yet: nil for every deck.
+        public let line: Line?
         /// The decks right inside it, in the order a tree lists them.
         public let children: [DeckRow]
+
+        /// What a deck's row says under its title (#491), from where it
+        /// stands and the queue new cards come from (ADR 0034): "9 of 14"
+        /// counts the cards met, those whose front-first way has an entry in
+        /// the review log, of every card of the deck and the decks inside
+        /// it, whatever its standing.
+        public enum Line: Sendable, Equatable {
+            /// "No cards yet": the deck, with the decks inside it, has no
+            /// card.
+            case noCards
+            /// "Set aside · 9 of 14 met": the deck is set aside.
+            case setAside(met: Int, of: Int)
+            /// "Met them all": every card of the deck is met.
+            case metThemAll
+            /// "9 of 14 · on track for early December": the deck is first in
+            /// the queue, the one new cards come from now, with its finish
+            /// date.
+            case first(met: Int, of: Int, finish: FinishDate.Wording)
+            /// "Next · on track for mid-December": the deck waits in the
+            /// queue after the first, with its finish date.
+            case next(finish: FinishDate.Wording)
+            /// "9 of 14": the deck has new cards in the user's reviews but no
+            /// finish date, as when the pace brings no new card.
+            case progress(met: Int, of: Int)
+        }
 
         public var id: String {
             deck.name
@@ -424,7 +454,8 @@ extension CardsWindowState {
         return deckTree(of: decks, named: \.deck.name) { counted, title, children in
             DeckRow(
                 deck: counted.deck, title: title, counts: counted.counts,
-                isGrayed: deckSettingAside(counted.deck.name, amongSetAside: setAside) != nil, children: children)
+                isGrayed: deckSettingAside(counted.deck.name, amongSetAside: setAside) != nil, line: nil,
+                children: children)
         }
     }
 }

@@ -84,6 +84,22 @@ public struct ReviewPanelState: Sendable {
         case lookForMore
     }
 
+    /// What the panel says once Lucas went through its cards, under its done
+    /// title, after an answer in it met the last new card of a deck at the
+    /// top of the tree, which was in the queue new cards come from and no
+    /// longer is once the answer's in (ADR 0034, #491): "You've met them
+    /// all", for each such deck, and then what comes next.
+    public struct MetThemAll: Sendable, Equatable {
+        /// The decks whose last new card an answer in the panel met, in the
+        /// order it met them, with what each has of its own: "You've met them
+        /// all: <emoji> <deck>".
+        public let decks: [Deck]
+        /// The deck first in the queue now, whose first card comes with the
+        /// next new one: "Next in the queue: <emoji> <deck>."; or nil when
+        /// nothing waits in the queue: "Nothing waits in the queue."
+        public let nextInQueue: Deck?
+    }
+
     /// What opened the panel: Lucas, with review now, or an appearance.
     public let trigger: Trigger
     /// The cards, in the order the panel shows them: those the panel brought,
@@ -200,6 +216,15 @@ public struct ReviewPanelState: Sendable {
         case (.review, false), (.reviewAhead, false): .upperSide(card, way, isAhead: current.isAhead)
         case (.review, true), (.reviewAhead, true): .bothSides(card, way, isAhead: current.isAhead)
         }
+    }
+
+    /// What the panel says it met in full, once Lucas went through its cards
+    /// (`.done`): the decks whose last new card an answer in it met, which
+    /// undoing that answer forgets, and what comes next; nil while he's on a
+    /// card, and when no answer met a deck's last new card. Not worked out
+    /// yet (#491): always nil.
+    public var metThemAll: MetThemAll? {
+        nil
     }
 
     /// What the panel's ⋯ menu offers to do with the card Lucas is on, each

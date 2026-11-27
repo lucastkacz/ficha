@@ -265,6 +265,9 @@ public struct CardsWindowState: Sendable {
         case deleteTags(TagDeletion)
         /// Whether to clear these unused tags, which no card carries.
         case clearUnusedTags([String])
+        /// How fast new cards come, and where a deck goes in the queue, as
+        /// it comes in: `HowFast.swift`.
+        case howFast(HowFast)
     }
 
     /// What OK in the emoji sheet, or in the New Type sheet, makes of what an
