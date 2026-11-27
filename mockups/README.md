@@ -46,6 +46,7 @@ No build step: React 18.3.1 from cdnjs and htm 3.1.1 from jsDelivr, pinned, so c
 | `KeyLabel`, `Capsule` | `KeyLabel`, `capsuleLook(tintedWith:)` (`App/TagCapsule.swift`) |
 | `Segmented` | `Picker` with `.pickerStyle(.segmented)` |
 | `DisclosureGroup` | `DisclosureGroup(isExpanded:)` |
+| `Window`'s `toolbar`, as the Cards window's New Card and Search, in `desktop/` | `.toolbar` and `.searchable(text:placement: .toolbar)`, at the window's unified toolbar's trailing end (`App/Cards/CardsView.swift`) |
 | `MenuContent` | `App/MenuContent.swift` |
 | `ReviewPanelView` | `App/ReviewPanelView.swift`, placed as `ReviewPanelWindow` places it: centered, 40 points under the menu bar; its `face` 'new' is the app's since #489, with #517's three buttons, and 'today' the app's before #489 |
 | `CaptureView` | `App/CaptureView.swift` |
