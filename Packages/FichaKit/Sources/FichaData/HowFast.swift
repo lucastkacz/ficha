@@ -52,9 +52,11 @@ extension CardsWindowState {
             /// their standing, or those of all the decks it made, and the
             /// name of the file it came from.
             case imported(cardCount: Int, fileName: String)
-            /// "40 cards · one of Ficha's decks": one of Ficha's decks, with
-            /// the cards that would come in, those of its file that repeat
-            /// none of the user's (#458).
+            /// "40 cards · one of Ficha's decks": one of Ficha's decks, with a
+            /// count of its cards: in How fast?, those that would come in,
+            /// those of its file that repeat none of the user's (#458); and
+            /// under the deck's name in the Cards window, before its Add
+            /// Deck…, every card its file holds (`FichaDeckFile.cardCount`).
             case fichaDeck(cardCount: Int)
         }
 
