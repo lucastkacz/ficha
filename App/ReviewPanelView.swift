@@ -95,9 +95,10 @@ struct ReviewPanelView: View {
     /// Whether the panel reads right to left, which says whether a card's
     /// upper side can sit beside the ⋯ menu.
     @Environment(\.layoutDirection) private var layoutDirection
-    /// Whether the panel has the keyboard, `.key`, which macOS draws a
-    /// prominent button's color in: without it, Kind of is gray, as Got it is.
-    @Environment(\.controlActiveState) private var controlActiveState
+    /// Whether the panel looks as it does with the keyboard, which macOS
+    /// draws a prominent button's color in: without it, Kind of is gray, as
+    /// Got it is.
+    @Environment(\.appearsActive) private var appearsActive
 
     var body: some View {
         HeightUpTo(maximum: maximumHeight) {
@@ -778,7 +779,7 @@ struct ReviewPanelView: View {
                 .keyboardShortcut(.space, modifiers: [])
         case .kindOf:
             Button(action: answer) {
-                if controlActiveState == .key {
+                if appearsActive {
                     label.foregroundStyle(.black)
                 } else {
                     label

@@ -269,8 +269,8 @@
 .btn.prominent:active, .btn.prominent.pressed { filter: brightness(0.92); }
 .btn.prominent[disabled] { background: var(--fill); color: var(--tertiary-label); filter: none; }
 .btn.prominent .key { color: inherit; opacity: 0.75; }
-/* .buttonStyle(.borderedProminent) .tint(.yellow), with a dark title: the
-   review panel's Kind of (ADR 0039). */
+/* .buttonStyle(.borderedProminent) .tint(.yellow), with a dark title while
+   the panel has the keyboard: the review panel's Kind of (ADR 0039). */
 .btn.yellow { background: var(--yellow); color: #1d1d1f; }
 .btn.yellow:hover { filter: brightness(1.04); }
 .btn.yellow:active, .btn.yellow.pressed { filter: brightness(0.92); }

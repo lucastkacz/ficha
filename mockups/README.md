@@ -40,7 +40,7 @@ No build step: React 18.3.1 from cdnjs and htm 3.1.1 from jsDelivr, pinned, so c
 | `--accent` | `.tint` |
 | `.glass` with `--radius-panel` (24) | `.glassEffect(.regular, in: .rect(cornerRadius: 24, style: .continuous))` |
 | `--text-title2` semibold, `--text-body`, `--text-caption` | `.title2.weight(.semibold)`, `.body`, `.caption` (`CardTextStyle`) |
-| `Button` / `Button prominent` / `Button yellow` | `.buttonStyle(.bordered)` / `.borderedProminent` / `.borderedProminent` with `.tint(.yellow)` and a black title |
+| `Button` / `Button prominent` / `Button yellow` | `.buttonStyle(.bordered)` / `.borderedProminent` / `.borderedProminent` with `.tint(.yellow)` and a black title while the panel has the keyboard |
 | `IconButton` | `.labelStyle(.iconOnly)`, `.buttonStyle(.borderless)` |
 | `KeyLabel`, `Capsule` | `KeyLabel`, `TagCapsule` |
 | `Segmented` | `Picker` with `.pickerStyle(.segmented)` |
