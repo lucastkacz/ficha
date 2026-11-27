@@ -1091,7 +1091,7 @@ extension EngineError {
             .copyNotFound, .copyMigratedByNewerVersion, .backupsFolder, .notAnImage, .notASound, .soundConversion,
             .unreadableFileForSide, .noSuchFile, .fileNotInDownloads, .fileNotAnImage, .fileNotASound,
             .notAnImageOrSound, .noFileNamed,
-            .imagesFolder, .soundsFolder, .unreadableFile, .unwritableFile, .fichaDeckMissing:
+            .imagesFolder, .soundsFolder, .unreadableFile, .unwritableFile, .fichaDeckMissing, .descriptionTooLong:
             localizedDescription
         }
     }

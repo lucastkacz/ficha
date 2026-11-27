@@ -158,6 +158,48 @@ final class DecksSyncTests {
         }
     }
 
+    // The iPhone, offline, writes Historia's description first, and gives it
+    // an emoji; the Mac writes another description later, and sends first, so
+    // the latest is the one the iPhone hears of, while the iPhone's emoji,
+    // which the Mac didn't change, stays. The deck's record holds the
+    // description as `deckDescription`, a field Production's schema gets
+    // before an upload, which can never be deleted.
+    @Test(
+        "a deck's description reaches the other device as a field of the deck's record, the latest change wins beside an emoji the other device gave, and taking it away reaches it",
+        .bug(id: 556))
+    func aDecksDescriptionReachesTheOtherDevice() async throws {
+        let coliseo = try mac.engine.create(card(.concept, front: "Coliseo", back: "Un anfiteatro."))
+        try mac.engine.changeDeck(of: [coliseo.id], to: "Historia")
+        try mac.engine.setDescription("Roma y Grecia.", ofDeck: "Historia")
+        try await syncBoth()
+        let first = try iPhone.engine.decks()
+
+        iPhone.iCloud.isOffline = true
+        time.advance(by: minutes(1))
+        try iPhone.engine.setDescription("Lo que pasó.", ofDeck: "Historia")
+        try iPhone.engine.setEmoji(Emoji("🏛️"), ofDeck: "Historia")
+        time.advance(by: minutes(1))
+        try mac.engine.setDescription("Roma, Grecia y Egipto.", ofDeck: "Historia")
+        try await mac.syncNow()
+        iPhone.iCloud.isOffline = false
+        try await syncBoth()
+        let latest = try iPhone.engine.decks()
+        let record = try #require(
+            iCloud.records.first {
+                $0.type == SyncedRow.RecordType.deck.rawValue && $0.value(of: "name") == .string("Historia")
+            })
+        try mac.engine.setDescription(nil, ofDeck: "Historia")
+        try await syncBoth()
+
+        #expect(first == [Deck(name: "Historia", description: "Roma y Grecia.")])
+        #expect(latest == [Deck(name: "Historia", emoji: "🏛️", description: "Roma, Grecia y Egipto.")])
+        #expect(record.value(of: "deckDescription") == .string("Roma, Grecia y Egipto."))
+        for device in [mac, iPhone] {
+            #expect(try device.engine.decks() == [Deck(name: "Historia", emoji: "🏛️")])
+            #expect(try device.engine.changesToSend().isEmpty)
+        }
+    }
+
     // Historia exists through Historia::Roma, with no row of its own (ADR
     // 0021): None in its Color submenu mustn't make it a deck that outlives
     // the decks inside it, on this device or the other.

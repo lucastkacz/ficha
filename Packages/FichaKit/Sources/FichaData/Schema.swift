@@ -1862,6 +1862,64 @@ enum Schema {
                     END;
                     """)
         }
+        migrator.registerMigration("v35 a deck's description") { db in
+            // A deck has one or two lines on what it holds, or NULL for none
+            // (ADR 0044), whose length the engine checks
+            // (`DeckDescription.swift`). A deck from before has none, and
+            // nothing waits to be sent for it. It's a field of the deck's
+            // record, `deckDescription`, as `SyncedField` names it, since
+            // CloudKit advises against a field named after a property of
+            // `CKRecord`, as `description` is; its latest change wins, as the
+            // deck's other fields': their triggers, from "v34 a deck's place
+            // in the queue", made again with it, each field with its column.
+            try db.alter(table: "deck") { table in
+                table.add(column: "description", .text)
+            }
+            let recording = "(SELECT recordsChanges FROM syncWrite)"
+            let isOn = "(SELECT isOn FROM syncDevice)"
+            let deckFields = [
+                (field: "switchedOn", column: "switchedOn", holds: "IS NOT NULL"),
+                (field: "color", column: "color", holds: "IS NOT NULL"),
+                (field: "emoji", column: "emoji", holds: "IS NOT NULL"),
+                (field: "deckDescription", column: "description", holds: "IS NOT NULL"),
+                (field: "chosenToSync", column: "chosenToSync", holds: ""),
+                (field: "queuePlace", column: "queuePlace", holds: "IS NOT NULL"),
+            ]
+            let deckFieldsHoldingSomething = deckFields.map { field, column, holds in
+                "SELECT '\(field)' AS field WHERE NEW.\(column) \(holds)"
+            }.joined(separator: " UNION ALL ")
+            let changedDeckFields = deckFields.map { field, column, _ in
+                "SELECT '\(field)' AS field WHERE OLD.\(column) IS NOT NEW.\(column)"
+            }.joined(separator: " UNION ALL ")
+            let anyDeckFieldChanged = deckFields.map { _, column, _ in "OLD.\(column) IS NOT NEW.\(column)" }
+                .joined(separator: " OR ")
+            /// Records that `fields`, a query of one column, `field`, of the
+            /// deck `NEW`, changed as the write happens, and leaves the deck
+            /// waiting to be sent, in place of its change before, while sync
+            /// is on.
+            func stampAndWait(_ fields: String) -> String {
+                """
+                INSERT INTO syncFieldTime (recordType, recordName, field, changedAt)
+                SELECT 'deck', NEW.name, field, (SELECT at FROM syncWrite) FROM (\(fields)) WHERE true
+                ON CONFLICT (recordType, recordName, field) DO UPDATE SET changedAt = excluded.changedAt;
+                DELETE FROM syncPending WHERE recordType = 'deck' AND recordName = NEW.name;
+                INSERT INTO syncPending (recordType, recordName, isDeletion)
+                SELECT 'deck', NEW.name, 0 WHERE \(isOn);
+                """
+            }
+            try db.execute(
+                sql: """
+                    DROP TRIGGER sync_deck_inserted;
+                    DROP TRIGGER sync_deck_updated;
+                    CREATE TRIGGER sync_deck_inserted AFTER INSERT ON deck WHEN \(recording) BEGIN
+                    \(stampAndWait(deckFieldsHoldingSomething))
+                    END;
+                    CREATE TRIGGER sync_deck_updated AFTER UPDATE ON deck WHEN \(recording) AND (\(anyDeckFieldChanged))
+                    BEGIN
+                    \(stampAndWait(changedDeckFields))
+                    END;
+                    """)
+        }
         return migrator
     }()
 }

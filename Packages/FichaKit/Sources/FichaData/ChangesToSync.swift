@@ -154,6 +154,10 @@ enum SyncedField: String, Sendable, CaseIterable {
     case switchedOn
     case color
     case emoji
+    /// A deck's description (ADR 0044), under a name of its own, since
+    /// CloudKit advises against a field named after a property of
+    /// `CKRecord`, and `description`, NSObject's, is one.
+    case deckDescription
     /// Whether the user chose the deck to sync, beside its other switch. A
     /// tag's record held it before decks (ADR 0024), and sends it no more.
     case chosenToSync

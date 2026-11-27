@@ -4,12 +4,13 @@ internal import GRDB
 
 // How a deck syncs (ADR 0017, ADR 0024): by its whole name, or Default by its
 // own, whatever selective sync chooses, as a tag does, with what it has of its
-// own, its switch, its color, its emoji, whether the user chose it to sync
-// (ADR 0020) and its place in the queue new cards come from (ADR 0034), each
-// of which keeps its latest change. Its record says that the
-// deck exists, also while it has nothing of its own and no card lives in it,
-// so a deck the user made reaches every device. A deck that two devices made
-// with the same name is one deck, since its record is named after its name.
+// own, its switch, its color, its emoji, its description (ADR 0044), whether
+// the user chose it to sync (ADR 0020) and its place in the queue new cards
+// come from (ADR 0034), each of which keeps its latest change. Its record says
+// that the deck exists, also while it has nothing of its own and no card lives
+// in it, so a deck the user made reaches every device. A deck that two devices
+// made with the same name is one deck, since its record is named after its
+// name.
 // Whether the user made a deck on a device stays on it, and never syncs: a
 // deck it first hears of from iCloud wasn't, until the user makes it there
 // too, and one whose row a restore dropped keeps what it was. A card names
@@ -23,12 +24,13 @@ enum DeckKey {
     static let switchedOn = SyncedField.switchedOn.rawValue
     static let color = SyncedField.color.rawValue
     static let emoji = SyncedField.emoji.rawValue
+    static let deckDescription = SyncedField.deckDescription.rawValue
     static let chosenToSync = SyncedField.chosenToSync.rawValue
     static let queuePlace = SyncedField.queuePlace.rawValue
 }
 
 /// The fields of a deck that keep when they last changed.
-private let deckFields: [SyncedField] = [.switchedOn, .color, .emoji, .chosenToSync, .queuePlace]
+private let deckFields: [SyncedField] = [.switchedOn, .color, .emoji, .deckDescription, .chosenToSync, .queuePlace]
 
 /// The record of the deck named `name`, as it is now, without what iCloud
 /// said of it, or nil when it has no row: what it has of its own, which may
@@ -50,6 +52,7 @@ private func record(of deck: Deck, in db: Database) throws -> ICloudRecord {
             DeckKey.switchedOn: deck.switchedOn.map { .string($0.rawValue) },
             DeckKey.color: deck.color.map { .string($0.rawValue) },
             DeckKey.emoji: deck.emoji.map(ICloudValue.string),
+            DeckKey.deckDescription: deck.description.map(ICloudValue.string),
             // Chosen, or nothing, as a deck that isn't holds nothing of it.
             DeckKey.chosenToSync: deck.chosenToSync ? .int(1) : nil,
             // In whole milliseconds since 1970, as a time syncs.
@@ -62,8 +65,8 @@ private func record(of deck: Deck, in db: Database) throws -> ICloudRecord {
 /// row when it has none, as a deck not made on this device, unless the user
 /// made it here before a restore dropped its row
 /// (`takeMadeHereBeforeARestore(_:in:)`): it takes each of its switch,
-/// color, emoji, choice to sync and place in the queue whose change in the
-/// record is the latest.
+/// color, emoji, description, choice to sync and place in the queue whose
+/// change in the record is the latest.
 func applyDeck(_ record: ICloudRecord, named name: String, in db: Database) throws -> Bool {
     try makeRow(ofDeck: name, madeHere: takeMadeHereBeforeARestore(name, in: db), in: db)
     let own = try FichaData.record(of: ownDeck(name, in: db), in: db)
@@ -87,6 +90,9 @@ func applyDeck(_ record: ICloudRecord, named name: String, in db: Database) thro
         }
         if won.contains(.emoji) {
             deck.emoji = try record.optionalText(DeckKey.emoji)
+        }
+        if won.contains(.deckDescription) {
+            deck.description = try record.optionalText(DeckKey.deckDescription)
         }
         if won.contains(.chosenToSync) {
             switch try record.optionalInteger(DeckKey.chosenToSync) {

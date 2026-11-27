@@ -8,16 +8,16 @@ internal import GRDB
 // `Deck.defaultName`. A parent exists through the decks inside it, as a tag's
 // does (ADR 0021), and holds their cards. A deck has a row of its own in the
 // `deck` table while it exists (`Schema`'s "v31 decks"), so one the user makes
-// stays while it has no cards; it holds the deck's switch, color, emoji, choice
-// to sync and place in the queue new cards come from (ADR 0034), which sync as
-// a tag's do (`SyncedDecks.swift`), and whether the user made it on this
-// device, which doesn't: making a deck, or putting cards in it, as New Deck…,
-// Change Deck, the card form, Approve and an import do, says so, also of a deck
-// this device heard of from another, and nothing else does. Default gets its
-// row once something is set on it, and is listed only while it holds cards or
-// has a switch on, so that its switch can be turned off. Under selective sync,
-// a device lists only the decks that sync, those it holds cards of and those
-// made on it (`SelectiveSync.swift`).
+// stays while it has no cards; it holds the deck's switch, color, emoji,
+// description (ADR 0044), choice to sync and place in the queue new cards come
+// from (ADR 0034), which sync as a tag's do (`SyncedDecks.swift`), and whether
+// the user made it on this device, which doesn't: making a deck, or putting
+// cards in it, as New Deck…, Change Deck, the card form, Approve and an import
+// do, says so, also of a deck this device heard of from another, and nothing
+// else does. Default gets its row once something is set on it, and is listed
+// only while it holds cards or has a switch on, so that its switch can be
+// turned off. Under selective sync, a device lists only the decks that sync,
+// those it holds cards of and those made on it (`SelectiveSync.swift`).
 
 /// A switch a deck can have on, which changes which of its cards show up
 /// (ADR 0011, ADR 0024). A deck has one on at most. Its raw value is how the
@@ -32,10 +32,11 @@ public enum DeckSwitch: String, Sendable {
 }
 
 /// A deck of the user's cards, by its whole name, with the decks it sits
-/// inside, and what it has of its own: the switch it has on, its color and
-/// its emoji, each optional, and whether the user chose it to sync. It
-/// carries the color and the emoji it takes from the decks it sits inside
-/// too, which it shows while it has none of its own.
+/// inside, and what it has of its own: the switch it has on, its color, its
+/// emoji and its description, each optional, whether the user chose it to
+/// sync, and its place in the queue. It carries the color and the emoji it
+/// takes from the decks it sits inside too, which it shows while it has none
+/// of its own.
 public struct Deck: Sendable, Hashable {
     /// Default's name, as a card names it and the `deck` table keeps it:
     /// empty, which no name the user types is, since a blank one is refused
@@ -53,6 +54,9 @@ public struct Deck: Sendable, Hashable {
     public var color: TagColor?
     /// Its emoji, or nil for none.
     public var emoji: String?
+    /// One or two lines on what it holds, or nil for none (ADR 0044): its
+    /// own alone, which the decks inside it never take.
+    public var description: String?
     /// Whether the user chose it to sync, for selective sync (ADR 0020). A
     /// deck isn't, until the user ticks it.
     public var chosenToSync: Bool
@@ -71,13 +75,14 @@ public struct Deck: Sendable, Hashable {
 
     public init(
         name: String, switchedOn: DeckSwitch? = nil, color: TagColor? = nil, emoji: String? = nil,
-        chosenToSync: Bool = false, queuePlace: Date? = nil, inheritedColor: TagColor? = nil,
-        inheritedEmoji: String? = nil
+        description: String? = nil, chosenToSync: Bool = false, queuePlace: Date? = nil,
+        inheritedColor: TagColor? = nil, inheritedEmoji: String? = nil
     ) {
         self.name = name
         self.switchedOn = switchedOn
         self.color = color
         self.emoji = emoji
+        self.description = description
         self.chosenToSync = chosenToSync
         self.queuePlace = queuePlace
         self.inheritedColor = inheritedColor
@@ -431,7 +436,7 @@ struct OwnDecks: Sendable {
         let own = byName[name] ?? Deck(name: name)
         return Deck(
             name: name, switchedOn: own.switchedOn, color: own.color, emoji: own.emoji,
-            chosenToSync: own.chosenToSync, queuePlace: own.queuePlace,
+            description: own.description, chosenToSync: own.chosenToSync, queuePlace: own.queuePlace,
             inheritedColor: ancestors.lazy.compactMap(\.color).first,
             inheritedEmoji: ancestors.lazy.compactMap(\.emoji).first)
     }
@@ -483,11 +488,11 @@ func deckWithRow(_ name: String, in db: Database) throws -> Deck? {
 /// Changes what each of `decks` has of its own with `change`, in the write
 /// `db`, and saves each one `change` changed, giving a deck without a row its
 /// row then: the loop behind every change the engine makes to decks'
-/// switches, colors, emoji and choices to sync, in one write, which an error
-/// `change` throws undoes whole. A deck `change` leaves as it was stays as it
-/// is, without a row when it had none, so that unticking a switch or choosing
-/// no color never makes a deck of a parent that exists through the decks
-/// inside it (ADR 0021).
+/// switches, colors, emoji, descriptions, choices to sync and places in the
+/// queue, in one write, which an error `change` throws undoes whole. A deck
+/// `change` leaves as it was stays as it is, without a row when it had none,
+/// so that unticking a switch or choosing no color never makes a deck of a
+/// parent that exists through the decks inside it (ADR 0021).
 func changeOwnDecks(_ decks: [String], in db: Database, _ change: (inout Deck) throws -> Void) throws {
     for name in decks {
         let before = try ownDeck(name, in: db)
@@ -504,13 +509,16 @@ func changeOwnDecks(_ decks: [String], in db: Database, _ change: (inout Deck) t
 func save(_ deck: Deck, in db: Database) throws {
     try db.execute(
         sql: """
-            INSERT INTO deck (name, switchedOn, color, emoji, chosenToSync, queuePlace) VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO deck (name, switchedOn, color, emoji, description, chosenToSync, queuePlace)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT (name) DO UPDATE SET
                 switchedOn = excluded.switchedOn, color = excluded.color, emoji = excluded.emoji,
-                chosenToSync = excluded.chosenToSync, queuePlace = excluded.queuePlace
+                description = excluded.description, chosenToSync = excluded.chosenToSync,
+                queuePlace = excluded.queuePlace
             """,
         arguments: [
-            deck.name, deck.switchedOn?.rawValue, deck.color?.rawValue, deck.emoji, deck.chosenToSync, deck.queuePlace,
+            deck.name, deck.switchedOn?.rawValue, deck.color?.rawValue, deck.emoji, deck.description,
+            deck.chosenToSync, deck.queuePlace,
         ])
 }
 
@@ -533,7 +541,8 @@ extension Deck {
                 }
                 return color
             },
-            emoji: try row.decode(forColumn: "emoji"), chosenToSync: try row.decode(forColumn: "chosenToSync"),
+            emoji: try row.decode(forColumn: "emoji"), description: try row.decode(forColumn: "description"),
+            chosenToSync: try row.decode(forColumn: "chosenToSync"),
             queuePlace: try row.decode(forColumn: "queuePlace"))
     }
 }

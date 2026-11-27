@@ -63,6 +63,9 @@ public enum EngineError: Error, Equatable {
     /// What Lucas gave a tag, a deck or a user type as its emoji isn't one
     /// emoji: a word, two emoji, a letter or nothing.
     case notOneEmoji
+    /// What Lucas gave a deck as its description is longer than
+    /// `Deck.longestDescription`, so nothing changed (ADR 0044).
+    case descriptionTooLong
     /// The tag with this name was to be renamed, or moved, inside itself or
     /// inside a tag inside it, which would make the tree loop (ADR 0021), so
     /// nothing changed.
@@ -323,6 +326,9 @@ extension EngineError: LocalizedError {
             )
         case .notOneEmoji:
             LocalizedStringResource("That isn't one emoji. Pick just one, or leave the field empty for none.")
+        case .descriptionTooLong:
+            LocalizedStringResource(
+                "A deck's description can't be longer than 160 characters, so nothing changed. Shorten it.")
         case .tagInsideItself(let tag):
             LocalizedStringResource(
                 """
