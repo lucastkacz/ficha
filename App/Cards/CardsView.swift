@@ -16,12 +16,12 @@ import UniformTypeIdentifiers
 /// place, then the rest alphabetically, and those set aside last; each with
 /// how many of its cards are due, grayed while its cards are out of Lucas's
 /// reviews, and with its emoji and color, and each at the top of the tree
-/// with a line under its title, on up to two lines, that says how far it is
-/// and when it's all met (#491); a deck's context menu, and the Actions menu above the card
-/// list while the sidebar chose it (`DeckMenu.swift`), set it aside or
-/// prioritize it, give it a color and an emoji, rename it, in the rename
-/// sheet, which moves it too, and delete it, with its cards, asking first;
-/// and under that menu the deck's tags narrow the card list to one of them
+/// with a line under its title, in up to two lines, of how far it is and when
+/// it's all met (#491); a deck's context menu, and the Actions menu above the
+/// card list while the sidebar chose it (`DeckMenu.swift`), set it aside or
+/// prioritize it, give it a color and an emoji, rename it, in the rename sheet,
+/// which moves it too, and delete it, with its cards, asking first; and under
+/// that menu the deck's tags narrow the card list to one of them
 /// (`DeckTagsRow.swift`). Change
 /// Deck… moves the selected cards to the deck Lucas picks in its sheet, or
 /// names there with New Deck… (`ChangeDeckSheet.swift`), and so does dragging

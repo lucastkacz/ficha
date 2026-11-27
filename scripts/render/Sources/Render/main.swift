@@ -46,7 +46,7 @@ enum Window: String, CaseIterable {
     /// set aside last, each with how many of its cards are due, Idiomas and
     /// Ciencias with a color and an emoji, which the decks inside them show
     /// too, Ciencias, Humanidades and Idiomas › Español closed, so that
-    /// Sociedad shows, set aside, grayed with the deck inside it; the bar
+    /// Sociedad shows, set aside and grayed; the bar
     /// above the card list, with Idiomas's name, its Actions menu and its
     /// cards' tags; and two of Idiomas's cards selected, which `--key cmd+d`
     /// asks to move in the Change Deck sheet.
@@ -100,13 +100,13 @@ enum Window: String, CaseIterable {
     /// cards: "No cards yet", the paces alone, with their new cards a day,
     /// and Create.
     case cardsHowFastNewDeck = "cards-how-fast-new-deck"
-    /// The Cards window on Palabras lindas, one of Ficha's decks, which its
-    /// sidebar's Ficha's Decks section lists after Your Decks with the other
-    /// two, scrolled to its row, read from the repo's `App/FichaDecks/`: its
-    /// emoji, its name and
-    /// how many cards it brings in the table's place, with Add Deck…, which
-    /// `--key return` asks How fast? for, and its first card, a word, front
-    /// and back, in the detail's.
+    /// The Cards window on Palabras lindas, one of Ficha's decks, read from
+    /// the repo's `App/FichaDecks/`, which its sidebar's Ficha's Decks
+    /// section lists after Your Decks with the other two, its sidebar
+    /// scrolled to the deck's row: its emoji, its name and how many cards it
+    /// brings in the table's place, with Add Deck…, which `--key return` asks
+    /// How fast? for, and its first card, a word, front and back, in the
+    /// detail's.
     case cardsFichaDeckWords = "cards-ficha-deck-words"
     /// The same on Arte argentino, whose first card's front is a painting,
     /// and its back the painting's title, painter, year and museum, and its
@@ -1065,14 +1065,19 @@ func scrollSidebarToEnd(of window: NSWindow) throws {
 /// selected row, for the same reason as `scrollSidebarToEnd(of:)`. While
 /// that row is out of sight, below Your Decks, the outline view selects no
 /// row, so it scrolls to the end first, which Ficha's Decks are near, and
-/// then to the selected row, once the outline view selects one.
+/// then, once the outline view selects the row, to it.
 func scrollSidebarToSelection(of window: NSWindow) throws {
     try scrollSidebarToEnd(of: window)
     try wait(0.5)
     let sidebar = outlineViews(in: window.contentView).min { isNearerLeadingSide($0, than: $1, in: window) }
-    if let sidebar, sidebar.selectedRow >= 0 {
-        sidebar.scrollRowToVisible(sidebar.selectedRow)
+    guard let sidebar, sidebar.selectedRow >= 0 else {
+        throw RenderError(
+            description: """
+                The Cards window's sidebar selects none of Ficha's decks, even in sight: fix \
+                scrollSidebarToSelection(of:), or the window's case in window(_:model:), which chooses it.
+                """)
     }
+    sidebar.scrollRowToVisible(sidebar.selectedRow)
 }
 
 /// Whether `view` starts nearer the leading side of `window` than `other`:
