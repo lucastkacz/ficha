@@ -93,6 +93,11 @@ enum Window: String, CaseIterable {
     /// meeting: each pace with when Arte's all met, where it goes in the
     /// queue, and Put it first.
     case cardsHowFast = "cards-how-fast"
+    /// The Cards window with How fast? over it, once New Deck… in the
+    /// sidebar made Música, a deck the sample cards don't have, with no
+    /// cards: "No cards yet", the paces alone, with their new cards a day,
+    /// and Create.
+    case cardsHowFastNewDeck = "cards-how-fast-new-deck"
     /// The Cards window on Palabras lindas, one of Ficha's decks, which its
     /// sidebar's Ficha's Decks section lists after Your Decks with the other
     /// two, read from the repo's `App/FichaDecks/`: its emoji, its name and
@@ -1378,9 +1383,9 @@ func hours(_ count: Int) -> TimeInterval {
 /// in `renderDataFolder`, with copies to list, and files to weigh.
 func model(for name: Window) throws -> AppModel {
     switch name {
-    case .cards, .cardsNewDeck, .cardsImport, .cardsImportAnki, .cardsHowFast, .cardsFichaDeckWords,
-        .cardsFichaDeckPicture, .cardsFichaDeckFlower, .about, .general, .capture, .welcome, .welcomeOneButton,
-        .panelCard, .panelMetThemAll:
+    case .cards, .cardsNewDeck, .cardsImport, .cardsImportAnki, .cardsHowFast, .cardsHowFastNewDeck,
+        .cardsFichaDeckWords, .cardsFichaDeckPicture, .cardsFichaDeckFlower, .about, .general, .capture, .welcome,
+        .welcomeOneButton, .panelCard, .panelMetThemAll:
         return try AppModel(engine: try sampleEngine(at: .inMemory).engine)
     case .cardsEmpty:
         return try AppModel(engine: try Engine(location: .inMemory, time: SystemTimeSource()))
@@ -1518,6 +1523,20 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
     case .cardsHowFast:
         let window = CardsWindow(model: model)
         window.makeContent(opening: try howFastState(of: model))
+        return window
+    case .cardsHowFastNewDeck:
+        var state = model.openCardsWindow()
+        state.askToMakeDeck()
+        state.chooseNewDeck("Música")
+        guard state.howFast?.line == .noCards else {
+            throw RenderError(
+                description: """
+                    New Deck… didn't ask How fast? about Música: it says \(String(describing: state.howFast)). Fix \
+                    the window's case in window(_:model:), with a name no deck of the sample cards has at the top.
+                    """)
+        }
+        let window = CardsWindow(model: model)
+        window.makeContent(opening: state)
         return window
     case .cardsFichaDeckWords, .cardsFichaDeckPicture, .cardsFichaDeckFlower:
         let deck: FichaDeck =
