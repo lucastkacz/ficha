@@ -24,7 +24,7 @@ public struct CardsInReviews: Sendable, Equatable {
     /// card's (ADR 0034).
     let topDecks: [Int64: String]
     /// The decks at the top of the tree that hold cards in Lucas's reviews,
-    /// in the queue's order, each with its place in it.
+    /// in their places' order, each with its place in the queue.
     let queue: [PlacedDeck]
     /// The whole review log, in the order it was written.
     let log: [ReviewLogEntry]

@@ -123,8 +123,8 @@ extension CardsWindowState {
         /// Whether the sheet offers Put it first, beside where the deck
         /// goes: while it passes some deck, one with new cards ahead of the
         /// deck in the queue that isn't listed first for its priority cards.
-        /// With only such decks ahead, the sheet says the deck goes after
-        /// them, and offers nothing.
+        /// With only decks listed first for their priority cards ahead, the
+        /// sheet says the deck goes after them, and offers nothing.
         public var offersPutItFirst: Bool {
             !decksPassed.isEmpty
         }
