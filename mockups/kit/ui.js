@@ -166,7 +166,7 @@
   /** KeyLabel: a button's title and the key that presses it. */
   const KeyLabel = ({ title, k }) => html`<span>${title}</span>${k != null && html`<span className="key">${k}</span>`}`;
 
-  /** Button with .bordered, or .borderedProminent when `prominent`. */
+  /** Button with .bordered, .borderedProminent when `prominent`, or yellow .borderedProminent when `yellow`. */
   function Button({ title, k, prominent, yellow, wide, disabled, pressed, onClick, children, ...rest }) {
     const cls = ['btn', prominent && 'prominent', yellow && 'yellow', wide && 'wide', pressed && 'pressed']
       .filter(Boolean)

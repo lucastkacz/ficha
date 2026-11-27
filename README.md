@@ -31,7 +31,7 @@ In Settings you pick the hours, how many cards come at a time and how far apart,
 
 A card shows its front first. Try to remember what's on the back, press Space to turn it over, and say how well you remembered it: 1 for "Forgot", 2 for "Kind of", when it came back with effort, or Space for "Got it". The panel shows the card alone, with those three buttons. It takes a few seconds, and every button has its key, so you never need the mouse; 3 is "Got it" too, as in Anki. A card you haven't met yet comes the same way, its buttons named "New to me", "Kind of" and "Knew it": try to remember its back too, even if you can't yet, and say which.
 
-A card can also go both ways, as a word and its translation do. Once you've met it, it comes back first too, marked "Back first": the back on top, and you try to remember the front. Each way is spaced on its own, and the first time it comes back first its buttons say "New to me" and "Knew it" too.
+A card can also go both ways, as a word and its translation do. Once you've met it, it comes back first too, marked "Back first": the back on top, and you try to remember the front. Each way is spaced on its own, and the first time it comes back first its buttons say "New to me", "Kind of" and "Knew it" too.
 
 A side with a sound shows a ▶ under it. A sound never plays on its own: press R to hear the card's, the lower side's once you've turned it over, or the upper side's when the lower one has none, or click a side's ▶. Press R or the ■ again to stop it. It keeps playing as you turn the card over, and stops as you answer the card, write about it or leave it, and as the panel closes.
 
