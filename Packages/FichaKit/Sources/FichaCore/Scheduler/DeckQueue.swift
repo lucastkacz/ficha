@@ -166,9 +166,9 @@ extension CardsInReviews {
     func decksWithNewWays(
         putting deck: String, at position: QueuePosition, now: Date
     ) -> [(deck: String, newWays: Int, through: Int)] {
-        let places = places(putting: deck, at: position, now: now)
+        let moved = places(putting: deck, at: position, now: now)
         return decksWithNewWays(
-            queuedAs: queue.map { PlacedDeck(deck: $0.deck, place: places[$0.deck] ?? $0.place) }.sorted())
+            queuedAs: queue.map { PlacedDeck(deck: $0.deck, place: moved[$0.deck] ?? $0.place) }.sorted())
     }
 
     /// How many new ways priority cards have, which come first wherever a
