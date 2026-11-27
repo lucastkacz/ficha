@@ -1783,8 +1783,8 @@ func panelWindow(
 /// reads them as `fichaDecks` holds them, as the app gives it those of its
 /// bundle; none while that's nil, since the tool's own bundle has none. Its
 /// controls draw as in the key window (`appearsActive`), which `actAsKey`
-/// doesn't reach: Flip and Got it in the accent color and Kind of in yellow,
-/// as with the keyboard.
+/// doesn't reach: Flip, Got it and the done panel's See more or Done in the
+/// accent color and Kind of in yellow, as with the keyboard.
 func panelWindow(
     showing panel: Result<ReviewPanelModel, EngineError>,
     readingFichaDecks fichaDecks: [FichaDeck: Result<FichaDeckFile, EngineError>]? = nil
