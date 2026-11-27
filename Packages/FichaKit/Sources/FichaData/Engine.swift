@@ -31,9 +31,9 @@ public struct Engine: Sendable {
     /// unique across devices: random ones, except in tests and the render
     /// tool.
     let ids: any IDSource
-    /// The Mac's calendar, by whose clock Ficha's days are counted, from the
-    /// hour the settings say (ADR 0045), and a backup's days and weeks, from
-    /// midnight.
+    /// The device's calendar, by whose clock Ficha's days are counted, from
+    /// the hour the settings say (ADR 0045), and a backup's days and weeks,
+    /// from midnight.
     let calendar: Calendar
     /// Where the images on cards are kept: the Images folder beside the
     /// database, or memory with it.
@@ -57,7 +57,7 @@ public struct Engine: Sendable {
     /// migrated is refused, and left as it was. The review log's entries it
     /// writes get their IDs from `ids`, random ones except in tests. Ficha's
     /// days start at the hour the settings say (ADR 0045), and a backup's days
-    /// and weeks at midnight, by `calendar`: the Mac's, except in tests. The
+    /// and weeks at midnight, by `calendar`: the device's, except in tests. The
     /// files the `ficha` CLI puts on cards come from `downloads` alone, the
     /// Downloads folder, when it's given, and from anywhere when it isn't. An
     /// import draws its SVGs with a drawer `newSVGDrawer` makes, in the app its
@@ -111,7 +111,7 @@ public struct Engine: Sendable {
     /// fails. So it's nil while there's no database there yet, or while its
     /// schema is older than this version's, until the app or the CLI opens it,
     /// and a database a newer version migrated is refused. Ficha's days start
-    /// at the hour the settings say (ADR 0045), by `calendar`: the Mac's,
+    /// at the hour the settings say (ADR 0045), by `calendar`: the device's,
     /// except in tests.
     public init?(
         readingOnlyIn folder: URL,
