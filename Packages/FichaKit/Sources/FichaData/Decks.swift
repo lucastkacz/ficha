@@ -53,6 +53,9 @@ public struct Deck: Sendable, Hashable {
     public var color: TagColor?
     /// Its emoji, or nil for none.
     public var emoji: String?
+    /// One or two lines on what it holds, or nil for none (ADR 0044): its
+    /// own alone, which the decks inside it never take.
+    public var description: String?
     /// Whether the user chose it to sync, for selective sync (ADR 0020). A
     /// deck isn't, until the user ticks it.
     public var chosenToSync: Bool
@@ -71,13 +74,14 @@ public struct Deck: Sendable, Hashable {
 
     public init(
         name: String, switchedOn: DeckSwitch? = nil, color: TagColor? = nil, emoji: String? = nil,
-        chosenToSync: Bool = false, queuePlace: Date? = nil, inheritedColor: TagColor? = nil,
-        inheritedEmoji: String? = nil
+        description: String? = nil, chosenToSync: Bool = false, queuePlace: Date? = nil,
+        inheritedColor: TagColor? = nil, inheritedEmoji: String? = nil
     ) {
         self.name = name
         self.switchedOn = switchedOn
         self.color = color
         self.emoji = emoji
+        self.description = description
         self.chosenToSync = chosenToSync
         self.queuePlace = queuePlace
         self.inheritedColor = inheritedColor

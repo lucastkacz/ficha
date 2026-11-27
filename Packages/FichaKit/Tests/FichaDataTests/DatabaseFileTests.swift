@@ -684,6 +684,29 @@ final class DatabaseFileTests {
         #expect(try engine.changesToSend().isEmpty)
     }
 
+    // A deck had no description before ADR 0044: the migration that gives
+    // decks one makes their triggers again, which mustn't send every deck.
+    @Test(
+        "a database from before descriptions keeps its decks, each with none, sends nothing, and a deck then takes one that waits to be sent",
+        .bug(id: 556))
+    func aDatabaseFromBeforeDescriptionsKeepsItsDecks() throws {
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try saveDatabaseBeforeDescriptions(at: folder.appending(path: "Ficha.sqlite"), at: time.now - days(1))
+
+        let engine = try Engine(location: .folder(folder), time: time)
+        let before = try engine.decks()
+        let waitingBefore = try engine.changesToSend()
+        try engine.setDescription("Lo que está en los museos.", ofDeck: "Arte")
+
+        #expect(before == [Deck(name: "Arte", emoji: "🎨"), Deck(name: "Historia")])
+        #expect(waitingBefore.isEmpty)
+        #expect(
+            try engine.decks() == [
+                Deck(name: "Arte", emoji: "🎨", description: "Lo que está en los museos."), Deck(name: "Historia"),
+            ])
+        #expect(try engine.changesToSend().count == 1)
+    }
+
     /// The path of a file in the data folder.
     private func path(of file: String) -> String {
         folder.appending(path: file).path(percentEncoded: false)
@@ -1373,6 +1396,29 @@ func saveDatabaseBeforeTheQueue(at file: URL, storingSettings: Bool, at time: Da
                     VALUES (1, 5, 8, 0.9)
                     """)
         }
+        try db.execute(sql: "UPDATE syncWrite SET recordsChanges = 1")
+    }
+    try database.close()
+}
+
+/// Saves a database at `file` as Ficha left it before a deck had a
+/// description (ADR 0044), through the schema's migrations up to the one
+/// before it, with sync on and nothing waiting to be sent: La Gioconda in
+/// Arte, whose row holds its emoji, 🎨, and Coliseo in Historia, which has
+/// no row, both approved at `time`.
+func saveDatabaseBeforeDescriptions(at file: URL, at time: Date) throws {
+    let database = try DatabasePool(path: file.path(percentEncoded: false))
+    try Schema.migrator.migrate(database, upTo: "v34 a deck's place in the queue")
+    try database.write { db in
+        try db.execute(sql: "UPDATE syncWrite SET recordsChanges = 0")
+        try db.execute(
+            sql: """
+                INSERT INTO card (id, type, front, back, tags, createdAt, deck)
+                VALUES (1, 'concept', 'La Gioconda', 'De Leonardo.', '[]', ?, 'Arte'),
+                       (2, 'concept', 'Coliseo', 'Un anfiteatro.', '[]', ?, 'Historia')
+                """,
+            arguments: [time, time])
+        try db.execute(sql: "INSERT INTO deck (name, emoji, madeHere) VALUES ('Arte', '🎨', 1)")
         try db.execute(sql: "UPDATE syncWrite SET recordsChanges = 1")
     }
     try database.close()
