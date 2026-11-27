@@ -26,7 +26,7 @@ Done when each of those steps ran, or the user has the one that needs them.
 
 ## 3. A retro, only if something went sideways
 
-What went sideways, as [`../../method/method.md`](../../method/method.md) says: what the PR's body lists, and what its comments and commits show since it opened. For each: what happened, why, and the change to the method, the pliego or the project's tools that would have avoided it, as a Task issue in the area of the way of working. With nothing sideways, no retro.
+What went sideways, as [`../../method/method.md`](../../method/method.md) says: what the PR's body lists, and what its comments and commits show since it opened. For each: what happened, why, and the change to the method, the pliego or the project's tools that would have avoided it, as a Task issue in the area of the way of working; a procedure that couldn't run on its machine already has its Task, from `/construir`'s step 4. With nothing sideways, no retro.
 
 Done when each thing that went sideways has its Task issue, or nothing did.
 
