@@ -459,11 +459,16 @@
   const isTyping = (el) => el && (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT');
 
   /**
-   * A stand-in for a card's image, such as a painting's in Arte argentino:
-   * the mock's decks carry no images, so it draws where one goes.
+   * A card's image, such as a painting's in Arte argentino. The mock's decks
+   * carry no images, so it draws a stand-in where one goes; a page that
+   * publishes a mock with the decks' pictures, small, sets `FichaPictures`
+   * (each deck's id to its cards' image URLs, in the deck's order), and then
+   * it draws the card's own. `className` sizes it where it goes.
    */
-  function CardPicture() {
-    return html`<div className="card-picture" role="img" aria-label="The card's image">Image</div>`;
+  function CardPicture({ card, className = 'card-picture' } = {}) {
+    const src = card && root.FichaPictures && (root.FichaPictures[card.deckId] || [])[card.order];
+    if (src) return html`<img className=${`${className} real`} src=${src} alt="The card's image" />`;
+    return html`<div className=${className} role="img" aria-label="The card's image">Image</div>`;
   }
 
   /**
@@ -670,7 +675,7 @@
             ${card.tags.map((t) => html`<${Capsule} key=${t}>${t}</${Capsule}>`)}
             ${isNew && html`<${Capsule} tint>New</${Capsule}>`}
           </div>`}
-          ${card.picture && html`<${CardPicture} />`}
+          ${card.picture && html`<${CardPicture} card=${card} />`}
           ${card.front && html`<div className="upper">${card.front}</div>`}
         </div>
         <div className="icons">${icons}</div>

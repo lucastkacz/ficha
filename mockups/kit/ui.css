@@ -395,6 +395,7 @@
   display: grid; place-items: center; background: var(--fill); color: var(--tertiary-label);
   font-size: calc(var(--text-caption) * var(--card-scale, 1)); letter-spacing: 0.04em;
 }
+.card-picture.real { display: block; object-fit: contain; aspect-ratio: auto; max-height: calc(200px * var(--card-scale, 1)); width: auto; background: none; }
 .panel .lower .source { font-size: calc(var(--text-caption) * var(--card-scale, 1)); color: var(--secondary-label); }
 .panel .flip-row { display: flex; justify-content: flex-end; }
 .panel .ratings { display: grid; grid-template-columns: repeat(var(--count, 4), 1fr); gap: 8px; }

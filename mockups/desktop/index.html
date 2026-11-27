@@ -114,14 +114,42 @@
   .cards .detail { min-width: 0; padding: 6px 22px 18px; display: flex; flex-direction: column; gap: 12px; overflow: auto; }
   .cards .row-actions { display: flex; gap: 8px; flex-wrap: wrap; }
   .cards .peek { display: flex; flex-wrap: wrap; gap: 6px; }
-  .cards table { width: 100%; border-collapse: collapse; font-size: var(--text-callout); }
-  .cards th { text-align: left; font-weight: 500; color: var(--secondary-label); padding: 4px 8px 4px 0; border-bottom: 1px solid var(--separator); }
-  .cards td { padding: 5px 8px 5px 0; border-bottom: 1px solid var(--separator); vertical-align: top; }
-  .cards td.back { color: var(--secondary-label); white-space: pre-line; }
+  .cards .detail.browsing { overflow: hidden; }
+  .cards .tools { display: flex; gap: 8px; align-items: center; }
+  .cards .search { flex: 1; min-width: 80px; height: 24px; padding: 0 9px; border-radius: 7px; background: var(--fill); color: var(--secondary-label); display: flex; align-items: center; font-size: var(--text-callout); }
+  .cards .legend { display: flex; flex-wrap: wrap; gap: 12px; color: var(--secondary-label); font-size: var(--text-footnote); }
+  .cards .legend i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 4px; vertical-align: 1px; }
+  .cards .gridwrap { flex: 1; min-height: 0; overflow: auto; margin: 0 -6px; padding: 2px 6px 6px; }
+  .cards .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 10px; }
+  .cards .tile {
+    position: relative; aspect-ratio: 4 / 3; border: 0; border-radius: 12px; padding: 10px; cursor: default; overflow: hidden;
+    background: var(--window-bg); color: var(--label); box-shadow: 0 0 0 1px var(--separator), 0 1px 3px rgba(0, 0, 0, 0.08);
+    display: flex; align-items: center; justify-content: center; text-align: center;
+  }
+  .cards .tile.new { background: var(--fill); box-shadow: none; color: var(--secondary-label); }
+  .cards .tile[aria-pressed='true'] { box-shadow: 0 0 0 2px var(--accent), 0 2px 8px rgba(0, 0, 0, 0.12); }
+  .cards .tile .f { font-weight: 600; font-size: 15px; line-height: 1.25; overflow-wrap: anywhere; }
+  .cards .tile.picture { padding: 0; }
+  .cards .tile .tile-picture {
+    width: 100%; height: 100%; display: grid; place-items: center; object-fit: cover;
+    background: var(--fill); color: var(--tertiary-label); font-size: var(--text-caption); letter-spacing: 0.04em;
+  }
+  .cards .tile.new .tile-picture { opacity: 0.7; }
+  .cards .tile .dot { position: absolute; top: 8px; right: 9px; width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 0 2px var(--window-bg); }
+  .cards .dot.met, .cards .legend i.met { background: var(--green); }
+  .cards .dot.due, .cards .legend i.due { background: var(--orange); }
+  .cards .legend i.new { background: var(--tertiary-label); }
+  .cards.with-detail { grid-template-columns: 230px 1fr 240px; }
+  .cards .card-pane { min-width: 0; margin-bottom: 10px; padding: 6px 14px 18px; border-left: 1px solid var(--separator); overflow: auto; display: flex; flex-direction: column; gap: 8px; }
+  .cards .card-pane .none { margin: auto; color: var(--secondary-label); font-size: var(--text-callout); text-align: center; }
+  .cards .sides { display: flex; flex-direction: column; gap: 8px; }
+  .cards .side { min-width: 0; padding: 8px 10px; border-radius: 8px; background: var(--fill); white-space: pre-line; }
+  .cards .side small { display: block; color: var(--secondary-label); font-size: var(--text-footnote); }
+  .cards .side .card-picture { margin-top: 4px; width: 128px; }
+  .cards .side .card-picture.real { width: auto; max-width: 100%; max-height: 88px; }
   .cards .one-card { display: flex; flex-direction: column; gap: 8px; max-width: 420px; padding: 14px 16px; border-radius: 12px; background: var(--fill); }
   .cards .one-card .front { font-size: var(--text-title3); font-weight: 600; }
   .cards .one-card .back { color: var(--secondary-label); white-space: pre-line; }
-  .cards td.when { white-space: nowrap; font-variant-numeric: tabular-nums; }
   .sheet-cover { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.12); z-index: 5; display: flex; justify-content: center; }
   .sheet {
     width: min(440px, calc(100% - 40px)); align-self: flex-start; padding: 18px 20px; border-radius: 0 0 14px 14px;
@@ -369,7 +397,8 @@
   }
 
   // ---------------------------------------------------------------------
-  // CardsWindow: the decks, in their queue, and Ficha's decks to add.
+  // CardsWindow: the decks, in their queue, and Ficha's decks to add; a
+  // deck's cards as a grid, each its front's picture or its text (#536).
   // ---------------------------------------------------------------------
   /** A deck's line, as its row says it (#491). */
   function deckStatus(app, state, d) {
@@ -388,6 +417,8 @@
     if (app.currentDeck() && app.currentDeck().id === d.id) return { line: `${met} of ${total} · on track for ${when}`, share: met / total };
     return { line: `Next · on track for ${when}`, share: met / total };
   }
+  /** A tile's dot: met, due, or none while the card is new. */
+  const dotOf = (c, now) => (c.state === 'new' ? null : c.due <= now ? 'due' : 'met');
   function nextReview(c, now) {
     if (c.state === 'new') return 'New';
     if (c.due <= now) return 'Due';
@@ -404,6 +435,8 @@
     const anki = state.decks.find((d) => !d.ficha && !d.added);
     const [selected, setSelected] = useState((yours[0] || toAdd[0]).id);
     const [sheet, setSheet] = useState(null);
+    const [cardId, setCardId] = useState(null);
+    useEffect(() => setCardId(null), [selected]);
     const [pace, setPace] = useState(state.pace);
     const [first, setFirst] = useState(false);
     const openSheet = (id) => (setSheet(id), setPace(app.state.pace), setFirst(false));
@@ -436,6 +469,7 @@
     const status = making ? { line: '' } : deckStatus(app, state, deck);
     const current = app.currentDeck();
     const cards = making ? [] : app.deckCards(deck.id);
+    const chosenCard = cards.find((c) => c.id === cardId);
     const sheetDeck = sheet && (sheet === NEW ? deck : app.deck(sheet));
     const row = (d) => {
       const st = deckStatus(app, state, d);
@@ -443,8 +477,9 @@
         aria-selected=${d.id === selected} onClick=${() => setSelected(d.id)}>
         <span>${d.emoji}</span><span className="name">${d.name}</span><small>${st.line}</small></button>`;
     };
+    const browsing = deck.added && !status.empty;
     return html`<${Window} title="Cards" onClose=${win.onClose} ...${win}>
-      <div className="cards">
+      <div className=${browsing ? 'cards with-detail' : 'cards'}>
         <nav className="sidebar" aria-label="Decks">
           ${yours.length ? html`<div className="side-title">Your Decks</div>${yours.map(row)}` : null}
           ${toAdd.length ? html`<div className="side-title">Ficha's Decks</div>${toAdd.map(row)}` : null}
@@ -454,7 +489,7 @@
           ${anki && html`<button type="button" className="side-row" aria-selected=${selected === anki.id} onClick=${() => setSelected(anki.id)}>
               <span>📥</span><span className="name">Import an Anki file…</span><small>Mock: ${anki.file}</small></button>`}
         </nav>
-        <div className="detail">
+        <div className=${browsing ? 'detail browsing' : 'detail'}>
           <div className="deck-head"><span className="deck-emoji">${deck.emoji}</span>
             <div><h2>${deck.name}</h2>
               <p className="sub">${deck.added ? status.line : making ? 'No cards yet' : `${cards.length} cards · ${deck.ficha ? "one of Ficha's decks" : `from ${deck.file}`}`}</p></div></div>
@@ -466,11 +501,21 @@
                 ${!status.done && !status.empty && html`<${Button} title=${deck.setAside ? 'Back in the queue' : 'Set aside'}
                   onClick=${() => app.setAside(deck.id, !deck.setAside)} />`}
               </div>
-              ${status.empty ? html`<p className="sub">Add cards with Capture, from the menu bar. Each new card waits its turn in the queue.</p>` : html`<table><thead><tr><th>Front</th><th>Back</th><th>Next review</th></tr></thead>
-                <tbody>${cards.map((c) => html`<tr key=${c.id}><td>${c.picture ? html`<span className="sub">Image</span>` : c.front}</td><td className="back">${c.back}</td>
-                  <td className="when">${nextReview(c, state.now)}</td></tr>`)}</tbody></table>`}`
+              <div className="tools"><span className="search">Search</span>
+                <${Button} title="New Card" onClick=${() => app.log('New Card: a front, a back, a picture and its deck, as today', 'deck')} /></div>
+              ${status.empty ? html`<p className="sub">Add cards with Capture, from the menu bar. Each new card waits its turn in the queue.</p>` : html`
+              <div className="legend"><span><i className="met" />Met</span><span><i className="due" />Due</span>
+                <span><i className="new" />New: waits its turn</span></div>
+              <div className="gridwrap"><div className="grid" role="list" aria-label=${`${deck.name}'s cards`}>${cards.map((c) => {
+                const dot = dotOf(c, state.now);
+                return html`<button type="button" role="listitem" key=${c.id} aria-pressed=${c.id === cardId}
+                  className=${['tile', c.state === 'new' && 'new', c.picture && 'picture'].filter(Boolean).join(' ')}
+                  onClick=${() => setCardId(c.id === cardId ? null : c.id)}>
+                  ${c.picture ? html`<${CardPicture} card=${c} className="tile-picture" />` : html`<span className="f">${c.front}</span>`}
+                  ${dot && html`<span className=${`dot ${dot}`} aria-label=${dot === 'met' ? 'Met' : 'Due'} />`}</button>`;
+              })}</div></div>`}`
             : deck.ficha
-              ? html`<div className="one-card">${cards[0].picture ? html`<${CardPicture} />` : html`<div className="front">${cards[0].front}</div>`}
+              ? html`<div className="one-card">${cards[0].picture ? html`<${CardPicture} card=${cards[0]} />` : html`<div className="front">${cards[0].front}</div>`}
                   <${Divider} /><div className="back">${cards[0].back}</div></div>
                 <div className="row-actions"><${Button} prominent title="Add Deck…" onClick=${() => openSheet(deck.id)} /></div>`
               : html`<p className="sub">${deck.blurb}</p>
@@ -479,6 +524,11 @@
               <div className="row-actions"><${Button} prominent title=${making ? 'New Deck…' : 'Import…'}
                 onClick=${() => openSheet(deck.id)} /></div>`}
         </div>
+        ${browsing && html`<aside className="card-pane" aria-label="The card's detail">
+          ${chosenCard ? html`<div className="sides"><div className="side"><small>Front</small>${chosenCard.picture ? html`<${CardPicture} card=${chosenCard} />` : chosenCard.front}</div>
+              <div className="side"><small>Back</small>${chosenCard.back}</div></div>
+            <p className="sub">${chosenCard.state === 'new' ? 'New: it waits its turn in the queue.' : `Next review: ${nextReview(chosenCard, state.now)}`}</p>`
+          : html`<p className="none">No card selected</p>`}</aside>`}
         ${sheetDeck && html`<div className="sheet-cover"><div className="sheet" role="dialog" aria-label="How fast?">
           <div className="deck-head"><span className="deck-emoji">${sheetDeck.emoji}</span>
             <div><h2>${sheetDeck.name}</h2>
@@ -734,7 +784,7 @@
       isOpen('video') && 'video'].filter(Boolean);
     const centered = (width, height) => ({ x: Math.max(24, Math.round((w - width) / 2)), y: Math.max(menuBar + 16, menuBar + Math.round((free - height) / 2)) });
     const welcomeSize = { width: 540, height: Math.min(500, free - 30) };
-    const cardsSize = { width: Math.min(780, w - 60), height: Math.min(540, free - 30) };
+    const cardsSize = { width: Math.min(900, w - 60), height: Math.min(620, free - 30) };
     const settingsSize = { width: 560, height: Math.min(640, free - 30) };
     return html`
       <${MenuBar} appName=${app0.name} menus=${app0.menus} now=${state.now} status=${status} autohide=${full} />
@@ -790,6 +840,8 @@
         day has appearances, the latest if five days in seven do. 85% desired retention.</li>
       <li>Ficha's three decks, in Spanish for now, offered at the Welcome page and in the Cards window; the first card
         comes a minute after the Welcome page. "I have Anki" stands for the Import sheet with a made-up file.</li>
+      <li>The Cards window, ADR 0041's: the decks alone in the sidebar, each with its row, and the chosen deck's cards
+        as a grid, each its front's picture or its text, a dot for met or due. Click one for its front and back, in the detail beside the grid.</li>
       <li>Settings in five tabs, as Lucas approved them. "Settings: Show where from" marks each row with the tab it
         was in today.</li>
     </ul>
