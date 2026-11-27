@@ -625,22 +625,32 @@
         }
       }
     },
-    "%lld cards · imported" : {
-      "comment" : "In How fast?, under the name of the deck an import brought: how many cards it holds.",
+    "%lld cards · imported from %@" : {
+      "comment" : "In How fast?, under the name of the deck an import made, or the names of the decks: how many cards they hold, and the name of the file they came from.",
       "localizations" : {
         "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld card · imported"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld cards · imported"
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@cards@ · imported from %2$@"
+          },
+          "substitutions" : {
+            "cards" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg card"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg cards"
+                    }
+                  }
                 }
               }
             }
@@ -1731,6 +1741,9 @@
     "Couldn't untick Set Aside on “%@”" : {
       "comment" : "An alert's title in the Cards window, after choosing a ticked Set Aside in a deck's menu, with the deck."
     },
+    "Create" : {
+      "comment" : "The button of How fast? after New Deck…: sets the pace for the new deck."
+    },
     "Created" : {
       "comment" : "A column of the Cards window: when Lucas approved the card.\nIn the Cards window's detail: when Lucas approved the card."
     },
@@ -2133,17 +2146,71 @@
     "General" : {
       "comment" : "A tab of the Settings window."
     },
-    "Goes after %@, which you're meeting first." : {
-      "comment" : "In How fast?, with the names of the decks ahead of the one coming in, in the queue."
+    "Goes after %@, which you're meeting %lld." : {
+      "comment" : "In How fast?, with the names of the decks ahead of the one coming in, in the queue, and how many they are, which says “now” for one and “first” for several, and doesn't show.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Goes after %1$@, which you're meeting %#@when@."
+          },
+          "substitutions" : {
+            "when" : {
+              "argNum" : 2,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "now"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "first"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     },
-    "Goes after %@, which you're meeting now." : {
-      "comment" : "In How fast?, with the name of the deck ahead of the one coming in, in the queue."
-    },
-    "Goes first: %@ wait until you've met it all." : {
-      "comment" : "In How fast?, with Put it first ticked, with the names of the decks it goes ahead of."
-    },
-    "Goes first: %@ waits until you've met it all." : {
-      "comment" : "In How fast?, with Put it first ticked, with the name of the one deck it goes ahead of."
+    "Goes first: %@ %lld until you've met it all." : {
+      "comment" : "In How fast?, with Put it first ticked, with the names of the decks it goes ahead of, and how many they are, which says “waits” or “wait” and doesn't show.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Goes first: %1$@ %#@wait@ until you've met it all."
+          },
+          "substitutions" : {
+            "wait" : {
+              "argNum" : 2,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "waits"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "wait"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "Good" : {
       "comment" : "A rating, Anki's third button, as the Cards window's review log shows it: Lucas knew the card. Anki's own name for it, “Bien” in Spanish."
@@ -2774,7 +2841,7 @@
       "comment" : "One of Finder's tag colors, which a tag can have."
     },
     "Pace" : {
-      "comment" : "The name of How fast?'s radio group of paces, which VoiceOver reads."
+      "comment" : "The name of How fast?'s group of paces, which VoiceOver reads."
     },
     "Paste" : {
       "comment" : "A hidden button of the Cards window: ⌘V in a side's text, which takes a copied image too."

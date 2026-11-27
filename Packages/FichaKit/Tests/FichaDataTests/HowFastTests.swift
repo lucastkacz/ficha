@@ -76,7 +76,7 @@ final class HowFastTests {
         let first = try Pace.allCases.map { try finish(of: "Historia", at: $0, in: ficha) }
 
         #expect(asked.subject == .deck("Historia"))
-        #expect(asked.line == .imported(cardCount: 3))
+        #expect(asked.line == .imported(cardCount: 3, fileName: "Historia.txt"))
         #expect(asked.pace == .steady)
         #expect(asked.paces.map(\.pace) == [.chill, .steady, .faster])
         #expect(asked.paces.map(\.finish) == whereItIs)
@@ -189,7 +189,7 @@ final class HowFastTests {
         #expect(beforeDone == nil)
         let howFast = try #require(asked)
         #expect(howFast.subject == .deck("Arte"))
-        #expect(howFast.line == .imported(cardCount: 2))
+        #expect(howFast.line == .imported(cardCount: 2, fileName: "Arte.txt"))
         #expect(howFast.decksAhead == ["Historia"])
         #expect(howFast.paces.map(\.finish) == whereItIs)
     }
@@ -252,7 +252,7 @@ final class HowFastTests {
         let howFast = try #require(asked)
         #expect(howFast.subject == .decks(["Botánica", "Zoología"]))
         #expect(howFast.decks.map(\.name) == ["Botánica", "Zoología"])
-        #expect(howFast.line == .imported(cardCount: 3))
+        #expect(howFast.line == .imported(cardCount: 3, fileName: "Naturaleza.txt"))
         #expect(howFast.paces.map(\.finish) == whereItIs)
         #expect(whereItIs.allSatisfy { $0 != nil })
         #expect(!howFast.offersPutItFirst)

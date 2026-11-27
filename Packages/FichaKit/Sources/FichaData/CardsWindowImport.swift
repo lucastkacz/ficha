@@ -56,10 +56,17 @@ extension CardsWindowState {
         /// What couldn't be done, while the sheet says so.
         public fileprivate(set) var failure: ImportFailure?
         /// The decks at the top of the tree the import made, once it's
-        /// done, those the cards that came in new came into and the user
-        /// didn't have, by their whole names, in the order a tree lists
-        /// them: How fast? asks about them as Done closes the sheet (#491).
-        fileprivate var newDecks: [String] = []
+        /// done: How fast? asks about them as Done closes the sheet (#491).
+        fileprivate var decksMade: DecksMade?
+
+        /// The decks at the top of the tree an import made, those the cards
+        /// that came in new came into and the user didn't have, by their
+        /// whole names, in the order a tree lists them, with the name of the
+        /// file the cards came from, which How fast? says.
+        struct DecksMade: Sendable, Equatable {
+            let names: [String]
+            let fileName: String
+        }
 
         /// The preview of the file chosen, while the sheet shows it.
         public var preview: ImportPreview? {
@@ -391,8 +398,11 @@ extension CardsWindowState {
         case .preview(.failure(let error)):
             importing?.failure = ImportFailure(action: .preview, error: error)
         case .imported(.success(let imported)):
+            // The sheet shows the preview the cards came from until now.
+            if let preview = importing?.preview {
+                importing?.decksMade = Importing.DecksMade(names: imported.newDecks, fileName: preview.fileName)
+            }
             importing?.step = .done(imported.outcome)
-            importing?.newDecks = imported.newDecks
         case .imported(.failure(let error)):
             importing?.failure = ImportFailure(action: .importCards, error: error)
         }
@@ -409,9 +419,11 @@ extension CardsWindowState {
     /// new cards came into (`HowFast.swift`); not about a deck the user
     /// had, which keeps its place in the queue and the pace there is.
     public mutating func closeImport() {
-        let newDecks = importing?.newDecks ?? []
+        let made = importing?.decksMade
         importing = nil
-        askHowFast(about: newDecks, cameInFrom: .anImport)
+        if let made {
+            askHowFast(about: made.names, cameInFrom: .anImport(fileName: made.fileName))
+        }
         askForTheFichaDeckAskedToAdd()
     }
 }

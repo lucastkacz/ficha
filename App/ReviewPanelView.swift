@@ -1011,10 +1011,11 @@ private struct HeightUpTo: Layout {
     }
 }
 
-/// A button's title, followed by the key that does the same, small. The key
-/// shows as it's given: a symbol, a digit, or a key's name, like Space's,
-/// which the caller takes from the String Catalog.
-private struct KeyLabel: View {
+/// A button's title, followed by the key that does the same, small, as the
+/// review panel's buttons and How fast?'s show them. The key shows as it's
+/// given: a symbol, a digit, or a key's name, like Space's, which the caller
+/// takes from the String Catalog.
+struct KeyLabel: View {
     let title: Text
     let key: String
 

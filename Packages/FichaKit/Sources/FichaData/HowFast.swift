@@ -47,11 +47,11 @@ extension CardsWindowState {
         public enum Line: Sendable, Equatable {
             /// "No cards yet": the deck New Deck…'s OK just made.
             case noCards
-            /// "14 cards · imported": the deck an import's new cards came
-            /// into, with its cards and those of the decks inside it,
-            /// whatever their standing, or those of all the decks they came
-            /// into.
-            case imported(cardCount: Int)
+            /// "14 cards · imported from Arte.apkg": the deck an import made,
+            /// with its cards and those of the decks inside it, whatever
+            /// their standing, or those of all the decks it made, and the
+            /// name of the file it came from.
+            case imported(cardCount: Int, fileName: String)
             /// "40 cards · one of Ficha's decks": one of Ficha's decks, with
             /// the cards that would come in, those of its file that repeat
             /// none of the user's (#458).
@@ -119,8 +119,8 @@ extension CardsWindowState {
     enum ComingIn {
         /// New Deck…'s OK made it, with no card.
         case newDeck
-        /// An import brought new cards into it.
-        case anImport
+        /// An import from the file named `fileName` made it.
+        case anImport(fileName: String)
     }
 
     /// How fast?, while the window asks it.
@@ -195,6 +195,11 @@ extension CardsWindowState {
         do throws(EngineError) {
             let cards = try engine.cardsForHowFast(countingIn: names)
             let settings = try engine.cardsWindowQueueSettings(activeHours: activeHours)
+            let line: HowFast.Line =
+                switch comingIn {
+                case .newDeck: .noCards
+                case .anImport(let fileName): .imported(cardCount: cards.cardCount, fileName: fileName)
+                }
             // One of Ficha's decks the review panel asked for, which the read
             // before asked about, waits again, until this one closes.
             if case .howFast(let asked) = question, case .fichaDeck(let deck) = asked.subject {
@@ -202,9 +207,8 @@ extension CardsWindowState {
             }
             question = .howFast(
                 HowFast(
-                    about: names, line: comingIn == .newDeck ? .noCards : .imported(cardCount: cards.cardCount),
-                    amongTopDecks: listedTopDecks, cards: cards.inReviews, settings: settings, now: engine.now,
-                    calendar: engine.calendar))
+                    about: names, line: line, amongTopDecks: listedTopDecks, cards: cards.inReviews,
+                    settings: settings, now: engine.now, calendar: engine.calendar))
         } catch {
             logger.error("Couldn't read the queue for How fast?: \(String(describing: error), privacy: .public)")
         }

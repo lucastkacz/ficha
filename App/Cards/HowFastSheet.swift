@@ -28,17 +28,21 @@ extension View {
 }
 
 /// How fast? (ADR 0034, #491), the sheet over the Cards window as a deck
-/// comes in, as the mock draws it: the deck's emoji and name, and a line
-/// under them, "14 cards · imported" or "No cards yet"; the three paces,
-/// Chill, Steady and Faster, as a radio group, each with its new cards a day
-/// and, when the deck has new cards, when they're all met at it; where the
-/// deck goes in the queue new cards come from, with Put it first, while
-/// other decks with new cards are ahead of it; that one pace is for all the
-/// user's decks, while they have others; and Cancel, or Escape, and Start,
-/// or Return. `CardsWindowState` decides all of it (`HowFast.swift`).
+/// comes in, as the mock draws it: the deck's emoji and name, or the names
+/// of the decks an import made, with no emoji, and a line under them, "14
+/// cards · imported from Arte.apkg", "40 cards · one of Ficha's decks" or
+/// "No cards yet"; the three paces, Chill, Steady and Faster, each a tile
+/// with its radio, its new cards a day and, when the deck has new cards,
+/// when they're all met at it, the chosen one in the accent; where the deck
+/// goes in the queue new cards come from, with Put it first, while other
+/// decks with new cards are ahead of it; that one pace is for all the
+/// user's decks, while they have others; and Cancel, with esc, and Start,
+/// or Create after New Deck…, with ↩. It's never narrower than the mock's,
+/// and widens so that a label fits whole. `CardsWindowState` decides all of
+/// it (`HowFast.swift`).
 struct HowFastSheet: View {
     let howFast: CardsWindowState.HowFast
-    /// Chooses a pace in the radio group.
+    /// Chooses a pace among the tiles.
     let choosePace: (Pace) -> Void
     /// Ticks Put it first, or unticks it.
     let putFirst: (Bool) -> Void
@@ -48,60 +52,62 @@ struct HowFastSheet: View {
     let cancel: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 12) {
             head
             VStack(alignment: .leading, spacing: 8) {
                 Text("How fast?", comment: "The title of How fast?, the Cards window's sheet as a deck comes in.")
                     .font(.headline)
-                Picker(selection: Binding(get: { howFast.pace }, set: { choosePace($0) })) {
+                VStack(spacing: 6) {
                     ForEach(howFast.paces, id: \.pace) { option in
-                        paceRow(option)
-                            .tag(option.pace)
-                    }
-                } label: {
-                    Text("Pace", comment: "The name of How fast?'s radio group of paces, which VoiceOver reads.")
-                }
-                .pickerStyle(.radioGroup)
-                .labelsHidden()
-            }
-            if howFast.offersPutItFirst {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(verbatim: whereItGoes)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Toggle(isOn: Binding(get: { howFast.putsFirst }, set: { putFirst($0) })) {
-                        Text(
-                            "Put it first",
-                            comment: "A checkbox of How fast?: the deck coming in goes first in the queue.")
+                        paceTile(option)
                     }
                 }
-            }
-            if howFast.hasOtherDecks {
-                Text(
-                    """
-                    One pace for all your decks. A deck waits its turn for new cards, so what Ficha asks a day \
-                    stays the same.
-                    """,
-                    comment: "At the foot of How fast?, while the user has other decks."
-                )
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel(
+                    Text("Pace", comment: "The name of How fast?'s group of paces, which VoiceOver reads."))
+                if howFast.offersPutItFirst {
+                    ViewThatFits(in: .horizontal) {
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            whereItGoesText
+                            putItFirst
+                        }
+                        VStack(alignment: .leading, spacing: 6) {
+                            whereItGoesText
+                            putItFirst
+                        }
+                    }
+                }
+                if howFast.hasOtherDecks {
+                    Text(
+                        """
+                        One pace for all your decks. A deck waits its turn for new cards, so what Ficha asks a day \
+                        stays the same.
+                        """,
+                        comment: "At the foot of How fast?, while the user has other decks."
+                    )
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                }
             }
             HStack {
                 Spacer()
-                Button("Cancel", action: cancel)
-                    .keyboardShortcut(.cancelAction)
-                Button(
-                    String(
-                        localized: "Start",
-                        comment: "The button of How fast? that sets the pace, and puts the deck first when ticked."),
-                    action: start
-                )
+                Button(action: cancel) {
+                    KeyLabel(
+                        title: Text("Cancel"),
+                        key: String(localized: "esc", comment: "The Esc key's name, next to the button it presses."))
+                }
+                .keyboardShortcut(.cancelAction)
+                Button(action: start) {
+                    KeyLabel(title: startTitle, key: "↩")
+                }
+                .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)
             }
         }
-        .padding(20)
-        .frame(width: 420)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 18)
+        .frame(minWidth: 440, idealWidth: 440, alignment: .leading)
     }
 
     /// The deck's emoji, or its symbol while it has none, and its name, with
@@ -119,9 +125,11 @@ struct HowFastSheet: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(verbatim: name)
                     .font(.title3)
-                    .bold()
+                    .fontWeight(.semibold)
+                    .fixedSize(horizontal: false, vertical: true)
                 Text(verbatim: howFast.line.text)
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -145,42 +153,115 @@ struct HowFastSheet: View {
         }
     }
 
-    /// A pace in the radio group: its name, its new cards a day, and when
-    /// the deck's new cards are all met at it, when they are.
-    private func paceRow(_ option: CardsWindowState.HowFast.PaceOption) -> some View {
-        HStack(spacing: 8) {
-            Text(verbatim: option.pace.name)
-                .bold()
-                .frame(minWidth: 56, alignment: .leading)
-            Text(verbatim: option.pace.newCardsADay)
-                .foregroundStyle(.secondary)
-            if let wording = option.wording {
-                Text(verbatim: wording.metByText)
+    /// The main button's title: Create after New Deck…, for the deck it made
+    /// with no card, as the mock's sheet makes it, and Start otherwise.
+    private var startTitle: Text {
+        howFast.line == .noCards
+            ? Text("Create", comment: "The button of How fast? after New Deck…: sets the pace for the new deck.")
+            : Text("Start", comment: "The button of How fast? that sets the pace, and puts the deck first when ticked.")
+    }
+
+    /// A pace as a tile, which a click chooses: its radio, its name, its new
+    /// cards a day, and, at the trailing side, when the deck's new cards are
+    /// all met at it, when they are, which wraps; the chosen one filled and
+    /// outlined in the accent, as the mock's `.pace-row` is.
+    private func paceTile(_ option: CardsWindowState.HowFast.PaceOption) -> some View {
+        let isChosen = option.pace == howFast.pace
+        return Button {
+            choosePace(option.pace)
+        } label: {
+            HStack(spacing: 8) {
+                radio(isChosen)
+                    .frame(width: 18)
+                Text(verbatim: option.pace.name)
+                    .bold()
+                    .frame(minWidth: 58, alignment: .leading)
+                Text(verbatim: option.pace.newCardsADay)
+                    .foregroundStyle(.secondary)
+                    .fixedSize()
+                Spacer(minLength: 8)
+                if let wording = option.wording {
+                    Text(verbatim: wording.metByText)
+                        .fontWeight(.semibold)
+                        .multilineTextAlignment(.trailing)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.vertical, 6)
+                }
             }
+            .padding(.horizontal, 12)
+            .frame(maxWidth: .infinity, minHeight: 34, alignment: .leading)
+            .background {
+                if isChosen {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color.accentColor.opacity(0.16))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 10)
+                                .strokeBorder(Color.accentColor, lineWidth: 1)
+                        }
+                } else {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(.fill.quaternary)
+                }
+            }
+            .contentShape(.rect(cornerRadius: 10))
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isChosen ? [.isSelected] : [])
+    }
+
+    /// A tile's radio, as the mock draws it: a ring, thick in the accent
+    /// when the tile is chosen.
+    @ViewBuilder
+    private func radio(_ isChosen: Bool) -> some View {
+        if isChosen {
+            Circle()
+                .strokeBorder(Color.accentColor, lineWidth: 4.5)
+                .frame(width: 14, height: 14)
+        } else {
+            Circle()
+                .strokeBorder(.tertiary, lineWidth: 1.5)
+                .frame(width: 14, height: 14)
         }
     }
 
+    /// Where the deck goes in the queue, as `whereItGoes` says it.
+    private var whereItGoesText: some View {
+        Text(verbatim: whereItGoes)
+            .font(.callout)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// Put it first, after where the deck goes, as the mock's checkbox is.
+    private var putItFirst: some View {
+        Toggle(isOn: Binding(get: { howFast.putsFirst }, set: { putFirst($0) })) {
+            Text("Put it first", comment: "A checkbox of How fast?: the deck coming in goes first in the queue.")
+        }
+        .font(.callout)
+        .fixedSize()
+    }
+
     /// Where the deck goes in the queue, as Put it first says: after the
-    /// decks ahead of it, or first, with them waiting.
+    /// decks ahead of it, or first, with them waiting. How many they are
+    /// picks the words, "waits" or "wait", "now" or "first", as the String
+    /// Catalog's plural variations say, and doesn't show.
     private var whereItGoes: String {
         let names = howFast.decksAhead.map(Deck.shownName).formatted(.list(type: .and))
-        let isOne = howFast.decksAhead.count == 1
+        let count = howFast.decksAhead.count
         if howFast.putsFirst {
-            return isOne
-                ? String(
-                    localized: "Goes first: \(names) waits until you've met it all.",
-                    comment: "In How fast?, with Put it first ticked, with the name of the one deck it goes ahead of.")
-                : String(
-                    localized: "Goes first: \(names) wait until you've met it all.",
-                    comment: "In How fast?, with Put it first ticked, with the names of the decks it goes ahead of.")
+            return String(
+                localized: "Goes first: \(names) \(count) until you've met it all.",
+                comment: """
+                    In How fast?, with Put it first ticked, with the names of the decks it goes ahead of, and how \
+                    many they are, which says “waits” or “wait” and doesn't show.
+                    """)
         }
-        return isOne
-            ? String(
-                localized: "Goes after \(names), which you're meeting now.",
-                comment: "In How fast?, with the name of the deck ahead of the one coming in, in the queue.")
-            : String(
-                localized: "Goes after \(names), which you're meeting first.",
-                comment: "In How fast?, with the names of the decks ahead of the one coming in, in the queue.")
+        return String(
+            localized: "Goes after \(names), which you're meeting \(count).",
+            comment: """
+                In How fast?, with the names of the decks ahead of the one coming in, in the queue, and how many \
+                they are, which says “now” for one and “first” for several, and doesn't show.
+                """)
     }
 }
 
@@ -213,10 +294,13 @@ extension CardsWindowState.HowFast.Line {
         switch self {
         case .noCards:
             Deck.noCardsYet
-        case .imported(let cardCount):
+        case .imported(let cardCount, let fileName):
             String(
-                localized: "\(cardCount) cards · imported",
-                comment: "In How fast?, under the name of the deck an import brought: how many cards it holds.")
+                localized: "\(cardCount) cards · imported from \(fileName)",
+                comment: """
+                    In How fast?, under the name of the deck an import made, or the names of the decks: how many \
+                    cards they hold, and the name of the file they came from.
+                    """)
         case .fichaDeck(let cardCount):
             String(
                 localized: "\(cardCount) cards · one of Ficha's decks",
