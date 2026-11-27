@@ -55,11 +55,11 @@ extension CardsWindowState {
         public fileprivate(set) var bringsProgress = true
         /// What couldn't be done, while the sheet says so.
         public fileprivate(set) var failure: ImportFailure?
-        /// The decks at the top of the tree the cards that came in new came
-        /// into, once the import's done, by their whole names, in the order
-        /// a tree lists them: How fast? asks about them as Done closes the
-        /// sheet (#491).
-        fileprivate var newCardDecks: [String] = []
+        /// The decks at the top of the tree the import made, once it's
+        /// done, those the cards that came in new came into and the user
+        /// didn't have, by their whole names, in the order a tree lists
+        /// them: How fast? asks about them as Done closes the sheet (#491).
+        fileprivate var newDecks: [String] = []
 
         /// The preview of the file chosen, while the sheet shows it.
         public var preview: ImportPreview? {
@@ -392,7 +392,7 @@ extension CardsWindowState {
             importing?.failure = ImportFailure(action: .preview, error: error)
         case .imported(.success(let imported)):
             importing?.step = .done(imported.outcome)
-            importing?.newCardDecks = imported.newCardDecks
+            importing?.newDecks = imported.newDecks
         case .imported(.failure(let error)):
             importing?.failure = ImportFailure(action: .importCards, error: error)
         }
@@ -404,13 +404,14 @@ extension CardsWindowState {
         importing?.failure = nil
     }
 
-    /// Closes the Import sheet: after an import that brought new cards, with
-    /// Done, How fast? then asks about the decks at the top of the tree they
-    /// came into (`HowFast.swift`).
+    /// Closes the Import sheet: after an import that made decks, with Done,
+    /// How fast? then asks about those at the top of the tree, which the
+    /// new cards came into (`HowFast.swift`); not about a deck the user
+    /// had, which keeps its place in the queue and the pace there is.
     public mutating func closeImport() {
-        let newCardDecks = importing?.newCardDecks ?? []
+        let newDecks = importing?.newDecks ?? []
         importing = nil
-        askHowFast(about: newCardDecks, cameInFrom: .anImport)
+        askHowFast(about: newDecks, cameInFrom: .anImport)
     }
 }
 
@@ -428,7 +429,7 @@ public struct ImportWork: Sendable {
     public struct Done: Sendable {
         fileprivate enum Result: Sendable {
             case preview(Swift.Result<ImportPreview, EngineError>)
-            case imported(Swift.Result<(outcome: ImportOutcome, newCardDecks: [String]), EngineError>)
+            case imported(Swift.Result<(outcome: ImportOutcome, newDecks: [String]), EngineError>)
         }
 
         fileprivate let id: UUID

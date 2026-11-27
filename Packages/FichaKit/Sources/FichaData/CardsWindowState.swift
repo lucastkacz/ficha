@@ -33,12 +33,12 @@ import Foundation
 /// the Import sheet, from a file's preview, with the decks its cards go to,
 /// to what the import did (`CardsWindowImport.swift`), and the Export sheet,
 /// from what it offers to export to the file it writes. As a deck comes in,
-/// made by New Deck… in the sidebar or brought by an import, it asks How
-/// fast? new cards come, and where the deck goes in the queue new cards come
-/// from (`HowFast.swift`), and each deck at the top of the tree says under
-/// its title how far it is and when it's all met (`CardsWindowDecks.swift`).
-/// It offers Ficha's decks the user hasn't added, each with its first card,
-/// which Add Deck… adds after How fast? (`CardsWindowFichaDecks.swift`).
+/// made by New Deck… in the sidebar or by an import, it asks How fast? new
+/// cards come, and where the deck goes in the queue new cards come from
+/// (`HowFast.swift`), and each deck at the top of the tree says under its
+/// title how far it is and when it's all met (`CardsWindowDecks.swift`). It
+/// offers Ficha's decks the user hasn't added, each with its first card, which
+/// Add Deck… adds after How fast? (`CardsWindowFichaDecks.swift`).
 public struct CardsWindowState: Sendable {
     /// What the sidebar offers, one at a time: a group of cards, the inbox,
     /// All Tags, or one of Ficha's decks.

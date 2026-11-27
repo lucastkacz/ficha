@@ -194,6 +194,74 @@ final class HowFastTests {
         #expect(howFast.paces.map(\.finish) == whereItIs)
     }
 
+    // Coliseo waits in Historia, new, from a minute before the import, which
+    // brings a card into Historia and one into Historia::Grecia, a deck the
+    // user didn't have, inside Historia.
+    @Test(
+        "How fast? doesn't open after an import whose new cards all came into a deck the user had, or into decks inside it, which keeps its place in the queue, at the pace there was",
+        .bug(id: 491))
+    func noHowFastForADeckTheUserHad() async throws {
+        try approveInDeck("Coliseo", deck: "Historia", in: engine)
+        time.advance(by: minutes(1))
+        let more = try write(
+            "Historia.txt",
+            """
+            #separator:tab
+            #html:false
+            #columns:Front\tBack\tDeck
+            Partenón\tEn Atenas.\tHistoria::Grecia
+            Machu Picchu\tEn Perú.\tHistoria
+
+            """)
+        var window = openWindow()
+
+        await window.importThroughTheSheet(more)
+
+        #expect(window.question == nil)
+        #expect(try engine.cards().count { TagPath.top(of: $0.deck) == "Historia" } == 3)
+    }
+
+    // The user is meeting Arte, as above. A minute later, an import brings
+    // Zoología's two cards and Botánica's one, which come in at once, so the
+    // queue lists them by name, after Arte.
+    @Test(
+        "after an import that made two decks, How fast? names them in the queue's order, says when the last of them is all met at each pace, offers no Put it first, and Start sets the pace",
+        .bug(id: 491))
+    func howFastAfterAnImportIntoTwoDecks() async throws {
+        try meetArte(in: engine)
+        time.advance(by: minutes(1))
+        let naturaleza = try write(
+            "Naturaleza.txt",
+            """
+            #separator:tab
+            #html:false
+            #columns:Front\tBack\tDeck
+            tiburón\tUn pez.\tZoología
+            abeja\tUn insecto.\tZoología
+            rosa\tUna flor.\tBotánica
+
+            """)
+        var window = openWindow()
+
+        await window.importThroughTheSheet(naturaleza)
+        let asked = window.howFast
+        let whereItIs = try Pace.allCases.map { try finish(of: "Zoología", at: $0, in: engine) }
+        window.chooseHowFastPace(.chill)
+        window.startHowFast()
+
+        let howFast = try #require(asked)
+        #expect(howFast.subject == .decks(["Botánica", "Zoología"]))
+        #expect(howFast.decks.map(\.name) == ["Botánica", "Zoología"])
+        #expect(howFast.line == .imported(cardCount: 3))
+        #expect(howFast.paces.map(\.finish) == whereItIs)
+        #expect(whereItIs.allSatisfy { $0 != nil })
+        #expect(!howFast.offersPutItFirst)
+        #expect(howFast.hasOtherDecks)
+        #expect(window.question == nil)
+        #expect(try engine.progressSettings().newCardsPerDay == Pace.chill.newCardsPerDay)
+        #expect(try engine.queue(settings).map(\.deck) == ["Arte", "Botánica", "Zoología"])
+    }
+
     /// The window as it opens, on All cards, with the cards read.
     private func openWindow() -> CardsWindowState {
         var window = engine.openCardsWindow(with: scheduler)

@@ -131,17 +131,13 @@ extension Engine {
     /// which stay as they are, with their progress, so that adding it twice
     /// adds nothing, and without the tag an import gives a file's cards after
     /// the file's name; and gives the deck its emoji, as `ficha deck emoji`
-    /// gives one, when it came in new: the user had no deck by its name, and
-    /// cards came into it. Returns what the import did.
+    /// gives one, when the import made it: the user had no deck by its name,
+    /// and cards came into it. Returns what the import did.
     @discardableResult
     public func addFichaDeck(_ file: FichaDeckFile) throws(EngineError) -> ImportOutcome {
-        let name = file.deck.name
-        let hadDeck = try read { db in
-            try deckWithRow(name, in: db) != nil || allCards(in: db).contains { $0.deck == name }
-        }
         let imported = try importCardsAndTheirDecks(file.preview, choosing: file.importChoices)
-        if !hadDeck, imported.newCardDecks.contains(name) {
-            try setEmoji(try Emoji(file.deck.emoji), ofDeck: name)
+        if imported.newDecks.contains(file.deck.name) {
+            try setEmoji(try Emoji(file.deck.emoji), ofDeck: file.deck.name)
         }
         return imported.outcome
     }

@@ -5,8 +5,9 @@ import Foundation
 // in, that asks how fast new cards come, for every deck together, and where
 // the deck goes in the queue new cards come from. It opens after the New Deck
 // sheet's OK makes a deck from the sidebar or a deck's menu, with the paces
-// alone, after an import that brought new cards, once its sheet's Done
-// closes it, and after Add Deck… on one of Ficha's decks, before it comes in
+// alone, after an import that made decks, those its new cards came into that
+// the user didn't have, once its sheet's Done closes it, and after Add Deck…
+// on one of Ficha's decks, before it comes in
 // (`CardsWindowFichaDecks.swift`). Each pace's finish date, where the deck is
 // and with the deck first, is FichaCore's, as the queue counts it
 // (`DeckQueue.swift`), with the settings the window reads the queue with.
@@ -24,11 +25,12 @@ extension CardsWindowState {
         public enum Subject: Sendable, Equatable {
             /// The deck at the top of the tree, by its whole name, or Default
             /// by `Deck.defaultName`, that New Deck…'s OK just made, or that
-            /// an import's new cards all came into.
+            /// an import made, the one its new cards came into that the user
+            /// didn't have.
             case deck(String)
-            /// The decks at the top of the tree an import's new cards came
-            /// into, when they're several, in the queue's order: the paces
-            /// then say when the last of them is all met.
+            /// The decks at the top of the tree an import made, when they're
+            /// several, in the queue's order: the paces then say when the
+            /// last of them is all met.
             case decks([String])
             /// One of Ficha's decks, after its Add Deck…, before it comes in
             /// (#458): its cards counted as they'd come in now, those that
