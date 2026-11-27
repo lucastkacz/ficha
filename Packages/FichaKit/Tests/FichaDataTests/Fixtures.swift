@@ -221,8 +221,8 @@ struct FakeMac: DeviceSignals {
     var suppressionEnds: [Suppression: Date] = [:]
 }
 
-/// The calendar of a Mac in Buenos Aires, whose days start at midnight there,
-/// whatever time zone runs the tests.
+/// The calendar of a Mac in Buenos Aires, by whose clock the tests count
+/// Ficha's days, whatever time zone runs them.
 func buenosAiresCalendar() throws -> Calendar {
     var calendar = Calendar(identifier: .gregorian)
     calendar.timeZone = try #require(TimeZone(identifier: "America/Argentina/Buenos_Aires"))

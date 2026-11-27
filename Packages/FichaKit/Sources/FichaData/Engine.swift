@@ -31,7 +31,7 @@ public struct Engine: Sendable {
     /// unique across devices: random ones, except in tests and the render
     /// tool.
     let ids: any IDSource
-    /// The Mac's calendar, whose days the new cards are counted by.
+    /// The Mac's calendar, by whose clock Ficha's days are counted (ADR 0045).
     let calendar: Calendar
     /// Where the images on cards are kept: the Images folder beside the
     /// database, or memory with it.
