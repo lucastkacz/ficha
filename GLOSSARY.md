@@ -248,7 +248,7 @@ How many new cards a day the user meets, one pace for all decks: Chill, Steady o
 _Avoid_: speed, rhythm, daily limit
 
 **Ficha's day**:
-The day the new cards a day, the finish date and Ficha's words for days count by: from 4:00, or the hour the user sets in Advanced, to the same hour the next day, so that a night that crosses midnight is one day. A new card counts toward the day its first review is answered in. When a card is due doesn't follow it: that is a time.
+The day Ficha counts by: from 4:00, or as the user sets it, to the same hour the next day, so that a night that crosses midnight is one day. How many new cards a day the user meets, the finish date and the days Ficha names, such as "today", count by it. A new card counts toward the day its first review is answered in. A card's due time doesn't follow it.
 _Avoid_: calendar day, study day, rollover
 
 **Queue**:
@@ -274,7 +274,7 @@ How far ahead an appearance looks: it brings along the cards due within it, whos
 _Avoid_: buffer, window
 
 **Active hours**:
-The part of the day in which appearances may happen, such as 9 to 22, or 20 to 3, which crosses midnight. Each device keeps its own.
+The hours in which appearances may happen, such as 9 to 22, or 20 to 3, which crosses midnight. Each device keeps its own.
 _Avoid_: schedule, work hours
 
 **Separation**:
