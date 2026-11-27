@@ -17,8 +17,10 @@ struct CardsWindowTests {
         engine = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
     }
 
-    @Test("a deck lists every card of its own but the buried ones, flagged ones with their flag")
-    func aDeckListsEveryCardButTheBuriedOnes() throws {
+    @Test(
+        "a deck lists every card of its own, flagged ones with their flag and those set aside on their own too",
+        .bug(id: 539))
+    func aDeckListsEveryCardOfItsOwn() throws {
         let serendipia = try approveCard("serendipia", in: engine)
         let ubuntu = try approveCard("ubuntu", in: engine)
         let ojala = try approveCard("ojalá", in: engine)
@@ -27,8 +29,9 @@ struct CardsWindowTests {
 
         let rows = try engine.cardRows(in: .deck(Deck.defaultName), with: ReviewSettings.defaults.scheduler)
 
-        #expect(rows.map(\.card.id) == [serendipia.id, ubuntu.id])
-        #expect(rows.map(\.card.flag?.note) == [nil, "Falta un ejemplo"])
+        #expect(rows.map(\.card.id) == [serendipia.id, ubuntu.id, ojala.id])
+        #expect(rows.map(\.card.flag?.note) == [nil, "Falta un ejemplo", nil])
+        #expect(rows.map(\.card.buriedAt) == [nil, nil, time.now])
     }
 
     @Test(
@@ -149,8 +152,10 @@ struct CardsWindowTests {
             ])
     }
 
-    @Test("the flagged group holds the flagged cards that aren't buried, and a deck none of its buried cards")
-    func theFlaggedGroupAndADeckLeaveTheBuriedCardsOut() throws {
+    @Test(
+        "the flagged group holds the flagged cards not set aside on their own, and a deck every card of its own",
+        .bug(id: 539))
+    func theFlaggedGroupLeavesTheSetAsideCardsOutAndADeckListsThem() throws {
         let scheduler = ReviewSettings.defaults.scheduler
         let serendipia = try approveCard("serendipia", in: engine)
         let ubuntu = try approveCard("ubuntu", in: engine)
@@ -165,7 +170,7 @@ struct CardsWindowTests {
         let inDefault = try engine.cardRows(in: .deck(Deck.defaultName), with: scheduler)
 
         #expect(flagged.map(\.card.id) == [ubuntu.id])
-        #expect(inDefault.map(\.card.id) == [serendipia.id, ubuntu.id])
+        #expect(inDefault.map(\.card.id) == [serendipia.id, ubuntu.id, ojala.id, acaso.id])
     }
 
     @Test("a tag lists the cards that have it, and a type the cards of it, flagged ones too but not the buried ones")

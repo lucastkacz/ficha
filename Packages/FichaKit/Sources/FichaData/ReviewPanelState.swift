@@ -9,18 +9,18 @@ import Foundation
 /// flips and rates a new way, in its first review, a due way, or one he reviews
 /// ahead. He plays a side's sound only when he asks, one at a time, until he
 /// answers the card, writes about it or leaves it, or the panel closes. He can
-/// also flag any card with a note on what to fix, or bury it, and ask questions
-/// about it, each a follow-up in the inbox, without leaving it. When his rating
-/// of again makes a card forgotten often, the panel offers to flag it, with a
-/// note that says how many times he forgot it, and back first when it was that
-/// way. Each is saved as he does it, and ⌘Z undoes it, the last first, while
-/// the panel is open, and shows the card again as he left it. Once he went
-/// through every card, the panel stays open and offers more cards, if there are
-/// any, until he closes it, and says which decks his answers met in full, with
-/// what comes next in the queue new cards come from (`metThemAll`). The panel
-/// goes into the appearance log as it closes. It runs on the engine's time,
-/// which Ficha Dev's debug menu moves forward, and times Lucas on a steady
-/// clock, which it doesn't.
+/// also flag any card with a note on what to fix, or set it aside, and ask
+/// questions about it, each a follow-up in the inbox, without leaving it. When
+/// his rating of again makes a card forgotten often, the panel offers to flag
+/// it, with a note that says how many times he forgot it, and back first when
+/// it was that way. Each is saved as he does it, and ⌘Z undoes it, the last
+/// first, while the panel is open, and shows the card again as he left it.
+/// Once he went through every card, the panel stays open and offers more
+/// cards, if there are any, until he closes it, and says which decks his
+/// answers met in full, with what comes next in the queue new cards come from
+/// (`metThemAll`). The panel goes into the appearance log as it closes. It
+/// runs on the engine's time, which Ficha Dev's debug menu moves forward, and
+/// times Lucas on a steady clock, which it doesn't.
 public struct ReviewPanelState: Sendable {
     /// Who closes the panel.
     public enum Closing: Sendable {
@@ -75,8 +75,8 @@ public struct ReviewPanelState: Sendable {
         case answer
         /// He flagged a card.
         case flag
-        /// He buried a card.
-        case bury
+        /// He set a card aside.
+        case setAside
         /// He asked a question about a card, to follow it up.
         case ask
         /// He undid the last thing he did.
@@ -269,8 +269,8 @@ public struct ReviewPanelState: Sendable {
 
     /// What the panel's ⋯ menu offers to do with the card Lucas is on, each
     /// also on its key (`CardAction`): asking about it, flagging it and
-    /// burying it while it shows, and nothing while he writes about it or
-    /// once he went through every card.
+    /// setting it aside while it shows, and nothing while he writes about it
+    /// or once he went through every card.
     public var cardActions: [CardAction] {
         isOnACard ? CardAction.allCases : []
     }
@@ -344,8 +344,8 @@ public struct ReviewPanelState: Sendable {
         current != nil && isFlipped
     }
 
-    /// Whether Lucas is on a card, as it shows, to answer, flag, bury or ask
-    /// about it.
+    /// Whether Lucas is on a card, as it shows, to answer, flag, set aside or
+    /// ask about it.
     var isOnACard: Bool {
         switch content {
         case .upperSide, .bothSides: true
@@ -486,22 +486,22 @@ public struct ReviewPanelState: Sendable {
     }
 
     /// Does `action` with the card Lucas is on, which he chose from the ⋯
-    /// menu or with its key: starts asking about it or flagging it, or buries
-    /// it.
+    /// menu or with its key: starts asking about it or flagging it, or sets
+    /// it aside.
     public mutating func choose(_ action: CardAction) {
         switch action {
         case .ask: startAsking()
         case .flag: startFlagging()
-        case .bury: buryCard()
+        case .setAside: setCardAside()
         }
     }
 
-    /// Buries the card Lucas is on, which takes it out of his reviews for
-    /// good, and moves on to the next card. When it can't be saved, the card
-    /// stays, and the panel says why.
-    public mutating func buryCard() {
+    /// Sets the card Lucas is on aside, which takes it out of his reviews
+    /// until he puts it back in the Cards window, and moves on to the next
+    /// card. When it can't be saved, the card stays, and the panel says why.
+    public mutating func setCardAside() {
         guard isOnACard else { return }
-        perform(.bury) { panel throws(EngineError) in try panel.bury() }
+        perform(.setAside) { panel throws(EngineError) in try panel.setAside() }
     }
 
     /// Undoes the last thing Lucas did: the last follow-up he asked about the
@@ -634,14 +634,16 @@ public struct ReviewPanelState: Sendable {
         moveOn(after: answered + [.flagged], timeOnCard: timeOnCard)
     }
 
-    /// Buries the current card, which takes it out of Lucas's reviews for
-    /// good, and moves on to the next card. The panel's button buries it
-    /// through `buryCard()`, which says what failed.
-    public mutating func bury() throws(EngineError) {
-        guard outcome == nil, let burying = current else { return }
+    /// Sets the current card aside, which takes it out of Lucas's reviews
+    /// until he puts it back, and moves on to the next card: the engine
+    /// buries it, as the database keeps a card set aside on its own (ADR
+    /// 0041). The panel's menu sets it aside through `setCardAside()`, which
+    /// says what failed.
+    public mutating func setAside() throws(EngineError) {
+        guard outcome == nil, let settingAside = current else { return }
         let timeOnCard = self.timeOnCard
-        try engine.bury(burying.card.id)
-        moveOn(after: [.buried], timeOnCard: timeOnCard)
+        try engine.bury(settingAside.card.id)
+        moveOn(after: [.setAside], timeOnCard: timeOnCard)
     }
 
     /// Undoes the last thing Lucas did, ⌘Z, the last first. On the card he's
@@ -652,7 +654,7 @@ public struct ReviewPanelState: Sendable {
     /// its lower side showing or not, with its time going on from where it
     /// was, and with the follow-ups he asked about it, which the next ⌘Z
     /// takes back: also once he went through every card. The engine takes
-    /// back his answer to that way, unflags the card or unburies it, or, for
+    /// back his answer to that way, unflags the card or puts it back, or, for
     /// a card he flagged when the panel offered it, unflags it and then takes
     /// back his answer. When the card or the follow-up changed outside the
     /// panel since, nothing more is undone. Nothing is left to undo once the
@@ -686,15 +688,16 @@ public struct ReviewPanelState: Sendable {
 
     /// Takes back `action`, which Lucas did with `undone`, a card the panel
     /// showed one of its ways, in the engine: his answer to that way, or the
-    /// card's flag or its burial. When a refine session or the Cards window
-    /// fixed, buried or unburied the card since, it can't be undone.
+    /// card's flag, or its setting aside, which the engine undoes by
+    /// unburying it. When a refine session or the Cards window fixed the
+    /// card, set it aside or put it back since, it can't be undone.
     private func takeBack(_ action: PanelAction, of undone: PanelCard) throws(EngineError) {
         let cardID = undone.card.id
         do throws(EngineError) {
             switch action {
             case .answered: try engine.takeBackAnswer(of: cardID, way: undone.way)
             case .flagged: try engine.unflag(cardID)
-            case .buried: try engine.unbury(cardID)
+            case .setAside: try engine.unbury(cardID)
             }
         } catch .cardNotFlagged, .cardBuried, .cardNotBuried {
             throw .cannotUndo(cardID)
@@ -821,8 +824,8 @@ private enum PanelAction: Sendable {
     case answered
     /// He flagged it.
     case flagged
-    /// He buried it.
-    case buried
+    /// He set it aside.
+    case setAside
 }
 
 /// A card Lucas went through in the review panel: what he did with it, which

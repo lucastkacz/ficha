@@ -67,10 +67,6 @@
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },
-    "Card %lld is buried. To bring it back, unbury it." : {
-      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
-      "extractionState" : "manual"
-    },
     "Card %lld is flagged: it waits in the inbox to be fixed. Close the review panel and open “Review now” again." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
@@ -83,7 +79,7 @@
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },
-    "Card %lld isn't buried, so there's nothing to unbury. Check the card's id." : {
+    "Card %lld is set aside. To bring it back, choose Put Back on it in the Cards window." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },
@@ -96,6 +92,10 @@
       "extractionState" : "manual"
     },
     "Card %lld isn't one of the cards its appearance brought, so its answer wasn't recorded. Report it." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual"
+    },
+    "Card %lld isn't set aside on its own, so there's nothing to put back. Check the card's id." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },
@@ -193,7 +193,7 @@
       "comment" : "In the widget, when no card waits to be reviewed."
     },
     "No cards to review" : {
-      "comment" : "In the widget, when no card waits and none comes on its own: they're buried, flagged or set aside."
+      "comment" : "In the widget, when no card waits and none comes on its own: they're flagged or set aside."
     },
     "No cards yet" : {
       "comment" : "In the widget, when the user has no cards at all."

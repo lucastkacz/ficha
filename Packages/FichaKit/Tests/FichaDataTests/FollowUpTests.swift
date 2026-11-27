@@ -258,7 +258,7 @@ struct FollowUpTests {
     }
 
     // So that typing a question or a note never flags, buries or undoes.
-    @Test("flagging, burying, asking and undoing do nothing while Lucas writes a question or a note")
+    @Test("flagging, setting aside, asking and undoing do nothing while Lucas writes a question or a note")
     func nothingElseHappensWhileLucasWrites() throws {
         let ubuntu = try approveCard("ubuntu", in: engine)
         let petricor = try approveCard("petricor", in: engine)
@@ -277,7 +277,7 @@ struct FollowUpTests {
         panel.startAsking()
         panel.write(question: "¿Quién inventó la palabra?")
         panel.startFlagging()
-        panel.buryCard()
+        panel.setCardAside()
         panel.startAsking()
         panel.undoLastCard()
         #expect(!panel.canUndo)

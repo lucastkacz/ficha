@@ -14,8 +14,8 @@ import Foundation
 /// settings, and Ficha Dev moving the time. What Lucas does in the window goes through it too,
 /// on what he selected as he acts: he edits the card or the capture the
 /// detail shows, the window asks before it discards, deletes or flags, it
-/// buries and unburies at once, turns Both ways on or off for several cards
-/// at once, and moves them to the deck Lucas picks in the Change Deck sheet,
+/// sets cards aside and puts them back at once, turns Both ways on or off for
+/// several cards at once, and moves them to the deck Lucas picks in the Change Deck sheet,
 /// whose tree the sidebar lists too, where a deck's menu sets it aside,
 /// prioritizes it, and gives it a color or asks for its emoji
 /// (`CardsWindowDecks.swift`), and renames and deletes it, as dropping cards
@@ -156,10 +156,11 @@ public struct CardsWindowState: Sendable {
         case changeDeck
         /// Flag the card, with a note on what to fix.
         case flag
-        /// Bury the cards.
-        case bury
-        /// Unbury the cards.
-        case unbury
+        /// Set the cards aside, out of the user's reviews until they're put
+        /// back, each listed in its deck all the same (ADR 0041).
+        case setAside
+        /// Put the cards back, each where it stood before it was set aside.
+        case putBack
         /// Turn Both ways on for the cards.
         case turnOnBothWays
         /// Turn Both ways off for the cards.
@@ -348,10 +349,10 @@ public struct CardsWindowState: Sendable {
         /// He moved this many cards to another deck, in the Change Deck
         /// sheet.
         case changeDeck(cardCount: Int)
-        /// He buried this many cards.
-        case bury(cardCount: Int)
-        /// He unburied this many cards.
-        case unbury(cardCount: Int)
+        /// He set this many cards aside.
+        case setCardsAside(cardCount: Int)
+        /// He put this many cards back.
+        case putCardsBack(cardCount: Int)
         /// He turned Both ways on for this many cards.
         case turnOnBothWays(cardCount: Int)
         /// He turned Both ways off for this many cards.
@@ -499,7 +500,7 @@ public struct CardsWindowState: Sendable {
     public private(set) var listing: Result<Listing, EngineError>?
     /// Whether the window offers New Card and Import… in plain sight, in the
     /// grid's place: while the sidebar chose nothing, with no search, and the
-    /// user has no cards at all, buried ones included, as when they just
+    /// user has no cards at all, set-aside ones included, as when they just
     /// started.
     public private(set) var offersFirstCards = false
     /// Every tag the window offers, with what each has of its own and takes
@@ -638,8 +639,8 @@ public struct CardsWindowState: Sendable {
     /// The sidebar's sections, in its order: the inbox, the decks as a tree,
     /// Ficha's decks the user hasn't added, while there are some, the pinned
     /// tags with All Tags… after them, and the type groups. No group of cards
-    /// by where they stand, such as every card, the new ones or the buried
-    /// ones: a deck's cards show where each stands on its tile (ADR 0041).
+    /// by where they stand, such as every card, the new ones or those set
+    /// aside: a deck's cards show where each stands on its tile (ADR 0041).
     public var sidebarSections: [SidebarSection] {
         var sections: [SidebarSection] = [.inbox, .decks(deckRows)]
         if !fichaDecksNotAdded.isEmpty {
@@ -737,10 +738,10 @@ public struct CardsWindowState: Sendable {
     /// What the user can do with what the detail shows: with a capture or a
     /// follow-up, edit it, convert it to cards and discard it; with an
     /// expansion, edit it and discard it; with one card, edit it, flag it
-    /// while it's in the user's reviews, bury or unbury it, move it to
-    /// another deck, and delete it; with several, bury or unbury them, turn
-    /// Both ways on or off for them, move them to another deck, and delete
-    /// them.
+    /// while it's in the user's reviews, set it aside or put it back, move it
+    /// to another deck, and delete it; with several, set them aside or put
+    /// them back, turn Both ways on or off for them, move them to another
+    /// deck, and delete them.
     public var actions: Set<Action> {
         switch detail {
         case .capture, .followUp:
@@ -750,7 +751,7 @@ public struct CardsWindowState: Sendable {
         case .card(let row, _):
             return Self.actions(for: row.cardStanding).union([.edit, .changeDeck, .delete])
         case .cards(let rows):
-            return buryOrUnbury(rows).union([Self.bothWaysAction(for: rows), .changeDeck, .delete])
+            return setAsideOrPutBack(rows).union([Self.bothWaysAction(for: rows), .changeDeck, .delete])
         case .nothingSelectedInInbox, .noCardSelected, .allTags:
             return []
         }
@@ -758,21 +759,23 @@ public struct CardsWindowState: Sendable {
 
     /// What Lucas can do with one card standing where `standing` says, beyond
     /// editing and deleting it: flag it while it's in his reviews, as in the
-    /// review panel, bury it unless it's buried, and unbury it when it is.
+    /// review panel; set it aside unless it's set aside on its own, which the
+    /// engine keeps as its burial, also when it's set aside with its deck;
+    /// and put it back when it's set aside on its own.
     private static func actions(for standing: CardStanding) -> Set<Action> {
         switch standing {
-        case .inReviews, .setAside: [.flag, .bury]
-        case .inInbox: [.bury]
-        case .buried: [.unbury]
+        case .inReviews, .setAside: [.flag, .setAside]
+        case .inInbox: [.setAside]
+        case .buried: [.putBack]
         }
     }
 
-    /// Bury, when every card in `rows` can be buried, or Unbury, when every
-    /// one can be unburied, or neither, so that one action never does half
-    /// its job.
-    private func buryOrUnbury(_ rows: [CardRow]) -> Set<Action> {
+    /// Set Aside, when every card in `rows` can be set aside, or Put Back,
+    /// when every one can be put back, or neither, so that one action never
+    /// does half its job.
+    private func setAsideOrPutBack(_ rows: [CardRow]) -> Set<Action> {
         let actions = rows.map { Self.actions(for: $0.cardStanding) }
-        return Set([Action.bury, .unbury].filter { action in actions.allSatisfy { $0.contains(action) } })
+        return Set([Action.setAside, .putBack].filter { action in actions.allSatisfy { $0.contains(action) } })
     }
 
     /// Turn On Both Ways while any card in `rows` goes one way, so that one
@@ -873,7 +876,7 @@ public struct CardsWindowState: Sendable {
     /// `editedBothWays` says, in the deck `editedDeck` says, and ends the
     /// edit, while Save is on, or records why it couldn't and goes on with
     /// it. The card keeps its progress and its review log, and a flagged one is
-    /// fixed, back in the reviews unless it's buried. The detail shows it as
+    /// fixed, back in the reviews unless it's set aside. The detail shows it as
     /// saved at once, without waiting for the engine to say it changed.
     public mutating func saveCard(_ content: CardContent) {
         guard case .card(let card) = editing, canSaveCard else { return }
@@ -946,32 +949,28 @@ public struct CardsWindowState: Sendable {
         }
     }
 
-    /// Buries the selected cards the window lists, all at once, while Bury is
-    /// offered, or records why it couldn't.
-    public mutating func bury() {
-        guard actions.contains(.bury) else { return }
+    /// Sets the selected cards the window lists aside, all at once, while Set
+    /// Aside is offered, or records why it couldn't: each leaves the user's
+    /// reviews, and the inbox if it's flagged, until it's put back, and its
+    /// deck still lists it, its tile dimmed (`Tile.Mark.setAside`). The
+    /// engine buries them, as the database keeps a card set aside on its own,
+    /// with no migration (ADR 0041).
+    public mutating func setAside() {
+        guard actions.contains(.setAside) else { return }
         let cardIDs = Set(selectedRows.map(\.id))
-        perform(.bury(cardCount: cardIDs.count)) { engine throws(EngineError) in try engine.bury(cardIDs) }
+        perform(.setCardsAside(cardCount: cardIDs.count)) { engine throws(EngineError) in try engine.bury(cardIDs) }
     }
 
-    /// Unburies the selected cards the window lists, all at once, while
-    /// Unbury is offered, or records why it couldn't.
-    public mutating func unbury() {
-        guard actions.contains(.unbury) else { return }
+    /// Puts the selected cards the window lists back, all at once, while Put
+    /// Back is offered, or records why it couldn't: each goes back where it
+    /// stood, in the user's reviews with the progress it had, in the inbox
+    /// when it's flagged, or set aside with its deck when that deck is, as
+    /// the engine unburies it.
+    public mutating func putBack() {
+        guard actions.contains(.putBack) else { return }
         let cardIDs = Set(selectedRows.map(\.id))
-        perform(.unbury(cardCount: cardIDs.count)) { engine throws(EngineError) in try engine.unbury(cardIDs) }
+        perform(.putCardsBack(cardCount: cardIDs.count)) { engine throws(EngineError) in try engine.unbury(cardIDs) }
     }
-
-    // Stub for #539: the code round replaces it.
-    /// A stub for #539, which does nothing yet: sets the selected cards the
-    /// window lists aside, all at once, out of the user's reviews, as Bury
-    /// buries them today.
-    public mutating func setAside() {}
-
-    // Stub for #539: the code round replaces it.
-    /// A stub for #539, which does nothing yet: puts the selected cards the
-    /// window lists back where they stood, all at once, as Unbury does today.
-    public mutating func putBack() {}
 
     /// Turns Both ways on for the selected cards the window lists, all at
     /// once, while Turn On Both Ways is offered, and reads them again, so

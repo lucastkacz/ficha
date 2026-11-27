@@ -269,8 +269,8 @@ extension CardsWindowState {
     /// form goes, set aside as it is, with the images and sounds on its
     /// sides, until it's opened the same way again, and the window chooses
     /// the card's deck, with no search, selects the card and scrolls to it,
-    /// while the deck lists it, as it lists every card of its own that isn't
-    /// buried. A capture the form came from stays in the inbox
+    /// since the deck lists every card of its own, one the user set aside
+    /// included (#539). A capture the form came from stays in the inbox
     /// meanwhile, and one of Ficha's decks the review panel asked for
     /// meanwhile waits for the window's next read (`read(with:)`), so the
     /// window stays on the card.

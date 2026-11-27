@@ -2,9 +2,9 @@ import FichaCore
 import FichaData
 import SwiftUI
 
-/// The card's front, after a flag when it's flagged and a mark when it's
-/// buried, as where it stands says, since a buried card keeps its flag,
-/// aligned with them as the front reads. A front without text says "Image"
+/// The card's front, after a flag when it's flagged and a mark when it's set
+/// aside on its own, as where it stands says, since a card set aside keeps
+/// its flag, aligned with them as the front reads. A front without text says "Image"
 /// or "Sound" in gray, as Mail says "No Subject", rather than leave the cell
 /// empty.
 struct FrontCell: View {
@@ -24,7 +24,7 @@ struct FrontCell: View {
                 if flag != nil {
                     FlagIcon()
                 }
-                BuriedIcon()
+                SetAsideCardIcon()
             }
             if let media = card.frontWithoutText {
                 mediaText(media)
@@ -59,20 +59,21 @@ private struct FlagIcon: View {
     }
 }
 
-/// The mark beside a buried card in the detail, as beside the card an
-/// expansion or a follow-up is tied to: an eye crossed out, since the card
-/// stays out of the reviews until it's unburied. The inbox lists no buried
-/// card.
-private struct BuriedIcon: View {
+/// The mark beside a card set aside on its own in the detail, as beside the
+/// card an expansion or a follow-up is tied to: an eye crossed out, since the
+/// card stays out of the reviews until it's put back (#539). The inbox lists
+/// no card set aside on its own.
+private struct SetAsideCardIcon: View {
     var body: some View {
         Image(systemName: "eye.slash")
             .foregroundStyle(.secondary)
-            .accessibilityLabel(Text("Buried", comment: "The icon beside a buried card, in the Cards window."))
-            .help(Text("Buried", comment: "The icon beside a buried card, in the Cards window."))
+            .accessibilityLabel(
+                Text("Set aside", comment: "The icon beside a card set aside on its own, in the Cards window."))
+            .help(Text("Set aside", comment: "The icon beside a card set aside on its own, in the Cards window."))
     }
 }
 
-/// The mark beside a set-aside card in the detail.
+/// The mark beside a card set aside with its deck in the detail.
 private struct SetAsideIcon: View {
     var body: some View {
         Image(systemName: "rectangle.portrait.on.rectangle.portrait.slash")
@@ -82,7 +83,8 @@ private struct SetAsideIcon: View {
 }
 
 /// The selected card, whole: Lucas's note on top when it's flagged, when he
-/// buried it when it's buried, and its set-aside decks when it's set aside,
+/// set it aside when it's set aside on its own, and its set-aside decks when
+/// it's set aside with its deck,
 /// its type and tags and whether it goes both ways, its front and back, each
 /// side's image above its text and its sound below it, and its source; then,
 /// in words, that it's new, or when it's back and how many times he saw it
@@ -112,7 +114,7 @@ struct CardDetail: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                FlagAndBurial(standing: row.cardStanding)
+                FlagAndSetAside(standing: row.cardStanding)
                 TypeAndTags(card: row.card)
                 if let image = row.card.frontImage {
                     SideImage(image: images[image], maximumHeight: cardSize.scaled(320))
@@ -597,11 +599,12 @@ private struct TiedCard: View {
 }
 
 /// What the detail says on top of a card that's out of Lucas's reviews, as
-/// where it stands says: his note when it's flagged, and when he buried it
-/// when it's buried, after the note it keeps, or which decks set it aside,
-/// its own or decks it sits inside, when it's set aside. While he edits a
+/// where it stands says: his note when it's flagged, and when he set it
+/// aside when it's set aside on its own, which the engine keeps as its
+/// burial, after the note it keeps, or which decks set it aside, its own or
+/// decks it sits inside, when it's set aside with its deck. While he edits a
 /// flagged card, the note also says that saving fixes it.
-struct FlagAndBurial: View {
+struct FlagAndSetAside: View {
     let standing: CardStanding
     /// Whether Lucas is editing the card.
     var isEditing = false
@@ -612,11 +615,11 @@ struct FlagAndBurial: View {
             EmptyView()
         case .inInbox(let flag):
             note(flag)
-        case .buried(let buriedAt, let flag):
+        case .buried(let setAsideAt, let flag):
             if let flag {
                 note(flag)
             }
-            burial(at: buriedAt)
+            setAside(at: setAsideAt)
         case .setAside(let decks):
             setAside(by: decks)
         }
@@ -649,9 +652,9 @@ struct FlagAndBurial: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(flag.note)
                 if isEditing {
-                    // The same whether the card is buried or not: whether it
-                    // goes back to Lucas's reviews is FichaData's to say, and
-                    // the burial shows below.
+                    // The same whether the card is set aside or not: whether
+                    // it goes back to Lucas's reviews is FichaData's to say,
+                    // and when he set it aside shows below.
                     Text(
                         "Saving fixes it, and it keeps its progress.",
                         comment: "In the Cards window, under Lucas's note on a flagged card, while he edits it."
@@ -669,15 +672,19 @@ struct FlagAndBurial: View {
         .background(.orange.opacity(0.12), in: .rect(cornerRadius: 8))
     }
 
-    /// When Lucas buried the card.
-    private func burial(at buriedAt: Date) -> some View {
+    /// When Lucas set the card aside on its own, which he puts back with Put
+    /// Back, below.
+    private func setAside(at setAsideAt: Date) -> some View {
         Label {
             Text(
-                "Buried on \(buriedAt.formatted(date: .abbreviated, time: .shortened))",
-                comment: "In the Cards window's detail: when Lucas buried the card, like Oct 14, 2026 at 9:00 AM."
+                "Set aside on \(setAsideAt.formatted(date: .abbreviated, time: .shortened))",
+                comment: """
+                    In the Cards window's detail: when Lucas set the card aside on its own, like Oct 14, 2026 at \
+                    9:00 AM.
+                    """
             )
         } icon: {
-            BuriedIcon()
+            SetAsideCardIcon()
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -762,8 +769,8 @@ enum DueText {
     /// When one of a card's ways is due, counted from `now`: "now" once it's
     /// due, however long ago, and before, as the app's locale words it, like
     /// "in 2h", "tomorrow" or "in 5d" in US English. "set aside" while the
-    /// card is set aside by its deck, and nothing while the way is new, or
-    /// the card flagged or buried, since it won't show up then.
+    /// card is set aside, on its own or by its deck, and nothing while the
+    /// way is new, or the card flagged, since it won't show up then.
     static func of(_ way: WayProgress, at now: Date) -> String {
         switch way.dueWording {
         case .due(let date): way.isDue(at: now) ? Self.now : until(date, from: now)
@@ -782,13 +789,14 @@ enum DueText {
                 """)
     }
 
-    /// A way that won't show up, since its card's deck is set aside.
+    /// A way that won't show up, since its card is set aside, on its own or
+    /// by its deck.
     static var setAside: String {
         String(
             localized: "set aside",
             comment: """
-                In the Cards window's detail's Due and Back-first due rows: the card won't show up, since its deck, \
-                or a deck it sits inside, is set aside. Lowercase, like “now”.
+                In the Cards window's detail's Due and Back-first due rows: the card won't show up, since it's set \
+                aside, on its own or with its deck, or a deck it sits inside. Lowercase, like “now”.
                 """)
     }
 

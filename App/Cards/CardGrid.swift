@@ -10,7 +10,9 @@ import SwiftUI
 /// row as fit the pane. A tile shows its front's picture, filling it, or
 /// else its front's text, centered, with a dot for where its card stands:
 /// green once Lucas met it, orange while it's due, and none while it's new,
-/// whose tile is dimmed (`CardsWindowGrid.swift` decides which). Lucas
+/// whose tile is dimmed; and a card he set aside on its own is dimmed
+/// further, with an eye crossed out in the dot's place (#539)
+/// (`CardsWindowGrid.swift` decides which). Lucas
 /// selects tiles as in Photos and the Finder, and the state decides what
 /// each click and key selects: a click selects one, a ⌘-click adds one or
 /// takes it out, a Shift-click selects the run from the last one clicked, a
@@ -41,7 +43,7 @@ struct CardGrid: View {
     var body: some View {
         let tiles = state.tiles
         VStack(alignment: .leading, spacing: 0) {
-            GridLegend()
+            GridLegend(marks: state.legendMarks)
                 .padding(.horizontal, 16)
                 .padding(.top, 10)
                 .padding(.bottom, 4)
@@ -170,15 +172,22 @@ struct CardGrid: View {
     }
 }
 
-/// What the dots on the tiles say, above the grid, as the mock writes it.
+/// What the dots on the tiles say, above the grid, as the mock writes it,
+/// and the set-aside mark too while a tile has it, as the state says.
 private struct GridLegend: View {
+    let marks: [CardsWindowState.Tile.Mark]
+
     var body: some View {
         HStack(spacing: 12) {
-            ForEach([CardsWindowState.Tile.Mark.met, .due, .new], id: \.self) { mark in
+            ForEach(marks, id: \.self) { mark in
                 HStack(spacing: 4) {
-                    Circle()
-                        .fill(mark.legendColor)
-                        .frame(width: 7, height: 7)
+                    if mark == .setAside {
+                        SetAsideMark(size: 9)
+                    } else {
+                        Circle()
+                            .fill(mark.legendColor)
+                            .frame(width: 7, height: 7)
+                    }
                     mark.name
                 }
             }
@@ -192,8 +201,9 @@ private struct GridLegend: View {
 /// A card's tile in the grid, four by three: its front's picture, filling
 /// it, or else its front's text, or the word Sound for a front with a sound
 /// alone, as the Cards window says it (`FrontCell`), with its dot at its top
-/// corner, on the trailing side; dimmed while it's new, and ringed with the
-/// accent color while it's selected. VoiceOver reads it as its front, and
+/// corner, on the trailing side, or the set-aside mark in its place; dimmed
+/// while it's new, and further while it's set aside on its own, and ringed
+/// with the accent color while it's selected. VoiceOver reads it as its front, and
 /// where it stands. A picture's tile reads its image as it appears, away
 /// from the main actor, and makes a thumbnail of it, which the grid's
 /// `TileThumbnails` keeps while there's room, and the tile while it's in
@@ -234,6 +244,28 @@ private struct CardTile: View {
         tile.mark == .new
     }
 
+    private var isSetAside: Bool {
+        tile.mark == .setAside
+    }
+
+    /// Whether the tile is dimmed: while its card is new, or set aside on
+    /// its own, as the mock draws both on the fill, with no shadow.
+    private var isDimmed: Bool {
+        isNew || isSetAside
+    }
+
+    /// The tile's shadow: none while it's dimmed, and more while it's
+    /// selected.
+    private var shadowOpacity: Double {
+        isDimmed ? 0 : isSelected ? 0.12 : 0.08
+    }
+
+    /// The style of a front's text on the tile: fainter while it's new, and
+    /// fainter still while it's set aside on its own.
+    private var textStyle: AnyShapeStyle {
+        isSetAside ? AnyShapeStyle(.tertiary) : isNew ? AnyShapeStyle(.secondary) : AnyShapeStyle(.primary)
+    }
+
     private var shape: RoundedRectangle {
         RoundedRectangle(cornerRadius: 12)
     }
@@ -244,7 +276,7 @@ private struct CardTile: View {
             .overlay {
                 face
             }
-            .background(isNew ? AnyShapeStyle(.fill.quaternary) : AnyShapeStyle(.background), in: shape)
+            .background(isDimmed ? AnyShapeStyle(.fill.quaternary) : AnyShapeStyle(.background), in: shape)
             .clipShape(shape)
             .overlay(alignment: .topTrailing) {
                 dot
@@ -252,11 +284,11 @@ private struct CardTile: View {
             .overlay {
                 if isSelected {
                     shape.strokeBorder(.tint, lineWidth: 2)
-                } else if !isNew {
+                } else if !isDimmed {
                     shape.strokeBorder(.separator, lineWidth: 1)
                 }
             }
-            .shadow(color: .black.opacity(isNew ? 0 : isSelected ? 0.12 : 0.08), radius: isSelected ? 4 : 1.5, y: 1)
+            .shadow(color: .black.opacity(shadowOpacity), radius: isSelected ? 4 : 1.5, y: 1)
             .contentShape(shape)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(label)
@@ -320,7 +352,7 @@ private struct CardTile: View {
                 Image(decorative: image, scale: 1)
                     .resizable()
                     .scaledToFill()
-                    .opacity(isNew ? 0.7 : 1)
+                    .opacity(isSetAside ? 0.4 : isNew ? 0.7 : 1)
             case .unreadable:
                 placeholder("photo.badge.exclamationmark")
             case .unread:
@@ -333,7 +365,7 @@ private struct CardTile: View {
             Text(text)
                 .font(.title3)
                 .fontWeight(.semibold)
-                .foregroundStyle(isNew ? AnyShapeStyle(.secondary) : AnyShapeStyle(.primary))
+                .foregroundStyle(textStyle)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .padding(10)
@@ -364,10 +396,17 @@ private struct CardTile: View {
     }
 
     /// The dot that says where the card stands, ringed with the window's
-    /// background so it reads on a picture too: none for a new card.
+    /// background so it reads on a picture too: none for a new card, and the
+    /// set-aside mark, on the same ring, for a card set aside on its own.
     @ViewBuilder
     private var dot: some View {
-        if let color = tile.mark.dotColor {
+        if isSetAside {
+            SetAsideMark(size: 10)
+                .padding(2)
+                .background(.background, in: .circle)
+                .padding(.top, 4)
+                .padding(.trailing, 5)
+        } else if let color = tile.mark.dotColor {
             Circle()
                 .fill(color)
                 .frame(width: 8, height: 8)
@@ -422,21 +461,42 @@ extension CardsWindowState.Tile.Mark {
                     In the Cards window, above the grid of cards, and for VoiceOver, on a card's tile: the user \
                     hasn't met the card yet, which waits its turn in the queue of new cards.
                     """)
+        case .setAside:
+            Text(
+                "Set aside",
+                comment: """
+                    In the Cards window, above the grid of cards, and for VoiceOver, on a card's tile: the user set \
+                    the card aside on its own, out of their reviews until they put it back.
+                    """)
         }
     }
 
-    /// The color of a tile's dot, or nil for none, as for a new card.
+    /// The color of a tile's dot, or nil for none, as for a new card, and
+    /// for a card set aside on its own, which shows its mark instead.
     fileprivate var dotColor: Color? {
         switch self {
         case .met: .green
         case .due: .orange
-        case .new: nil
+        case .new, .setAside: nil
         }
     }
 
     /// The color of its dot in the legend, which shows a new card's too.
     fileprivate var legendColor: AnyShapeStyle {
         dotColor.map { AnyShapeStyle($0) } ?? AnyShapeStyle(.tertiary)
+    }
+}
+
+/// The mark of a card set aside on its own, on its tile and in the legend:
+/// an eye crossed out, as beside the card in its detail, at `size` points.
+private struct SetAsideMark: View {
+    let size: CGFloat
+
+    var body: some View {
+        Image(systemName: "eye.slash")
+            .font(.system(size: size, weight: .semibold))
+            .foregroundStyle(.secondary)
+            .accessibilityHidden(true)
     }
 }
 

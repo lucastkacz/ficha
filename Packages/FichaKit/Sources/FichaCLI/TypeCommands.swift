@@ -18,7 +18,7 @@ struct TypesCommand: EngineCommand {
             Each type says its name in "name", as `ficha cards` writes a card's type: word, concept, quote and \
             question for the four Ficha comes with, which say so in "builtIn", and your own types by their names, \
             in alphabetical order. A type of your own has its emoji in "emoji", left out when it has none. "cards" \
-            counts its cards, buried ones too. `ficha type` changes your own.
+            counts its cards, set-aside ones too. `ficha type` changes your own.
             """
     )
 

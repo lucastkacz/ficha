@@ -10,7 +10,8 @@ public struct CardRow: Sendable, Equatable, Identifiable {
     /// the detail shows them.
     public let tags: [CardTag]
     /// Where the card stands: in Lucas's reviews, waiting in the inbox to be
-    /// fixed, buried, or set aside.
+    /// fixed, or set aside, on its own, which the engine keeps as its burial,
+    /// or with its deck.
     public let cardStanding: CardStanding
     /// Where its front-first way stands, which every card has, as the
     /// detail says in words whether the card is new and when it's back
@@ -54,7 +55,7 @@ public struct CardRow: Sendable, Equatable, Identifiable {
 public struct WayProgress: Sendable, Equatable {
     /// Where the way stands in the scheduler: new, or at a stage, waiting
     /// its interval until it's due, worked out from its entries in the review
-    /// log. A flagged, buried or set-aside card keeps it, and `cardStanding`
+    /// log. A flagged or set-aside card keeps it, and `cardStanding`
     /// says whether the card is in Lucas's reviews.
     public let standing: WayStanding
     /// What FSRS knows of how well Lucas remembers the way, as the window
@@ -98,8 +99,8 @@ public struct WayProgress: Sendable, Equatable {
     }
 
     /// When the way is due, as the Cards window says it: nil while it's new,
-    /// or while the card is out of Lucas's reviews, flagged, buried or set
-    /// aside, since it won't show up then.
+    /// or while the card is out of Lucas's reviews, flagged or set aside,
+    /// since it won't show up then.
     public var due: Date? {
         cardStanding.due(given: standing)
     }
@@ -109,23 +110,21 @@ public struct WayProgress: Sendable, Equatable {
         /// When it's due: the card is in Lucas's reviews, and the way isn't
         /// new.
         case due(Date)
-        /// That the card is set aside, so it won't show up until neither its
-        /// deck nor any deck that deck sits inside is.
+        /// That the card is set aside, on its own or with its deck, so it
+        /// won't show up until it's put back, or until neither its deck nor
+        /// any deck that deck sits inside is.
         case setAside
-        /// Nothing: the way is new, or the card flagged or buried, which the
-        /// detail's Interval row and the marks beside its front say.
+        /// Nothing: the way is new, or the card flagged, which the detail's
+        /// Interval row and the note above the card say.
         case nothing
     }
 
     /// What the way's Due rows say of it: when it's due, or that the card is
     /// set aside, or nothing.
     public var dueWording: DueWording {
-        if case .setAside = cardStanding {
-            .setAside
-        } else if let due {
-            .due(due)
-        } else {
-            .nothing
+        switch cardStanding {
+        case .setAside, .buried: .setAside
+        case .inReviews, .inInbox: due.map(DueWording.due) ?? .nothing
         }
     }
 
@@ -168,15 +167,19 @@ public struct ReviewLogRow: Sendable, Equatable {
 /// window's sidebar offers, which the window lists one at a time, or every
 /// card or the flagged ones, which the sidebar doesn't offer.
 public enum CardGroup: Sendable, Hashable {
-    /// Every card that isn't buried, flagged and set-aside ones too, which
-    /// the engine counts each deck's cards from (`Engine.countedDecks`).
+    /// Every card that isn't set aside on its own, which the engine keeps as
+    /// its burial, flagged ones and those set aside with their decks too,
+    /// which the engine counts each tag's cards from (`Engine.countedTags`).
     case all
     /// The flagged cards that wait in the inbox to be fixed: those that
-    /// aren't buried, which the inbox lists (`Engine.inboxRows`).
+    /// aren't set aside on their own, which the inbox lists
+    /// (`Engine.inboxRows`).
     case flagged
-    /// The cards that live in the deck with this whole name, or in a deck
-    /// inside it, and aren't buried, set-aside ones too: Default's, by
-    /// `Deck.defaultName`, are those that live in Default alone.
+    /// Every card that lives in the deck with this whole name, or in a deck
+    /// inside it, flagged ones and set-aside ones too, on their own or with
+    /// their decks, as the deck's grid lists them and the engine counts them
+    /// (`Engine.countedDecks`) (#539): Default's, by `Deck.defaultName`, are
+    /// those that live in Default alone.
     case deck(String)
     /// The cards with this tag, or a tag inside it, that aren't buried,
     /// set-aside ones too.
@@ -201,7 +204,8 @@ public struct InboxRow: Sendable, Equatable, Identifiable {
         /// A capture Lucas asked about a card in the review panel, tied to
         /// it, with the card.
         case followUp(FollowUp)
-        /// A flagged card that isn't buried, with where it stands.
+        /// A flagged card that isn't set aside on its own, with where it
+        /// stands.
         case flaggedCard(CardRow)
     }
 
@@ -350,12 +354,23 @@ func cardRows(
     at now: Date,
     in db: Database
 ) throws -> [CardRow] {
+    try everyCardRow(matching: search, with: scheduler, at: now, in: db).filter { group.holds($0) }
+}
+
+/// Every card that mentions `search` in its front, back or source, wherever
+/// it stands, in the order Lucas approved them, each standing as `scheduler`
+/// replays its log at `now`. A blank search narrows nothing.
+func everyCardRow(
+    matching search: String = "",
+    with scheduler: Scheduler,
+    at now: Date,
+    in db: Database
+) throws -> [CardRow] {
     let entries = Dictionary(grouping: try logEntries(in: db), by: \.cardID)
     let ownTags = try OwnTags(in: db)
     return try allCards(in: db).filter { $0.matches(search) }.map { card in
         try CardRow(card: card, tags: ownTags, after: entries[card.id] ?? [], with: scheduler, at: now)
     }
-    .filter { group.holds($0) }
 }
 
 extension Card {
@@ -382,7 +397,7 @@ extension CardGroup {
             case .inInbox: true
             case .inReviews, .buried, .setAside: false
             }
-        case .deck(let deck): TagPath.isTag(row.card.deck, within: deck) && row.cardStanding.isInAllCards
+        case .deck(let deck): TagPath.isTag(row.card.deck, within: deck)
         case .tag(let tag): row.card.hasTag(within: tag) && row.cardStanding.isInAllCards
         case .type(let type): row.card.type?.isSameType(as: type) == true && row.cardStanding.isInAllCards
         case .noType: row.card.type == nil && row.cardStanding.isInAllCards
@@ -392,8 +407,9 @@ extension CardGroup {
 
 extension CardStanding {
     /// Whether the group of every card holds a card standing here, as each
-    /// deck, tag and type do for theirs: unless it's buried. Like flagged
-    /// cards, set-aside cards are there.
+    /// tag and type do for theirs: unless it's set aside on its own, which
+    /// the engine keeps as its burial. Like flagged cards, cards set aside
+    /// with their decks are there. A deck holds every card in it.
     var isInAllCards: Bool {
         switch self {
         case .inReviews, .inInbox, .setAside: true

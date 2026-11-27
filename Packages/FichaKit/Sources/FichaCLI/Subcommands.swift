@@ -79,38 +79,32 @@ struct DiscardCommand: EngineCommand {
     }
 }
 
-/// `ficha bury`: takes a card out of the reviews for good.
-struct BuryCommand: EngineCommand {
+/// `ficha set-aside`: sets a card aside, or puts it back, as `ficha deck
+/// set-aside` does a deck (ADR 0041). The engine buries the card, as the
+/// database keeps a card set aside on its own, and unburies it.
+struct SetCardAsideCommand: EngineCommand {
     static let configuration = CommandConfiguration(
-        commandName: "bury",
-        abstract: "Bury a card: take it out of your reviews for good, with its review log, and print the card.",
-        discussion: "A flagged card leaves the inbox too, with its note, until it's unburied."
+        commandName: "set-aside",
+        abstract: "Set a card aside, or with --off put it back, and print the card.",
+        discussion: """
+            A card set aside is out of your reviews until you put it back, and out of the inbox too if it's \
+            flagged, with its note; it keeps its progress and its review log, and its deck still lists it. Put \
+            back, it goes back to your reviews, or to the inbox when it's flagged, or it stays set aside with its \
+            deck while that deck, or a deck it sits inside, is. `ficha deck set-aside` sets a whole deck aside.
+            """
     )
 
     @Argument(help: "The card's id, as `ficha cards` or `ficha inbox` shows it.")
     var cardID: Int64
 
-    func run(on engine: Engine) throws -> any Encodable {
-        try engine.bury(cardID)
-    }
-}
-
-/// `ficha unbury`: brings a buried card back.
-struct UnburyCommand: EngineCommand {
-    static let configuration = CommandConfiguration(
-        commandName: "unbury",
-        abstract: "Unbury a card: put it back in your reviews, with its progress, and print the card.",
-        discussion: """
-            A card that was flagged when it was buried goes back to the inbox instead, with its note, and one in \
-            a set-aside deck stays set aside.
-            """
-    )
-
-    @Argument(help: "The buried card's id, as `ficha cards` shows it.")
-    var cardID: Int64
+    @ArgumentParser.Flag(help: "Put it back instead.")
+    var off = false
 
     func run(on engine: Engine) throws -> any Encodable {
-        try engine.unbury(cardID)
+        if off {
+            return try engine.unbury(cardID)
+        }
+        return try engine.bury(cardID)
     }
 }
 
@@ -124,10 +118,11 @@ struct CardsCommand: EngineCommand {
             you've met it; `ficha add`, `ficha approve` and `ficha fix` set it. Every card names in "deck" the deck it \
             lives in, by its whole name, as "Idiomas::Inglés", or "" for Default, where a card lives when it has no \
             other deck; `ficha add`, `ficha approve`, `ficha fix`, `ficha approve-expansion` and `ficha change-deck` \
-            set it. A flagged card has your note on what to fix in "flag", a buried one says when you buried it in \
-            "buriedAt", and one set aside lists in "setAsideBy" the set-aside decks it's set aside by, the outermost \
-            first: its own deck, or decks it sits inside, as the Cards window and `ficha deck set-aside` set them \
-            aside. A card's "type" is word, concept, quote or question, or a type of your own, by its name. A card \
+            set it. A flagged card has your note on what to fix in "flag", one set aside on its own says when you \
+            set it aside in "buriedAt", as `ficha set-aside` and the Cards window set it aside, and one set aside \
+            with its deck lists in "setAsideBy" the set-aside decks it's set aside by, the outermost first: its own \
+            deck, or decks it sits inside, as the Cards window and `ficha deck set-aside` set them aside. A card's \
+            "type" is word, concept, quote or question, or a type of your own, by its name. A card \
             leaves out "type", "source" or "captureID" when it has no type, no source, or didn't come from a capture. \
             A card with an image or a sound on its front or back names it in "frontImage", "backImage", "frontSound" \
             or "backSound", left out when that side has none; a side with only an image or a sound has an empty text. \

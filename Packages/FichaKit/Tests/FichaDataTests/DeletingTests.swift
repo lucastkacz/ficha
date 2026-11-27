@@ -124,7 +124,7 @@ struct DeletingTests {
 
     // The panel's cards were picked when it opened, and Lucas can delete one
     // of them in the Cards window meanwhile, as a refine session can bury one.
-    @Test("the review panel can't answer, flag or bury a card deleted meanwhile, and stays on it until it closes")
+    @Test("the review panel can't answer, flag or set aside a card deleted meanwhile, and stays on it until it closes")
     func thePanelRefusesACardDeletedMeanwhile() throws {
         let ubuntu = try approveCard("ubuntu", in: engine)
         let petricor = try approveCard("petricor", in: engine)
@@ -141,7 +141,7 @@ struct DeletingTests {
             try panel.flag(note: note("Falta un ejemplo"))
         }
         #expect(throws: EngineError.cardNotFound(ubuntu.id)) {
-            try panel.bury()
+            try panel.setAside()
         }
         #expect(panel.current == .review(ubuntu))
         #expect(!panel.canUndo)

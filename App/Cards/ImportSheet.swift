@@ -484,7 +484,7 @@ struct ImportSheet: View {
                 """
                 Cards come in with Anki's reviews of them: those Anki was reviewing keep their interval and due \
                 date, those it was learning go on with your learning steps, due when Anki said, and suspended \
-                cards come in buried. Unticked, every card comes in new.
+                cards come in set aside. Unticked, every card comes in new.
                 """,
                 comment: "In the Import sheet's preview of an Anki package, under Bring progress: what it does."
             )
