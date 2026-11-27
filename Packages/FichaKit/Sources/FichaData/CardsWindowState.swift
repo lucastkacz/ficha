@@ -628,6 +628,14 @@ public struct CardsWindowState: Sendable {
         return sections + [.tags(pinned: pinnedTags), .types(typeGroups)]
     }
 
+    // Stub for #536: the code round replaces it.
+    /// A stub for #536, which says no deck is selected yet: the deck the
+    /// sidebar chose, by its whole name, whose cards the window lists, or nil
+    /// while it chose none.
+    public var selectedDeck: String? {
+        nil
+    }
+
     /// Whether Lucas is looking for something, which narrows the table: a
     /// search that isn't blank.
     public var hasSearch: Bool {

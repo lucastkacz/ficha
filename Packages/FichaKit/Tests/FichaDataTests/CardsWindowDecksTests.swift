@@ -321,7 +321,58 @@ struct CardsWindowDecksTests {
         #expect(try engine.decks().isEmpty)
     }
 
-    /// The window as it opens, on All cards, with the cards read.
+    // The window opens on the first deck Your Decks lists, as the desktop
+    // mock does (`mockups/desktop/index.html`): here Historia, whose card came
+    // in a minute before Arte's, so it goes first in the queue though Arte
+    // comes first alphabetically. While Your Decks lists no deck, as when the
+    // user has no cards, it opens on nothing, here with none of Ficha's decks
+    // offered either.
+    @Test(
+        "the Cards window opens on the first deck Your Decks lists, listing that deck's cards alone, and on nothing while it lists none; choosing another deck lists its cards",
+        .bug(id: 536))
+    func theWindowOpensOnTheFirstDeck() throws {
+        let empty = openWindow()
+        let coliseo = try engine.create(card(nil, front: "Coliseo", back: "En Roma."), deck: "Historia")
+        time.advance(by: minutes(1))
+        let gioconda = try engine.create(card(nil, front: "La Gioconda", back: "De Leonardo."), deck: "Arte")
+
+        var window = openWindow()
+        let openedOn = window.selectedDeck
+        let listedOnOpening = window.listedCardIDs
+        window.choose(.cards(.deck("Arte")))
+
+        #expect(empty.selectedDeck == nil)
+        #expect(window.deckRows.map(\.id) == ["Historia", "Arte"])
+        #expect(openedOn == "Historia")
+        #expect(listedOnOpening == [coliseo.id])
+        #expect(window.selectedDeck == "Arte")
+        #expect(window.listedCardIDs == [gioconda.id])
+    }
+
+    // Each group of cards the sidebar offers is a deck: no All cards, New,
+    // Due, Learned, Flagged or Buried. The tags' and the types' groups leave
+    // the sidebar with #538, which takes their exception out of this test.
+    @Test(
+        "the sidebar offers the decks, and no group of cards by where they stand: All cards, New, Due, Learned, Flagged or Buried",
+        .bug(id: 536))
+    func theSidebarOffersTheDecksAlone() throws {
+        try engine.create(card(nil, front: "Coliseo", back: "En Roma."), deck: "Historia")
+        try engine.create(card(nil, front: "La Gioconda", back: "De Leonardo."), deck: "Arte")
+
+        let window = openWindow()
+
+        let groups = window.sidebarSections.flatMap(\.items).compactMap { item -> CardGroup? in
+            guard case .cards(let group) = item else { return nil }
+            switch group {
+            case .tag, .type, .noType: return nil
+            default: return group
+            }
+        }
+        #expect(groups.count == 2)
+        #expect(Set(groups) == [.deck("Historia"), .deck("Arte")])
+    }
+
+    /// The window as it opens, with the cards read.
     private func openWindow() -> CardsWindowState {
         var window = engine.openCardsWindow(with: scheduler)
         window.read(with: scheduler)
