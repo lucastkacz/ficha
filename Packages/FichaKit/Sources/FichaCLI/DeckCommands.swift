@@ -18,7 +18,7 @@ struct DecksCommand: EngineCommand {
             Decks come in the order a tree lists them, Default first, each deck inside another right after it. \
             Each says its whole name in "name", with "::" between a deck and a deck inside it, as in \
             "Idiomas::Inglés", or "" for Default, where a card lives when it has no other deck; in "cards", how \
-            many cards live in it or in a deck inside it, buried ones left out; in "due", how many of those are \
+            many cards live in it or in a deck inside it, set-aside ones too; in "due", how many of those are \
             due now and in your reviews, which those of a set-aside deck never are; in "setAside" and "priority" \
             its own switch, which a deck inside it doesn't show; its own "color" and "emoji", left out when it \
             has none; and in "chosenToSync" whether you chose it to sync. `ficha queue` prints its place in the \
@@ -108,7 +108,7 @@ struct DeleteDeckCommand: EngineCommand {
         commandName: "delete",
         abstract: "Delete a deck, with every deck inside it and every card in them, and print what it did.",
         discussion: """
-            Every card in it, or in a deck inside it, buried ones too, is deleted with its review log, on every \
+            Every card in it, or in a deck inside it, set-aside ones too, is deleted with its review log, on every \
             device, whether or not it syncs, as in Anki; its expansions and follow-ups stay in the inbox. A card \
             another device holds in it that wasn't in it here, and that doesn't sync, moves to Default there. The \
             decks' switches, colors, emoji, descriptions, choices to sync and places in the queue go too. Nothing \

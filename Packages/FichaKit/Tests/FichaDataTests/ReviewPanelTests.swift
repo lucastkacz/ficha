@@ -200,9 +200,9 @@ struct ReviewPanelTests {
     }
 
     @Test(
-        "the ⋯ menu and A, M and E ask, flag and bury the card, and the menu holds Close alone while Lucas writes",
-        .bug(id: 489))
-    func theMenuAndItsKeysAskFlagAndBury() throws {
+        "the ⋯ menu and A, M and E ask, flag and set aside the card, and the menu holds Close alone while Lucas writes",
+        .bug(id: 489), .bug(id: 539))
+    func theMenuAndItsKeysAskFlagAndSetAside() throws {
         let serendipia = try approveCard("serendipia", in: engine)
         var panel = try engine.openPanel(.reviewNow, with: [.new(serendipia)], settings: settings)
 
@@ -222,11 +222,11 @@ struct ReviewPanelTests {
         let whileFlagging = panel.cardActions
         offersUndo.append(panel.menuOffersUndo)
         panel.cancelFlagging()
-        panel.choose(.bury)
+        panel.choose(.setAside)
         offersUndo.append(panel.menuOffersUndo)
 
-        #expect(onItsUpperSide == [.ask, .flag, .bury])
-        #expect(onBothSides == [.ask, .flag, .bury])
+        #expect(onItsUpperSide == [.ask, .flag, .setAside])
+        #expect(onBothSides == [.ask, .flag, .setAside])
         #expect(asking == .asking(serendipia, showsLowerSide: true))
         #expect(whileAsking.isEmpty)
         #expect(flagging == .flagging(serendipia, showsLowerSide: true))
@@ -320,15 +320,17 @@ struct ReviewPanelTests {
     }
 
     // The Cards window can delete the card the panel shows.
-    @Test("burying a card that was deleted meanwhile leaves the panel on it, and records that the bury failed")
-    func aFailedBuryLeavesTheCard() throws {
+    @Test(
+        "setting aside a card deleted meanwhile leaves the panel on it, and records that setting it aside failed",
+        .bug(id: 539))
+    func aFailedSetAsideLeavesTheCard() throws {
         let serendipia = try approveCard("serendipia", in: engine)
         var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings, clock: clock)
         try engine.delete([serendipia.id])
 
-        panel.buryCard()
+        panel.setCardAside()
 
-        #expect(panel.failure?.action == .bury)
+        #expect(panel.failure?.action == .setAside)
         #expect(panel.failure?.error == .cardNotFound(serendipia.id))
         #expect(panel.content == .upperSide(serendipia, isNew: true))
         panel.dismissFailure()
@@ -336,9 +338,10 @@ struct ReviewPanelTests {
     }
 
     // The Cards window can set aside the deck of the card the panel shows, as
-    // it can bury the card.
-    @Test("answering a card whose deck was set aside after the panel opened fails as answering a buried one does")
-    func answeringACardSetAsideMeanwhileFailsAsABuriedOneDoes() throws {
+    // it can set aside the card on its own.
+    @Test(
+        "answering a card whose deck was set aside after the panel opened fails as for a card set aside on its own")
+    func answeringACardSetAsideMeanwhileFailsAsOneSetAsideOnItsOwnDoes() throws {
         let serendipia = try approveCard("serendipia", in: engine)
         let ubuntu = try approveInDeck("ubuntu", deck: "Filosofía", in: engine)
         var buriedPanel = try engine.openPanel(.reviewNow, with: [.new(serendipia)], settings: settings)
@@ -803,7 +806,7 @@ struct ReviewPanelTests {
     /// How the card Lucas is on leaves the review panel, or how the panel
     /// closes.
     enum Leaving: CaseIterable, Sendable {
-        case answer, flag, bury, undo, closeWithEsc, closeOnItsOwn
+        case answer, flag, setAside, undo, closeWithEsc, closeOnItsOwn
     }
 
     @Test(
@@ -828,8 +831,8 @@ struct ReviewPanelTests {
             panel.startFlagging()
             panel.write(note: "Falta el compositor.")
             panel.finishFlagging()
-        case .bury:
-            panel.buryCard()
+        case .setAside:
+            panel.setCardAside()
         case .undo:
             panel.undoLastCard()
         case .closeWithEsc:

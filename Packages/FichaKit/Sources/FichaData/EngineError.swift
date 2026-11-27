@@ -49,11 +49,13 @@ public enum EngineError: Error, Equatable {
     /// The card with this id isn't flagged, so there's no flag to fix or take
     /// off: it was already fixed, or it was never flagged.
     case cardNotFlagged(Int64)
-    /// The card with this id is buried, so it can't be answered, flagged,
-    /// expanded or buried again, nor fixed in a refine session, until it's
-    /// unburied. The Cards window edits it all the same.
+    /// The card with this id is set aside on its own, which the engine keeps
+    /// as its burial, so it can't be answered, flagged, expanded or set aside
+    /// again, nor fixed in a refine session, until it's put back. The Cards
+    /// window edits it all the same.
     case cardBuried(Int64)
-    /// The card with this id isn't buried, so it can't be unburied.
+    /// The card with this id isn't set aside on its own, so it can't be put
+    /// back: it never was, or it was put back, or only its deck is set aside.
     case cardNotBuried(Int64)
     /// The card with this id is set aside by these decks, its own or decks
     /// it sits inside, the outermost first, so it can't be answered until
@@ -307,9 +309,11 @@ extension EngineError: LocalizedError {
                 """
             )
         case .cardBuried(let id):
-            LocalizedStringResource("Card \(id) is buried. To bring it back, unbury it.")
+            LocalizedStringResource(
+                "Card \(id) is set aside. To bring it back, choose Put Back on it in the Cards window.")
         case .cardNotBuried(let id):
-            LocalizedStringResource("Card \(id) isn't buried, so there's nothing to unbury. Check the card's id.")
+            LocalizedStringResource(
+                "Card \(id) isn't set aside on its own, so there's nothing to put back. Check the card's id.")
         case .cardSetAside(let id, let decks) where decks.count == 1:
             LocalizedStringResource(
                 """

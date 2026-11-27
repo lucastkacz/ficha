@@ -52,7 +52,7 @@ No build step: React 18.3.1 from cdnjs and htm 3.1.1 from jsDelivr, pinned, so c
 | `WelcomePage`, in `desktop/` | `App/WelcomePage.swift`, with #467's steps |
 | `CardsWindow` and `HowFast`, in `desktop/` | `App/Cards/CardsView.swift`'s deck rows and `App/Cards/HowFastSheet.swift`, since #491 |
 | `CardsWindow`'s grid of tiles, its legend and `dotOf`, in `desktop/` | `App/Cards/CardGrid.swift`, with FichaData's `CardsWindowState.Tile` deciding each tile's face and dot, since #536, and a flagged card's flag in its dot's place, since #540 |
-| `CardsWindow`'s card pane, its flag's note, `backWords`, `seenWords` and `CardNumbers`, in `desktop/` | `App/Cards/CardsDetail.swift`'s `CardDetail`, with `FlagAndBurial` for the note, with FichaData's `CardsWindowState.wording(of:)` deciding its words, and Details' numbers and review log, `App/ReviewLogView.swift`, since #537 |
+| `CardsWindow`'s card pane, its flag's note, `backWords`, `seenWords` and `CardNumbers`, in `desktop/` | `App/Cards/CardsDetail.swift`'s `CardDetail`, with `FlagAndSetAside` for the note, with FichaData's `CardsWindowState.wording(of:)` deciding its words, and Details' numbers and review log, `App/ReviewLogView.swift`, since #537 |
 | `formatFinish` and `metBy`, a finish date's words | FichaData's `FinishDate.wording(now:calendar:)`, as `App/Cards/HowFastSheet.swift` writes it, since #491 |
 | `SettingsWindow`, in `desktop/` | `App/SettingsTabViewController.swift`, `App/SettingsTabViews.swift`, `App/BackupsSettings.swift` and `App/SyncSettings.swift`, in #492's five tabs, each row where FichaData's `SettingsTabs.swift` places it; the Pace tab's paces and queue, FichaData's `PaceTab.swift` |
 

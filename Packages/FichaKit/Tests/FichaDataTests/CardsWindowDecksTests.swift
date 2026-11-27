@@ -19,8 +19,9 @@ struct CardsWindowDecksTests {
         engine = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
     }
 
-    // Each card met the day before is due, and guernica, buried, counts in
-    // no deck: Música::Tango has no card.
+    // Each card met the day before is due but guernica, set aside on its
+    // own, which Pintura's grid lists and its count holds, though not among
+    // those due (#539). Música::Tango has no card.
     @Test(
         "the Your Decks section, after Inbox, lists every deck as a tree, Default first while it holds cards, each with its due cards, those inside it counted"
     )

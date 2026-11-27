@@ -6,7 +6,8 @@ internal import GRDB
 /// engine saved it when he approved it, an agent added it or the user created
 /// it. Each side holds text, an image, a sound, or any of them together. The
 /// `ficha` CLI prints it as JSON, without the type, images, sounds, source,
-/// edited time, capture, flag, burial or set-aside decks it doesn't have.
+/// edited time, capture, flag, time it was set aside on its own
+/// (`buriedAt`) or set-aside decks it doesn't have.
 public struct Card: Sendable, Equatable, Encodable {
     public let id: Int64
     /// Its type, or nil when it has none, as when its user type was deleted,
@@ -42,15 +43,18 @@ public struct Card: Sendable, Equatable, Encodable {
     /// The capture it was refined from, or nil when it came in another way,
     /// such as `ficha add`, the Cards window's form or an import.
     public let captureID: Int64?
-    /// Lucas's flag, while the card waits to be fixed, buried or not. Where
-    /// the card stands is read from `standing`, never from this.
+    /// Lucas's flag, while the card waits to be fixed, set aside or not.
+    /// Where the card stands is read from `standing`, never from this.
     public let flag: Flag?
-    /// When Lucas buried it, while it's buried. Where the card stands is read
-    /// from `standing`, never from this.
+    /// When Lucas set it aside on its own, while it is: its burial, as the
+    /// database keeps a card set aside with no migration, and as the CLI
+    /// prints it, under this name (ADR 0041, #539). Where the card stands is
+    /// read from `standing`, never from this.
     public let buriedAt: Date?
     /// The set-aside decks it's set aside by, its deck and the decks it sits
     /// inside, as the user set them aside, Idiomas and not Idiomas::Inglés,
-    /// the outermost first, flagged or buried or not, or nil when none is.
+    /// the outermost first, flagged or set aside on its own or not, or nil
+    /// when none is.
     /// Where the card stands is read from `standing`, never from this.
     public let setAsideBy: [String]?
     /// Whether the user also reviews it back first, its back and then its
@@ -59,8 +63,8 @@ public struct Card: Sendable, Equatable, Encodable {
     public let bothWays: Bool
 
     /// Where the card stands: in Lucas's reviews, waiting in the inbox to be
-    /// fixed, buried, or set aside with its deck, or a deck its deck sits
-    /// inside.
+    /// fixed, or set aside, on its own or with its deck, or a deck its deck
+    /// sits inside.
     public var standing: CardStanding {
         CardStanding(flag: flag, buriedAt: buriedAt, setAsideBy: setAsideBy ?? [])
     }

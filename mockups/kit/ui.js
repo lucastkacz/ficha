@@ -138,7 +138,8 @@
         <path d="M3 11.7a1.6 1.6 0 0 1 1.6-1.6h8.2" /><path d="M6.4 8.4 8 4.3l1.6 4.1M6.9 7.1h2.2" />`, s),
     undo: (s) => svg(html`<path d="M6 3.8 3 6.8l3 3" /><path d="M3 6.8h7a3.3 3.3 0 0 1 0 6.6H8.2" />`, s),
     flag: (s) => svg(html`<path d="M3.8 14.2V2.4" /><path d="M3.8 2.8h8.6l-2 3 2 3H3.8" />`, s),
-    bury: (s) =>
+    // eye.slash: Set Aside, and a card set aside, as the app marks it.
+    setAside: (s) =>
       svg(html`<path d="M1.8 8S4 3.6 8 3.6 14.2 8 14.2 8 12 12.4 8 12.4 1.8 8 1.8 8z" /><circle cx="8" cy="8" r="2" /><path d="m2.6 2.6 10.8 10.8" />`, s),
     close: (s) => svg(html`<path d="m4 4 8 8M12 4l-8 8" />`, s),
     // magnifyingglass: a search field's.
@@ -507,10 +508,10 @@
   /**
    * The ⋯ menu in the panel's corner, as the app's (`moreMenu(of:)` in
    * `App/ReviewPanelView.swift`, with `ReviewPanelState`'s `cardActions` and
-   * `menuOffersUndo`): Flag… and Bury, then Undo and Close. While a note is
-   * being written, Close alone; once the cards are done, Undo and Close. Its
-   * items show no keys, as the app's don't: M, E, ⌘Z and Esc work with the
-   * menu closed.
+   * `menuOffersUndo`): Flag… and Set Aside, then Undo and Close. While a
+   * note is being written, Close alone; once the cards are done, Undo and
+   * Close. Its items show no keys, as the app's don't: M, E, ⌘Z and Esc work
+   * with the menu closed.
    */
   function MoreMenu({ app, panel, onFlag, onClose }) {
     const item = (title, fn, disabled) => html`<button type="button" role="menuitem" className="row" disabled=${disabled}
@@ -519,7 +520,7 @@
     return html`<div className="more-cover" onPointerDown=${onClose} />
       <div className="menu more-menu glass" role="menu">
         ${onACard && html`${item('Flag…', onFlag)}
-          ${item('Bury', () => app.bury())}
+          ${item('Set Aside', () => app.setCurrentCardAside())}
           <div className="sep" />`}
         ${!panel.mode && item('Undo', () => app.undo(), !panel.undo.length)}
         ${item('Close', () => app.close())}
@@ -583,7 +584,7 @@
         if (rated) return handled(), app.rate(rated.g);
         const k = e.key.toLowerCase();
         if (k === 'm') return handled(), setMore(false), setText(''), app.setMode('flag');
-        if (k === 'e') return handled(), setMore(false), app.bury();
+        if (k === 'e') return handled(), setMore(false), app.setCurrentCardAside();
       };
       window.addEventListener('keydown', onKey, true);
       return () => window.removeEventListener('keydown', onKey, true);
@@ -639,7 +640,7 @@
       ? moreButton
       : html`${!writing && html`${undo}
             <${IconButton} icon=${Icon.flag} label="Flag… (m)" onClick=${flag} />
-            <${IconButton} icon=${Icon.bury} label="Bury (e)" onClick=${() => app.bury()} />`}
+            <${IconButton} icon=${Icon.setAside} label="Set Aside (e)" onClick=${() => app.setCurrentCardAside()} />`}
           ${close}`;
     let controls;
     if (writing) {

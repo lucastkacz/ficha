@@ -334,6 +334,31 @@ struct CardFormTests {
         #expect(window.cardToReveal == ataraxia.id)
     }
 
+    // A deck lists the cards set aside on their own too (#539), so Show Card
+    // finds a repeat set aside in its deck's grid, dimmed, with Put Back.
+    @Test(
+        "showing the card a front repeats selects it in its deck while it's set aside on its own, with Put Back",
+        .bug(id: 539))
+    func showingARepeatedCardSetAsideSelectsIt() throws {
+        let serendipia = try approveInDeck("serendipia", deck: "Palabras", in: engine)
+        let setAside = try engine.bury(serendipia.id)
+        try approveCard("ataraxia", in: engine)
+        var window = openWindow()
+
+        window.openNewCardForm()
+        window.type(front: "Serendipia", back: "Un hallazgo por casualidad.")
+        let warning = window.cardForm?.frontWarning
+        window.showRepeatedCard()
+
+        #expect(warning == .repeats(setAside))
+        #expect(window.sidebarItem == .cards(.deck("Palabras")))
+        #expect(window.listedCardIDs == [serendipia.id])
+        #expect(window.selectedRows.map(\.id) == [serendipia.id])
+        #expect(window.cardToReveal == serendipia.id)
+        #expect(window.tiles.map(\.mark) == [.setAside])
+        #expect(window.actions == [.edit, .putBack, .changeDeck, .delete])
+    }
+
     @Test(
         "a form from a capture that Show Card set aside comes back with Convert to Card, and approves the capture only once it closes"
     )

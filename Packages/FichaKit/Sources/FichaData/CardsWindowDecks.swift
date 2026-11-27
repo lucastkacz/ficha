@@ -69,9 +69,10 @@ extension CardsWindowState {
         /// with no card says so, and a deck set aside so, before anything
         /// else; a deck met in full says so exactly when the review panel
         /// would say "You've met them all" of it, by the same rule, also with
-        /// a buried card still to meet; a deck in the queue says where it
-        /// is, also when its cards are all met but some of their back-first
-        /// ways are still to come; and any other, how far it is.
+        /// a card set aside on its own still to meet; a deck in the queue
+        /// says where it is, also when its cards are all met but some of
+        /// their back-first ways are still to come; and any other, how far it
+        /// is.
         public enum Line: Sendable, Equatable {
             /// "No cards yet": the deck, with the decks inside it, has no
             /// card.
@@ -95,7 +96,7 @@ extension CardsWindowState {
             case next(finish: FinishDate.Wording)
             /// "9 of 14": how far the deck is, with no finish date, as when
             /// the pace brings no new card, or none of its cards is in the
-            /// user's reviews, as when they're all buried.
+            /// user's reviews, as when they're all set aside on their own.
             case progress(met: Int, of: Int)
         }
 

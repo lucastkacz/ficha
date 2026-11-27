@@ -13,7 +13,7 @@ import SwiftUI
 /// Knew it on a new way's first review (`AnswerButton`). A ⋯ menu in the
 /// corner offers the rest, each also on its key: A asks a question about the
 /// card, which waits in the inbox as a follow-up, M flags it with a note, E
-/// buries it (`CardAction`), ⌘Z undoes the last thing Lucas did, and Esc
+/// sets it aside (`CardAction`), ⌘Z undoes the last thing Lucas did, and Esc
 /// closes the panel, which snoozes an appearance. A side with a sound has a ▶
 /// under its text, which plays it and shows ■ while it plays, and R plays or
 /// stops the lower side's sound once it shows, or else the upper side's. When
@@ -200,7 +200,7 @@ struct ReviewPanelView: View {
         return switch failure.action {
         case .answer: Failure(title: "Couldn't save your answer", message: error.messageInReviewPanel)
         case .flag: Failure(title: "Couldn't flag the card", message: error.messageInReviewPanel)
-        case .bury: Failure(title: "Couldn't bury the card", message: error.messageInReviewPanel)
+        case .setAside: Failure(title: "Couldn't set the card aside", message: error.messageInReviewPanel)
         case .ask: Failure(title: "Couldn't save your question", message: error.messageInReviewPanel)
         case .undo: Failure(title: "Couldn't undo", message: error.messageInReviewPanel)
         case .lookForMore: Failure(title: "Couldn't look for more cards", error: error)
@@ -588,8 +588,8 @@ struct ReviewPanelView: View {
         Text(
             "More",
             comment: """
-                The review panel's ⋯ menu, which asks about the card, flags it or buries it, undoes the last thing \
-                the user did, or closes the panel.
+                The review panel's ⋯ menu, which asks about the card, flags it or sets it aside, undoes the last \
+                thing the user did, or closes the panel.
                 """)
     }
 
@@ -639,12 +639,12 @@ struct ReviewPanelView: View {
                     An item of the review panel's ⋯ menu, whose key is M: it flags the card the panel shows, asking \
                     for a note on what to fix.
                     """)
-        case .bury:
+        case .setAside:
             Text(
-                "Bury",
+                "Set Aside",
                 comment: """
-                    An item of the review panel's ⋯ menu, whose key is E: it buries the card the panel shows, which \
-                    never shows up again.
+                    An item of the review panel's ⋯ menu, whose key is E: it sets aside the card the panel shows, \
+                    which shows up no more until the user puts it back in the Cards window.
                     """)
         }
     }
@@ -663,7 +663,7 @@ struct ReviewPanelView: View {
         case .flag:
             noteSelection = nil
             noteIsFocused = true
-        case .bury:
+        case .setAside:
             break
         }
     }

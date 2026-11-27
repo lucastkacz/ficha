@@ -252,7 +252,7 @@ Our inference from the facts above, unless a source is named.
 
 **Sync**
 
-6. What syncs: cards, captures, the review log, tags, flags and burials, settings, the appearance log (each device plans its own), images, sounds?
+6. What syncs: cards, captures, the review log, tags, flags and cards set aside, settings, the appearance log (each device plans its own), images, sounds?
 7. The same card reviewed on two devices offline: Anki's rule (the latest review sets the card's step), which also settles one new card's two first views, or working out again from the joined log whether each review was ahead?
 8. A card edited on both devices: the last edit wins per field, or the card is flagged too? Deleted on one and edited on the other: which wins?
 9. Deleting images and sounds no card uses: never synced, or only once both devices are in sync?

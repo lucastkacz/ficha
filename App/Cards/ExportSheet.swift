@@ -40,7 +40,7 @@ private struct ExportButtonAndSheet: ViewModifier {
             .background {
                 // ⇧⌘E, beside Import's ⇧⌘I, works through a hidden button,
                 // as ⌘N does: the app has no main menu, whose File menu would
-                // hold it. ⌘E is Bury's.
+                // hold it. ⌘E is Set Aside's.
                 Button {
                     state.startExport()
                 } label: {
@@ -160,7 +160,7 @@ struct ExportSheet: View {
         case .all:
             String(
                 localized: "All cards (\(count))",
-                comment: "An item of the Export sheet's menu: every card, buried ones too, with how many.")
+                comment: "An item of the Export sheet's menu: every card, set-aside ones too, with how many.")
         case .deck(let name):
             String(
                 localized: "\(decks.first { $0.name == name }?.title ?? Deck.shownName(name)) (\(count))",

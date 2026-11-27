@@ -14,7 +14,7 @@ What the method's commands read about Ficha (`.claude/method/method.md`), approv
 
 - `Mac` (blue): the Mac app.
   - `Mac › Review`: the review panel, appearances and what holds them back, Review now.
-  - `Mac › Cards`: the Cards window: decks and their cards, shown as cards, the card form, flags and burials; burials until ADR 0041's node makes them set-asides, and the inbox until its node takes it out; a card's tags and type stay in the database, and show nowhere (#538).
+  - `Mac › Cards`: the Cards window: decks and their cards, shown as cards, the card form, flags, and cards set aside, on their own or with their decks, and the inbox until its node takes it out; a card's tags and type stay in the database, and show nowhere (#538).
     - `Mac › Cards › Import`: a deck's `.ficha` file, coming in and going out: Ficha's own decks, Open Deck…, a double-click in Finder, and the file Share Deck… sends (ADR 0044); the Import and Export sheets, with text files, zips and Anki's packages, until ADR 0041's node takes them out.
   - `Mac › Menu`: the menu bar item and its menu, the Welcome page; Capture and Diagnostics until ADR 0041's nodes take Capture out and move Diagnostics to Settings' Advanced tab.
   - `Mac › Settings`: the Settings window's tabs.
@@ -172,7 +172,7 @@ Rules that don't break:
 1. ✓ Everything is driven and seen without hands: a new screen gets a `make render` window, a new behavior a `ficha` command, a Debug action an agent reaches or a test; what can't yet is a Task in `Environment › Hands-free`.
 2. ✓ FichaCore is pure: Foundation, the standard library and FichaFSRS; the time from `TimeSource`, the review log's IDs from `IDSource` (ADR 0005, ADR 0026, `CODING_STANDARDS.md`, Layers and Time and IDs).
 3. ✓ The apps are thin: what a window decides lives in FichaData, as a `Sendable` state (`CODING_STANDARDS.md`, Layers).
-4. ✓ One way in: where a card stands, the cards that show up, flags and burials (set-asides, in ADR 0041's words) (`CODING_STANDARDS.md`, Where a card stands).
+4. ✓ One way in: where a card stands, the cards that show up, flags, and cards set aside on their own, which the engine keeps as burials (`CODING_STANDARDS.md`, Where a card stands).
 5. ✓ The OS enters through protocols, so the logic is tested without it (`CODING_STANDARDS.md`, Layers).
 6. ✓ CloudKit lives in FichaICloud alone, which the Mac app alone links (ADR 0017, `Packages/FichaKit/Package.swift`).
 7. ✓ No network of Ficha's own; only the SVG drawer may use it, drawing files already on the Mac (ADR 0001, ADR 0017).

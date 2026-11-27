@@ -33,15 +33,14 @@ extension CardGroup {
         case .deck(Deck.defaultName):
             String(
                 localized: "No cards in Default",
-                comment:
-                    "In the Cards window: no card that isn't buried lives in Default, the deck of cards with no other."
+                comment: "In the Cards window: no card lives in Default, the deck of cards with no other."
             )
         case .deck(let deck):
             String(
                 localized: "No cards in \(TagPath.shown(deck))",
                 comment: """
-                    In the Cards window: no card that isn't buried lives in this deck, or a deck inside it, with the \
-                    deck's whole name, like “Idiomas › Inglés”.
+                    In the Cards window: no card lives in this deck, or a deck inside it, set-aside ones too, with \
+                    the deck's whole name, like “Idiomas › Inglés”.
                     """)
         }
     }

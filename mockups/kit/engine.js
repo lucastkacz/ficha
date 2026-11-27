@@ -360,7 +360,9 @@
         panel: null,
         lastClosedAt: null,
         introduced: { day: dayKey(now, settings), count: 0 },
-        buried: {},
+        // The cards set aside on their own, by id, with when: out of the
+        // reviews until they're put back (GLOSSARY.md, Set aside).
+        cardsSetAside: {},
         // A flagged card's note and when it was flagged, by its id, until
         // it's fixed: out of the reviews, in its deck with its flag (#540).
         flagged: {},
@@ -395,14 +397,22 @@
       return this.state.cards.find((c) => c.id === id);
     }
     activeCards() {
-      // A deck set aside takes all its cards out of the reviews (GLOSSARY.md),
-      // and so does a flag, until the card is fixed.
+      // A deck set aside takes all its cards out of the reviews, a card set
+      // aside on its own leaves them too (GLOSSARY.md), and so does a flag,
+      // until the card is fixed.
       const added = new Set(this.state.decks.filter((d) => d.added && !d.setAside).map((d) => d.id));
-      const { buried: buriedUntil, flagged } = this.state;
-      return this.state.cards.filter((c) => added.has(c.deckId) && !(buriedUntil[c.id] > this.state.now) && !flagged[c.id]);
+      return this.state.cards.filter((c) => added.has(c.deckId) && !this.isSetAside(c.id) && !this.isFlagged(c.id));
     }
     deckCards(id) {
       return this.state.cards.filter((c) => c.deckId === id);
+    }
+    /** Whether the card is set aside on its own, until it's put back. */
+    isSetAside(id) {
+      return this.state.cardsSetAside[id] != null;
+    }
+    /** Whether the card is flagged, waiting in its deck until it's fixed (#540). */
+    isFlagged(id) {
+      return this.state.flagged[id] != null;
     }
     /** A deck's cards not met yet. */
     newLeft(id) {
@@ -799,14 +809,27 @@
       this.touch();
       this.emit();
     }
-    bury() {
+    /** Sets the card the panel shows aside, out of the reviews until it's put back, and moves on. */
+    setCurrentCardAside() {
       const card = this.currentCard();
       if (!card) return;
-      this.state.buried[card.id] = startOfDay(this.state.now, this.settings) + DAY;
-      this.toast('Buried until tomorrow');
+      this.state.cardsSetAside = { ...this.state.cardsSetAside, [card.id]: this.state.now };
+      this.toast('Set aside');
       this.changed();
       this.advance();
       this.touch();
+      this.emit();
+    }
+    /**
+     * Sets a card aside, as the Cards window's Set Aside does, or with
+     * `aside` false puts it back, where it stood: its progress never moved.
+     */
+    setCardAside(id, aside = true) {
+      const card = this.card(id);
+      const { [id]: _, ...others } = this.state.cardsSetAside;
+      this.state.cardsSetAside = aside ? { ...others, [id]: this.state.now } : others;
+      this.log(aside ? `${card.front} set aside` : `${card.front} put back`, 'deck');
+      this.changed();
       this.emit();
     }
     setMode(mode) {

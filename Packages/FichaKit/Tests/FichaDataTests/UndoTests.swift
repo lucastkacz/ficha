@@ -50,11 +50,11 @@ struct UndoTests {
         #expect(try engine.reviewNow(settings) == cards.map { PanelCard.review($0) })
     }
 
-    @Test("undoing a bury brings the card back to the reviews, and the panel shows it again")
-    func undoingABuryBringsTheCardBack() throws {
+    @Test("undoing a set-aside brings the card back to the reviews, and the panel shows it again", .bug(id: 539))
+    func undoingASetAsideBringsTheCardBack() throws {
         let cards = try dueCards("ubuntu", "petricor")
         var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
-        try panel.bury()
+        try panel.setAside()
 
         try panel.undo()
 
@@ -70,7 +70,7 @@ struct UndoTests {
         var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
         #expect(!panel.canUndo)
         try panel.answer(.review(.good), responseTime: .seconds(3))
-        try panel.bury()
+        try panel.setAside()
         #expect(panel.canUndo)
 
         try panel.undo()
@@ -93,7 +93,7 @@ struct UndoTests {
         panel.flip()
         panel.rate(.good)
         clock.advance(by: .seconds(2))
-        panel.buryCard()
+        panel.setCardAside()
 
         panel.undoLastCard()
         #expect(panel.content == .upperSide(cards[1]))
@@ -161,7 +161,7 @@ struct UndoTests {
     }
 
     // A refine session can fix or unbury a card while the panel is open.
-    @Test("⌘Z doesn't undo a flag or a bury that changed outside the panel, and says so")
+    @Test("⌘Z doesn't undo a flag or a set-aside that changed outside the panel, and says so")
     func undoRefusesWhatChangedOutsideThePanel() throws {
         let cards = try dueCards("ubuntu", "petricor", "serendipia")
         var flagging = try engine.openPanel(
@@ -170,7 +170,7 @@ struct UndoTests {
         try engine.fix(cards[0].id, with: card(.word, front: "ubuntu", back: "Soy porque somos."))
         var burying = try engine.openPanel(
             .reviewNow, with: [.review(cards[1]), .review(cards[2])], settings: settings)
-        try burying.bury()
+        try burying.setAside()
         try engine.unbury(cards[1].id)
 
         #expect(throws: EngineError.cannotUndo(cards[0].id)) {
@@ -238,7 +238,7 @@ struct UndoTests {
         panel.write(note: "Falta un ejemplo")
         panel.finishFlagging()
         ask("¿Quién inventó la palabra?", in: &panel)
-        panel.buryCard()
+        panel.setCardAside()
 
         panel.undoLastCard()
         #expect(panel.content == .upperSide(cards[1]))

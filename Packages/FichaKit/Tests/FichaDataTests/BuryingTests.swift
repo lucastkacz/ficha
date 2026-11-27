@@ -3,9 +3,12 @@ import FichaData
 import Foundation
 import Testing
 
-/// Tests on burying cards, which takes them out of Lucas's reviews for good
-/// without deleting them, one in the review panel or several at once in the
-/// Cards window, and on unburying them, there or in a refine session.
+/// Tests on setting cards aside on their own, which takes them out of
+/// Lucas's reviews until he puts them back, without deleting them, one in the
+/// review panel or several at once in the Cards window, and on putting them
+/// back, there or in a refine session. The engine keeps a card set aside on
+/// its own as its burial, under that name, so these tests call its
+/// `bury(_:)` and `unbury(_:)` (#539).
 struct BuryingTests {
     let calendar: Calendar
     let time: ManualTimeSource
@@ -18,8 +21,10 @@ struct BuryingTests {
         engine = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
     }
 
-    @Test("a card buried in the review panel never shows up again, counts nowhere, and keeps its review log")
-    func aBuriedCardNeverShowsUpAgain() throws {
+    @Test(
+        "a card set aside in the review panel shows up no more, counts nowhere, and keeps its review log",
+        .bug(id: 539))
+    func aCardSetAsideShowsUpNoMore() throws {
         // serendipia gets learned, graduated to wait 21 days or more, and
         // comes due.
         let serendipia = try approveCard("serendipia", in: engine)
@@ -28,7 +33,7 @@ struct BuryingTests {
         let log = try engine.reviewLog()
         var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
 
-        try panel.bury()
+        try panel.setAside()
 
         #expect(try engine.cards().map(\.buriedAt) == [time.now])
         time.advance(by: days(365))
@@ -50,7 +55,7 @@ struct BuryingTests {
         time.advance(by: hours(1))
         var panel = try engine.openPanel(.reviewNow, with: [.review(bothWays[0], .backFirst)], settings: settings)
 
-        try panel.bury()
+        try panel.setAside()
         let whileBuried = try engine.reviewNow(settings)
         let unburied = try engine.unbury(serendipia.id)
 
@@ -140,8 +145,8 @@ struct BuryingTests {
         #expect(progress.inInbox == 0)
     }
 
-    // The Cards window offers Bury only when no selected card is buried, but
-    // a refine session can bury one of them meanwhile.
+    // The Cards window offers Set Aside only when no selected card is set
+    // aside on its own, but a refine session can bury one of them meanwhile.
     @Test("burying several cards buries none of them when one is already buried, or doesn't exist")
     func buryingSeveralCardsIsAllOrNothing() throws {
         let serendipia = try approveCard("serendipia", in: engine)
@@ -183,8 +188,9 @@ struct BuryingTests {
         #expect(progress.inInbox == 1)
     }
 
-    // The Cards window offers Unbury only when every selected card is buried,
-    // but a refine session can unbury one of them meanwhile.
+    // The Cards window offers Put Back only when every selected card is set
+    // aside on its own, but a refine session can unbury one of them
+    // meanwhile.
     @Test("unburying several cards unburies none of them when one isn't buried, or doesn't exist")
     func unburyingSeveralCardsIsAllOrNothing() throws {
         let serendipia = try approveCard("serendipia", in: engine)
