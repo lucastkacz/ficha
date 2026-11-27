@@ -755,12 +755,12 @@ struct ReviewPanelView: View {
         }
     }
 
-    /// The button that rates the card as `button` says, named New to me or
-    /// Knew it when `isNew`, a new way's first review, where Forgot means
-    /// nothing, with the key its label shows. The one Space presses is the
-    /// prominent one, as Flip is. Kind of is yellow, filled as the prominent
-    /// one is, with a dark title, since a white one on yellow barely reads;
-    /// Forgot stays gray.
+    /// The button that rates the card as `button` says, with the key its label
+    /// shows. When `isNew`, a new way's first review, where Forgot means nothing,
+    /// Forgot and Got it are named New to me and Knew it, and Kind of keeps its
+    /// name. The one Space presses is the prominent one, as Flip is. Kind of is
+    /// yellow, filled as the prominent one is, with a dark title, since a white
+    /// one on yellow barely reads; Forgot stays gray.
     @ViewBuilder
     private func answerButton(_ button: AnswerButton, isNew: Bool, in panel: ReviewPanelModel) -> some View {
         let label = KeyLabel(title: name(of: button, isNew: isNew), key: keyName(of: button.key))
