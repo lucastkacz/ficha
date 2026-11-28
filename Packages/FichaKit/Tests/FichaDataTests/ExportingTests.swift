@@ -232,8 +232,8 @@ final class ExportingTests {
         try engine.changeDeck(of: [peso.id], to: "Economía::Argentina")
         try engine.changeDeck(of: [economist.id], to: "EconomíaX")
         try engine.bury(peso.id)
-        let economy = folder.appending(path: "Economía.txt")
-        let defaultDeck = folder.appending(path: "Default.txt")
+        let economy = folder.appending(path: "Economía.ficha")
+        let defaultDeck = folder.appending(path: "Default.ficha")
 
         let count = try engine.export(.deck("Economía"), to: economy)
         let defaultCount = try engine.export(.deck(Deck.defaultName), to: defaultDeck)

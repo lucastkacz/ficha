@@ -184,6 +184,9 @@ public struct CardsWindowState: Sendable {
         /// How fast new cards come, and where a deck goes in the queue, as
         /// it comes in: `HowFast.swift`.
         case howFast(HowFast)
+        /// Which deck's `.ficha` to open, in an open panel, after Open
+        /// Deck…: `CardsWindowOpenDeck.swift`.
+        case deckFileToOpen
     }
 
     /// What OK in the emoji sheet makes of what its field holds.
@@ -292,6 +295,11 @@ public struct CardsWindowState: Sendable {
         /// He opened the window, which reads Ficha's decks from the app, and
         /// the file of this one couldn't be read.
         case readFichaDeck(FichaDeck)
+        /// He opened the file with this name, with Open Deck… or from
+        /// Finder, which isn't a deck's `.ficha`, or couldn't be read, or
+        /// whose How fast? couldn't read the queue; or chose Start in How
+        /// fast? for its deck, which adds it.
+        case openDeck(fileName: String)
     }
 
     /// What the sidebar chose: the deck the window opens on (`deckToOpenOn`),
@@ -356,6 +364,11 @@ public struct CardsWindowState: Sendable {
     /// the detail's words for when a card is back and its Due rows count
     /// from.
     public private(set) var now: Date
+    /// The hour Ficha's day starts at (ADR 0045), as the settings that decide
+    /// progress held it when the cards were read, which the detail's words
+    /// for when a card is back count days by: Ficha's own until the window
+    /// first reads them (`readDeckLines()`).
+    var dayStartsAtHour = ReviewSettings.defaults.dayStartsAtHour
     /// The scheduling settings in Settings, which the cards stand by, and
     /// which give the intervals of a card's review log.
     public private(set) var scheduler: Scheduler
@@ -429,6 +442,13 @@ public struct CardsWindowState: Sendable {
     /// decks, and until what's open closes
     /// (`askForTheFichaDeckAskedToAdd()`).
     var fichaDeckAskedToAdd: FichaDeck?
+    /// The work reading the `.ficha` Open Deck… or Finder opened last, while
+    /// the window waits for it (`CardsWindowOpenDeck.swift`).
+    var deckFileAwaited: UUID?
+    /// The `.ficha` Open Deck… or Finder opened, once read, while the window
+    /// waits to ask How fast? for it: until what's open closes
+    /// (`askForTheDeckFileOpened()`).
+    var deckFileOpened: DeckFile?
     /// Internal, for the window's parts in files of their own.
     let engine: Engine
 
@@ -604,11 +624,14 @@ public struct CardsWindowState: Sendable {
     /// `editedImages` and `editedSounds` hold them, going both ways as
     /// `editedBothWays` says, in the deck `editedDeck` says, and ends the
     /// edit, while Save is on, or records why it couldn't and goes on with
-    /// it. The card keeps its progress and its review log, and its tags and
-    /// its type as the database holds them, whatever `content` says, since
-    /// the editor shows neither (#538); a flagged one is fixed, back in the
-    /// reviews unless it's set aside. The detail shows it as saved at once,
-    /// without waiting for the engine to say it changed.
+    /// it. The card keeps its progress and its review log; and Save writes
+    /// its sides and its source alone of `content`, never its type or its
+    /// tags, since the editor shows neither (#538), so the card keeps both as
+    /// the database holds them, a user type this device doesn't hold yet
+    /// included, which the card reads as no type until it comes. A flagged
+    /// card is fixed, back in the reviews unless it's set aside. The detail
+    /// shows it as saved at once, without waiting for the engine to say it
+    /// changed.
     public mutating func saveCard(_ content: CardContent) {
         guard case .card(let card) = editing, canSaveCard else { return }
         let files = heldFiles(of: content)

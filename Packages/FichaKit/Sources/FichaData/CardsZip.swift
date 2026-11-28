@@ -52,17 +52,21 @@ func fileContents(of file: URL, upTo count: Int? = nil) throws(CardsFileProblem)
     }
 }
 
-/// A zip that holds `text`, a text file of cards named `textFileName`, and
-/// `images` and `sounds` beside it, each in a file named as Ficha keeps it,
-/// which the text's image and sound columns name, every file dated `date`.
-/// The text is compressed, and the images and sounds aren't, as zip tools
-/// leave a JPEG, a PNG or an M4A, which is compressed already.
-func zipOfCards(text: String, named textFileName: String, images: [CardImage], sounds: [CardSound], at date: Date)
-    throws -> Data
-{
+/// A zip that holds `text`, a text file of cards named `textFileName`, the
+/// files `besideText` right after it, each a name and what it holds, such as
+/// a deck's `deck.json`, and `images` and `sounds` beside them, each in a
+/// file named as Ficha keeps it, which the text's image and sound columns
+/// name, every file dated `date`. The text and the files beside it are
+/// compressed, and the images and sounds aren't, as zip tools leave a JPEG,
+/// a PNG or an M4A, which is compressed already.
+func zipOfCards(
+    text: String, named textFileName: String, beside besideText: [(name: String, data: Data)] = [],
+    images: [CardImage], sounds: [CardSound], at date: Date
+) throws -> Data {
     let archive = try Archive(data: Data(), accessMode: .create, pathEncoding: nil)
     let files =
         [(textFileName, Data(text.utf8), CompressionMethod.deflate)]
+        + besideText.map { ($0.name, $0.data, CompressionMethod.deflate) }
         + images.map { ($0.name.rawValue, $0.data, CompressionMethod.none) }
         + sounds.map { ($0.name.rawValue, $0.data, CompressionMethod.none) }
     for (path, data, compression) in files {

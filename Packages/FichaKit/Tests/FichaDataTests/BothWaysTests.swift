@@ -1,7 +1,10 @@
 import FichaCore
-import FichaData
 import Foundation
 import Testing
+
+// For `Engine.edit(_:with:deck:bothWays:)`, an edit with a card's whole
+// content, which only the tests make.
+@testable import FichaData
 
 /// Tests on a card's Both ways switch (ADR 0016): off for a new card, turned
 /// on or off for one card or several at once, and kept by whatever changes

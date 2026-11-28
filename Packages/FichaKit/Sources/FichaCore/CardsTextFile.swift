@@ -338,6 +338,13 @@ public enum CardsFileProblem: Error, Sendable, Equatable {
     case unreadableAnkiPackage
     /// It's an Anki package in a format newer than any Ficha knows.
     case ankiPackageTooNew
+    /// It isn't a deck's `.ficha`, by its name's extension: the one file Open
+    /// Deck… and Finder open in Ficha (ADR 0044).
+    case notADeckFile
+    /// It can't be read as a deck's `.ficha`: it isn't a zip, or it holds no
+    /// `deck.json` Ficha reads, no text file of cards, or cards that share no
+    /// deck. The engine logs which.
+    case damagedDeckFile
 }
 
 /// The separators a `#separator` header can name, by the names it takes for

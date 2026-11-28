@@ -49,12 +49,17 @@ settings:
     # `FICHA_URL_SCHEME` is the scheme of the links that open each app, as a
     # click on its widget does, which its Info.plist claims, and which the
     # app and the widget read from their Info.plists (`WidgetHandover`).
+    # `FICHA_DECK_HANDLER_RANK` is how each app claims a deck's `.ficha`,
+    # which both open, as their shared Info.plist declares (ADR 0044): the
+    # real Ficha owns it, so a double-click in Finder opens it, and Ficha Dev
+    # is an alternate, which Finder's Open With offers.
     Debug:
       SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG FICHA_DEV
       FICHA_APP_GROUP: $(TeamIdentifierPrefix)com.lucastkacz.ficha.dev
       FICHA_ICLOUD_ENVIRONMENT: Development
       FICHA_PUSH_ENVIRONMENT: development
       FICHA_URL_SCHEME: ficha-dev
+      FICHA_DECK_HANDLER_RANK: Alternate
     # The real Ficha: `make upload` sends it to TestFlight, which installs it
     # in /Applications. Its app, its CLI and its widget run in their
     # sandboxes, sign with the team and share its App Group's folder, where
@@ -66,6 +71,7 @@ settings:
       FICHA_ICLOUD_ENVIRONMENT: Production
       FICHA_PUSH_ENVIRONMENT: production
       FICHA_URL_SCHEME: ficha
+      FICHA_DECK_HANDLER_RANK: Owner
 
 packages:
   FichaKit:

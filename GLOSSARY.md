@@ -58,8 +58,8 @@ A deck as one file, named after it with `.ficha`: its cards, their images and so
 _Avoid_: package, zip, bundle
 
 **Tag**:
-A label a card carries, which can cross decks, like "Renaissance" or "inflación"; a card can have several, or none. A tag can sit inside another, its parent, as "Argentina" does in "países › Argentina". The database keeps a card's tags, which a file or the `ficha` CLI gives it, and the app no longer shows them anywhere: a card shows its deck alone.
-_Avoid_: topic, category, deck, subtag, nested tag
+A label a card carries, which can cross decks, like "Renaissance" or "inflación"; a card can have several, or none. The database keeps a card's tags, which a file or the `ficha` CLI gives it, and the app no longer shows them anywhere: a card shows its deck alone.
+_Avoid_: topic, category, deck
 
 **Priority deck**:
 A deck the user chose so that its cards, and those of every deck inside it, come first when cards show up, as while preparing for an exam. It changes which cards come first, never when a card is due.

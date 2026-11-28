@@ -34,12 +34,19 @@ extension Engine {
     /// and never where it stands, its review log, its flag or its burial.
     /// When a card it takes has an image or a sound, the file is a zip
     /// instead, with that text file, named after `file`, and the cards'
-    /// images and sounds beside it, each once, which its lines name. Returns
-    /// how many cards it wrote.
+    /// images and sounds beside it, each once, which its lines name. A
+    /// deck's cards are always a zip, the deck's `.ficha` (`DeckFile.swift`),
+    /// with `deck.json` beside the text file, holding the deck's own emoji
+    /// and description. Returns how many cards it wrote.
     @discardableResult
     public func export(_ cards: CardsToExport, to file: URL) throws(EngineError) -> Int {
-        let exported = try read { db in
-            try allCards(in: db).filter(cards.takes).map(exportedCard(of:))
+        // The deck, with its own emoji and description, for a deck's cards.
+        let (exported, deck) = try read { db -> ([CardsTextFile.ExportedCard], Deck?) in
+            let exported = try allCards(in: db).filter(cards.takes).map(exportedCard(of:))
+            guard case .deck(let name) = cards else {
+                return (exported, nil)
+            }
+            return (exported, try OwnDecks(in: db).deck(name))
         }
         var images: [CardImage] = []
         for name in Set(exported.flatMap(\.content.images)).sorted(by: { $0.rawValue < $1.rawValue }) {
@@ -60,11 +67,12 @@ extension Engine {
                 }
             }
             let data =
-                images.isEmpty && sounds.isEmpty
+                images.isEmpty && sounds.isEmpty && deck == nil
                 ? Data(text.utf8)
                 : try zipOfCards(
-                    text: text, named: file.deletingPathExtension().lastPathComponent + ".txt", images: images,
-                    sounds: sounds, at: time.now)
+                    text: text, named: file.deletingPathExtension().lastPathComponent + ".txt",
+                    beside: try deck.map { [try deckJSON(of: $0)] } ?? [], images: images, sounds: sounds,
+                    at: time.now)
             try data.write(to: file, options: .atomic)
         } catch {
             logger.error("Couldn't write the exported cards: \(String(describing: error))")

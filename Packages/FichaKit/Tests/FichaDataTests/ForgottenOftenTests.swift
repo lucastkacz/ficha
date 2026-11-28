@@ -1,7 +1,10 @@
 import FichaCore
-import FichaData
 import Foundation
 import Testing
+
+// For `Engine.edit(_:with:deck:bothWays:)`, an edit with a card's whole
+// content, which only the tests make.
+@testable import FichaData
 
 /// Tests on cards forgotten often: recording a rating of again says whether
 /// the card is now forgotten often, and how many times Lucas forgot it which

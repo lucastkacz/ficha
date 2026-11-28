@@ -42,9 +42,10 @@ struct CardsWindowDeckLooksTests {
         #expect(window.failure == nil)
     }
 
-    // The sheet says why while OK refuses, so nothing fails.
+    // The sheet says why while OK refuses, so nothing fails. Two flags are two
+    // emoji, though each is two of Unicode's regional indicators.
     @Test(
-        "Emoji… on a deck asks in the emoji sheet, which starts with the deck's own, refuses what isn't one emoji, and takes an empty field as none"
+        "Emoji… on a deck asks in the emoji sheet, which starts with the deck's own, refuses what isn't one emoji, two flags too, and takes an empty field, or one of spaces, as none"
     )
     func emojiOnADeck() throws {
         try newCardInDeck("La Gioconda", deck: "Arte::Pintura", in: engine)
@@ -55,13 +56,16 @@ struct CardsWindowDeckLooksTests {
         window.chooseEmoji("arte")
         #expect(window.question == .deckEmoji(Deck(name: "Arte")))
         #expect(window.emojiEntry("arte") == .refused(.notOneEmoji))
+        #expect(window.emojiEntry("🇦🇷🇺🇾") == .refused(.notOneEmoji))
+        #expect(window.emojiEntry("") == .removal)
+        #expect(window.emojiEntry(" ") == .removal)
         window.chooseEmoji("🎨")
         #expect(window.question == nil)
         #expect(window.deckRows.everyRow.map(\.deck.shownEmoji) == ["🎨", "🎨"])
 
         window.askForEmoji(onDeck: "Arte")
         #expect(window.question == .deckEmoji(Deck(name: "Arte", emoji: "🎨")))
-        window.chooseEmoji("")
+        window.chooseEmoji(" ")
         #expect(window.deckRows.everyRow.map(\.deck.shownEmoji) == [nil, nil])
         window.askForEmoji(onDeck: "Música")
         #expect(window.question == nil)

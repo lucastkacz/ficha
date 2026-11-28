@@ -45,7 +45,9 @@ struct CardFormTests {
 
     // So that the next card on the same subject is quick, as in Anki. The
     // form shows no tags and no type, so the card it adds has neither (#538).
-    @Test("after Add, the front and back are empty and the source stays, and the card has no tags and no type")
+    @Test(
+        "after Add, the front and back are empty and the source stays, and the card has no tags and no type",
+        .bug(id: 538))
     func afterAddTheSidesAreEmptyAndTheRestStays() throws {
         var window = openWindow()
         window.openNewCardForm()

@@ -83,6 +83,11 @@ final class AppModel {
     /// there (`CardsWindowState.askToAddFichaDeck(_:)`, #458): nil while
     /// none waits.
     var fichaDeckToAdd: FichaDeck?
+    /// The deck's `.ficha` Finder opened Ficha with, which opens the Cards
+    /// window, until the window takes it, at once, for its state to read it
+    /// and ask How fast? for its deck as soon as nothing's open there
+    /// (`CardsWindowState.openDeck(_:)`, #554): nil while none waits.
+    var deckFileToOpen: URL?
     /// Whether `readFichaDecks()` reads Ficha's decks from the app's
     /// resources: always in the app. `make render`, whose app has no bundle
     /// of its own, turns it off, and gives a picture's windows the decks
@@ -222,8 +227,9 @@ final class AppModel {
     /// puts every file of `App/` without its folders; or, when they lack it,
     /// where it would be, for the engine to say it's missing.
     private static func fileOfFichaDeck(_ deck: FichaDeck) -> URL {
-        Bundle.main.url(forResource: deck.fileName, withExtension: "zip")
-            ?? (Bundle.main.resourceURL ?? Bundle.main.bundleURL).appending(path: "\(deck.fileName).zip")
+        let name = "\(deck.fileName).\(DeckFile.fileExtension)"
+        return Bundle.main.url(forResource: name, withExtension: nil)
+            ?? (Bundle.main.resourceURL ?? Bundle.main.bundleURL).appending(path: name)
     }
 
     /// The engine's time: the system's, or, in Ficha Dev, the time its debug

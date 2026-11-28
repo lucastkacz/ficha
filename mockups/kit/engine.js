@@ -341,6 +341,12 @@
             mem: null,
             due: null,
             last: null,
+            // When it came in, with its deck, and when its front or back
+            // last changed, as the Cards window's Details say them: null
+            // until its deck is added, and always, since no mock edits a
+            // card.
+            createdAt: null,
+            editedAt: null,
             // Its review log, oldest first: when it was rated, how, and how
             // long it waits after, as the Cards window's Details lists it.
             reviewLog: [],
@@ -617,6 +623,7 @@
       d.added = true;
       d.setAside = false;
       d.addedAt = d.addedAt ?? s.now;
+      for (const c of this.deckCards(id)) c.createdAt = c.createdAt ?? s.now;
       s.queue = [...s.queue.filter((x) => x !== id), id];
       if (first) this.moveFirst(id);
       this.log(`Added ${d.name}, ${first ? 'first' : 'last'} in the queue`, 'deck');
@@ -640,7 +647,7 @@
       s.cards = [
         ...s.cards,
         { id: `${deckId}-${order}`, deckId, order, front, back, picture: false, source, bothWays, tags: [], state: 'new',
-          step: 0, mem: null, due: null, last: null, reviewLog: [] },
+          step: 0, mem: null, due: null, last: null, createdAt: s.now, editedAt: null, reviewLog: [] },
       ];
       this.log(`Added “${front}” to ${this.deck(deckId).name}`, 'deck');
       this.changed();

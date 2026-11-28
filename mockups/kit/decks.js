@@ -8,8 +8,9 @@
  * line between the <ficha-decks> lines, so a change to those files changes
  * these lines too. A card with `picture: true` has an image on its front,
  * which the mock draws as a stand-in.
- * One stands for a deck of the user's own, from an Anki file: made up, never
- * Lucas's, in Spanish too, as cards are the user's, in any language (ADR 0036).
+ * One stands for a deck someone sent the user, as its .ficha, which Open
+ * Deck… opens (ADR 0044, #554): made up, never Lucas's, in Spanish too, as
+ * cards are the user's, in any language (ADR 0036).
  */
 (function (root) {
   'use strict';
@@ -23,10 +24,10 @@
     {
       id: 'capitales',
       name: 'Capitales de Sudamérica',
-      emoji: '🗂️',
+      emoji: '🌎',
       ficha: false,
-      file: 'Capitales.apkg',
-      blurb: 'A deck of the user\'s own, from an Anki file.',
+      file: 'Capitales.ficha',
+      blurb: '',
       cards: [
         { front: 'Argentina', back: 'Buenos Aires' },
         { front: 'Bolivia', back: 'Sucre, la capital constitucional; La Paz, la sede del gobierno.' },

@@ -30,17 +30,17 @@ extension View {
 /// How fast? (ADR 0034, #491), the sheet over the Cards window as a deck
 /// comes in, as the mock draws it: the deck's emoji and name, or the names
 /// of the decks an import made, with no emoji, and a line under them, "14
-/// cards · imported from Arte.apkg", "40 cards · one of Ficha's decks" or
-/// "No cards yet"; the three paces, Chill, Steady and Faster, each a tile
-/// with its radio, its new cards a day and, when the deck has new cards,
-/// when they're all met at it, the chosen one in the accent; where the deck
-/// goes in the queue new cards come from, while a deck with new cards is
-/// ahead of it, with Put it first while it would pass one, any but a deck
-/// listed first for its priority cards; that one pace is for all the user's
-/// decks, while they have others; and Cancel, with esc, and Start, or
-/// Create after New Deck…, with ↩. It's never narrower than the mock's, and
-/// widens so that a label fits whole. `CardsWindowState` decides all of it
-/// (`HowFast.swift`).
+/// cards · imported from Arte.apkg", "40 cards · one of Ficha's decks", "12
+/// cards · from Capitales.ficha" or "No cards yet"; the three paces, Chill,
+/// Steady and Faster, each a tile with its radio, its new cards a day and,
+/// when the deck has new cards, when they're all met at it, the chosen one
+/// in the accent; where the deck goes in the queue new cards come from,
+/// while a deck with new cards is ahead of it, with Put it first while it
+/// would pass one, any but a deck listed first for its priority cards; that
+/// one pace is for all the user's decks, while they have others; and
+/// Cancel, with esc, and Start, or Create after New Deck…, with ↩. It's
+/// never narrower than the mock's, and widens so that a label fits whole.
+/// `CardsWindowState` decides all of it (`HowFast.swift`).
 struct HowFastSheet: View {
     let howFast: CardsWindowState.HowFast
     /// Chooses a pace among the tiles.
@@ -144,7 +144,7 @@ struct HowFastSheet: View {
         switch howFast.subject {
         case .deck: howFast.decks.first?.shownEmoji
         case .decks: nil
-        case .fichaDeck(let deck): deck.emoji
+        case .fichaDeck, .deckFile: howFast.emoji
         }
     }
 
@@ -154,6 +154,7 @@ struct HowFastSheet: View {
         case .deck(let deck): Deck.shownName(deck)
         case .decks(let decks): decks.map(Deck.shownName).formatted(.list(type: .and))
         case .fichaDeck(let deck): deck.name
+        case .deckFile(let file): Deck.shownName(file.deck)
         }
     }
 
@@ -344,6 +345,13 @@ extension CardsWindowState.HowFast.Line {
                 comment: """
                     In How fast?, and in the Cards window while its sidebar chose one of Ficha's decks, under the \
                     deck's name: how many cards it brings.
+                    """)
+        case .deckFile(let cardCount, let fileName):
+            String(
+                localized: "\(cardCount) cards · from \(fileName)",
+                comment: """
+                    In How fast?, under the name of the deck of a deck's .ficha file, which Open Deck… or Finder \
+                    opened: how many cards it brings, and the file's name.
                     """)
         }
     }

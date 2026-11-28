@@ -1,39 +1,39 @@
 import FichaCore
 import Foundation
 
-// The Cards window's decks (ADR 0024): the sidebar's Your Decks section lists
-// every deck as a tree, Default first while it
-// holds cards or has a switch on, where it always was, then the decks at the
-// top of the tree with cards in the user's reviews, in the order of the
-// queue new cards come from, a deck listed first for its priority cards
-// alone first, and a deck met in full at its place among them, as the mock's
-// Your Decks lists them, then the others in alphabetical order, and those
-// set aside last, each with the decks inside it in alphabetical order, and
-// each with how many of its cards are due, those of the decks inside it
-// counted, and each at the top of the tree, Default too, with a line under
-// its title that says how far it is and when it's all met, from the queue
-// new cards come from (ADR 0034, #491). Each parent starts open, as in
-// Anki's deck list, and the window remembers the ones Lucas closes while
-// it's open. Choosing a deck lists its cards and those of every deck inside
-// it. A deck's menu,
-// Default's too, the same in its row's context menu and in the Actions menu
-// above the grid while the sidebar chose it, which is its keyboard
-// path, sets it aside or prioritizes it (`DeckSwitches.swift`), and gives it
-// a color or an emoji (`DeckColorAndEmoji.swift`), which its row shows, as
-// the decks inside it that have none do; a set-aside deck is grayed, with
-// the decks inside it, last when it's at the top of the tree and in its
-// place inside another. Every deck's but Default's also renames it and deletes
-// it, and in the sidebar cards and decks dropped on a deck move there
-// (`CardsWindowDeckEdits.swift`). Every deck's menu and the Your Decks title's
-// have New Deck…, whose OK makes a deck with no card, where its name says, and
-// then asks How fast? for a new deck at the top of the tree (`HowFast.swift`).
-// Change Deck… moves the selected cards to the deck Lucas picks in its sheet,
-// from the same tree with Default always in it, or to one he names there with
-// New Deck…, which the move makes. The Deck field, in the card form and the
-// editor (`CardsWindowDeckField.swift`), offers that tree too, and its New
-// Deck… names a deck in the New Deck sheet with the same name field and the
-// same checks, for the field to hold; and so does the Import sheet's choice of
-// deck (`CardsWindowImport.swift`), which names one in its preview's place.
+// The Cards window's decks (ADR 0024): the sidebar's Your Decks section
+// lists every deck as a tree, Default first while it holds cards
+// or has a switch on, where it always was, then the decks at the top of the
+// tree with cards in the user's reviews, in the order of the queue new cards
+// come from, a deck listed first for its priority cards alone first, and a
+// deck met in full at its place among them, as the mock's Your Decks lists
+// them, then the others in alphabetical order, and those set aside last, each
+// with the decks inside it in alphabetical order, and each with how many of
+// its cards are due, those of the decks inside it counted, and each at the
+// top of the tree, Default too, with a line under its title that says how far
+// it is and when it's all met, from the queue new cards come from (ADR 0034,
+// #491). Each parent starts open, as in Anki's deck list, and the window
+// remembers the ones Lucas closes while it's open. Choosing a deck lists its
+// cards and those of every deck inside it. A deck's menu, Default's too, the
+// same in its row's context menu and in the Actions menu above the grid while
+// the sidebar chose it, which is its keyboard path, sets it aside or
+// prioritizes it (`DeckSwitches.swift`), and gives it a color or an emoji
+// (`DeckColorAndEmoji.swift`), which its row shows, as the decks inside it
+// that have none do; a set-aside deck is grayed, with the decks inside it,
+// last when it's at the top of the tree and in its place inside another.
+// Every deck's but Default's also renames it and deletes it, and in the
+// sidebar cards and decks dropped on a deck move there
+// (`CardsWindowDeckEdits.swift`). Every deck's menu and the Your Decks
+// title's have New Deck…, whose OK makes a deck with no card, where its name
+// says, and then asks How fast? for a new deck at the top of the tree
+// (`HowFast.swift`). Change Deck… moves the selected cards to the deck Lucas
+// picks in its sheet, from the same tree with Default always in it, or to one
+// he names there with New Deck…, which the move makes. The Deck field, in the
+// card form and the editor (`CardsWindowDeckField.swift`), offers that tree
+// too, and its New Deck… names a deck in the New Deck sheet with the same
+// name field and the same checks, for the field to hold; and so does the
+// Import sheet's choice of deck (`CardsWindowImport.swift`), which names one
+// in its preview's place.
 
 extension CardsWindowState {
     /// A deck in the sidebar's tree, or in the Change Deck sheet's, with the
@@ -518,12 +518,14 @@ extension CardsWindowState {
     /// lists says under its title, as last read, from where it stands now and
     /// the queue new cards come from, with the pace the database holds and
     /// the window's active hours, and the decks' order in it, which the
-    /// sidebar lists them in.
+    /// sidebar lists them in; and the hour Ficha's day starts at, among the
+    /// same settings, which the detail's words count days by.
     mutating func readDeckLines() throws(EngineError) {
         let settings = try engine.cardsWindowQueueSettings(activeHours: activeHours)
         let lines = try engine.deckLines(of: listedTopDecks, with: settings)
         deckLines = lines.lines
         placedTopDecks = lines.places
+        dayStartsAtHour = settings.dayStartsAtHour
     }
 
     /// The decks at the top of the tree the sidebar lists, as last read, in

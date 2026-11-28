@@ -135,6 +135,10 @@
       "comment" : "A message of an error of Ficha's engine, EngineError, which the iPhone app shows. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },
+    "Ficha couldn't read the deck in “%@”: the file may be damaged. Ask whoever sent it for the deck again, and open that." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the iPhone app shows. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual"
+    },
     "Ficha couldn't read “%@” as an Anki package: it may be damaged. Export the deck from Anki again, and import that." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the iPhone app shows. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
@@ -152,6 +156,10 @@
       "extractionState" : "manual"
     },
     "Ficha holds no image or sound named “%@”. Give its name as `ficha cards` prints it, or the path of a file on the Mac." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the iPhone app shows. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual"
+    },
+    "Ficha opens a deck's .ficha file, and “%@” isn't one. Ask whoever sent it for the deck's .ficha file, and open that." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the iPhone app shows. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },

@@ -724,7 +724,7 @@ extension ImportReading {
     /// deck inside it, in a text file, and with no deck when that leaves no
     /// level: so that “Default” stands for Default, and “Default::Viejas” for
     /// “Viejas”, as an Anki package's Default and the decks inside it do.
-    fileprivate func outsideDefault() -> ImportReading {
+    func outsideDefault() -> ImportReading {
         ImportReading(
             cards: cards.map { card in
                 var levels = TagPath.levels(of: card.deck ?? "")[...]

@@ -622,6 +622,20 @@ extension CardsFileProblem {
                 “Support older Anki versions” ticked, and import that.
                 """
             )
+        case .notADeckFile:
+            LocalizedStringResource(
+                """
+                Ficha opens a deck's .ficha file, and “\(name)” isn't one. Ask whoever sent it for the deck's \
+                .ficha file, and open that.
+                """
+            )
+        case .damagedDeckFile:
+            LocalizedStringResource(
+                """
+                Ficha couldn't read the deck in “\(name)”: the file may be damaged. Ask whoever sent it for the \
+                deck again, and open that.
+                """
+            )
         }
     }
 }

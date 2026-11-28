@@ -22,23 +22,53 @@ struct NewDeckItem: View {
     }
 }
 
+/// Open Deck…, beside New Deck… in a deck's menu and the menu of the
+/// sidebar's Your Decks title, on ⌘O, and beside New Card while the user has
+/// no cards: it opens an open panel for a deck's `.ficha`, and the deck it
+/// holds comes in after How fast? (ADR 0044, `CardsWindowOpenDeck.swift`).
+struct OpenDeckItem: View {
+    @Binding var state: CardsWindowState
+
+    var body: some View {
+        Button {
+            state.askToOpenDeck()
+        } label: {
+            Self.title
+        }
+    }
+
+    /// Its title, the same wherever it shows.
+    static var title: Text {
+        Text(
+            "Open Deck…",
+            comment: """
+                An item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu above \
+                the grid, and of the menu of the Your Decks title in the sidebar, and a button of the window while \
+                the user has no cards: it opens an open panel for a deck's .ficha file, and asks how fast new \
+                cards come before the deck comes in.
+                """)
+    }
+}
+
 /// The items of a deck's menu, the same in the context menu of its row in
 /// the sidebar's Your Decks section and in the Actions menu above the grid
 /// while the sidebar chose it, as the state offers them: New Deck…
-/// (`NewDeckItem`), which acts on no deck; Set Aside, ticked
-/// while the deck is set aside on its own; Prioritize, ticked while it's a
-/// priority deck, and off while it's set aside, on its own or inside a deck
-/// that is (ADR 0011, ADR 0024); Rename…, which opens the rename sheet on the
-/// deck's whole name; Color, with None and Finder's seven colors, each with a
-/// swatch, the deck's own ticked; Emoji…, which opens the emoji sheet; and
-/// Delete…, which asks first. Default's has neither Rename… nor Delete…. Each
-/// calls the state, which reads the decks as they are when Lucas chooses it.
+/// (`NewDeckItem`) and Open Deck… (`OpenDeckItem`), which act on no deck;
+/// Set Aside, ticked while the deck is set aside on its own; Prioritize,
+/// ticked while it's a priority deck, and off while it's set aside, on its
+/// own or inside a deck that is (ADR 0011, ADR 0024); Rename…, which opens
+/// the rename sheet on the deck's whole name; Color, with None and Finder's
+/// seven colors, each with a swatch, the deck's own ticked; Emoji…, which
+/// opens the emoji sheet; and Delete…, which asks first. Default's has
+/// neither Rename… nor Delete…. Each calls the state, which reads the decks
+/// as they are when Lucas chooses it.
 struct DeckMenuItems: View {
     let menu: CardsWindowState.DeckMenu
     @Binding var state: CardsWindowState
 
     var body: some View {
         NewDeckItem(state: $state)
+        OpenDeckItem(state: $state)
         Divider()
         Toggle(
             isOn: Binding(get: { menu.isSetAsideTicked }, set: { _ in state.chooseSetAside(onDeck: menu.deck.name) })

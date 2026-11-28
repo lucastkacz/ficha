@@ -59,9 +59,13 @@ extension CardsWindowState {
 
         /// Whether Export writes a zip, with the text file and the cards'
         /// images and sounds, rather than a text file: when a card it takes
-        /// has an image or a sound.
+        /// has an image or a sound, and for a deck's cards, which the engine
+        /// always writes as the deck's file, a zip (#554).
         public var writesZip: Bool {
-            choices.first { $0.cards == chosen }?.holdsFiles ?? false
+            if case .deck = chosen {
+                return true
+            }
+            return choices.first { $0.cards == chosen }?.holdsFiles ?? false
         }
     }
 

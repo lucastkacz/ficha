@@ -1,10 +1,16 @@
 import FichaCore
-import FichaData
 import Foundation
+import GRDB
 import Testing
 
-/// Tests on editing a card in the Cards window: it changes its content and
-/// keeps its progress, and is fixed when it's flagged.
+// For `Engine.edit(_:with:deck:bothWays:)`, an edit with a card's whole
+// content, which only the tests make, and for a card's type column, which a
+// test writes and reads as another device's card can leave it.
+@testable import FichaData
+
+/// Tests on editing in the Cards window: a card changes its content and keeps
+/// its progress, and is fixed when it's flagged, and the window's save leaves
+/// its type and its tags as they are.
 struct EditingTests {
     let calendar: Calendar
     let time: ManualTimeSource
@@ -102,5 +108,38 @@ struct EditingTests {
         try engine.unbury([serendipia.id, ubuntu.id])
         #expect(try engine.reviewNow(settings).map(\.card.front) == ["serendipia", "ubuntu"])
         #expect(try engine.flaggedCards().isEmpty)
+    }
+
+    // iCloud's engine sends in batches, so a card's record can reach the Mac
+    // before the record of its user type, "Ley", made on the iPhone: until it
+    // comes, the card reads as one with no type. The window shows no types
+    // or tags (#538), and its save writes neither, whatever its content says.
+    @Test(
+        "saving an edit in the Cards window leaves the card's type and tags as the database holds them, a user type this device doesn't hold yet included",
+        .bug(id: 538))
+    func savingAnEditLeavesATypeThisDeviceDoesntHold() throws {
+        let ley = try #require(UUID(uuidString: "6F1A0E2C-3B7D-4C55-9E8A-2D4F1B7C9A10"))
+        let mayo = try engine.create(
+            card(nil, front: "Revolución de Mayo", back: "1810.", tags: ["historia::Argentina", "política"]))
+        try engine.write { db in
+            try db.execute(sql: "UPDATE card SET type = ? WHERE id = ?", arguments: [ley.uuidString, mayo.id])
+        }
+        var window = engine.openCardsWindow(with: settings.scheduler)
+        window.read(with: settings.scheduler)
+        window.select([mayo.id])
+
+        window.startEditing()
+        window.saveCard(
+            try card(.concept, front: "Revolución de Mayo", back: "El 25 de mayo de 1810.", tags: ["efemérides"]))
+
+        let saved = try #require(try engine.cards().first { $0.id == mayo.id })
+        let typeColumn = try engine.read { db in
+            try String.fetchOne(db, sql: "SELECT type FROM card WHERE id = ?", arguments: [mayo.id])
+        }
+        #expect(window.failure == nil)
+        #expect(saved.back == "El 25 de mayo de 1810.")
+        #expect(saved.type == nil)
+        #expect(saved.tags == ["historia::Argentina", "política"])
+        #expect(typeColumn == ley.uuidString)
     }
 }

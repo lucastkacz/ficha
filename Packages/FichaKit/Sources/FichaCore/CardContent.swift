@@ -93,34 +93,20 @@ public struct CardContent: Sendable, Equatable {
         frontImage: ImageName?, backImage: ImageName?, frontSound: SoundName?, backSound: SoundName?
     ) -> CardContent {
         CardContent(
-            checked: self, type: type, tags: tags, frontImage: frontImage ?? self.frontImage,
-            backImage: backImage ?? self.backImage, frontSound: frontSound ?? self.frontSound,
-            backSound: backSound ?? self.backSound)
+            checked: self, frontImage: frontImage ?? self.frontImage, backImage: backImage ?? self.backImage,
+            frontSound: frontSound ?? self.frontSound, backSound: backSound ?? self.backSound)
     }
 
-    /// This content with a card's own `type` and `tags` in place of its own,
-    /// the tags as the card carries them, which a check let in as it came,
-    /// even one stored before tags sat inside tags, which `init` would clean
-    /// up now (`TagPath.levels(of:)`): as a card the Cards window edits keeps
-    /// its type and its tags, which the window doesn't show (#538). Each side
-    /// keeps what it holds, so it's never blank.
-    public func keeping(type: CardType?, tags: [String]) -> CardContent {
-        CardContent(
-            checked: self, type: type, tags: tags, frontImage: frontImage, backImage: backImage,
-            frontSound: frontSound, backSound: backSound)
-    }
-
-    /// `content` with this type, these tags, as they are, and these images
-    /// and sounds, which leave no side blank, since each replaces one or
-    /// keeps it.
+    /// `content` with these images and sounds, which leave no side blank,
+    /// since each replaces one or keeps it.
     private init(
-        checked content: CardContent, type: CardType?, tags: [String], frontImage: ImageName?,
-        backImage: ImageName?, frontSound: SoundName?, backSound: SoundName?
+        checked content: CardContent, frontImage: ImageName?, backImage: ImageName?, frontSound: SoundName?,
+        backSound: SoundName?
     ) {
-        self.type = type
+        type = content.type
         front = content.front
         back = content.back
-        self.tags = tags
+        tags = content.tags
         source = content.source
         self.frontImage = frontImage
         self.backImage = backImage

@@ -101,6 +101,9 @@ public struct ReviewPanelState: Sendable {
         /// Cards window on it with How fast? (#458). Nil while something
         /// waits, or while the user has added all of them.
         public let fichaDeck: FichaDeck?
+        /// The emoji of `fichaDeck`, as its file's `deck.json` holds it, which
+        /// its button shows before its name: nil for none (#554).
+        public let fichaDeckEmoji: String?
     }
 
     /// What opened the panel: Lucas, with review now, or an appearance.
@@ -659,10 +662,11 @@ public struct ReviewPanelState: Sendable {
         do throws(EngineError) {
             let decks = try engine.decks()
             let next = try engine.queue(settings).first?.deck
-            let fichaDeck = try next == nil ? engine.fichaDecks(among: fichaDecks ?? []).first?.deck : nil
+            let fichaDeck = try next == nil ? engine.fichaDecks(among: fichaDecks ?? []).first : nil
             metInFull = MetThemAll(
                 decks: met.compactMap { name in decks.first { $0.name == name } },
-                nextInQueue: next.flatMap { name in decks.first { $0.name == name } }, fichaDeck: fichaDeck)
+                nextInQueue: next.flatMap { name in decks.first { $0.name == name } }, fichaDeck: fichaDeck?.deck,
+                fichaDeckEmoji: fichaDeck?.emoji)
         } catch {
             metInFull = nil
             logger.error("Couldn't read the decks met in full: \(String(describing: error), privacy: .public)")

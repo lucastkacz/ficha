@@ -33,6 +33,7 @@ struct EngineMessagesTests {
         .unreadableFile("cards.zip", .noTextFileInZip),
         .unreadableFile("cards.zip", .severalTextFilesInZip(["a.txt", "b.txt"])),
         .unreadableFile("deck.apkg", .unreadableAnkiPackage), .unreadableFile("deck.apkg", .ankiPackageTooNew),
+        .unreadableFile("Capitales.zip", .notADeckFile), .unreadableFile("Capitales.ficha", .damagedDeckFile),
         .unwritableFile("cards.txt"), .fichaDeckMissing("Arte argentino"), .descriptionTooLong,
     ]
 
@@ -72,8 +73,8 @@ private enum ErrorCase: CaseIterable {
     case backupsFolder, notAnImage, notASound, soundConversion, unreadableFileForSide, noSuchFile, fileNotInDownloads
     case fileNotAnImage, fileNotASound, notAnImageOrSound, noFileNamed, imagesFolder, soundsFolder
     case cannotOpen, notUTF8, unknownSeparator, unknownHTML, unknownColumnNumber, missingColumn, unreadableZip
-    case noTextFileInZip, severalTextFilesInZip, unreadableAnkiPackage, ankiPackageTooNew, unwritableFile
-    case fichaDeckMissing, descriptionTooLong
+    case noTextFileInZip, severalTextFilesInZip, unreadableAnkiPackage, ankiPackageTooNew, notADeckFile
+    case damagedDeckFile, unwritableFile, fichaDeckMissing, descriptionTooLong
 
     init(_ error: EngineError) {
         self =
@@ -140,6 +141,8 @@ private enum ErrorCase: CaseIterable {
             case .unreadableFile(_, .severalTextFilesInZip): .severalTextFilesInZip
             case .unreadableFile(_, .unreadableAnkiPackage): .unreadableAnkiPackage
             case .unreadableFile(_, .ankiPackageTooNew): .ankiPackageTooNew
+            case .unreadableFile(_, .notADeckFile): .notADeckFile
+            case .unreadableFile(_, .damagedDeckFile): .damagedDeckFile
             case .unwritableFile: .unwritableFile
             case .fichaDeckMissing: .fichaDeckMissing
             case .descriptionTooLong: .descriptionTooLong

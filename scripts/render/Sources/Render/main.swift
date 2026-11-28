@@ -31,13 +31,15 @@ enum Window: String, CaseIterable {
     /// selected in its deck, its detail saying in words when it's back, on a
     /// later day, and how many times it was seen, with Details closed.
     case cardsCard = "cards-card"
-    /// The same with Details open: its interval, due time, stability,
-    /// difficulty and retrievability, when it was last seen, its reviews and
-    /// when it was made, and its review log, in a chart and in full.
+    /// The same with Details open and its detail scrolled to its end, below
+    /// its interval, due time, stability, difficulty and retrievability, when
+    /// it was last seen, its reviews and when it was made: its review log, in
+    /// a chart and in full.
     case cardsCardDetails = "cards-card-details"
     /// The Cards window with no cards at all, as a new user's opens: it
-    /// offers New Card and Import… in plain sight, and its sidebar's Ficha's
-    /// Decks section lists the three, read from the repo's `App/FichaDecks/`.
+    /// offers New Card, Open Deck… and Import… in plain sight, and its
+    /// sidebar's Ficha's Decks section lists the three, read from the repo's
+    /// `App/FichaDecks/`.
     case cardsEmpty = "cards-empty"
     /// The Cards window on Idiomas, one of the decks the sample's cards sit in,
     /// with its sidebar's Your Decks section: Default first, then every deck as
@@ -72,7 +74,8 @@ enum Window: String, CaseIterable {
     case cardsImportAnki = "cards-import-anki"
     /// The Cards window once that Anki package came in with its progress,
     /// with a card it brought Anki's interval to selected, and reviewed since,
-    /// its Details open on its review log.
+    /// its Details open and its detail scrolled to its end, on its review
+    /// log.
     case cardsAnkiImported = "cards-anki-imported"
     /// The Cards window with its Import sheet showing the preview of a zip
     /// of cards whose images weigh 240 MB, while sync is on, which says they
@@ -89,6 +92,19 @@ enum Window: String, CaseIterable {
     /// cards: "No cards yet", the paces alone, with their new cards a day,
     /// and Create.
     case cardsHowFastNewDeck = "cards-how-fast-new-deck"
+    /// The Cards window with How fast? over it, once Open Deck… read a
+    /// deck's `.ficha` the tool writes in its scratch home, Capitales.ficha,
+    /// as another Ficha shares one, with its emoji and five cards, which the
+    /// tool can't choose in the open panel: "5 cards · from
+    /// Capitales.ficha", the deck coming in last, behind the decks the sample
+    /// cards are meeting, with each pace's finish date, where it goes in the
+    /// queue, and Put it first.
+    case cardsHowFastDeckFile = "cards-how-fast-deck-file"
+    /// A deck's menu in the Cards window, Idiomas's, as its row's context
+    /// menu in the sidebar and the Actions menu above the grid hold it, its
+    /// content drawn in a window, since the tool can't open the menu: New
+    /// Deck… and Open Deck… first, then the deck's own actions.
+    case cardsDeckMenu = "cards-deck-menu"
     /// The Cards window on Palabras lindas, one of Ficha's decks, which its
     /// sidebar's Ficha's Decks section lists after Your Decks with the other
     /// two, all three read from the repo's `App/FichaDecks/`, its sidebar
@@ -766,6 +782,69 @@ func howFastState(of model: AppModel) throws -> CardsWindowState {
     return state
 }
 
+/// The Cards window's state once Open Deck… read a deck's `.ficha` the tool
+/// writes in its scratch home, Capitales.ficha, as another Ficha shares one:
+/// five capitals of South America in Capitales de Sudamérica, a deck the
+/// sample cards don't have, with its emoji and description. How fast? asks
+/// about it, as the app does once the user chose the file in the open panel,
+/// which the tool can't drive. The file goes once it's read.
+func deckFileState(of model: AppModel) throws -> CardsWindowState {
+    let deck = "Capitales de Sudamérica"
+    let capitals = [
+        ("Argentina", "Buenos Aires"), ("Chile", "Santiago"), ("Perú", "Lima"), ("Uruguay", "Montevideo"),
+        ("Paraguay", "Asunción"),
+    ]
+    let other = try Engine(location: .inMemory, time: SystemTimeSource())
+    for (country, capital) in capitals {
+        guard let content = CardContent(type: nil, front: country, back: capital, tags: [], source: nil) else {
+            throw RenderError(description: "A card of Capitales.ficha has a blank side: fix deckFileState(of:).")
+        }
+        try other.create(content, deck: deck)
+    }
+    try other.setEmoji(try Emoji("🌎"), ofDeck: deck)
+    try other.setDescription("Las capitales de los países de América del Sur.", ofDeck: deck)
+    let file = URL.documentsDirectory.appending(path: "Capitales.ficha")
+    try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try other.export(.deck(deck), to: file)
+    defer { try? FileManager.default.removeItem(at: file) }
+    var state = model.openCardsWindow()
+    if let work = state.openDeck(file) {
+        state.finishOpenDeck(try waitFor { await work.run() })
+    }
+    guard case .deckFile? = state.howFast?.subject else {
+        throw RenderError(
+            description: """
+                Open Deck… didn't ask How fast? for Capitales.ficha: it says \(String(describing: state.failure)). \
+                Fix deckFileState(of:).
+                """)
+    }
+    return state
+}
+
+/// The menu of the sample's Idiomas in the Cards window, its content in a
+/// window, as SwiftUI lays it out there, as `menuWindow(model:)` draws the
+/// menu under Ficha's icon: its items as buttons and checkboxes, its Color
+/// submenu as a pop-up button and its separators as lines. AppKit draws a
+/// context menu only while it's open, and opening it takes the mouse: its
+/// content shows which lines the menu has, and in what order, not how it
+/// looks.
+func deckMenuWindow(model: AppModel) throws -> NSWindow {
+    let state = cardsWindow(onSampleDeck: "Idiomas", of: model)
+    guard let menu = state.chosenDeckMenu else {
+        throw RenderError(description: "The Cards window has no menu for Idiomas: fix SampleCards.swift.")
+    }
+    let content = VStack(alignment: .leading) {
+        DeckMenuItems(menu: menu, state: .constant(state))
+    }
+    .padding()
+    .fixedSize()
+    let window = AppWindow(title: "Menu", content: content)
+    if let view = window.contentView {
+        window.setContentSize(view.fittingSize)
+    }
+    return window
+}
+
 /// Ficha's decks as `engine` reads their files in the repo's
 /// `App/FichaDecks/`, found from this file's path, as the app reads those it
 /// bundles and gives its windows: the tool's own bundle has none
@@ -777,10 +856,10 @@ func fichaDecksInTheRepo(readBy engine: Engine) throws -> [FichaDeck: Result<Fic
         .appending(path: "App/FichaDecks", directoryHint: .isDirectory)
     var read: [FichaDeck: Result<FichaDeckFile, EngineError>] = [:]
     for deck in FichaDeck.allCases {
-        let file = folder.appending(path: "\(deck.fileName).zip")
+        let file = folder.appending(path: "\(deck.fileName).ficha")
         guard FileManager.default.fileExists(atPath: file.path(percentEncoded: false)) else {
             throw RenderError(
-                description: "App/FichaDecks/\(deck.fileName).zip isn't in the repo: add the file of \(deck.name).")
+                description: "App/FichaDecks/\(deck.fileName).ficha isn't in the repo: add the file of \(deck.name).")
         }
         read[deck] = .success(try waitFor { try await engine.readFichaDeck(deck, at: file) })
     }
@@ -1005,8 +1084,9 @@ func isNearerLeadingSide(_ view: NSView, than other: NSView, in window: NSWindow
 }
 
 /// Scrolls the detail of the Cards window `window`, once it shows, to its
-/// end, where a card's chart and its key show below the rows of its ways,
-/// for the same reason as `scrollSidebarToEnd(of:)`.
+/// end, where a card's review log, its chart with its key and its entries,
+/// shows below the rows of its ways, for the same reason as
+/// `scrollSidebarToEnd(of:)`.
 func scrollDetailToEnd(of window: NSWindow) throws {
     // The sidebar and the grid scroll too: the detail is the one at the
     // trailing side.
@@ -1327,7 +1407,8 @@ func hours(_ count: Int) -> TimeInterval {
 func model(for name: Window) throws -> AppModel {
     switch name {
     case .cards, .cardsCard, .cardsCardDetails, .cardsNewCard, .cardsNewDeck, .cardsImport, .cardsImportAnki,
-        .cardsHowFast, .cardsHowFastNewDeck, .cardsFichaDeckWords, .cardsFichaDeckPicture, .cardsFichaDeckFlower,
+        .cardsHowFast, .cardsHowFastNewDeck, .cardsHowFastDeckFile, .cardsDeckMenu, .cardsFichaDeckWords,
+        .cardsFichaDeckPicture, .cardsFichaDeckFlower,
         .general, .pace, .interruptions, .welcome, .welcomeOneButton, .panelCard, .panelMetThemAll:
         return try AppModel(engine: try sampleEngine(at: .inMemory).engine)
     case .cardsEmpty, .panelMetThemAllOffer:
@@ -1484,6 +1565,12 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         let window = CardsWindow(model: model)
         window.makeContent(opening: state)
         return window
+    case .cardsHowFastDeckFile:
+        let window = CardsWindow(model: model)
+        window.makeContent(opening: try deckFileState(of: model))
+        return window
+    case .cardsDeckMenu:
+        return try deckMenuWindow(model: model)
     case .cardsFichaDeckWords, .cardsFichaDeckPicture, .cardsFichaDeckFlower:
         let deck: FichaDeck =
             switch name {
@@ -2228,7 +2315,10 @@ do {
         try scrollSidebarToSelection(of: window)
         try wait(0.5)
     }
-    if name == .cardsBothWays {
+    // The card's review log, which Details puts below its numbers, past
+    // what the window shows at its first size once the card has a few
+    // reviews.
+    if [.cardsCardDetails, .cardsAnkiImported, .cardsBothWays].contains(name) {
         try scrollDetailToEnd(of: window)
         try wait(0.5)
     }

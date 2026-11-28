@@ -35,22 +35,28 @@ import SwiftUI
 /// from (`HowFastSheet.swift`). The sidebar's Ficha's Decks section, after Your
 /// Decks, lists the decks that come with Ficha that Lucas hasn't added, each
 /// with how many cards it brings, which the window reads from the app as it
-/// opens: one chosen shows in the grid's place, with Add Deck…, which asks How
-/// fast? before Start adds it, and its first card, front and back, in the
-/// detail's (#458). The grid lists the cards in the order they came in. He
-/// edits a card right there, in fields that take the detail's place while the
-/// sidebar and the grid wait. He selects several tiles with ⌘ or Shift, as in
-/// the Finder, or all of them with Select All, ⌘A, and then the detail says how
-/// many, with what he can do with all of them. New Card in the toolbar, or ⌘N,
-/// opens the card form, a sheet of its own (`CardFormSheet.swift`), Import… in
-/// the toolbar opens the Import sheet (`ImportSheet.swift`), which imports a
-/// text file of cards, and Export… opens the Export sheet
-/// (`ExportSheet.swift`), which saves cards to one. `CardsWindowState` decides
-/// what the window lists, shows, offers and asks, and what happens when Lucas
-/// acts, and the view draws it. It reads the cards again whenever the engine
-/// says they changed, from the app or the `ficha` CLI, when Lucas changes the
-/// scheduling settings or the active hours, and every minute, since cards come
-/// due as time passes, or at once when Ficha Dev's debug menu moves the time.
+/// opens: one chosen shows in the grid's place, with Add Deck…, which asks
+/// How fast? before Start adds it, and its first card, front and back, in the
+/// detail's (#458). Open Deck…, in a deck's menu or the Your Decks title's,
+/// on ⌘O, and beside New Card while Lucas has no cards, opens an open panel
+/// for a deck's `.ficha`, and one opened in Finder opens the window on it:
+/// the deck it holds comes in, with its emoji and description, after How
+/// fast?, and a deck Lucas has takes only the cards it lacks (ADR 0044,
+/// `OpenDeck.swift`). The grid lists the cards in the order they came in. He
+/// edits a card right there, in fields that take the detail's place while
+/// the sidebar and the grid wait. He selects several
+/// tiles with ⌘ or Shift, as in the Finder, or all of them with Select All,
+/// ⌘A, and then the detail says how many, with what he can do with all of
+/// them. New Card in the toolbar, or ⌘N, opens the card form, a sheet of its
+/// own (`CardFormSheet.swift`), Import…
+/// in the toolbar opens the Import sheet (`ImportSheet.swift`), which imports
+/// a text file of cards, and Export… opens the Export sheet (`ExportSheet.swift`),
+/// which saves cards to one. `CardsWindowState` decides what the window lists,
+/// shows, offers and asks, and what happens when Lucas acts, and the view
+/// draws it. It reads the cards again whenever the engine says they changed,
+/// from the app or the `ficha` CLI, when Lucas changes the scheduling
+/// settings or the active hours, and every minute, since cards come due as
+/// time passes, or at once when Ficha Dev's debug menu moves the time.
 struct CardsView: View {
     let model: AppModel
     /// What the sidebar chose, what Lucas looks for and selected, and so what
@@ -79,6 +85,7 @@ struct CardsView: View {
             .creatingCards($state, failure: failure(overSheet: true))
             .changeDeckSheet($state, failure: failure(overSheet: true))
             .howFastSheet($state, failure: failure(overSheet: true))
+            .openingDecks($state, model: model)
             // The card form's opens over the form.
             .newDeckSheet(for: .editor, $state)
             .sheet(item: Binding(get: { cardToFlag }, set: { if $0 == nil { state.cancelQuestion() } })) { row in
@@ -545,6 +552,15 @@ struct CardsView: View {
                         come with Ficha couldn't be read, with the deck's name.
                         """),
                 error: error)
+        case .openDeck(let fileName):
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't open “\(fileName)”",
+                    comment: """
+                        An alert's title in the Cards window, after Open Deck… or a file opened from Finder, or \
+                        How fast?'s Start on the deck of a deck's .ficha file, with the file's name.
+                        """),
+                error: error)
         }
     }
 
@@ -596,6 +612,7 @@ struct CardsView: View {
                     .takingSidebarDrops { state.dropOnDecksTitle($0) }
                     .contextMenu {
                         NewDeckItem(state: $state)
+                        OpenDeckItem(state: $state)
                     }
             }
         case .fichaDecks(let files):
@@ -648,9 +665,9 @@ struct CardsView: View {
     }
 
     /// What the middle pane says while the sidebar chose nothing, since Your
-    /// Decks lists no deck: that the cards show up here, with New Card and
-    /// Import… in plain sight, which do what the toolbar's do, while the
-    /// state offers them.
+    /// Decks lists no deck: that the cards show up here, with New Card,
+    /// Open Deck… and Import… in plain sight, which do what the toolbar's,
+    /// ⌘O and the sidebar's menus do, while the state offers them.
     @ViewBuilder
     private var nothingChosen: some View {
         if state.hasSearch {
@@ -674,6 +691,7 @@ struct CardsView: View {
                         Text("New Card", comment: "A button in the Cards window while the user has no cards.")
                     }
                     .buttonStyle(.borderedProminent)
+                    OpenDeckItem(state: $state)
                     Button {
                         state.startImport()
                     } label: {
@@ -703,8 +721,10 @@ struct CardsView: View {
     private func fichaDeckHead(_ file: FichaDeckFile) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 12) {
-                Text(verbatim: file.deck.emoji)
-                    .font(.system(size: 32))
+                if let emoji = file.emoji {
+                    Text(verbatim: emoji)
+                        .font(.system(size: 32))
+                }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(verbatim: file.deck.name)
                         .font(.title3)
@@ -1194,7 +1214,7 @@ private struct FichaDeckRow: View {
     var body: some View {
         Label {
             VStack(alignment: .leading, spacing: 1) {
-                Text(verbatim: "\(file.deck.emoji) \(file.deck.name)")
+                Text(verbatim: [file.emoji, file.deck.name].compactMap(\.self).joined(separator: " "))
                 Text(
                     "\(file.cardCount) cards",
                     comment: """

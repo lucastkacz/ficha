@@ -1,7 +1,10 @@
 import FichaCore
-import FichaData
 import Foundation
 import Testing
+
+// For `Engine.edit(_:with:deck:bothWays:)`, an edit with a card's whole
+// content, which only the tests make.
+@testable import FichaData
 
 /// The painters Arte argentino's paintings may be by, each with the year
 /// they died.
@@ -23,14 +26,15 @@ private let painters: [String: Int] = [
     "Valentín Thibon de Libian": 1931,
 ]
 
-/// Tests on Ficha's decks (ADR 0040, #458), the three zips of cards in the
-/// repo's `App/FichaDecks/`, which the app bundles: how each comes in, what
-/// their pictures credit, how an update of the app leaves one the user
-/// added, how the Cards window offers them, and what How fast? says of one
-/// before it comes in (#491). They start at 9 in the morning in Buenos
-/// Aires, when active hours start, on a new install, at Steady, with engines
-/// in memory, or, for an update, on a database in a folder of the test's
-/// own. Each fails while a file it reads isn't in the repo.
+/// Tests on Ficha's decks (ADR 0040, #458), the three decks' `.ficha` files
+/// in the repo's `App/FichaDecks/` (ADR 0044), which the app bundles: how
+/// each comes in, what their pictures credit, how an update of the app
+/// leaves one the user added, how the Cards window offers them, and what How
+/// fast? says of one before it comes in (#491). They start at 9 in the
+/// morning in Buenos Aires, when active hours start, on a new install, at
+/// Steady, with engines in memory, or, for an update, on a database in a
+/// folder of the test's own. Each fails while a file it reads isn't in the
+/// repo.
 final class FichaDecksTests {
     let calendar: Calendar
     let time: ManualTimeSource
@@ -54,7 +58,7 @@ final class FichaDecksTests {
     }
 
     @Test(
-        "each of Ficha's decks comes in through the same import as a Ficha package, into its deck, with no tag, each picture's front its image alone, and the deck's emoji, and adding it again adds nothing",
+        "each of Ficha's decks comes in through the same import as a Ficha package, into its deck, with no tag, each picture's front its image alone, and the emoji its file holds, and adding it again adds nothing",
         .bug(id: 458),
         arguments: [(FichaDeck.palabrasLindas, 40), (FichaDeck.arteArgentino, 50), (FichaDeck.floresDeBuenosAires, 30)])
     func eachDeckComesInThroughTheImport(deck: FichaDeck, cardCount: Int) async throws {
@@ -73,7 +77,7 @@ final class FichaDecksTests {
         #expect(cards.map(content(of:)) == imported.map(content(of:)))
         #expect(cards.allSatisfy { $0.deck == deck.name && $0.tags.isEmpty })
         #expect(cards.allSatisfy { ($0.frontImage != nil) == hasPictures && $0.front.isEmpty == hasPictures })
-        #expect(try engine.decks().first { $0.name == deck.name }?.emoji == deck.emoji)
+        #expect(try engine.decks().first { $0.name == deck.name }?.emoji == deckJSON(inZip: shipped)?.emoji)
         #expect(addedAgain.added == 0)
         #expect(try engine.cards() == cards)
     }
@@ -440,7 +444,7 @@ final class FichaDecksTests {
         try ficha.create(more, deck: FichaDeck.arteArgentino.name)
         let newer = folder.appending(path: "Newer", directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: newer, withIntermediateDirectories: true)
-        let file = newer.appending(path: "\(FichaDeck.arteArgentino.fileName).zip")
+        let file = newer.appending(path: "\(FichaDeck.arteArgentino.fileName).ficha")
         try ficha.export(.deck(FichaDeck.arteArgentino.name), to: file)
         return file
     }
