@@ -58,8 +58,8 @@ final class FichaDecksTests {
     }
 
     @Test(
-        "each of Ficha's decks comes in through the same import as a Ficha package, into its deck, with no tag, each picture's front its image alone, and the emoji its file holds, and adding it again adds nothing",
-        .bug(id: 458),
+        "each of Ficha's decks comes in through the same import as any deck's .ficha, into its deck, with no tag, each picture's front its image alone, and the emoji its file holds, and adding it again adds nothing",
+        .bug(id: 458), .bug(id: 542),
         arguments: [(FichaDeck.palabrasLindas, 40), (FichaDeck.arteArgentino, 50), (FichaDeck.floresDeBuenosAires, 30)])
     func eachDeckComesInThroughTheImport(deck: FichaDeck, cardCount: Int) async throws {
         let shipped = try fileInTheRepo(of: deck)
@@ -413,14 +413,11 @@ final class FichaDecksTests {
         return file
     }
 
-    /// The cards of `file`, as the Import sheet's import brings a Ficha
-    /// package's into a Ficha of their own, without the tag it proposes after
-    /// the file's name.
+    /// The cards of `file`, as Open Deck… brings any deck's `.ficha` into a
+    /// Ficha of their own.
     private func cardsAsTheImportBringsThem(from file: URL) async throws -> [Card] {
         let ficha = try Engine(location: .inMemory, time: time, calendar: calendar)
-        let preview = try await ficha.previewImport(of: file)
-        let choices = ImportChoices(tagNames: Dictionary(uniqueKeysWithValues: preview.proposedTags.map { ($0, "") }))
-        try ficha.importCards(preview, choosing: choices)
+        try await ficha.addDeck(at: file)
         return try ficha.cards()
     }
 
@@ -445,9 +442,7 @@ final class FichaDecksTests {
     /// card more, exported as Ficha exports a deck, from a Ficha of its own.
     private func newerArte(than shipped: URL) async throws -> URL {
         let ficha = try Engine(location: .inMemory, time: time, calendar: calendar)
-        let preview = try await ficha.previewImport(of: shipped)
-        let choices = ImportChoices(tagNames: Dictionary(uniqueKeysWithValues: preview.proposedTags.map { ($0, "") }))
-        try ficha.importCards(preview, choosing: choices)
+        try await ficha.addDeck(at: shipped)
         let first = try #require(try ficha.cards().first)
         let changed = try card(
             first.type, front: first.front, back: first.back + " Restaurada en 2027.", source: first.source,

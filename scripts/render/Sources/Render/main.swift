@@ -1,7 +1,6 @@
 import AVFoundation
 import AppKit
 import Carbon.HIToolbox
-import CryptoKit
 import FichaCore
 import FichaData
 import SQLite3
@@ -37,7 +36,7 @@ enum Window: String, CaseIterable {
     /// a chart and in full.
     case cardsCardDetails = "cards-card-details"
     /// The Cards window with no cards at all, as a new user's opens: it
-    /// offers New Card, Open Deck… and Import… in plain sight, and its
+    /// offers New Card and Open Deck… in plain sight, and its
     /// sidebar's Ficha's Decks section lists the three, read from the repo's
     /// `App/FichaDecks/`.
     case cardsEmpty = "cards-empty"
@@ -66,26 +65,10 @@ enum Window: String, CaseIterable {
     /// in the form's Deck field opens, which the tool can't open, over it,
     /// the focus in its name field.
     case cardsNewDeck = "cards-new-deck"
-    /// The Cards window with its Import sheet showing the preview of a file,
-    /// which the tool can't choose in the open panel.
-    case cardsImport = "cards-import"
-    /// The Cards window with its Import sheet showing the preview of an Anki
-    /// package.
-    case cardsImportAnki = "cards-import-anki"
-    /// The Cards window once that Anki package came in with its progress,
-    /// with a card it brought Anki's interval to selected, and reviewed since,
-    /// its Details open and its detail scrolled to its end, on its review
-    /// log.
-    case cardsAnkiImported = "cards-anki-imported"
-    /// The Cards window with its Import sheet showing the preview of a zip
-    /// of cards whose images weigh 240 MB, while sync is on, which says they
-    /// go up to iCloud.
-    case cardsImportHeavy = "cards-import-heavy"
-    /// The Cards window with How fast? over it, once Done closed the Import
-    /// sheet after a file brought three cards into Arte, a deck the sample
-    /// cards don't have, which comes in last, behind the decks they're
-    /// meeting: each pace with when Arte's all met, where it goes in the
-    /// queue, and Put it first.
+    /// The Cards window with How fast? over it, once Open Deck… read a deck's
+    /// `.ficha` with three cards of Arte, a deck the sample cards don't have,
+    /// which would come in last, behind the decks they're meeting: each pace
+    /// with when Arte's all met, where it goes in the queue, and Put it first.
     case cardsHowFast = "cards-how-fast"
     /// The Cards window with How fast? over it, once New Deck… in the
     /// sidebar made Música, a deck the sample cards don't have, with no
@@ -707,76 +690,31 @@ func backupsEngine() throws -> Engine {
     return engine
 }
 
-/// The Cards window's state partway through an import, as the Import sheet
-/// shows it once the user chose a file: the preview of a text file the tool
-/// writes in its scratch home, with words from other languages as someone
-/// might type them in a spreadsheet, two of which the sample cards have, two
-/// lines that can't be read, and a type the sample cards don't have,
-/// "sustantivo", which the import makes. The file goes once it's read.
-func importingState(of model: AppModel) throws -> CardsWindowState {
-    let file = URL.documentsDirectory.appending(path: "Palabras del mundo.txt")
-    let lines = [
-        "#separator:tab",
-        "#html:false",
-        "#columns:Front\tBack\tTags\tType\tSource",
-        "hygge\tPalabra danesa: el bienestar de un rato cálido y sencillo con gente querida.\tdanés\tword\t",
-        "wabi-sabi\tIdea japonesa: la belleza de lo imperfecto, lo pasajero y lo incompleto.\tjaponés\tconcept\t",
-        "lagom\tPalabra sueca: ni mucho ni poco, lo justo.\tsueco\tword\t",
-        "sisu",
-        "ubuntu\tPalabra zulú: soy porque somos.\tzulú\tword\tDesmond Tutu",
-        "Fernweh\tPalabra alemana: las ganas de estar lejos, en lugares que no conocés.\talemán\tword\t",
-        "Kummerspeck\tPalabra alemana: los kilos que se ganan comiendo por tristeza.\talemán\tsustantivo\t",
-        "tsundoku\tPalabra japonesa: comprar libros y dejarlos apilados sin leer.\tjaponés\tword\t",
-        "\tPalabra yagán: la mirada entre dos que esperan que el otro dé el primer paso.\tyagán\tword\t",
-        "mamihlapinatapai\tPalabra yagán: la mirada entre dos que esperan que el otro dé el primer paso.\tyagán\tword\t",
-    ]
-    try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
-    try Data(lines.joined(separator: "\n").utf8).write(to: file)
-    defer { try? FileManager.default.removeItem(at: file) }
-    var state = model.openCardsWindow()
-    state.startImport()
-    try previewImportAtOnce(of: file, in: &state)
-    guard state.importing?.preview != nil else {
-        throw RenderError(
-            description: "The sample file to import has no preview: \(String(describing: state.importing))")
-    }
-    return state
-}
-
-/// Reads `file` for the Import sheet in `state`, as the app does once the
-/// user chose it, and waits for the reading, so that the picture shows its
-/// preview.
-func previewImportAtOnce(of file: URL, in state: inout CardsWindowState) throws {
-    if let work = state.previewImport(of: file) {
-        state.finishImportWork(try waitFor { await work.run() })
-    }
-}
-
-/// The Cards window's state once the Import sheet's Done closed it after a
-/// file the tool writes in its scratch home brought three cards into Arte, a
-/// deck the sample cards don't have, which comes in last, behind the decks
+/// The Cards window's state once Open Deck… read a deck's `.ficha` the tool
+/// writes in its scratch home, Arte.ficha, with three cards of Arte, a deck
+/// the sample cards don't have, which would come in last, behind the decks
 /// they're meeting: How fast? asks about it, with Put it first. The file goes
 /// once it's read.
 func howFastState(of model: AppModel) throws -> CardsWindowState {
-    let file = URL.documentsDirectory.appending(path: "Arte.txt")
-    let lines = [
-        "#separator:tab",
-        "#html:false",
-        "#columns:Front\tBack\tDeck",
-        "La Gioconda\tDe Leonardo da Vinci, en el Louvre.\tArte",
-        "Las Meninas\tDe Diego Velázquez, en el Prado.\tArte",
-        "La noche estrellada\tDe Vincent van Gogh, en el MoMA.\tArte",
+    let paintings = [
+        ("La Gioconda", "De Leonardo da Vinci, en el Louvre."), ("Las Meninas", "De Diego Velázquez, en el Prado."),
+        ("La noche estrellada", "De Vincent van Gogh, en el MoMA."),
     ]
+    let other = try Engine(location: .inMemory, time: SystemTimeSource())
+    for (painting, painter) in paintings {
+        guard let content = CardContent(type: nil, front: painting, back: painter, tags: [], source: nil) else {
+            throw RenderError(description: "A card of Arte.ficha has a blank side: fix howFastState(of:).")
+        }
+        try other.create(content, deck: "Arte")
+    }
+    let file = URL.documentsDirectory.appending(path: "Arte.ficha")
     try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
-    try Data(lines.joined(separator: "\n").utf8).write(to: file)
+    try other.export(.deck("Arte"), to: file)
     defer { try? FileManager.default.removeItem(at: file) }
     var state = model.openCardsWindow()
-    state.startImport()
-    try previewImportAtOnce(of: file, in: &state)
-    if let work = state.importCards() {
-        state.finishImportWork(try waitFor { await work.run() })
+    if let work = state.openDeck(file) {
+        state.finishOpenDeck(try waitFor { await work.run() })
     }
-    state.closeImport()
     guard state.howFast?.offersPutItFirst == true else {
         throw RenderError(
             description: """
@@ -869,51 +807,6 @@ func fichaDecksInTheRepo(readBy engine: Engine) throws -> [FichaDeck: Result<Fic
         read[deck] = .success(try waitFor { try await engine.readFichaDeck(deck, at: file) })
     }
     return read
-}
-
-/// The Cards window's state partway through importing an Anki package, as
-/// the Import sheet shows it once the user chose one: the preview of a deck
-/// of medicine the tool writes in its scratch home, with two subdecks and
-/// Anki tags, two cards Anki had progress on, which Bring progress brings in
-/// due when Anki had them due, the femur with Anki's reviews of it, a card
-/// the sample cards have, a card with two images on its front, of which the
-/// first comes in, and a card whose back is only a sound, one
-/// whose front is only an image the package lacks and an Image Occlusion
-/// note, which stay out. The file goes once it's read.
-func ankiImportingState(of model: AppModel) throws -> CardsWindowState {
-    let file = URL.documentsDirectory.appending(path: "Medicina.apkg")
-    try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
-    try writeSampleAnkiPackage(to: file)
-    defer { try? FileManager.default.removeItem(at: file) }
-    var state = model.openCardsWindow()
-    state.startImport()
-    try previewImportAtOnce(of: file, in: &state)
-    guard state.importing?.preview != nil else {
-        throw RenderError(
-            description: "The sample Anki package has no preview: \(String(describing: state.importing))")
-    }
-    return state
-}
-
-/// The app's model on the sample cards, once the sample Anki package came in
-/// with its progress, and four days later, the card of the femur, which came
-/// in with Anki's five reviews of it, the last setting its 10 days, was
-/// reviewed with Good, once due.
-func ankiImportedModel() throws -> AppModel {
-    let (engine, time) = try sampleEngine(at: .inMemory)
-    let file = URL.documentsDirectory.appending(path: "Medicina.apkg")
-    try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
-    try writeSampleAnkiPackage(to: file)
-    defer { try? FileManager.default.removeItem(at: file) }
-    let settings = ReviewSettings.defaults
-    _ = try engine.importCards(
-        waitFor { try await engine.previewImport(of: file) }, choosing: ImportChoices(progress: .brought))
-    guard let femur = try engine.cards().first(where: { $0.front == "fémur" }) else {
-        throw RenderError(description: "The sample Anki package's card of the femur didn't come in.")
-    }
-    time.advance(by: hours(4 * 24))
-    try engine.record(.review(.good), of: femur.id, responseTime: .seconds(4), trigger: .reviewNow, settings: settings)
-    return try AppModel(engine: engine)
 }
 
 /// The app's model on the sample cards, whose settings that decide progress,
@@ -1161,105 +1054,6 @@ func weighFilesOnCards(_ bytes: Int64, in engine: Engine) throws {
     try handle.truncate(atOffset: flagSize)
 }
 
-/// The Cards window's state partway through importing a zip of cards, as
-/// the Import sheet shows it once the user chose one, while sync is on: the
-/// preview of three maps, a zip the tool writes in its scratch home, each
-/// image the sample flag's as Ficha keeps it, made to weigh 80 MB with zeros
-/// after its end, which a JPEG's readers skip, and named by its content, so
-/// that the import takes it as it is and brings 240 MB that go up to iCloud.
-/// The files go once they're read.
-func heavyImportingState(of model: AppModel) throws -> CardsWindowState {
-    let folder = URL.documentsDirectory.appending(path: "Mapas", directoryHint: .isDirectory)
-    try? FileManager.default.removeItem(at: folder)
-    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-    defer { try? FileManager.default.removeItem(at: folder) }
-    let jpeg = try model.engine.image(sampleFlagImage(of: model.engine))
-    let text = folder.appending(path: "Mapas.txt")
-    var lines = ["#separator:tab", "#html:false", "#columns:Front\tBack\tFront image"]
-    var files = [text]
-    for (index, country) in ["Chile", "Uruguay", "Bolivia"].enumerated() {
-        let padding = 80_000_000 + index - jpeg.count
-        guard padding >= 0 else {
-            throw RenderError(
-                description: """
-                    The sample flag's image weighs \(jpeg.count) bytes, more than the 80 MB each map weighs: weigh \
-                    more in heavyImportingState(of:).
-                    """)
-        }
-        var image = jpeg
-        image.append(Data(count: padding))
-        let name = SHA256.hash(data: image).map { String(format: "%02x", $0) }.joined() + ".jpg"
-        let file = folder.appending(path: name)
-        try image.write(to: file)
-        files.append(file)
-        lines.append("¿Qué país es este?\t\(country).\t\(name)")
-    }
-    try Data(lines.joined(separator: "\n").utf8).write(to: text)
-    let zip = URL.documentsDirectory.appending(path: "Mapas.zip")
-    defer { try? FileManager.default.removeItem(at: zip) }
-    try zipFiles(files, into: zip, describing: "the sample zip of maps")
-    var state = model.openCardsWindow()
-    state.startImport()
-    try previewImportAtOnce(of: zip, in: &state)
-    guard state.importing?.weightGoingUpToICloud != nil else {
-        throw RenderError(
-            description:
-                "The sample zip of maps says nothing of iCloud: \(String(describing: state.importing)). Fix heavyImportingState(of:)."
-        )
-    }
-    return state
-}
-
-/// Zips `files` into `file`, flat, with `zip`, replacing what's there;
-/// `described` names the file, in what the tool says when it fails.
-func zipFiles(_ files: [URL], into file: URL, describing described: String) throws {
-    try? FileManager.default.removeItem(at: file)
-    let zip = Process()
-    zip.executableURL = URL(filePath: "/usr/bin/zip")
-    zip.arguments = ["-q", "-j"] + ([file] + files).map { $0.path(percentEncoded: false) }
-    try zip.run()
-    zip.waitUntilExit()
-    guard zip.terminationStatus == 0 else {
-        throw RenderError(
-            description: "zip couldn't make \(described) (exit \(zip.terminationStatus)). \(whenMacOSRefuses)")
-    }
-}
-
-/// The Cards window's state once the sample Anki package came in, on the
-/// femur's deck, with its card selected and its Details open, so the detail
-/// shows its review log.
-func ankiImportedState(of model: AppModel) throws -> CardsWindowState {
-    var state = try cardsState(
-        of: model, selectingFirst: { $0.card.front == "fémur" },
-        orElse: "The Cards window doesn't list the sample Anki package's card of the femur.")
-    state.setDetailsOpen(true)
-    return state
-}
-
-/// Writes the sample Anki package to `file`, as current Anki exports a deck
-/// with "Support older Anki versions" ticked: a zip with `meta` at version
-/// 2, `collection.anki21`, a SQLite database at schema 11 with only what
-/// Ficha reads, and its media, the flag and the Sun of May, in members `0`
-/// and `1`, with the JSON list that names them. The tests'
-/// `AnkiPackages.swift` writes such packages too, from Anki's source.
-func writeSampleAnkiPackage(to file: URL) throws {
-    let folder = file.deletingLastPathComponent().appending(path: "Anki package", directoryHint: .isDirectory)
-    try? FileManager.default.removeItem(at: folder)
-    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-    defer { try? FileManager.default.removeItem(at: folder) }
-    let collection = folder.appending(path: "collection.anki21")
-    try runSQLite(try sampleAnkiCollectionSQL(), in: collection, writing: "the sample Anki package")
-    let meta = folder.appending(path: "meta")
-    try Data([0x08, 0x02]).write(to: meta)
-    let flag = folder.appending(path: "0")
-    try SamplePicture.flag.png().write(to: flag)
-    let sun = folder.appending(path: "1")
-    try SamplePicture.sun.png().write(to: sun)
-    let media = folder.appending(path: "media")
-    try Data(#"{"0":"bandera.png","1":"sol.png"}"#.utf8).write(to: media)
-    try zipFiles([meta, collection, flag, sun, media], into: file, describing: "the sample Anki package")
-}
-
 /// Runs `sql` on the SQLite database at `file`, which it makes if it isn't
 /// there, to write `what`, as its failure says.
 func runSQLite(_ sql: String, in file: URL, writing what: String) throws {
@@ -1276,130 +1070,6 @@ func runSQLite(_ sql: String, in file: URL, writing what: String) throws {
     }
 }
 
-/// The SQL that makes the sample Anki package's collection: Anki's tables at
-/// schema 11 (`rslib/src/storage/schema11.sql`), created on 1 October 2026
-/// at 4 in the morning in Buenos Aires, its Basic, Cloze and Image Occlusion
-/// note types, a deck of medicine with two subdecks, and the notes, with
-/// their cards: the femur's in review, every 10 days, due on Anki's day 22,
-/// 23 October, with Anki's reviews of it; the systole's relearning, due on
-/// day 20, 21 October, with none; and the
-/// rest new, among them one in Default whose front shows the flag and the
-/// Sun of May, of which the first comes in, and one whose front is only an
-/// image the package lacks.
-func sampleAnkiCollectionSQL() throws -> String {
-    let basicAnswer = "{{FrontSide}}\n\n<hr id=answer>\n\n{{Back}}"
-    let noteTypes: [String: Any] = [
-        "1": [
-            "id": 1, "name": "Basic", "type": 0, "originalStockKind": 1,
-            "flds": [["name": "Front"], ["name": "Back"]],
-            "tmpls": [["name": "Card 1", "qfmt": "{{Front}}", "afmt": basicAnswer]],
-        ],
-        "2": [
-            "id": 2, "name": "Cloze", "type": 1, "originalStockKind": 5,
-            "flds": [["name": "Text"], ["name": "Back Extra"]],
-            "tmpls": [["name": "Cloze", "qfmt": "{{cloze:Text}}", "afmt": "{{cloze:Text}}<br>\n{{Back Extra}}"]],
-        ],
-        "3": [
-            "id": 3, "name": "Image Occlusion", "type": 1, "originalStockKind": 6,
-            "flds": [["name": "Occlusion"], ["name": "Image"], ["name": "Header"], ["name": "Back Extra"]],
-            "tmpls": [
-                [
-                    "name": "Image Occlusion", "qfmt": "{{cloze:Occlusion}}{{Image}}",
-                    "afmt": "{{cloze:Occlusion}}{{Image}}<br>{{Back Extra}}",
-                ]
-            ],
-        ],
-    ]
-    let decks: [String: Any] = [
-        "1": ["id": 1, "name": "Default"], "2": ["id": 2, "name": "Medicina"],
-        "3": ["id": 3, "name": "Medicina::Anatomía"], "4": ["id": 4, "name": "Medicina::Fisiología"],
-    ]
-    // Each note: its note type, its deck, its tags, its fields, and its
-    // cards' template indexes.
-    let notes: [(type: Int, deck: Int, tags: String, fields: [String], cards: [Int])] = [
-        (1, 3, "huesos", ["fémur", "El hueso del muslo, el más largo del cuerpo."], [0]),
-        (2, 4, "repaso", ["El {{c1::corazón}} bombea la sangre por las {{c2::arterias::unos vasos}}.", ""], [0, 1]),
-        (1, 4, "", ["mitocondria", "La parte de la célula que produce su energía."], [0]),
-        (1, 4, "", ["latido", "[sound:latido.mp3]"], [0]),
-        (
-            3, 3, "huesos",
-            ["{{c1::image-occlusion:rect:left=.2:top=.3:width=.1:height=.1}}", "<img src=\"pie.png\">", "", ""],
-            [0]
-        ),
-        (1, 4, "corazón leech", ["sístole", "La contracción del corazón, que empuja la sangre."], [0]),
-        (1, 1, "", ["<img src=\"bandera.png\"><img src=\"sol.png\">", "La bandera de la Argentina."], [0]),
-        (1, 3, "huesos", ["<img src=\"tibia.png\">", "La tibia."], [0]),
-    ]
-    // The `type`, `queue`, `due` and `ivl` of the cards of the notes not new,
-    // by the notes' places above: in review, and relearning across days.
-    let progress: [Int: (type: Int, queue: Int, due: Int, interval: Int)] = [0: (2, 2, 22, 10), 5: (3, 3, 20, 1)]
-    // Anki's reviews of the cards, by the notes' places above, each its
-    // seconds after the collection's creation, its button, its `ivl` and its
-    // `type`: the femur's two learning steps on 2 October, and its reviews
-    // since, the last on 13 October, which set its 10 days.
-    let revlog: [Int: [(after: Int, button: Int, interval: Int, type: Int)]] = [
-        0: [
-            (30 * 3_600, 3, -600, 0), (30 * 3_600 + 600, 3, 1, 0), (54 * 3_600, 3, 3, 1), (126 * 3_600, 3, 7, 1),
-            (294 * 3_600, 3, 10, 1),
-        ]
-    ]
-    var sql = """
-        CREATE TABLE col (id integer PRIMARY KEY, crt integer NOT NULL, mod integer NOT NULL, scm integer NOT NULL,
-          ver integer NOT NULL, dty integer NOT NULL, usn integer NOT NULL, ls integer NOT NULL, conf text NOT NULL,
-          models text NOT NULL, decks text NOT NULL, dconf text NOT NULL, tags text NOT NULL);
-        CREATE TABLE notes (id integer PRIMARY KEY, guid text NOT NULL, mid integer NOT NULL, mod integer NOT NULL,
-          usn integer NOT NULL, tags text NOT NULL, flds text NOT NULL, sfld integer NOT NULL, csum integer NOT NULL,
-          flags integer NOT NULL, data text NOT NULL);
-        CREATE TABLE cards (id integer PRIMARY KEY, nid integer NOT NULL, did integer NOT NULL, ord integer NOT NULL,
-          mod integer NOT NULL, usn integer NOT NULL, type integer NOT NULL, queue integer NOT NULL,
-          due integer NOT NULL, ivl integer NOT NULL, factor integer NOT NULL, reps integer NOT NULL,
-          lapses integer NOT NULL, left integer NOT NULL, odue integer NOT NULL, odid integer NOT NULL,
-          flags integer NOT NULL, data text NOT NULL);
-        CREATE TABLE revlog (id integer PRIMARY KEY, cid integer NOT NULL, usn integer NOT NULL, ease integer NOT NULL,
-          ivl integer NOT NULL, lastIvl integer NOT NULL, factor integer NOT NULL, time integer NOT NULL,
-          type integer NOT NULL);
-        INSERT INTO col VALUES (1, 1790838000, 0, 0, 11, 0, 0, 0, '{"schedVer":2,"creationOffset":180}', \
-        \(sqlText(try jsonText(noteTypes))), \(sqlText(try jsonText(decks))), '{}', '{}');
-
-        """
-    for (index, note) in notes.enumerated() {
-        let noteID = 1_700_000_000_000 + index
-        let tags = note.tags.isEmpty ? "" : " \(note.tags) "
-        sql += """
-            INSERT INTO notes VALUES (\(noteID), 'n\(index)', \(note.type), 0, 0, \(sqlText(tags)), \
-            \(sqlText(note.fields.joined(separator: "\u{1F}"))), '', 0, 0, '');
-
-            """
-        // A new card's due is its position.
-        let (type, queue, due, interval) = progress[index] ?? (0, 0, index + 1, 0)
-        for ordinal in note.cards {
-            sql += """
-                INSERT INTO cards VALUES (\(noteID * 10 + ordinal), \(noteID), \(note.deck), \(ordinal), 0, 0, \
-                \(type), \(queue), \(due), \(interval), 2500, 0, 0, 0, 0, 0, 0, '');
-
-                """
-            for entry in revlog[index] ?? [] {
-                sql += """
-                    INSERT INTO revlog VALUES (\((1_790_838_000 + entry.after) * 1_000), \(noteID * 10 + ordinal), 0, \
-                    \(entry.button), \(entry.interval), 0, 2500, 5000, \(entry.type));
-
-                    """
-            }
-        }
-    }
-    return sql
-}
-
-/// `object` as JSON text.
-func jsonText(_ object: Any) throws -> String {
-    String(decoding: try JSONSerialization.data(withJSONObject: object), as: UTF8.self)
-}
-
-/// `text` as a string literal of SQL.
-func sqlText(_ text: String) -> String {
-    "'\(text.replacingOccurrences(of: "'", with: "''"))'"
-}
-
 /// A span of whole hours, in seconds.
 func hours(_ count: Int) -> TimeInterval {
     TimeInterval(count * 60 * 60)
@@ -1411,8 +1081,8 @@ func hours(_ count: Int) -> TimeInterval {
 /// `renderDataFolder`, with copies to list, and files to weigh.
 func model(for name: Window) throws -> AppModel {
     switch name {
-    case .cards, .cardsCard, .cardsCardDetails, .cardsNewCard, .cardsNewDeck, .cardsImport, .cardsImportAnki,
-        .cardsHowFast, .cardsHowFastNewDeck, .cardsHowFastDeckFile, .cardsDeckMenu, .cardsFichaDeckWords,
+    case .cards, .cardsCard, .cardsCardDetails, .cardsNewCard, .cardsNewDeck, .cardsHowFast,
+        .cardsHowFastNewDeck, .cardsHowFastDeckFile, .cardsDeckMenu, .cardsFichaDeckWords,
         .cardsFichaDeckPicture, .cardsFichaDeckFlower,
         .general, .pace, .interruptions, .capture, .welcome, .welcomeOneButton, .panelCard, .panelMetThemAll:
         return try AppModel(engine: try sampleEngine(at: .inMemory).engine)
@@ -1433,11 +1103,6 @@ func model(for name: Window) throws -> AppModel {
     case .panelArabic, .cardsArabic:
         let engine = try sampleEngine(at: .inMemory).engine
         try addSampleArabicCard(in: engine)
-        return try AppModel(engine: engine)
-    case .cardsAnkiImported: return try ankiImportedModel()
-    case .cardsImportHeavy:
-        let engine = try sampleEngine(at: .inMemory).engine
-        try Sync(engine: engine, zones: .ficha).noteAccount(signedIn: true)
         return try AppModel(engine: engine)
     case .sync:
         return try syncModel(showing: "when the Mac last synced") { _, sync in
@@ -1535,22 +1200,6 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         state.offerFichaDecks(try fichaDecksInTheRepo(readBy: model.engine))
         let window = CardsWindow(model: model)
         window.makeContent(opening: state)
-        return window
-    case .cardsImport:
-        let window = CardsWindow(model: model)
-        window.makeContent(opening: try importingState(of: model))
-        return window
-    case .cardsImportAnki:
-        let window = CardsWindow(model: model)
-        window.makeContent(opening: try ankiImportingState(of: model))
-        return window
-    case .cardsAnkiImported:
-        let window = CardsWindow(model: model)
-        window.makeContent(opening: try ankiImportedState(of: model))
-        return window
-    case .cardsImportHeavy:
-        let window = CardsWindow(model: model)
-        window.makeContent(opening: try heavyImportingState(of: model))
         return window
     case .cardsHowFast:
         let window = CardsWindow(model: model)
@@ -1706,8 +1355,7 @@ func cardsWindow(
 
 /// The Cards window's state on the deck of the first card of `model`
 /// `isWanted` picks, with that card selected, as
-/// `cardsWindow(of:selectingFirst:orElse:)` and `ankiImportedState(of:)`
-/// open it; `missing`, a failure that says what to fix, when no card is, or
+/// `cardsWindow(of:selectingFirst:orElse:)` opens it; `missing`, a failure that says what to fix, when no card is, or
 /// its deck's grid doesn't list it.
 func cardsState(
     of model: AppModel, selectingFirst isWanted: (CardRow) -> Bool, orElse missing: String
@@ -2324,7 +1972,7 @@ do {
     // The card's review log, which Details puts below its numbers, past
     // what the window shows at its first size once the card has a few
     // reviews.
-    if [.cardsCardDetails, .cardsAnkiImported, .cardsBothWays].contains(name) {
+    if [.cardsCardDetails, .cardsBothWays].contains(name) {
         try scrollDetailToEnd(of: window)
         try wait(0.5)
     }

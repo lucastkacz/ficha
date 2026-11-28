@@ -83,7 +83,7 @@ func cardsThatShowUp(in db: Database, adding coming: [CardComingIn] = []) throws
 }
 
 /// A card an import would bring in new, which isn't among the cards yet, as
-/// `cardsComingIn(_:choosing:at:in:)` finds it: the deck it would come into,
+/// `cardsComingIn(_:at:in:)` finds it: the deck it would come into,
 /// by its whole name, whether it would go both ways, and when it would come
 /// in.
 struct CardComingIn {

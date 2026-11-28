@@ -510,15 +510,17 @@ final class BackupTests {
         #expect(try engine.image(nest) == images.1)
     }
 
-    @Test("a copy before an import keeps the images too, so restoring it brings a card deleted since back whole")
+    @Test(
+        "a copy before a deck's .ficha comes in keeps the images too, so restoring it brings a card deleted since back whole",
+        .bug(id: 542))
     func copyBeforeAnImportKeepsTheImages() async throws {
         let engine = try openEngine()
         let (bird, _) = try twoImages(in: engine)
         let hornero = try engine.create(card(nil, front: "¿Qué pájaro es?", back: "Un hornero.", frontImage: bird))
         let image = try engine.image(bird)
-        let file = folder.appending(path: "pájaros.txt")
-        try Data("benteveo\tUn pájaro que dice su nombre.\n".utf8).write(to: file)
-        let outcome = try await engine.importCards(engine.previewImport(of: file), choosing: ImportChoices())
+        let file = folder.appending(path: "pájaros.ficha")
+        try writeDeckFile(at: file, text: "benteveo\tUn pájaro que dice su nombre.\n")
+        let outcome = try await engine.addDeck(at: file)
         let copy = try #require(outcome.copyBeforeImport)
         try engine.delete([hornero.id])
 
@@ -609,15 +611,17 @@ final class BackupTests {
         #expect(try engine.sound(la) == sound)
     }
 
-    @Test("a copy before an import keeps the sounds too, so restoring it brings a card deleted since back whole")
+    @Test(
+        "a copy before a deck's .ficha comes in keeps the sounds too, so restoring it brings a card deleted since back whole",
+        .bug(id: 542))
     func copyBeforeAnImportKeepsTheSounds() async throws {
         let engine = try openEngine()
         let la = try await addTone(440, to: engine)
         let nota = try engine.create(card(nil, front: "¿Qué nota es?", back: "La.", frontSound: la))
         let sound = try engine.sound(la)
-        let file = folder.appending(path: "notas.txt")
-        try Data("do\tLa primera nota de la escala.\n".utf8).write(to: file)
-        let outcome = try await engine.importCards(engine.previewImport(of: file), choosing: ImportChoices())
+        let file = folder.appending(path: "notas.ficha")
+        try writeDeckFile(at: file, text: "do\tLa primera nota de la escala.\n")
+        let outcome = try await engine.addDeck(at: file)
         let copy = try #require(outcome.copyBeforeImport)
         try engine.delete([nota.id])
 

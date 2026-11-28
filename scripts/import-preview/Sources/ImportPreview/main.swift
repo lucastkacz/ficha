@@ -6,17 +6,18 @@ import Foundation
 
 // `make preview-import` runs this through `scripts/preview-import.sh`, which
 // builds it and watches it for a hang: "An import's numbers" in
-// `docs/development.md` explains it. It reads a downloaded file through the
-// engine alone, as the app does, in an engine in memory, so Lucas's cards stay
-// out of it, and it writes nothing next to the file.
+// `docs/development.md` explains it. It reads a deck's `.ficha` through the
+// engine alone, as Open Deck… does, in an engine in memory, so Lucas's cards
+// stay out of it, and it writes nothing next to the file.
 
-let usage = "Usage: ImportPreview [--dump <output>] <file>: run it through make preview-import, which builds it first."
+let usage =
+    "Usage: ImportPreview [--dump <output>] <deck>.ficha: run it through make preview-import, which builds it first."
 
 /// What the command line asks for.
 struct Request: Sendable {
     let file: URL
     /// Where to write the file's cards, one line each, or nil to only time
-    /// the preview.
+    /// the reading.
     let dump: URL?
 
     /// What `arguments` ask for, or nil when they aren't the usage's.
@@ -107,35 +108,42 @@ func peakMemoryFootprint() -> UInt64? {
     return status == 0 ? resources.ri_lifetime_max_phys_footprint : nil
 }
 
-/// How many stay out, and how many for each reason the engine names.
-func leftOutSummary(of preview: ImportPreview) -> String {
-    let reasons = preview.leftOutCounts.map { "\(String(describing: $0.reason)) \($0.count)" }
-    return "left out \(preview.leftOut.count)" + (reasons.isEmpty ? "" : " (\(reasons.joined(separator: ", ")))")
+/// How many lines of `deck`'s text file stay out, and how many for each
+/// reason the engine names, in the order the reasons first come.
+func leftOutSummary(of deck: DeckFile) -> String {
+    var counts: [(reason: String, count: Int)] = []
+    for line in deck.leftOut {
+        let reason = String(describing: line.reason)
+        if let index = counts.firstIndex(where: { $0.reason == reason }) {
+            counts[index].count += 1
+        } else {
+            counts.append((reason, 1))
+        }
+    }
+    let reasons = counts.map { "\($0.reason) \($0.count)" }
+    return "left out \(deck.leftOut.count)" + (reasons.isEmpty ? "" : " (\(reasons.joined(separator: ", ")))")
 }
 
-/// Previews the file, in a new engine in memory, drawing its SVGs as the app
-/// does, and prints one line with what it took and what it found. With a
-/// dump, it also imports the file there, with the Import sheet's choices for
-/// an Anki package: every card with its progress, none repeating any of an
-/// empty engine's. So the line's peak memory footprint covers that import too.
+/// Reads the deck's `.ficha`, in a new engine in memory, drawing its SVGs as
+/// the app does, and prints one line with what it took and what it found.
+/// With a dump, it also adds the deck there, as How fast?'s Start does after
+/// Open Deck…, none of its cards repeating any of an empty engine's. So the
+/// line's peak memory footprint covers that import too.
 func run(_ request: Request) async throws {
     let engine = try Engine(location: .inMemory, time: SystemTimeSource(), drawingSVGsWith: { InProcessSVGDrawer() })
     let clock = ContinuousClock()
     let started = clock.now
-    let preview = try await engine.previewImport(of: request.file)
+    let deck = try await engine.readDeckFile(at: request.file)
     let seconds = started.duration(to: clock.now) / .seconds(1)
     if let dump = request.dump {
-        try engine.importCards(preview, choosing: ImportChoices(progress: .brought))
-        let lines = try dumpLines(of: try engine.cards(), leavingOut: preview.leftOut)
+        try engine.addDeck(deck)
+        let lines = try dumpLines(of: try engine.cards(), leavingOut: deck.leftOut)
         try Data((lines.joined(separator: "\n") + "\n").utf8).write(to: dump, options: .atomic)
     }
     let peak = peakMemoryFootprint().map { String(format: "%.0f MB", Double($0) / 1_000_000) } ?? "unknown"
     print(
-        "\(preview.fileName): \(String(format: "%.2f", seconds)) s, cards \(preview.cardCount), "
-            + "with images dropped \(preview.cardsWithImagesDropped), "
-            + "with sounds dropped \(preview.cardsWithSoundsDropped), "
-            + "with unreadable sounds left out \(preview.cardsWithUnreadableSoundsLeftOut), "
-            + "\(leftOutSummary(of: preview)), peak memory footprint \(peak)")
+        "\(deck.fileName): \(String(format: "%.2f", seconds)) s, cards \(deck.cardCount), "
+            + "\(leftOutSummary(of: deck)), peak memory footprint \(peak)")
 }
 
 guard let request = Request(Array(CommandLine.arguments.dropFirst())) else {
@@ -143,8 +151,8 @@ guard let request = Request(Array(CommandLine.arguments.dropFirst())) else {
     exit(2)
 }
 
-// Away from the main thread, which WebKit draws an import's SVGs on and an
-// import waits for: `InProcessSVGDrawer` draws nothing when called from it. A
+// Away from the main thread, which WebKit draws a deck's SVGs on and the
+// reading waits for: `InProcessSVGDrawer` draws nothing when called from it. A
 // run loop serves it, as it serves the main actor.
 Task.detached {
     do {

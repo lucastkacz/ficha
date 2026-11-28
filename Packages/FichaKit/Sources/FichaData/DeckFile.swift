@@ -1,4 +1,5 @@
 import FichaCore
+import FichaSVG
 import Foundation
 internal import GRDB
 internal import ZIPFoundation
@@ -48,13 +49,26 @@ public struct DeckFile: Sendable, Equatable {
         preview.cardCount
     }
 
-    /// What `Engine.addDeck(_:)` chooses as it imports the file: the cards
-    /// that repeat the user's skipped, and every other card into the deck it
-    /// names, with its own tags alone, since a deck's file proposes no tag
-    /// after its name.
-    var importChoices: ImportChoices {
-        ImportChoices(repeatedCards: .skip)
+    /// The lines of its text file of cards that make no card, with why, in
+    /// the file's order, which `make preview-import` lists.
+    public var leftOut: [LeftOutLine] {
+        preview.leftOut
     }
+}
+
+/// Why a deck's `.ficha` can't come in, as Open Deck… and a file opened from
+/// Finder say it (`EngineError.unreadableFile(_:_:)`).
+public enum DeckFileProblem: Error, Sendable, Equatable {
+    /// It couldn't be opened or read, as one gone since it was chosen.
+    case cannotOpen
+    /// It isn't a deck's `.ficha`, by its name's extension: the one file Open
+    /// Deck… and Finder open in Ficha (ADR 0044).
+    case notADeckFile
+    /// It can't be read as a deck's `.ficha`: it isn't a zip, or it holds no
+    /// `deck.json` Ficha reads, no text file of cards Ficha reads
+    /// (`CardsFileProblem`), or cards that share no deck. The engine logs
+    /// which.
+    case damagedDeckFile
 }
 
 /// What a deck's file's `deck.json` holds: the deck's own emoji and
@@ -93,7 +107,7 @@ func deckJSON(of deck: Deck) throws -> (name: String, data: Data) {
 /// `Deck.checkedDescription(_:)` keeps it, each nil for none, or blank. A
 /// zip without one, or with one that isn't JSON, whose emoji isn't one, or
 /// whose description is too long, is a damaged deck's file.
-private func emojiAndDescription(in archive: Archive) throws(CardsFileProblem) -> (
+private func emojiAndDescription(in archive: Archive) throws(DeckFileProblem) -> (
     emoji: String?, description: String?
 ) {
     guard let entry = archive[deckJSONName] else {
@@ -111,10 +125,8 @@ private func emojiAndDescription(in archive: Archive) throws(CardsFileProblem) -
 }
 
 extension Engine {
-    /// Reads the deck's `.ficha` at `file` without importing it, as
-    /// `previewImport(of:)` reads a zip of cards, through the import's own
-    /// reader and its preview, but proposing no tag after the file's name:
-    /// its cards, images and sounds, the deck they're in, and the emoji and
+    /// Reads the deck's `.ficha` at `file` without importing it, through
+    /// the import's reader and its preview: its cards, images and sounds, the deck they're in, and the emoji and
     /// the description its `deck.json` holds. A file that isn't a zip, holds
     /// no `deck.json` it can read or no text file of cards, or whose cards
     /// share no deck is a damaged deck's file, which it refuses, saying so;
@@ -133,21 +145,15 @@ extension Engine {
         }
         let held: (emoji: String?, description: String?)
         let zipped: (reading: ImportReading, images: [ImageName: CardImage], sounds: [SoundName: CardSound])
-        do throws(CardsFileProblem) {
-            guard let archive = try zipArchive(at: file) else {
-                logger.error("A deck's file isn't a zip")
-                throw .damagedDeckFile
-            }
+        do throws(DeckFileProblem) {
+            let archive = try deckArchive(at: file)
             held = try emojiAndDescription(in: archive)
-            zipped = try await readZipOfCards(archive, drawingSVGsWith: newSVGDrawer?())
+            zipped = try await cards(in: archive, drawingSVGsWith: newSVGDrawer?())
         } catch {
-            if error != .cannotOpen, error != .damagedDeckFile {
-                logger.error("Couldn't read a deck's file: \(String(describing: error), privacy: .public)")
-            }
-            throw .unreadableFile(name, error == .cannotOpen ? .cannotOpen : .damagedDeckFile)
+            throw .unreadableFile(name, error)
         }
         let preview = try self.preview(
-            zipped.reading.outsideDefault(), of: name, kind: .cardsFile, images: zipped.images, sounds: zipped.sounds)
+            zipped.reading.outsideDefault(), of: name, images: zipped.images, sounds: zipped.sounds)
         guard let deck = try sharedDeck(of: preview.cards) else {
             logger.error("A deck's file holds no cards, or cards that share no deck")
             throw .unreadableFile(name, .damagedDeckFile)
@@ -157,8 +163,7 @@ extension Engine {
 
     /// Adds the deck `file` holds, as `addFichaDeck(_:)` adds one of Ficha's
     /// decks: its cards that repeat none of the user's, into the decks they
-    /// name, with their own tags alone, without the tag an import gives a
-    /// file's cards after the file's name; those that repeat one stay as the
+    /// name, with their own tags alone; those that repeat one stay as the
     /// user's are, with their progress, so adding it twice adds nothing. A
     /// deck the user didn't have, no card in it or in a deck inside it, and
     /// no row for either, that cards came into, takes the emoji and the
@@ -167,7 +172,7 @@ extension Engine {
     @discardableResult
     public func addDeck(_ file: DeckFile) throws(EngineError) -> ImportOutcome {
         let had = try read { db in try hasDeck(file.deck, in: db) }
-        let outcome = try importCards(file.preview, choosing: file.importChoices)
+        let outcome = try importCards(file.preview)
         if !had, outcome.added > 0, file.emoji != nil || file.description != nil {
             try write { db in
                 try changeOwnDecks([file.deck], in: db) { deck in
@@ -181,21 +186,52 @@ extension Engine {
 
     /// The deck `cards` are in, by its whole name, as they'd come in new, or
     /// Default by `Deck.defaultName` for one that names none
-    /// (`ImportChoices.deckComingIn(proposed:)`): the deepest deck each is
+    /// (`deckComingIn(proposed:)`): the deepest deck each is
     /// in, or sits inside; or nil for no cards, or cards whose decks share
     /// none, as Default and another, or two at the top of the tree. An error
     /// for a deck's name the import refuses.
     private func sharedDeck(of cards: [ImportedCard]) throws(EngineError) -> String? {
-        let choices = ImportChoices()
         var decks: Set<String> = []
         for card in cards {
-            decks.insert(try choices.deckComingIn(proposed: card.deck))
+            decks.insert(try deckComingIn(proposed: card.deck))
         }
         guard let some = decks.first else {
             return nil
         }
         // The lineage lists the deck first, then those it sits inside.
         return TagPath.lineage(of: some).first { deck in decks.allSatisfy { TagPath.isTag($0, within: deck) } }
+    }
+}
+
+/// The zip at `file`, a deck's `.ficha`, open to read its files as they're
+/// needed, or why it can't be: one that can't be opened, and one that isn't
+/// a zip, or a damaged one, which is a damaged deck's file.
+private func deckArchive(at file: URL) throws(DeckFileProblem) -> Archive {
+    let archive: Archive?
+    do throws(CardsFileProblem) {
+        archive = try zipArchive(at: file)
+    } catch {
+        throw error == .cannotOpen ? .cannotOpen : .damagedDeckFile
+    }
+    guard let archive else {
+        logger.error("A deck's file isn't a zip")
+        throw .damagedDeckFile
+    }
+    return archive
+}
+
+/// What the text file of cards in `archive`, a deck's `.ficha`, holds, with
+/// its cards' images and sounds, as `readZipOfCards(_:drawingSVGsWith:)`
+/// reads them, its SVGs drawn by `drawer`; or, for a text file or a zip
+/// Ficha can't read, which the engine logs, a damaged deck's file.
+private func cards(in archive: Archive, drawingSVGsWith drawer: (any SVGDrawer)?) async throws(DeckFileProblem)
+    -> (reading: ImportReading, images: [ImageName: CardImage], sounds: [SoundName: CardSound])
+{
+    do throws(CardsFileProblem) {
+        return try await readZipOfCards(archive, drawingSVGsWith: drawer)
+    } catch {
+        logger.error("Couldn't read a deck's file: \(String(describing: error), privacy: .public)")
+        throw .damagedDeckFile
     }
 }
 

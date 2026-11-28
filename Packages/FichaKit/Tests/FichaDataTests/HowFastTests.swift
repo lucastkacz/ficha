@@ -15,12 +15,13 @@ final class HowFastTests {
     let engine: Engine
     let settings = ReviewSettings.defaults
     let scheduler = ReviewSettings.defaults.scheduler
-    /// A folder of the test's own, for the files it imports.
+    /// A folder of the test's own, for the decks' `.ficha`s it opens.
     let folder = URL.temporaryDirectory.appending(
         path: "FichaHowFastTests-\(UUID().uuidString)",
         directoryHint: .isDirectory
     )
-    /// Historia's three cards, as a file with a Deck column brings a deck in.
+    /// Historia's three cards, as the text file of a deck's `.ficha`, with a
+    /// Deck column.
     let historia = """
         #separator:tab
         #html:false
@@ -43,23 +44,23 @@ final class HowFastTests {
     }
 
     // The user is meeting Arte: La Gioconda was met now, so today brings 1
-    // more new card at Steady. Historia comes in a minute later, from an
-    // import, last. `ficha` does the same in another Ficha, on the same
-    // clock: its pace and its move are what the window's Start must match.
+    // more new card at Steady. Historia's .ficha opens a minute later, so its
+    // deck would come in last. Another Ficha adds the same deck on the same
+    // clock, and `ficha` then sets its pace and moves it: what the window's
+    // Start must match.
     @Test(
-        "How fast?, for a deck that came in behind one the user is meeting, says when it's all met at each pace, where it is and, ticked, first, and Start with Faster and Put it first sets the pace and the deck's place as ficha pace and ficha deck queue --first do",
-        .bug(id: 491))
+        "How fast?, for a deck's .ficha that comes in behind a deck the user is meeting, says when it's all met at each pace, where it is and, ticked, first, and Start with Faster and Put it first adds it and sets the pace and the deck's place as ficha pace and ficha deck queue --first do",
+        .bug(id: 491), .bug(id: 542))
     func startSetsThePaceAndPutsTheDeckFirst() async throws {
         let ficha = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
         try meetArte(in: engine)
         try meetArte(in: ficha)
         time.advance(by: minutes(1))
-        let historiaFile = try write("Historia.txt", historia)
+        let historiaFile = try writeDeck("Historia.ficha", historia)
         var window = openWindow()
-        await window.importThroughTheSheet(historiaFile)
-        let preview = try await ficha.previewImport(of: historiaFile)
-        try ficha.importCards(preview, choosing: ImportChoices())
-        let whereItIs = try Pace.allCases.map { try finish(of: "Historia", at: $0, in: engine) }
+        await window.openDeckAndWait(historiaFile)
+        try await ficha.addDeck(at: historiaFile)
+        let whereItIs = try Pace.allCases.map { try finish(of: "Historia", at: $0, in: ficha) }
         let wordings = whereItIs.map {
             $0?.wording(now: time.now, dayStartsAtHour: settings.dayStartsAtHour, calendar: calendar)
         }
@@ -77,8 +78,8 @@ final class HowFastTests {
         try ficha.moveInQueue(deck: "Historia", to: .first)
         let first = try Pace.allCases.map { try finish(of: "Historia", at: $0, in: ficha) }
 
-        #expect(asked.subject == .deck("Historia"))
-        #expect(asked.line == .imported(cardCount: 3, fileName: "Historia.txt"))
+        #expect(deckOfTheFile(asked) == "Historia")
+        #expect(asked.line == .deckFile(cardCount: 3, fileName: "Historia.ficha"))
         #expect(asked.pace == .steady)
         #expect(asked.paces.map(\.pace) == [.chill, .steady, .faster])
         #expect(asked.paces.map(\.finish) == whereItIs)
@@ -98,17 +99,17 @@ final class HowFastTests {
         #expect(try engine.queue(settings).map(\.deck) == ["Historia", "Arte"])
     }
 
-    // As above, Historia comes in a minute after Arte, which the user is
-    // meeting.
+    // As above, Historia's .ficha opens a minute after Arte, which the user
+    // is meeting, comes in.
     @Test(
-        "How fast?'s Cancel leaves the pace and the queue as they were, with the deck last, where it came in, whatever was chosen",
-        .bug(id: 491))
+        "How fast?'s Cancel leaves the pace and the queue as they were, and a deck's .ficha out, whatever was chosen",
+        .bug(id: 491), .bug(id: 542))
     func cancelChangesNothing() async throws {
         try meetArte(in: engine)
         time.advance(by: minutes(1))
-        let historiaFile = try write("Historia.txt", historia)
+        let historiaFile = try writeDeck("Historia.ficha", historia)
         var window = openWindow()
-        await window.importThroughTheSheet(historiaFile)
+        await window.openDeckAndWait(historiaFile)
         let progress = try engine.progressSettings()
         let queue = try engine.queue(settings)
 
@@ -117,30 +118,31 @@ final class HowFastTests {
         window.putHowFastFirst(true)
         window.cancelQuestion()
 
-        #expect(asked?.subject == .deck("Historia"))
+        #expect(deckOfTheFile(asked) == "Historia")
         #expect(window.question == nil)
         #expect(try engine.progressSettings() == progress)
         #expect(try engine.queue(settings) == queue)
-        #expect(queue.map(\.deck) == ["Arte", "Historia"])
+        #expect(queue.map(\.deck) == ["Arte"])
+        #expect(try engine.cards().allSatisfy { $0.deck != "Historia" })
     }
 
-    // Música, a priority deck, has a new card from a minute before Historia
-    // comes in, from an import, last.
+    // Música, a priority deck, has a new card from a minute before Historia's
+    // .ficha opens, so its deck would come in last.
     @Test(
         "How fast?, for a deck whose only deck ahead is a priority deck, says it goes after that deck, and offers no Put it first, as the priority deck's new cards come first wherever the deck goes",
-        .bug(id: 491))
+        .bug(id: 491), .bug(id: 542))
     func itGoesAfterAPriorityDeckWithNoPutItFirst() async throws {
         try approveInDeck("Bach", deck: "Música", in: engine)
         try engine.setPriority(true, ofDeck: "Música")
         time.advance(by: minutes(1))
-        let historiaFile = try write("Historia.txt", historia)
+        let historiaFile = try writeDeck("Historia.ficha", historia)
         var window = openWindow()
 
-        await window.importThroughTheSheet(historiaFile)
+        await window.openDeckAndWait(historiaFile)
         let asked = try #require(window.howFast)
         window.putHowFastFirst(true)
 
-        #expect(asked.subject == .deck("Historia"))
+        #expect(deckOfTheFile(asked) == "Historia")
         #expect(asked.decksAhead == ["Música"])
         #expect(asked.decksPassed == [])
         #expect(asked.decksStillAhead == ["Música"])
@@ -182,135 +184,19 @@ final class HowFastTests {
         #expect(try engine.decks().map(\.name) == ["Arte", "Historia"])
     }
 
-    // Coliseo waits in Historia, new, from a minute before the imports, so
-    // Historia goes ahead of a deck they bring. The first file only updates
-    // it; the second brings two cards into Arte, one of them inside
-    // Arte::Barroco.
-    @Test(
-        "How fast? opens once the Import sheet's Done closes it after an import that brought new cards into one deck, for that deck, and not after one that brought none",
-        .bug(id: 491))
-    func howFastAfterAnImport() async throws {
-        try approveInDeck("Coliseo", deck: "Historia", in: engine)
-        time.advance(by: minutes(1))
-        let update = try write("Repaso.txt", "Coliseo\tEn Roma, del siglo I.\n")
-        let arte = try write(
-            "Arte.txt",
-            """
-            #separator:tab
-            #html:false
-            #columns:Front\tBack\tDeck
-            La Gioconda\tDe Leonardo.\tArte
-            Las Meninas\tDe Velázquez.\tArte::Barroco
-
-            """)
-        var window = openWindow()
-
-        await window.importThroughTheSheet(update)
-        let afterTheUpdate = window.question
-        window.startImport()
-        await window.previewImportAndWait(of: arte)
-        await window.importCardsAndWait()
-        let beforeDone = window.question
-        window.closeImport()
-        let asked = window.howFast
-        let whereItIs = try Pace.allCases.map { try finish(of: "Arte", at: $0, in: engine) }
-
-        #expect(afterTheUpdate == nil)
-        #expect(beforeDone == nil)
-        let howFast = try #require(asked)
-        #expect(howFast.subject == .deck("Arte"))
-        #expect(howFast.line == .imported(cardCount: 2, fileName: "Arte.txt"))
-        #expect(howFast.decksAhead == ["Historia"])
-        #expect(howFast.paces.map(\.finish) == whereItIs)
-    }
-
-    // Coliseo waits in Historia, new, from a minute before La Gioconda in
-    // Arte, and two before the import, which brings a card into Historia and
-    // one into Historia::Grecia, a deck the user didn't have, inside
-    // Historia.
-    @Test(
-        "How fast? doesn't open after an import whose new cards all came into a deck the user had, or into decks inside it, which keeps its place in the queue, at the pace there was",
-        .bug(id: 491))
-    func noHowFastForADeckTheUserHad() async throws {
-        try approveInDeck("Coliseo", deck: "Historia", in: engine)
-        time.advance(by: minutes(1))
-        try approveInDeck("La Gioconda", deck: "Arte", in: engine)
-        time.advance(by: minutes(1))
-        let more = try write(
-            "Historia.txt",
-            """
-            #separator:tab
-            #html:false
-            #columns:Front\tBack\tDeck
-            Partenón\tEn Atenas.\tHistoria::Grecia
-            Machu Picchu\tEn Perú.\tHistoria
-
-            """)
-        let progress = try engine.progressSettings()
-        var window = openWindow()
-
-        await window.importThroughTheSheet(more)
-
-        #expect(window.question == nil)
-        #expect(try engine.cards().count { TagPath.top(of: $0.deck) == "Historia" } == 3)
-        #expect(try engine.queue(settings).map(\.deck) == ["Historia", "Arte"])
-        #expect(try engine.progressSettings() == progress)
-    }
-
-    // The user is meeting Arte, as above. A minute later, an import brings
-    // Zoología's two cards and Botánica's one, which come in at once, so the
-    // queue lists them by name, after Arte.
-    @Test(
-        "after an import that made two decks, How fast? names them in the queue's order, says when the last of them is all met at each pace, offers no Put it first, and Start sets the pace",
-        .bug(id: 491))
-    func howFastAfterAnImportIntoTwoDecks() async throws {
-        try meetArte(in: engine)
-        time.advance(by: minutes(1))
-        let naturaleza = try write(
-            "Naturaleza.txt",
-            """
-            #separator:tab
-            #html:false
-            #columns:Front\tBack\tDeck
-            tiburón\tUn pez.\tZoología
-            abeja\tUn insecto.\tZoología
-            rosa\tUna flor.\tBotánica
-
-            """)
-        var window = openWindow()
-
-        await window.importThroughTheSheet(naturaleza)
-        let asked = window.howFast
-        let whereItIs = try Pace.allCases.map { try finish(of: "Zoología", at: $0, in: engine) }
-        window.chooseHowFastPace(.chill)
-        window.startHowFast()
-
-        let howFast = try #require(asked)
-        #expect(howFast.subject == .decks(["Botánica", "Zoología"]))
-        #expect(howFast.decks.map(\.name) == ["Botánica", "Zoología"])
-        #expect(howFast.line == .imported(cardCount: 3, fileName: "Naturaleza.txt"))
-        #expect(howFast.paces.map(\.finish) == whereItIs)
-        #expect(whereItIs.allSatisfy { $0 != nil })
-        #expect(!howFast.offersPutItFirst)
-        #expect(howFast.hasOtherDecks)
-        #expect(window.question == nil)
-        #expect(try engine.progressSettings().newCardsPerDay == Pace.chill.newCardsPerDay)
-        #expect(try engine.queue(settings).map(\.deck) == ["Arte", "Botánica", "Zoología"])
-    }
-
     // At 2:00 on Thursday the 15th, Ficha's day is still Wednesday's, whose
-    // active hours, 9 to 22, are over: Historia's three cards start coming on
-    // Thursday, from 4:00, all that day at Faster if it has appearances, or
-    // by Friday.
+    // active hours, 9 to 22, are over: the three cards of Historia's .ficha
+    // would start coming on Thursday, from 4:00, all that day at Faster if it
+    // has appearances, or by Friday.
     @Test(
         "How fast? at 2:00 counts days from 4:00: at Faster, a deck that comes in then is all met tomorrow or Friday, not today",
-        .bug(id: 562))
+        .bug(id: 562), .bug(id: 542))
     func howFastCountsDaysFromFour() async throws {
         time.move(to: try #require(calendar.date(from: DateComponents(year: 2026, month: 10, day: 15, hour: 2))))
-        let historiaFile = try write("Historia.txt", historia)
+        let historiaFile = try writeDeck("Historia.ficha", historia)
         var window = openWindow()
 
-        await window.importThroughTheSheet(historiaFile)
+        await window.openDeckAndWait(historiaFile)
 
         let faster = try #require(window.howFast?.paces.first { $0.pace == .faster })
         let friday = calendar.startOfDay(for: try morning(of: 16, in: calendar))
@@ -344,22 +230,18 @@ final class HowFastTests {
         return try engine.queue(paced).first { $0.deck == deck }?.finish
     }
 
-    /// Writes `text` as UTF-8 to a file named `name` in the test's folder,
-    /// and returns the file.
-    private func write(_ name: String, _ text: String) throws -> URL {
+    /// Writes a deck's `.ficha` named `name` in the test's folder, with
+    /// `text` as its text file, and returns the file.
+    private func writeDeck(_ name: String, _ text: String) throws -> URL {
         let file = folder.appending(path: name)
-        try Data(text.utf8).write(to: file)
+        try writeDeckFile(at: file, text: text)
         return file
     }
-}
 
-extension CardsWindowState {
-    /// Imports `file` through the Import sheet, as the user does: chooses
-    /// it, imports its cards and closes the sheet with Done.
-    fileprivate mutating func importThroughTheSheet(_ file: URL) async {
-        startImport()
-        await previewImportAndWait(of: file)
-        await importCardsAndWait()
-        closeImport()
+    /// The deck of the `.ficha` `howFast` asks about, or nil when it asks
+    /// about none.
+    private func deckOfTheFile(_ howFast: CardsWindowState.HowFast?) -> String? {
+        guard case .deckFile(let file)? = howFast?.subject else { return nil }
+        return file.deck
     }
 }

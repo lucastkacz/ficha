@@ -225,15 +225,12 @@ final class SelectiveSyncTests {
         try mac.engine.setChosenToSync(true, ofDeck: "Idiomas")
         let read = [
             ImportedCard(
-                content: try card(.word, front: "rosa", back: "Rosa, rosae."), fields: [], line: 1,
-                deck: "Idiomas::Latín"),
+                content: try card(.word, front: "rosa", back: "Rosa, rosae."), line: 1, deck: "Idiomas::Latín"),
             ImportedCard(
-                content: try card(nil, front: "¿Qué himno es?", back: "El de la Argentina."), fields: [], line: 2,
-                deck: "Himnos"),
+                content: try card(nil, front: "¿Qué himno es?", back: "El de la Argentina."), line: 2, deck: "Himnos"),
         ]
-        let preview = try mac.engine.preview(
-            ImportReading(cards: read, leftOut: []), of: "Himnos.txt", kind: .cardsFile, images: [:], sounds: [:])
-        try mac.engine.importCards(preview, choosing: ImportChoices())
+        let preview = try mac.engine.preview(ImportReading(cards: read, leftOut: []), of: "Himnos.ficha")
+        try mac.engine.importCards(preview)
         try await syncBoth()
 
         #expect(try mac.engine.card(fronted: "¿Qué himno es?").deck == "Himnos")

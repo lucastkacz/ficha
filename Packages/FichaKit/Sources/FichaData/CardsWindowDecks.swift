@@ -31,9 +31,7 @@ import Foundation
 // he names there with New Deck…, which the move makes. The Deck field, in the
 // card form and the editor (`CardsWindowDeckField.swift`), offers that tree
 // too, and its New Deck… names a deck in the New Deck sheet with the same
-// name field and the same checks, for the field to hold; and so does the
-// Import sheet's choice of deck (`CardsWindowImport.swift`), which names one
-// in its preview's place.
+// name field and the same checks, for the field to hold.
 
 extension CardsWindowState {
     /// A deck in the sidebar's tree, or in the Change Deck sheet's, with the
@@ -166,9 +164,7 @@ extension CardsWindowState {
     }
 
     /// What OK makes of what a deck's name field holds: the Change Deck
-    /// sheet's, the New Deck sheet's, whichever New Deck… opened it, or the
-    /// Import sheet's, after New Deck…, or one of the Import sheet's deck
-    /// fields.
+    /// sheet's, or the New Deck sheet's, whichever New Deck… opened it.
     public enum NewDeckEntry: Sendable, Equatable {
         /// The deck's whole name, its levels cleaned up.
         case name(String)
@@ -370,7 +366,7 @@ extension CardsWindowState {
     /// The decks a pop-up of decks offers while it holds `held`, before New
     /// Deck…, in the order a tree lists them, as `decksToChoose(adding:)`
     /// lists them with `held`, which New Deck… may have named: a card's Deck
-    /// field's, and the Import sheet's choice of deck.
+    /// field's.
     func decksToPick(holding held: String) -> [Deck] {
         decksToChoose(adding: [held]).flatMap(\.flattened).map(\.deck)
     }
@@ -406,9 +402,8 @@ extension CardsWindowState {
     }
 
     /// What OK makes of `text`, what the name field holds after New Deck…,
-    /// in the Change Deck sheet, in the New Deck sheet a Deck field opens
-    /// (`CardsWindowDeckField.swift`) or the sidebar does, or in the Import
-    /// sheet's preview's place (`CardsWindowImport.swift`): the deck's whole
+    /// in the Change Deck sheet, or in the New Deck sheet a Deck field opens
+    /// (`CardsWindowDeckField.swift`) or the sidebar does: the deck's whole
     /// name, its levels cleaned up; a blank name, as the field starts, which
     /// keeps OK off; or a refusal of a name whose top level is one of
     /// Default's, as the engine refuses it. Nil while the window asks for no
@@ -417,7 +412,7 @@ extension CardsWindowState {
         switch question {
         case .changeDeck(let change): guard change.isNamingNewDeck else { return nil }
         case .newDeck, .makeDeck: break
-        default: guard importing?.isNamingNewDeck == true else { return nil }
+        default: return nil
         }
         return NewDeckEntry(checking: text)
     }
@@ -435,9 +430,7 @@ extension CardsWindowState {
     /// chooses it, for Move to make it as it moves the cards there; in the
     /// New Deck sheet, the Deck field it was asked from holds the deck
     /// (`CardsWindowDeckField.swift`), or, when the sidebar asked, the deck
-    /// is made at once (`makeDeck(named:)`); and in the Import sheet, its
-    /// choice of deck holds it, for Import to make it as the cards come into
-    /// it, and the sheet shows the preview again. A deck already listed is
+    /// is made at once (`makeDeck(named:)`). A deck already listed is
     /// chosen. While OK doesn't take `text`, as `newDeckEntry(_:)` says, it
     /// does nothing, and the sheet says why.
     public mutating func chooseNewDeck(_ text: String) {
@@ -456,8 +449,7 @@ extension CardsWindowState {
             change.isNamingNewDeck = false
             question = .changeDeck(change)
         default:
-            importing?.chosenDeck = name
-            importing?.isNamingNewDeck = false
+            return
         }
         askForTheFichaDeckAskedToAdd()
     }
@@ -482,19 +474,16 @@ extension CardsWindowState {
         closedDecks.subtract(TagPath.ancestors(of: name))
         readAgain()
         if isNewAtTheTop {
-            askHowFast(about: [top], cameInFrom: .newDeck)
+            askHowFast(about: top)
         }
     }
 
     /// Goes back from the name New Deck… asked for, which Lucas cancelled,
-    /// to the Change Deck sheet's tree, or to the Import sheet's preview.
+    /// to the Change Deck sheet's tree.
     public mutating func cancelNewDeck() {
-        if case .changeDeck(var change) = question {
-            change.isNamingNewDeck = false
-            question = .changeDeck(change)
-        } else {
-            importing?.isNamingNewDeck = false
-        }
+        guard case .changeDeck(var change) = question else { return }
+        change.isNamingNewDeck = false
+        question = .changeDeck(change)
     }
 
     /// Chooses Move in the Change Deck sheet: moves the cards it asks about

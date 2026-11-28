@@ -121,16 +121,18 @@ final class UserTypesTests {
         #expect(try engine.cards().map(\.type) == [nil])
     }
 
-    @Test("an exported card with a user type imports back into another Ficha with a type of that name and no emoji")
+    @Test(
+        "a deck's exported card with a user type comes back into another Ficha with a type of that name and no emoji",
+        .bug(id: 542))
     func anExportedUserTypeImportsBack() async throws {
         let formula = try engine.makeUserType(named: "Fórmula", emoji: Emoji("🧪"))
-        try engine.create(card(.user(formula), front: "agua", back: "H₂O"))
-        try engine.create(card(.quote, front: "\"Eureka.\"", back: "Arquímedes."))
-        let file = folder.appending(path: "Tarjetas.txt")
-        try engine.export(.all, to: file)
+        try engine.create(card(.user(formula), front: "agua", back: "H₂O"), deck: "Química")
+        try engine.create(card(.quote, front: "\"Eureka.\"", back: "Arquímedes."), deck: "Química")
+        let file = folder.appending(path: "Química.ficha")
+        try engine.export(.deck("Química"), to: file)
 
         let other = try Engine(location: .inMemory, time: time, calendar: calendar)
-        try await other.importCards(other.previewImport(of: file), choosing: ImportChoices())
+        try await other.addDeck(at: file)
 
         let made = try #require(try other.userTypes().first)
         #expect(try other.userTypes() == [UserType(id: made.id, name: "Fórmula", emoji: nil)])
@@ -138,13 +140,14 @@ final class UserTypesTests {
     }
 
     @Test(
-        "an import of a file that names its Type column finds a type by its raw value or a user type's name ignoring case and accents, and makes one type for each name it doesn't know, which its preview names"
-    )
+        "a deck's .ficha whose text file names its Type column finds a type by its raw value or a user type's name ignoring case and accents, and makes one type for each name it doesn't know",
+        .bug(id: 542))
     func anImportFindsAndMakesTypes() async throws {
         let formula = try engine.makeUserType(named: "Fórmula", emoji: Emoji("🧪"))
-        let file = folder.appending(path: "Química.txt")
-        try Data(
-            """
+        let file = folder.appending(path: "Química.ficha")
+        try writeDeckFile(
+            at: file,
+            text: """
             #columns:Front\tBack\tTags\tType
             agua\tH₂O\t\tFORMULA
             sal\tNaCl\t\tfórmula
@@ -152,14 +155,12 @@ final class UserTypesTests {
             oxígeno\tO\t\telemento
             hierro\tFe\t\tElemento
             neón\tNe\t\t
-            """.utf8
-        ).write(to: file)
+            """)
 
-        let preview = try await engine.previewImport(of: file)
-        try engine.importCards(preview, choosing: ImportChoices())
+        let deck = try await engine.readDeckFile(at: file)
+        try engine.addDeck(deck)
 
-        #expect(preview.leftOut == [])
-        #expect(preview.typesMade(choosing: .update) == ["elemento"])
+        #expect(deck.leftOut == [])
         let element = try #require(try engine.userTypes().first { $0.name == "elemento" })
         #expect(try engine.userTypes() == [UserType(id: element.id, name: "elemento", emoji: nil), formula])
         #expect(
@@ -168,17 +169,17 @@ final class UserTypesTests {
             ])
     }
 
-    // As Anki's Notes in Plain Text export a note type with Add Reverse:
-    // its third field, "y", sits where a type goes in a file that doesn't
-    // name its columns.
+    // A third field, "y", sits where a type goes in a text file that
+    // doesn't name its columns.
     @Test(
-        "a file that doesn't name its Type column makes no type: a line whose type the user doesn't have stays out, saying why, and one with a user type the user has comes in with it"
-    )
+        "a deck's .ficha whose text file doesn't name its Type column makes no type: a line whose type the user doesn't have stays out, saying why, and one with a user type the user has comes in with it",
+        .bug(id: 542))
     func aFileWithoutColumnsMakesNoType() async throws {
         let formula = try engine.makeUserType(named: "Fórmula")
-        let file = folder.appending(path: "Química.txt")
-        try Data(
-            """
+        let file = folder.appending(path: "Química.ficha")
+        try writeDeckFile(
+            at: file,
+            text: """
             #separator:tab
             #html:false
             #tags column:4
@@ -186,60 +187,35 @@ final class UserTypesTests {
             sal\tNaCl\tfórmula\tquímica
             Lavoisier\tNada se pierde.\tquote\tquímica
             oxígeno\tO\t\tquímica
-            """.utf8
-        ).write(to: file)
+            """)
 
-        let preview = try await engine.previewImport(of: file)
-        try engine.importCards(preview, choosing: ImportChoices())
+        let deck = try await engine.readDeckFile(at: file)
+        try engine.addDeck(deck)
 
-        #expect(preview.leftOut == [LeftOutLine(line: 4, reason: .unknownType("y"))])
-        #expect(preview.typesMade(choosing: .update) == [])
+        #expect(deck.leftOut == [LeftOutLine(line: 4, reason: .unknownType("y"))])
         #expect(try engine.userTypes() == [formula])
         #expect(try engine.cards().map(\.front) == ["sal", "Lavoisier", "oxígeno"])
         #expect(try engine.cards().map(\.type) == [.user(formula), .quote, nil])
     }
 
     @Test(
-        "the preview names each type the import makes once, as its first card spells it, but not one only the repeated cards it skips bring"
-    )
+        "a deck's .ficha makes each type once, as its first card spells it, but not one only the cards it skips, which repeat the user's, bring",
+        .bug(id: 542))
     func thePreviewNamesTheTypesTheImportMakes() async throws {
         try engine.create(card(.word, front: "agua", back: "Un líquido."))
-        let file = folder.appending(path: "Química.txt")
-        try Data(
-            """
-            #columns:Front\tBack\tTags\tType
-            agua\tH₂O\t\tFórmula
-            oxígeno\tO\t\tElemento
-            hierro\tFe\t\telemento
-            """.utf8
-        ).write(to: file)
+        let file = folder.appending(path: "Química.ficha")
+        try writeDeckFile(
+            at: file,
+            text: """
+                #columns:Front\tBack\tTags\tType
+                agua\tH₂O\t\tFórmula
+                oxígeno\tO\t\tElemento
+                hierro\tFe\t\telemento
+                """)
 
-        let preview = try await engine.previewImport(of: file)
+        try await engine.addDeck(at: file)
 
-        #expect(preview.typesMade(choosing: .update) == ["Fórmula", "Elemento"])
-        #expect(preview.typesMade(choosing: .skip) == ["Elemento"])
-        try engine.importCards(preview, choosing: ImportChoices(repeatedCards: .skip))
         #expect(try engine.userTypes().map(\.name) == ["Elemento"])
-    }
-
-    @Test("a card an import updates takes the type the file names, a new one too, and keeps its own when it names none")
-    func anUpdatedCardTakesTheFilesType() async throws {
-        try engine.create(card(.word, front: "agua", back: "Un líquido."))
-        try engine.create(card(.word, front: "sal", back: "Un mineral."))
-        let withType = folder.appending(path: "Con tipo.txt")
-        try Data("#columns:Front\tBack\tTags\tType\nagua\tH₂O\t\tFórmula\n".utf8).write(to: withType)
-        let withoutType = folder.appending(path: "Sin tipo.txt")
-        try Data("sal\tNaCl\n".utf8).write(to: withoutType)
-
-        for file in [withType, withoutType] {
-            try await engine.importCards(
-                engine.previewImport(of: file), choosing: ImportChoices(repeatedCards: .update))
-        }
-
-        let formula = try #require(try engine.userTypes().first)
-        #expect(formula.name == "Fórmula")
-        #expect(try engine.cards().map(\.type) == [.user(formula), .word])
-        #expect(try engine.cards().map(\.back) == ["H₂O", "NaCl"])
     }
 
     @Test(

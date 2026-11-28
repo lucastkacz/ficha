@@ -2,6 +2,7 @@ import FichaCore
 import FichaData
 import Foundation
 import Testing
+import ZIPFoundation
 
 /// A card for a test to approve a capture into: it always has a front and a
 /// back, and no tags, source, images or sounds unless the test gives them. A
@@ -313,19 +314,44 @@ extension CaptureResult {
 }
 
 extension CardsWindowState {
-    /// Reads `file` for the Import sheet's preview, as the app does, and
-    /// waits for the reading.
-    mutating func previewImportAndWait(of file: URL) async {
-        if let work = previewImport(of: file) {
-            finishImportWork(await work.run())
+    /// Opens `file` with Open Deck…, as the app does, and waits for the
+    /// reading, after which How fast? asks for its deck.
+    mutating func openDeckAndWait(_ file: URL) async {
+        if let work = openDeck(file) {
+            finishOpenDeck(await work.run())
         }
     }
+}
 
-    /// Imports the cards the Import sheet previews, as the app does, and
-    /// waits for the import.
-    mutating func importCardsAndWait() async {
-        if let work = importCards() {
-            finishImportWork(await work.run())
+/// Writes a deck's `.ficha` to `file`, as another Ficha, or a person by hand,
+/// would: a zip holding `text`, a text file of cards named after the file,
+/// `files` beside it, each a name and what it holds, such as its cards'
+/// images and sounds, and a `deck.json` with no emoji or description.
+func writeDeckFile(at file: URL, text: String, files: [(name: String, data: Data)] = []) throws {
+    try writeDeckFile(at: file, textFile: Data(text.utf8), files: files)
+}
+
+/// Writes a deck's `.ficha` to `file` as `writeDeckFile(at:text:files:)`
+/// does, with `textFile` as its text file's bytes, which needn't be UTF-8.
+func writeDeckFile(at file: URL, textFile: Data, files: [(name: String, data: Data)] = []) throws {
+    let archive = try Archive(url: file, accessMode: .create, pathEncoding: nil)
+    let name = file.deletingPathExtension().lastPathComponent + ".txt"
+    let held = Data(#"{"description": null, "emoji": null}"#.utf8)
+    let all: [(name: String, data: Data)] = [(name, textFile), ("deck.json", held)] + files
+    for (path, data) in all {
+        try archive.addEntry(
+            with: path, type: .file, uncompressedSize: Int64(data.count), compressionMethod: .deflate
+        ) { position, size in
+            data.subdata(in: Int(position)..<Int(position) + size)
         }
+    }
+}
+
+extension Engine {
+    /// Reads the deck's `.ficha` at `file` and adds its deck, as Open Deck…
+    /// and How fast?'s Start do, and returns what the import did.
+    @discardableResult
+    func addDeck(at file: URL) async throws -> ImportOutcome {
+        try addDeck(try await readDeckFile(at: file))
     }
 }

@@ -32,7 +32,7 @@ import SwiftUI
 /// The card form and the editor have a Deck field, whose New Deck… names a
 /// deck in the New Deck sheet (`NewDeckSheet.swift`), which New Deck… in a
 /// deck's menu or the Your Decks title's opens too, to make the deck. As a
-/// deck comes in, made there or brought by an import, How fast? asks for the
+/// deck comes in, made there or from a file, How fast? asks for the
 /// pace and where the deck goes in the queue new cards come from
 /// (`HowFastSheet.swift`). The sidebar's Ficha's Decks section, after Your
 /// Decks, lists the decks that come with Ficha that Lucas hasn't added, each
@@ -50,10 +50,8 @@ import SwiftUI
 /// tiles with ⌘ or Shift, as in the Finder, or all of them with Select All,
 /// ⌘A, and then the detail says how many, with what he can do with all of
 /// them. New Card in the toolbar, or ⌘N, and Convert to Card on a capture
-/// open the card form, a sheet of its own (`CardFormSheet.swift`), Import…
-/// in the toolbar opens the Import sheet (`ImportSheet.swift`), which imports
-/// a text file of cards, and Export… opens the Export sheet (`ExportSheet.swift`),
-/// which saves cards to one. `CardsWindowState` decides what the window lists,
+/// open the card form, a sheet of its own (`CardFormSheet.swift`).
+/// `CardsWindowState` decides what the window lists,
 /// shows, offers and asks, and what happens when Lucas acts, and the view
 /// draws it. It reads the cards again whenever the engine says they changed,
 /// from the app or the `ficha` CLI, when Lucas changes the scheduling
@@ -78,7 +76,7 @@ struct CardsView: View {
     @State private var player = SoundPlayer()
 
     /// The content for the user's cards in `model`, opening with `state` when
-    /// it's given, as `make render` opens it partway through an import, and
+    /// it's given, as `make render` opens it partway through a question, and
     /// otherwise on the deck the state opens on, once it reads the cards.
     init(model: AppModel, state: CardsWindowState? = nil) {
         self.model = model
@@ -191,8 +189,8 @@ struct CardsView: View {
             }
     }
 
-    /// The window's three panes, with the toolbar's search field, Import…
-    /// and Export…, ⌘F, and the keys that change the card size, which only the
+    /// The window's three panes, with the toolbar's search field, ⌘F, and
+    /// the keys that change the card size, which only the
     /// detail's card or capture shows at. A pane's ideal width counts only as
     /// the window first opens, and only for a pane whose content is there by
     /// then, which is why the window opens with the cards already read
@@ -217,10 +215,6 @@ struct CardsView: View {
         .searchable(text: searchText, placement: .toolbar)
         .searchFocused($isSearchFocused)
         .navigationTitle(String(localized: "Cards", comment: "The Cards window's title."))
-        // The toolbar lists the outer modifier's buttons first: New Card,
-        // then Import…, then Export….
-        .exportButtonAndSheet($state, failure: failure(overSheet: true))
-        .importButtonAndSheet($state)
         .background {
             // ⌘F puts Lucas in the search field, as in Mail and Finder. The
             // search field doesn't take it on its own.
@@ -380,14 +374,14 @@ struct CardsView: View {
     }
 
     /// Where the alert shows now: over the flag sheet, the emoji sheet, the
-    /// rename sheet, the Change Deck sheet, the card form, the Export sheet,
+    /// rename sheet, the Change Deck sheet, the card form,
     /// How fast? or the New Deck sheet the sidebar opened while one is open,
     /// since the window's own alert can't show over its sheet; and over the
     /// window otherwise.
     private var alertPlace: AlertPlace {
         let isSheetOpen =
             cardToFlag != nil || deckForEmoji != nil || deckToRename != nil || state.deckChange != nil
-            || state.cardForm != nil || state.exporting != nil || state.question == .makeDeck
+            || state.cardForm != nil || state.question == .makeDeck
             || state.howFast != nil
         return isSheetOpen ? .sheet : .window
     }
@@ -596,12 +590,6 @@ struct CardsView: View {
                         the deck's whole name.
                         """),
                 error: error)
-        case .export:
-            return Failure(
-                title: LocalizedStringResource(
-                    "Couldn't export the cards",
-                    comment: "An alert's title in the Cards window, after Export… or over its Export sheet."),
-                error: error)
         case .makeDeck:
             return Failure(
                 title: LocalizedStringResource(
@@ -760,7 +748,7 @@ struct CardsView: View {
 
     /// What the middle pane says while the sidebar chose nothing, since Your
     /// Decks lists no deck: that the cards show up here, with New Card,
-    /// Open Deck… and Import… in plain sight, which do what the toolbar's,
+    /// and Open Deck… in plain sight, which do what the toolbar's,
     /// ⌘O and the sidebar's menus do, while the state offers them.
     @ViewBuilder
     private var nothingChosen: some View {
@@ -786,11 +774,6 @@ struct CardsView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     OpenDeckItem(state: $state)
-                    Button {
-                        state.startImport()
-                    } label: {
-                        Text("Import…", comment: "A button in the Cards window while the user has no cards.")
-                    }
                 }
             }
         }

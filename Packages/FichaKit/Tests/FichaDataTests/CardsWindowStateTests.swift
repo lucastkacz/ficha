@@ -27,7 +27,7 @@ struct CardsWindowStateTests {
     }
 
     @Test(
-        "the window offers New Card and Import… while there are no cards, no search, and the sidebar chose nothing, and not once it chose the inbox",
+        "the window offers New Card and Open Deck… while there are no cards, no search, and the sidebar chose nothing, and not once it chose the inbox",
         .bug(id: 536))
     func theWindowOffersTheFirstCardsWhileThereAreNone() throws {
         var window = openWindow()

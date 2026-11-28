@@ -94,7 +94,7 @@ extension CardsWindowState {
     mutating func askForTheFichaDeckAskedToAdd() {
         askForTheDeckFileOpened()
         guard let deck = fichaDeckAskedToAdd, fichaDeckFiles.contains(where: { $0.deck == deck }),
-            question == nil, editing == nil, cardForm == nil, importing == nil, exporting == nil
+            question == nil, editing == nil, cardForm == nil
         else { return }
         fichaDeckAskedToAdd = nil
         guard fichaDecksNotAdded.contains(where: { $0.deck == deck }) else { return }
@@ -130,7 +130,7 @@ extension Engine {
     {
         let now = time.now
         return try read { db in
-            let coming = try cardsComingIn(file.preview, choosing: file.importChoices, at: now, in: db)
+            let coming = try cardsComingIn(file.preview, at: now, in: db)
             return (inReviews: try cardsThatShowUp(in: db, adding: coming).inReviews, cardCount: coming.count)
         }
     }

@@ -42,7 +42,7 @@ The subject a card lives in, like "historia" or "Great Works of Art"; each card 
 _Avoid_: folder, collection, category, nested deck
 
 **Default**:
-The deck a card lives in when it has no other: a card the user didn't put in a deck, or one an Anki package had in Anki's own Default. It can't be renamed or deleted.
+The deck a card lives in when it has no other: a card the user didn't put in a deck, or one that came in with none. It can't be renamed or deleted.
 _Avoid_: no deck, unsorted, inbox
 
 **Ficha's decks**:
@@ -128,7 +128,7 @@ How well the user says they knew a card in a review, kept as one of Anki's four:
 _Avoid_: grade, score, ease
 
 **Review log**:
-Every review, with when the user answered, whether an appearance or a review now brought the card, which way it went, their rating, the interval it set, and how long they took, except from a card notification; and an import's reviews from Anki, with the interval and due time the import gave a card where they fall short of how Anki had it: before them, when Anki kept none of the card's first reviews; after them, as after Anki's Set Due Date; or alone, when none came. A card's progress and due time are worked out from it.
+Every review, with when the user answered, whether an appearance or a review now brought the card, which way it went, their rating, the interval it set, and how long they took, except from a card notification; and the reviews from Anki an import brought before Anki's packages stopped coming in (ADR 0041), with the interval and due time the import gave a card where they fall short of how Anki had it: before them, when Anki kept none of the card's first reviews; after them, as after Anki's Set Due Date; or alone, when none came. A card's progress and due time are worked out from it.
 _Avoid_: history, review history
 
 **Review now**:
@@ -170,11 +170,11 @@ Taking a card out of Ficha for good, with its review log, which setting it aside
 _Avoid_: remove, erase
 
 **Import**:
-Bringing cards into Ficha from a file: a text file with one card per line, zipped with its images and sounds if it has any, which another Ficha exported or someone wrote, maybe with an AI; or a package exported from Anki, its cards in Anki's decks and with Anki's tags, and with their progress and Anki's reviews of them unless the user leaves them out.
+Bringing a deck's cards into Ficha from its `.ficha` file, after Open Deck…, a double-click in Finder or Add Deck… on one of Ficha's decks: those that repeat none of the user's come in as new, and the rest are skipped. Text files, zips and Anki's packages don't come in (ADR 0041).
 _Avoid_: load, refine
 
 **Export**:
-Saving cards to a text file with one card per line, zipped with their images and sounds if they have any, which another Ficha can import, and Anki too when it's text alone. It holds what the cards say, their decks and tags, and which go both ways, never the user's progress.
+Writing a deck's cards to its `.ficha` file, with those of the decks inside it, as Share Deck… does: what the cards say, their tags, and which go both ways, with their images and sounds and the deck's emoji and description, never the user's progress. Cards don't go out as text files or zips (ADR 0041).
 _Avoid_: backup, share
 
 ### Spacing

@@ -24,12 +24,10 @@ import Foundation
 /// deck alone: the database keeps each card's tags and type, which editing
 /// it keeps, but the window shows neither (#538). It also holds the
 /// form that creates cards while it's open, which `CardForm.swift` decides,
-/// with its Deck field and the editor's (`CardsWindowDeckField.swift`), runs
-/// the Import sheet, from a file's preview, with the decks its cards go to,
-/// to what the import did (`CardsWindowImport.swift`), and the Export sheet,
-/// from what it offers to export to the file it writes. As a deck at the top
-/// of the tree comes in, made by New Deck… in the sidebar, with the deck it
-/// names or one inside it, or by an import, it asks How fast? new cards
+/// with its Deck field and the editor's (`CardsWindowDeckField.swift`). As a
+/// deck at the top of the tree comes in, made by New Deck… in the sidebar,
+/// with the deck it names or one inside it, or from a deck's `.ficha`
+/// (`CardsWindowOpenDeck.swift`), it asks How fast? new cards
 /// come, and where the deck goes in the queue new cards come from
 /// (`HowFast.swift`), and each deck at the top of the tree says under its
 /// title how far it is and when it's all met (`CardsWindowDecks.swift`). It
@@ -320,8 +318,6 @@ public struct CardsWindowState: Sendable {
         /// He chose Start in How fast?, which saves the pace and, when Put it
         /// first is ticked, puts the deck first in the queue.
         case startHowFast
-        /// He exported cards, which couldn't be read or saved to the file.
-        case export
         /// He chose Add Deck… on this one of Ficha's decks, which reads the
         /// queue for How fast?, or Start in How fast?, which adds it.
         case addFichaDeck(FichaDeck)
@@ -371,7 +367,7 @@ public struct CardsWindowState: Sendable {
     /// What the window lists, or why it couldn't be read: nil until the
     /// window first reads Lucas's cards.
     public private(set) var listing: Result<Listing, EngineError>?
-    /// Whether the window offers New Card and Import… in plain sight, in the
+    /// Whether the window offers New Card and Open Deck… in plain sight, in the
     /// grid's place: while the sidebar chose nothing, with no search, and the
     /// user has no cards at all, set-aside ones included, as when they just
     /// started.
@@ -461,12 +457,6 @@ public struct CardsWindowState: Sendable {
     public internal(set) var question: Question?
     /// What Lucas did that couldn't be saved, while the window says so.
     public private(set) var failure: Failure?
-    /// The Import sheet, while it's open, which `CardsWindowImport.swift`
-    /// runs.
-    public internal(set) var importing: Importing?
-    /// The Export sheet, while it's open, which `CardsWindowExport.swift`
-    /// runs.
-    public internal(set) var exporting: Exporting?
     /// Ficha's decks as the app read them from its bundle, in `FichaDeck`'s
     /// order: none until it gives them (`CardsWindowFichaDecks.swift`).
     var fichaDeckFiles: [FichaDeckFile] = []
@@ -1034,7 +1024,7 @@ public struct CardsWindowState: Sendable {
             } else {
                 // One of Ficha's decks shows in the grid's place
                 // (`shownFichaDeck`), and while the sidebar chose nothing,
-                // New Card and Import… may.
+                // New Card and Open Deck… may.
                 listing = .success(.cards([]))
                 if sidebarItem == nil, !hasSearch {
                     offersFirstCards = try engine.cards().isEmpty

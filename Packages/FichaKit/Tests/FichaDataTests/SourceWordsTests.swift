@@ -35,13 +35,12 @@ struct SourceWordsTests {
     // `tags: []` and `type: nil`, a card made with neither, as `CardContent`
     // still takes both, which the database keeps, unread (ADR 0041); and
     // `UniformTypeIdentifiers`, `typeIdentifiers` and `ofType`, which name a
-    // pasteboard's types of data.
-    // Exempt: the Import sheet (`CardsWindowImport.swift`), whose tags are
-    // those an import's file proposes for its cards, and which ADR 0041 takes
-    // out with text files and Anki's packages (Mac › Cards › Import).
+    // pasteboard's types of data. None is exempt, since the Import sheet's
+    // state, whose tags were those an import's file proposed, went with it
+    // (#542).
     @Test("no window's state reads tags or card types", .bug(id: 538))
     func noWindowsStateReadsTagsOrCardTypes() throws {
-        let files = try SourceFile.windowStates().filter { $0.name != "CardsWindowImport.swift" }
+        let files = try SourceFile.windowStates()
         let hits = try SourceFile.hits(
             of: [
                 #"(?<![A-Za-z])[Tt]ags?(?![a-z])|(?<=[a-z])Tags?(?![a-z])"#,

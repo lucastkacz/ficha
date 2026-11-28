@@ -27,15 +27,9 @@ struct EngineMessagesTests {
         .backupsFolder, .notAnImage, .notASound, .soundConversion, .unreadableFileForSide("bandera.png"),
         .noSuchFile("~/bandera.png"), .fileNotInDownloads("bandera.png"), .fileNotAnImage("himno.mp3"),
         .fileNotASound("bandera.png"), .notAnImageOrSound("notas.txt"), .noFileNamed("bandera.png"), .imagesFolder,
-        .soundsFolder, .unreadableFile("cards.txt", .cannotOpen), .unreadableFile("cards.txt", .notUTF8),
-        .unreadableFile("cards.txt", .unknownSeparator("dash")), .unreadableFile("cards.txt", .unknownHTML("maybe")),
-        .unreadableFile("cards.txt", .unknownColumnNumber(header: "tags column", value: "x")),
-        .unreadableFile("cards.txt", .missingColumn(.back)), .unreadableFile("cards.zip", .unreadableZip),
-        .unreadableFile("cards.zip", .noTextFileInZip),
-        .unreadableFile("cards.zip", .severalTextFilesInZip(["a.txt", "b.txt"])),
-        .unreadableFile("deck.apkg", .unreadableAnkiPackage), .unreadableFile("deck.apkg", .ankiPackageTooNew),
+        .soundsFolder, .unreadableFile("Capitales.ficha", .cannotOpen),
         .unreadableFile("Capitales.zip", .notADeckFile), .unreadableFile("Capitales.ficha", .damagedDeckFile),
-        .unwritableFile("cards.txt"), .fichaDeckMissing("Arte argentino"), .descriptionTooLong,
+        .unwritableFile("Capitales.ficha"), .fichaDeckMissing("Arte argentino"), .descriptionTooLong,
     ]
 
     @Test("the samples hold every case of the engine's errors, nested ones included")
@@ -73,9 +67,7 @@ private enum ErrorCase: CaseIterable {
     case cannotUndoFollowUp, unreadableReviewLog, schedulerFailed, storage, copyNotFound, copyMigratedByNewerVersion
     case backupsFolder, notAnImage, notASound, soundConversion, unreadableFileForSide, noSuchFile, fileNotInDownloads
     case fileNotAnImage, fileNotASound, notAnImageOrSound, noFileNamed, imagesFolder, soundsFolder
-    case cannotOpen, notUTF8, unknownSeparator, unknownHTML, unknownColumnNumber, missingColumn, unreadableZip
-    case noTextFileInZip, severalTextFilesInZip, unreadableAnkiPackage, ankiPackageTooNew, notADeckFile
-    case damagedDeckFile, unwritableFile, fichaDeckMissing, descriptionTooLong
+    case cannotOpen, notADeckFile, damagedDeckFile, unwritableFile, fichaDeckMissing, descriptionTooLong
 
     init(_ error: EngineError) {
         self =
@@ -137,16 +129,6 @@ private enum ErrorCase: CaseIterable {
             case .imagesFolder: .imagesFolder
             case .soundsFolder: .soundsFolder
             case .unreadableFile(_, .cannotOpen): .cannotOpen
-            case .unreadableFile(_, .notUTF8): .notUTF8
-            case .unreadableFile(_, .unknownSeparator): .unknownSeparator
-            case .unreadableFile(_, .unknownHTML): .unknownHTML
-            case .unreadableFile(_, .unknownColumnNumber): .unknownColumnNumber
-            case .unreadableFile(_, .missingColumn): .missingColumn
-            case .unreadableFile(_, .unreadableZip): .unreadableZip
-            case .unreadableFile(_, .noTextFileInZip): .noTextFileInZip
-            case .unreadableFile(_, .severalTextFilesInZip): .severalTextFilesInZip
-            case .unreadableFile(_, .unreadableAnkiPackage): .unreadableAnkiPackage
-            case .unreadableFile(_, .ankiPackageTooNew): .ankiPackageTooNew
             case .unreadableFile(_, .notADeckFile): .notADeckFile
             case .unreadableFile(_, .damagedDeckFile): .damagedDeckFile
             case .unwritableFile: .unwritableFile

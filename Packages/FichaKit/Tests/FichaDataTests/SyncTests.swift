@@ -447,12 +447,13 @@ final class SyncTests {
             log.map(\.interval) == [.seconds(hours(1)), .seconds(hours(2) + minutes(30)), .seconds(hours(4))])
     }
 
-    // An import that brings Anki's progress places a card Anki was reviewing
-    // every 10 days with that interval, Anki's due date and its ease.
+    // An import that brought Anki's progress, before #542, placed a card
+    // Anki was reviewing every 10 days with that interval, Anki's due date
+    // and its ease.
     @Test("a placement reaches the other device with its interval, due time and ease")
     func aPlacementReachesTheOtherDevice() async throws {
-        try await importOnTheMac([
-            AnkiNote(type: .basic, fields: ["corazón", "heart"], progress: .review(due: 30, interval: 10))
+        try placeOnTheMac([
+            ("corazón", Placement(interval: .seconds(days(10)), due: try october(31, at: 4), ease: 2.5))
         ])
 
         try await mac.syncNow()
@@ -473,9 +474,9 @@ final class SyncTests {
     // hours, and pulmón on the fourth, of 5 days.
     @Test("a placement on a step of the ladder, from an older Ficha, is carried over as it arrives")
     func aPlacementFromAnOlderFichaIsCarriedOverOnArrival() async throws {
-        try await importOnTheMac([
-            AnkiNote(type: .basic, fields: ["corazón", "heart"], progress: .review(due: 30, interval: 10)),
-            AnkiNote(type: .basic, fields: ["pulmón", "lung"], progress: .review(due: 25, interval: 400)),
+        try placeOnTheMac([
+            ("corazón", Placement(interval: .seconds(days(10)), due: try october(31, at: 4), ease: 2.5)),
+            ("pulmón", Placement(interval: .seconds(days(400)), due: try october(26, at: 4), ease: 2.5)),
         ])
         try await mac.syncNow()
         for entry in iCloud.records where entry.type == SyncedRow.RecordType.reviewLogEntry.rawValue {
@@ -511,9 +512,9 @@ final class SyncTests {
     // The ladder's steps counted from 0, as its table's check kept them.
     @Test("a placement on a step below the ladder's first, from an older Ficha, waits, as the ladder refused it")
     func aPlacementBelowTheLaddersFirstStepWaits() async throws {
-        try await importOnTheMac([
-            AnkiNote(type: .basic, fields: ["corazón", "heart"], progress: .review(due: 30, interval: 10)),
-            AnkiNote(type: .basic, fields: ["pulmón", "lung"], progress: .review(due: 25, interval: 400)),
+        try placeOnTheMac([
+            ("corazón", Placement(interval: .seconds(days(10)), due: try october(31, at: 4), ease: 2.5)),
+            ("pulmón", Placement(interval: .seconds(days(400)), due: try october(26, at: 4), ease: 2.5)),
         ])
         try await mac.syncNow()
         for entry in iCloud.records where entry.type == SyncedRow.RecordType.reviewLogEntry.rawValue {
@@ -538,15 +539,18 @@ final class SyncTests {
             ])
     }
 
-    /// Imports on the Mac an Anki package with `notes`, bringing their
-    /// progress. The package's collection was created on 1 October 2026 at 4
-    /// in the morning, so Anki's day 30 is 31 October.
-    private func importOnTheMac(_ notes: [AnkiNote]) async throws {
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let file = folder.appending(path: "Mazo.apkg")
-        try AnkiPackage(notes: notes).write(to: file)
-        try await mac.engine.importCards(
-            mac.engine.previewImport(of: file), choosing: ImportChoices(progress: .brought))
+    /// Makes on the Mac a card for each of `placements`, by its front, and
+    /// gives its front-first way the placement, now: as an import of an Anki
+    /// package that brought progress did before #542, and as the review logs
+    /// of the devices that took one still hold it.
+    private func placeOnTheMac(_ placements: [(front: String, placement: Placement)]) throws {
+        for (front, placement) in placements {
+            let placed = try mac.engine.create(card(nil, front: front, back: "\(front)."))
+            try mac.engine.write { db in
+                try insert(
+                    ReviewLogEntry(placing: placed.id, on: placement, at: time.now), ids: mac.engine.ids, in: db)
+            }
+        }
     }
 
     /// `hour` o'clock on `day` October 2026, in Buenos Aires.

@@ -1,17 +1,6 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "%@ (%lld)" : {
-      "comment" : "An item of the Export sheet's menu: the cards that live in a deck, or a deck inside it, with the deck's emoji, when it has one, and its whole name, like “🗣️ Idiomas › Inglés”, and how many.",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@ (%2$lld)"
-          }
-        }
-      }
-    },
     "%@ can't open your cards" : {
 
     },
@@ -159,29 +148,6 @@
         }
       }
     },
-    "%lld cards are Image Occlusion cards, which hide parts of an image." : {
-      "comment" : "In the Import sheet, the cards of an Anki package that make none, with how many.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld card is an Image Occlusion card, which hides parts of an image."
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld cards are Image Occlusion cards, which hide parts of an image."
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "%lld cards go too, with their review logs, here and on your other devices." : {
       "comment" : "In the Cards window's question before it deletes a deck: the cards in it and in the decks inside it, counted on this Mac.",
       "localizations" : {
@@ -204,213 +170,6 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "No card here goes with it."
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "%lld cards have a side with neither text, an image nor a sound once images on the web are left out." : {
-      "comment" : "In the Import sheet, the cards of an Anki package that make none, with how many.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld card has a side with neither text, an image nor a sound once images on the web are left out."
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld cards have a side with neither text, an image nor a sound once images on the web are left out."
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "%lld cards have a side with only a sound Ficha can't read, such as a damaged file." : {
-      "comment" : "In the Import sheet, the cards of an Anki package that make none, with how many.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld card has a side with only a sound Ficha can't read, such as a damaged file."
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld cards have a side with only a sound Ficha can't read, such as a damaged file."
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "%lld cards have a side with only a sound the package lacks, as when Anki exports a deck without its media." : {
-      "comment" : "In the Import sheet, the cards of an Anki package that make none, with how many.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld card has a side with only a sound the package lacks, as when Anki exports a deck without its media."
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld cards have a side with only a sound the package lacks, as when Anki exports a deck without its media."
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "%lld cards have a side with only an image Ficha can't read, such as a damaged file." : {
-      "comment" : "In the Import sheet, the cards of an Anki package that make none, with how many.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld card has a side with only an image Ficha can't read, such as a damaged file."
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld cards have a side with only an image Ficha can't read, such as a damaged file."
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "%lld cards have a side with only an image the package lacks, as when Anki exports a deck without its media." : {
-      "comment" : "In the Import sheet, the cards of an Anki package that make none, with how many.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld card has a side with only an image the package lacks, as when Anki exports a deck without its media."
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld cards have a side with only an image the package lacks, as when Anki exports a deck without its media."
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "%lld cards have a sound Ficha can't read, such as a damaged file, and come in without it." : {
-      "comment" : "In the Import sheet's preview of an Anki package, with how many of its cards come in without a sound Ficha can't read, since their side holds something else.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld card has a sound Ficha can't read, such as a damaged file, and comes in without it."
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld cards have a sound Ficha can't read, such as a damaged file, and come in without it."
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "%lld cards have a template with a mistake, so Anki shows an error for them too." : {
-      "comment" : "In the Import sheet, the cards of an Anki package that make none, with how many.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld card has a template with a mistake, so Anki shows an error for it too."
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld cards have a template with a mistake, so Anki shows an error for them too."
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "%lld cards have more than one image on a side, and come in with the first." : {
-      "comment" : "In the Import sheet's preview of an Anki package, with how many of its cards have more than one image on a side, of which a Ficha card holds one.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld card has more than one image on a side, and comes in with the first."
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld cards have more than one image on a side, and come in with the first."
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "%lld cards have more than one sound on a side, and come in with the first." : {
-      "comment" : "In the Import sheet's preview of an Anki package, with how many of its cards have more than one sound on a side, of which a Ficha card holds one.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld card has more than one sound on a side, and comes in with the first."
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld cards have more than one sound on a side, and come in with the first."
                 }
               }
             }
@@ -483,29 +242,6 @@
         }
       }
     },
-    "%lld cards repeat cards you have, by their front:" : {
-      "comment" : "In the Import sheet, above Update and Skip, with how many cards of the file repeat.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld card repeats a card you have, by its front:"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld cards repeat cards you have, by their front:"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "%lld cards selected" : {
       "comment" : "In the Cards window's detail, when Lucas selected several cards in the grid.",
       "localizations" : {
@@ -529,29 +265,6 @@
         }
       }
     },
-    "%lld cards stay out:" : {
-      "comment" : "In the Import sheet's preview of an Anki package, above why its cards that stay out do, with how many.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld card stays out:"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld cards stay out:"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "%lld cards · from %@" : {
       "comment" : "In How fast?, under the name of the deck of a deck's .ficha file, which Open Deck… or Finder opened: how many cards it brings, and the file's name.",
       "localizations" : {
@@ -559,39 +272,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%#@cards@ · from %2$@"
-          },
-          "substitutions" : {
-            "cards" : {
-              "argNum" : 1,
-              "formatSpecifier" : "lld",
-              "variations" : {
-                "plural" : {
-                  "one" : {
-                    "stringUnit" : {
-                      "state" : "translated",
-                      "value" : "%arg card"
-                    }
-                  },
-                  "other" : {
-                    "stringUnit" : {
-                      "state" : "translated",
-                      "value" : "%arg cards"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "%lld cards · imported from %@" : {
-      "comment" : "In How fast?, under the name of the deck an import made, or the names of the decks: how many cards they hold, and the name of the file they came from.",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%#@cards@ · imported from %2$@"
           },
           "substitutions" : {
             "cards" : {
@@ -674,203 +354,8 @@
         }
       }
     },
-    "%lld lines can't be read, and stay out:" : {
-      "comment" : "In the Import sheet's preview, above the lines of the file it can't read, with how many.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld line can't be read, and stays out:"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld lines can't be read, and stay out:"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "%lld new a day" : {
       "comment" : "In How fast?, beside a pace's name, and in Settings' Pace tab, below it: how many new cards a day it brings."
-    },
-    "%lld new cards came in, %lld cards were updated and %lld were skipped." : {
-      "comment" : "In the Import sheet once it's done, with how many cards came in, were updated and skipped.",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%#@added@, %#@updated@ and %#@skipped@."
-          },
-          "substitutions" : {
-            "added" : {
-              "argNum" : 1,
-              "formatSpecifier" : "lld",
-              "variations" : {
-                "plural" : {
-                  "one" : {
-                    "stringUnit" : {
-                      "state" : "translated",
-                      "value" : "%arg new card came in"
-                    }
-                  },
-                  "other" : {
-                    "stringUnit" : {
-                      "state" : "translated",
-                      "value" : "%arg new cards came in"
-                    }
-                  }
-                }
-              }
-            },
-            "skipped" : {
-              "argNum" : 3,
-              "formatSpecifier" : "lld",
-              "variations" : {
-                "plural" : {
-                  "one" : {
-                    "stringUnit" : {
-                      "state" : "translated",
-                      "value" : "%arg was skipped"
-                    }
-                  },
-                  "other" : {
-                    "stringUnit" : {
-                      "state" : "translated",
-                      "value" : "%arg were skipped"
-                    }
-                  }
-                }
-              }
-            },
-            "updated" : {
-              "argNum" : 2,
-              "formatSpecifier" : "lld",
-              "variations" : {
-                "plural" : {
-                  "one" : {
-                    "stringUnit" : {
-                      "state" : "translated",
-                      "value" : "%arg card was updated"
-                    }
-                  },
-                  "other" : {
-                    "stringUnit" : {
-                      "state" : "translated",
-                      "value" : "%arg cards were updated"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "%lld new cards come in, at your pace, and %lld with their progress and Anki's reviews, due when Anki had them due." : {
-      "comment" : "In the Import sheet's preview of an Anki package, with how many cards come in new and how many with Anki's reviews of them, the interval Anki gave them and the day or moment Anki had them due.",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%#@new@, at your pace, and %#@withProgress@."
-          },
-          "substitutions" : {
-            "new" : {
-              "argNum" : 1,
-              "formatSpecifier" : "lld",
-              "variations" : {
-                "plural" : {
-                  "one" : {
-                    "stringUnit" : {
-                      "state" : "translated",
-                      "value" : "%arg new card comes in"
-                    }
-                  },
-                  "other" : {
-                    "stringUnit" : {
-                      "state" : "translated",
-                      "value" : "%arg new cards come in"
-                    }
-                  }
-                }
-              }
-            },
-            "withProgress" : {
-              "argNum" : 2,
-              "formatSpecifier" : "lld",
-              "variations" : {
-                "plural" : {
-                  "one" : {
-                    "stringUnit" : {
-                      "state" : "translated",
-                      "value" : "%arg with its progress and Anki's reviews, due when Anki had it due"
-                    }
-                  },
-                  "other" : {
-                    "stringUnit" : {
-                      "state" : "translated",
-                      "value" : "%arg with their progress and Anki's reviews, due when Anki had them due"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "%lld new cards come in, at your pace." : {
-      "comment" : "In the Import sheet's preview, with how many new cards the file brings.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld new card comes in, at your pace."
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld new cards come in, at your pace."
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "%lld notes with a reversed card come in as one card each, with Both ways on." : {
-      "comment" : "In the Import sheet's preview of an Anki package, with how many of its notes that make a card and that card turned over come in as one Ficha card, which is also reviewed back first: its back, then its front.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld note with a reversed card comes in as one card, with Both ways on."
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld notes with a reversed card come in as one card each, with Both ways on."
-                }
-              }
-            }
-          }
-        }
-      }
     },
     "%lld of %lld" : {
       "comment" : "Under a deck's name in the Cards window's sidebar: how many of its cards are met.",
@@ -1040,12 +525,6 @@
     "Ahead" : {
       "comment" : "A badge on a card the review panel brings before it's due, in a review ahead, and beside such a review in the Cards window's review log."
     },
-    "All cards" : {
-      "comment" : "The name the Export sheet's save panel proposes for the file of all cards."
-    },
-    "All cards (%lld)" : {
-      "comment" : "An item of the Export sheet's menu: every card, set-aside ones too, with how many."
-    },
     "Allow it in System Settings, in Login Items." : {
 
     },
@@ -1154,9 +633,6 @@
     "Bring along cards due within" : {
       "comment" : "Settings, under Interruptions: the look-ahead, how soon a card due later may come along."
     },
-    "Bring progress" : {
-      "comment" : "In the Import sheet's preview of an Anki package, the checkbox that keeps Anki's progress."
-    },
     "Camera" : {
       "comment" : "A detector in Diagnostics: the cameras in use."
     },
@@ -1258,9 +734,6 @@
     "Cards" : {
       "comment" : "The Cards window's title."
     },
-    "Cards come in with Anki's reviews of them: those Anki was reviewing keep their interval and due date, those it was learning go on with your learning steps, due when Anki said, and suspended cards come in set aside. Unticked, every card comes in new." : {
-      "comment" : "In the Import sheet's preview of an Anki package, under Bring progress: what it does."
-    },
     "Cards in %@" : {
       "comment" : "What VoiceOver names the Cards window's grid while it lists a deck's cards, those of the decks inside it too, with the deck's whole name, like “Idiomas › Inglés”."
     },
@@ -1291,12 +764,6 @@
     "Chill" : {
       "comment" : "A pace in How fast? and in Settings' Pace tab, the slowest: 1 new card a day."
     },
-    "Choose Another File…" : {
-      "comment" : "The Import sheet's button that opens another text file of cards instead."
-    },
-    "Choose File…" : {
-      "comment" : "The Import sheet's button that opens a text file of cards."
-    },
     "Close" : {
       "comment" : "The button that closes the Cards window's card form."
     },
@@ -1323,12 +790,6 @@
     },
     "Converting the sound…" : {
       "comment" : "In the place for the sound on a side of a card."
-    },
-    "Copies instructions to paste into an AI chat, so that it writes a file of cards Ficha imports (⇧⌘C)" : {
-      "comment" : "The tooltip of the Import sheet's button that copies the instructions for an AI."
-    },
-    "Copy Instructions for an AI" : {
-      "comment" : "The Import sheet's button that copies instructions to paste into an AI chat."
     },
     "Couldn't add the card" : {
       "comment" : "An alert's title over the Cards window's card form."
@@ -1359,9 +820,6 @@
     },
     "Couldn't check whether another card has this front. %@" : {
       "comment" : "In the Cards window's card form, under the front, with why it couldn't be checked."
-    },
-    "Couldn't copy the instructions" : {
-      "comment" : "An alert's title in the Import sheet, after Copy Instructions for an AI."
     },
     "Couldn't count your progress" : {
 
@@ -1395,14 +853,8 @@
     "Couldn't discard the capture" : {
       "comment" : "An alert's title in the Cards window."
     },
-    "Couldn't export the cards" : {
-      "comment" : "An alert's title in the Cards window, after Export… or over its Export sheet."
-    },
     "Couldn't flag the card" : {
 
-    },
-    "Couldn't import the cards" : {
-      "comment" : "An alert's title in the Cards window's Import sheet."
     },
     "Couldn't load the cards" : {
 
@@ -1499,9 +951,6 @@
     },
     "Couldn't read Ficha's deck “%@”" : {
       "comment" : "An alert's title in the Cards window as it opens, when the file of one of the decks that come with Ficha couldn't be read, with the deck's name."
-    },
-    "Couldn't read the file" : {
-      "comment" : "An alert's title in the Cards window's Import sheet."
     },
     "Couldn't read your decks" : {
 
@@ -1717,7 +1166,7 @@
       "comment" : "The button that declines the review panel's offer to flag a card the user forgot often: the card stays in their reviews."
     },
     "Done" : {
-      "comment" : "A button that closes the review panel once every card was gone through.\nThe Import sheet's button that closes it once the cards came in."
+      "comment" : "A button that closes the review panel once every card was gone through."
     },
     "Drop or paste a sound" : {
       "comment" : "In the empty place for the sound on a side of a card."
@@ -1785,18 +1234,6 @@
     "Expands this card" : {
       "comment" : "In the Cards window's detail of an expansion, above the card it's attached to."
     },
-    "Export" : {
-      "comment" : "A hidden button of the Cards window: ⇧⌘E, which opens the Export sheet.\nIn the Export sheet, before the menu of the cards to export."
-    },
-    "Export Cards" : {
-      "comment" : "The title of the Cards window's Export sheet."
-    },
-    "Export…" : {
-      "comment" : "The Cards window's toolbar button that exports cards to a file.\nThe Export sheet's button that opens a save panel for the file."
-    },
-    "Export… (⇧⌘E)" : {
-      "comment" : "The tooltip of the Cards window's toolbar button that exports cards."
-    },
     "Failed: %@" : {
       "comment" : "Settings, under Backups: the last backup failed, and why."
     },
@@ -1804,10 +1241,6 @@
       "comment" : "A pace in How fast? and in Settings' Pace tab, the fastest: 4 new cards a day."
     },
     "Ficha can't make sense of the review log of card %lld, so it doesn't know when the card is due. Your cards are still saved: report it." : {
-      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
-      "extractionState" : "manual"
-    },
-    "Ficha couldn't open “%@” as a zip: it may be damaged. Zip the text file of cards and its images and sounds again, and import that." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },
@@ -1832,10 +1265,6 @@
       "extractionState" : "manual"
     },
     "Ficha couldn't read the deck in “%@”: the file may be damaged. Ask whoever sent it for the deck again, and open that." : {
-      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
-      "extractionState" : "manual"
-    },
-    "Ficha couldn't read “%@” as an Anki package: it may be damaged. Export the deck from Anki again, and import that." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },
@@ -1866,18 +1295,9 @@
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },
-    "Ficha reads a text file with one card per line: its front, back, tags, type and source, separated by tabs, commas or semicolons, as a spreadsheet, an AI or Anki's Notes in Plain Text save it. Cards with images or sounds come in a zip, with the text file and those files. Anki's decks come in from the .apkg files Anki exports." : {
-      "comment" : "Under the title of the Cards window's Import sheet, before a file is chosen."
-    },
     "Ficha reads files only from your Downloads folder, and “%@” isn't in it. Copy the file to Downloads, and give its path there." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
-    },
-    "Ficha saves the cards to a text file that another Ficha imports, and Anki too. It holds what the cards say, never your progress." : {
-      "comment" : "Under the title of the Cards window's Export sheet."
-    },
-    "Ficha saves the cards to a zip, with a text file and their images and sounds, that another Ficha imports. It holds what the cards say, never your progress." : {
-      "comment" : "Under the title of the Cards window's Export sheet, when a card has an image or a sound."
     },
     "Ficha's Decks" : {
       "comment" : "A section of the Cards window's sidebar, after Your Decks: the decks that come with Ficha, which the user hasn't added."
@@ -2146,32 +1566,11 @@
     "Images they share: %@" : {
       "comment" : "Settings, under Backups, below how many copies there are: what the images on their cards weigh, each kept once for all the copies."
     },
-    "Import" : {
-      "comment" : "A hidden button of the Cards window: ⇧⌘I, which opens the Import sheet.\nThe Import sheet's button that imports the cards as previewed."
-    },
-    "Import Cards" : {
-      "comment" : "The title of the Cards window's Import sheet, before a file is chosen."
-    },
-    "Import Done" : {
-      "comment" : "The title of the Cards window's Import sheet, once the cards came in."
-    },
-    "Import “%@”" : {
-      "comment" : "The title of the Cards window's Import sheet, with the name of the file chosen."
-    },
     "Imported" : {
       "comment" : "In the key of the Cards window's review log chart, and for VoiceOver, the name of the chart's point: an import from Anki brought the card in with its progress."
     },
     "Imported, due on %@" : {
       "comment" : "In the Cards window's review log: an import from Anki brought the card in with its progress, due on this day, as Anki had it, like “Imported, due on Oct 20, 2026”."
-    },
-    "Importing…" : {
-      "comment" : "In the Import sheet, beside a spinner, while it imports the cards."
-    },
-    "Import…" : {
-      "comment" : "A button in the Cards window while the user has no cards.\nThe Cards window's toolbar button that imports cards from a file."
-    },
-    "Import… (⇧⌘I)" : {
-      "comment" : "The tooltip of the Cards window's toolbar button that imports cards."
     },
     "In days, up to %@" : {
       "comment" : "Settings, under Advanced: below the longest interval, its unit and the most it can be."
@@ -2238,82 +1637,6 @@
     },
     "Learning steps" : {
       "comment" : "Settings, under Advanced: the header of the learning steps."
-    },
-    "Leave Out “%@”" : {
-      "comment" : "The Import sheet's button that leaves out a tag, which shows a minus, with the tag's whole name, like “Medicina › Anatomía”.\nThe tooltip of the Import sheet's button that leaves out a tag, with the tag's whole name, like “Medicina › Anatomía”."
-    },
-    "Left out" : {
-      "comment" : "The Import sheet's field for a tag of an Anki package, empty: the cards don't get it."
-    },
-    "Line %lld has a quote inside a quoted field that isn't doubled." : {
-      "comment" : "In the Import sheet, a line the file can't read."
-    },
-    "Line %lld has a side with only the image “%@”, which Ficha can't read as an image." : {
-      "comment" : "In the Import sheet, a line of a zip's text file that makes no card, with an image's name.",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Line %1$lld has a side with only the image “%2$@”, which Ficha can't read as an image."
-          }
-        }
-      }
-    },
-    "Line %lld has a side with only the image “%@”, which isn't in the zip." : {
-      "comment" : "In the Import sheet, a line of a zip's text file that makes no card, with an image's name.",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Line %1$lld has a side with only the image “%2$@”, which isn't in the zip."
-          }
-        }
-      }
-    },
-    "Line %lld has a side with only the sound “%@”, which Ficha can't read as a sound." : {
-      "comment" : "In the Import sheet, a line of a zip's text file that makes no card, with a sound's name.",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Line %1$lld has a side with only the sound “%2$@”, which Ficha can't read as a sound."
-          }
-        }
-      }
-    },
-    "Line %lld has a side with only the sound “%@”, which isn't in the zip." : {
-      "comment" : "In the Import sheet, a line of a zip's text file that makes no card, with a sound's name.",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Line %1$lld has a side with only the sound “%2$@”, which isn't in the zip."
-          }
-        }
-      }
-    },
-    "Line %lld has no back." : {
-      "comment" : "In the Import sheet, a line the file can't read."
-    },
-    "Line %lld has no front." : {
-      "comment" : "In the Import sheet, a line the file can't read."
-    },
-    "Line %lld has one column: a front with no back after it." : {
-      "comment" : "In the Import sheet, a line the file can't read."
-    },
-    "Line %lld has the type “%@”, which isn't one of yours, and only a file that names its Type column in a #columns header makes new types." : {
-      "comment" : "In the Import sheet, a line the file can't read, with the type it has, which names no card type the user has, in a file without a #columns header that names its Type column.",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Line %1$lld has the type “%2$@”, which isn't one of yours, and only a file that names its Type column in a #columns header makes new types."
-          }
-        }
-      }
-    },
-    "Line %lld opens a quote that nothing closes." : {
-      "comment" : "In the Import sheet, a line the file can't read."
     },
     "Longest interval" : {
       "comment" : "Settings, under Advanced: the longest a card can wait after a review, in days."
@@ -2467,10 +1790,7 @@
       "comment" : "The button that moves the copies Settings' Backups asks about to the Trash."
     },
     "Name" : {
-      "comment" : "The field of the Cards window's sheet that names a new deck, or of the Change Deck or Import sheet while it names one.\nThe field of the sheet that renames a deck, its whole name."
-    },
-    "Name the deck" : {
-      "comment" : "The Import sheet's field for a deck the cards come into, empty: Import stays off until it names one."
+      "comment" : "The field of the Cards window's sheet that names a new deck, or of the Change Deck sheet while it names one.\nThe field of the sheet that renames a deck, its whole name."
     },
     "Never" : {
       "comment" : "Settings: the review panel never takes the keyboard on its own."
@@ -2485,10 +1805,10 @@
       "comment" : "The tooltip of the Cards window's toolbar button that opens the card form."
     },
     "New Deck" : {
-      "comment" : "The title of the Cards window's sheet that names a new deck, after New Deck…, or of the Change Deck or Import sheet while it names one."
+      "comment" : "The title of the Cards window's sheet that names a new deck, after New Deck…, or of the Change Deck sheet while it names one."
     },
     "New Deck…" : {
-      "comment" : "A button of the Cards window's Change Deck sheet: it asks for a new deck's name.\nAn item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu above the grid, and of the menu of the Your Decks title in the sidebar: it asks for a new deck's name, and OK makes the deck.\nThe last item of a menu of decks in the Cards window, a card's Deck field or the Import sheet's: it asks for a new deck's name."
+      "comment" : "A button of the Cards window's Change Deck sheet: it asks for a new deck's name.\nAn item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu above the grid, and of the menu of the Your Decks title in the sidebar: it asks for a new deck's name, and OK makes the deck.\nThe last item of a menu of decks in the Cards window, a card's Deck field: it asks for a new deck's name."
     },
     "New Deck… (⌘N)" : {
       "comment" : "The tooltip of the Change Deck sheet's button that asks for a new deck's name."
@@ -2602,9 +1922,6 @@
     },
     "No reviews yet" : {
       "comment" : "In the Cards window's detail, in place of the review log of a card not seen yet."
-    },
-    "No tag" : {
-      "comment" : "The Import sheet's tag field, empty: the cards get no tag of the file's."
     },
     "None" : {
       "comment" : "In the menu's Prioritize submenu: no deck is a priority deck. Choosing it clears them.\nThe empty field of the sheet that gives a deck an emoji."
@@ -2814,9 +2131,6 @@
     "Put Back (⌘E)" : {
       "comment" : "The tooltip of the Cards window's button that puts the cards back."
     },
-    "Put every card in" : {
-      "comment" : "In the Import sheet, before the menu of the deck every card it imports comes into."
-    },
     "Put it first" : {
       "comment" : "A button of Settings' Pace tab, beside a deck in the queue: its new cards come first.\nA checkbox of How fast?: the deck coming in goes first in the queue."
     },
@@ -2825,9 +2139,6 @@
     },
     "Quit" : {
 
-    },
-    "Reading “%@”…" : {
-      "comment" : "In the Import sheet, beside a spinner, while it reads the file chosen, with its name."
     },
     "Record Shortcut" : {
       "comment" : "Settings: the capture shortcut's button, while there's none."
@@ -2858,9 +2169,6 @@
     },
     "Rename…" : {
       "comment" : "An item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu above the grid: it asks for the deck's whole name, which moves it too."
-    },
-    "Repeated cards" : {
-      "comment" : "In the Import sheet, the name of the Update and Skip choice, unseen."
     },
     "Restore" : {
       "comment" : "The button that restores the copy Settings' Backups asks about."
@@ -2942,12 +2250,6 @@
         }
       }
     },
-    "Selected cards" : {
-      "comment" : "The name the Export sheet's save panel proposes for the file of the selected cards."
-    },
-    "Selected cards (%lld)" : {
-      "comment" : "An item of the Export sheet's menu: the cards selected in the grid, with how many."
-    },
     "Set Aside" : {
       "comment" : "A button of the Cards window that sets the selected cards aside, until Lucas puts them back.\nAn item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu above the grid, ticked while the deck is set aside: its cards, and those of the decks inside it, are out of Lucas's reviews for now.\nAn item of the review panel's ⋯ menu, whose key is E: it sets aside the card the panel shows, which shows up no more until the user puts it back in the Cards window."
     },
@@ -2991,9 +2293,6 @@
     },
     "Size" : {
       "comment" : "Settings, under Backups: the column of what each copy weighs."
-    },
-    "Skip them" : {
-      "comment" : "In the Import sheet, the choice that leaves the cards the file repeats."
     },
     "Snoozed" : {
       "comment" : "How an appearance closed, in Diagnostics."
@@ -3046,12 +2345,6 @@
     "Sync with iCloud" : {
       "comment" : "Settings, under Sync: the switch that turns sync on and off."
     },
-    "Tag" : {
-      "comment" : "The Import sheet's field for a tag the imported cards get."
-    },
-    "Tag every card with" : {
-      "comment" : "In the Import sheet, before the field for the tag every card it imports gets."
-    },
     "Take the keyboard" : {
       "comment" : "Settings, under Interruptions: when the review panel takes the keyboard as it shows up on its own."
     },
@@ -3075,22 +2368,6 @@
       "extractionState" : "manual"
     },
     "That would leave card %lld with a blank front or back, so nothing changed: give each side text, an image or a sound." : {
-      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
-      "extractionState" : "manual"
-    },
-    "The #%@ line of “%@” says “%@”, which isn't a column's number. Make it the number of the column, counting the first one as 1." : {
-      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
-      "extractionState" : "manual"
-    },
-    "The #columns line of “%@” names no %@ column, which every card needs. Name its columns Front, Back, Tags, Type and Source, or remove the line." : {
-      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
-      "extractionState" : "manual"
-    },
-    "The #html line of “%@” says “%@”: make it true when the file holds HTML, or false when it doesn't." : {
-      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
-      "extractionState" : "manual"
-    },
-    "The #separator line of “%@” says “%@”, which Ficha can't separate columns by. Make it Tab, Comma or Semicolon, or remove it." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },
@@ -3130,15 +2407,6 @@
     "The capture this form was opened from left the inbox outside this window meanwhile, approved or discarded in a refine session, so the card wasn't added. To keep what you typed, copy it before you close the form." : {
       "comment" : "An alert's message over the Cards window's card form, when its capture already left the inbox."
     },
-    "The cards bring new types: %@." : {
-      "comment" : "In the Import sheet's preview of a text file, with the names of the card types of the user's own the import makes, as a list, since the user has no type by those names."
-    },
-    "The cards come into these decks:" : {
-      "comment" : "In the Import sheet's preview, above the decks its cards come into, an Anki package's or a text file's, each in a field the user renames."
-    },
-    "The cards get these tags, from Anki's notes:" : {
-      "comment" : "In the Import sheet's preview of an Anki package, above the tags its cards get."
-    },
     "The cards you create with New Card show up here, each in its deck." : {
       "comment" : "In the Cards window, while it has no deck to show, since the user has no cards."
     },
@@ -3148,9 +2416,6 @@
     },
     "The review panel" : {
       "comment" : "A heading of Settings' Interruptions tab: over how the review panel behaves when it shows up on its own."
-    },
-    "Their images and sounds weigh %@, and go up to your iCloud." : {
-      "comment" : "In the Import sheet's preview while sync is on: what the images and sounds the import brings, which go up to the user's iCloud, weigh, said from 100 MB."
     },
     "Their review logs go too, and you can't bring them back." : {
       "comment" : "Under the title of the Cards window's question before it deletes several cards."
@@ -3191,9 +2456,6 @@
     "This card was deleted meanwhile, in the Cards window. Close the review panel and open “Review now” again." : {
       "comment" : "An alert's message in the review panel, when the card it shows was deleted meanwhile."
     },
-    "This copy of Ficha is missing its instructions for an AI. Install Ficha again, or read them in Ficha's repository on GitHub, in docs/instructions-for-an-ai.md." : {
-      "comment" : "An alert's message in the Import sheet, when the app has no instructions for an AI."
-    },
     "This copy of Ficha is missing the deck “%@”, so it can't be added. Install Ficha again, then add it." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
@@ -3203,9 +2465,6 @@
     },
     "This repeats a card" : {
 
-    },
-    "To undo it, restore the copy saved before it, in Settings › Advanced." : {
-      "comment" : "In the Import sheet once it's done, when Ficha saved a copy before the import."
     },
     "Turn Off Both Ways" : {
       "comment" : "A button of the Cards window that has the selected cards reviewed front first only, no longer back first too."
@@ -3239,12 +2498,6 @@
     },
     "Up next" : {
       "comment" : "A heading of Settings' Pace tab, over the queue of decks new cards come from."
-    },
-    "Update them with Anki's back and tags, keeping their deck and progress" : {
-      "comment" : "In the Import sheet, the choice that updates the cards an Anki package repeats."
-    },
-    "Update them with the file's back, tags, type and source, keeping their deck and progress" : {
-      "comment" : "In the Import sheet, the choice that updates the cards the file repeats."
     },
     "Version %@ (%@)" : {
       "comment" : "Settings, at the foot of General: the release version, then the build number in parentheses.",
@@ -3285,7 +2538,7 @@
       "comment" : "In Diagnostics: Lucas opened the review panel with Review now, from the menu or the Shortcuts app."
     },
     "Write “::” between a deck and a deck inside it, as in “Idiomas::Inglés”." : {
-      "comment" : "Under the title of the Cards window's sheet that names a new deck, after New Deck…, or of the Change Deck or Import sheet while it names one."
+      "comment" : "Under the title of the Cards window's sheet that names a new deck, after New Deck…, or of the Change Deck sheet while it names one."
     },
     "Write “::” between a deck and a deck inside it, as in “Idiomas::Inglés”. The decks inside this one move with it, and a name another deck has joins the two." : {
       "comment" : "Under the title of the Cards window's sheet that renames a deck."
@@ -3516,14 +2769,6 @@
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },
-    "“%@” holds no text file of cards: Ficha looks for one ending in .txt, .csv or .tsv beside the images and sounds. Add it, zip them again, and import that." : {
-      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
-      "extractionState" : "manual"
-    },
-    "“%@” holds several text files of cards, %@, and Ficha imports one at a time. Zip each with its images and sounds on its own, and import them one by one." : {
-      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
-      "extractionState" : "manual"
-    },
     "“%@” is Default's name, and Default holds the cards no other deck does, so nothing changed. To move cards there, pick Default; to make a deck, write another name." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
@@ -3536,10 +2781,6 @@
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },
-    "“%@” isn't UTF-8 text, which is what Ficha reads. Save it again as UTF-8 text, or from a spreadsheet as “CSV UTF-8”, and import that." : {
-      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
-      "extractionState" : "manual"
-    },
     "“%@” isn't an image Ficha can read. Give a picture as a side's image instead, such as a JPEG or a PNG, and a sound as its sound." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
@@ -3549,10 +2790,6 @@
       "extractionState" : "manual"
     },
     "“%@” isn't pinned, maybe since another of your devices unpinned it, so nothing moved. Pin it first." : {
-      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
-      "extractionState" : "manual"
-    },
-    "“%@” was exported by an Anki newer than Ficha knows. In Anki, export the deck again with “Support older Anki versions” ticked, and import that." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },

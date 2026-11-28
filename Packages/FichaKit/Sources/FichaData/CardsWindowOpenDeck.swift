@@ -75,9 +75,7 @@ extension CardsWindowState {
     /// place in the queue, or else last. When the queue can't be read, it
     /// asks nothing, and says why. It forgets the file once it asks.
     mutating func askForTheDeckFileOpened() {
-        guard let file = deckFileOpened, question == nil, editing == nil, cardForm == nil, importing == nil,
-            exporting == nil
-        else { return }
+        guard let file = deckFileOpened, question == nil, editing == nil, cardForm == nil else { return }
         deckFileOpened = nil
         do throws(EngineError) {
             let cards = try engine.cardsForHowFast(adding: file)
@@ -112,8 +110,7 @@ extension CardsWindowState {
 
 /// Work Open Deck… starts, reading a deck's `.ficha` for How fast?, which the
 /// app runs away from the main actor and hands back to the window's
-/// `finishOpenDeck(_:)`, as the Import sheet's `ImportWork`: a big file
-/// takes a while.
+/// `finishOpenDeck(_:)`: a big file takes a while.
 public struct OpenDeckWork: Sendable {
     /// What the work read.
     public struct Done: Sendable {

@@ -28,10 +28,9 @@ extension View {
 }
 
 /// How fast? (ADR 0034, #491), the sheet over the Cards window as a deck
-/// comes in, as the mock draws it: the deck's emoji and name, or the names
-/// of the decks an import made, with no emoji, and a line under them, "14
-/// cards · imported from Arte.apkg", "40 cards · one of Ficha's decks", "12
-/// cards · from Capitales.ficha" or "No cards yet"; the three paces, Chill,
+/// comes in, as the mock draws it: the deck's emoji and name, and a line
+/// under them, "40 cards · one of Ficha's decks", "12 cards · from
+/// Capitales.ficha" or "No cards yet"; the three paces, Chill,
 /// Steady and Faster, each a tile with its radio, its new cards a day and,
 /// when the deck has new cards, when they're all met at it, the chosen one
 /// in the accent; where the deck goes in the queue new cards come from,
@@ -138,21 +137,18 @@ struct HowFastSheet: View {
         }
     }
 
-    /// The emoji of the deck it asks about, or nil while it shows none, as
-    /// for several decks.
+    /// The emoji of the deck it asks about, or nil while it shows none.
     private var emoji: String? {
         switch howFast.subject {
         case .deck: howFast.decks.first?.shownEmoji
-        case .decks: nil
         case .fichaDeck, .deckFile: howFast.emoji
         }
     }
 
-    /// The name of the deck it asks about, or of the decks, as a list.
+    /// The name of the deck it asks about.
     private var name: String {
         switch howFast.subject {
         case .deck(let deck): Deck.shownName(deck)
-        case .decks(let decks): decks.map(Deck.shownName).formatted(.list(type: .and))
         case .fichaDeck(let deck): deck.name
         case .deckFile(let file): Deck.shownName(file.deck)
         }
@@ -332,13 +328,6 @@ extension CardsWindowState.HowFast.Line {
         switch self {
         case .noCards:
             Deck.noCardsYet
-        case .imported(let cardCount, let fileName):
-            String(
-                localized: "\(cardCount) cards · imported from \(fileName)",
-                comment: """
-                    In How fast?, under the name of the deck an import made, or the names of the decks: how many \
-                    cards they hold, and the name of the file they came from.
-                    """)
         case .fichaDeck(let cardCount):
             String(
                 localized: "\(cardCount) cards · one of Ficha's decks",

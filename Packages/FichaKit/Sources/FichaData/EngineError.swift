@@ -189,11 +189,11 @@ public enum EngineError: Error, Equatable {
     /// from the Backups folder or removed, or isn't there. The engine logs
     /// why.
     case soundsFolder
-    /// The file of cards with this name can't be imported, for the reason
-    /// the problem gives, so nothing was read from it.
-    case unreadableFile(String, CardsFileProblem)
-    /// The file with this name couldn't be written, so the cards weren't
-    /// exported to it. The engine logs why.
+    /// The deck's `.ficha` with this name can't come in, for the reason the
+    /// problem gives, so nothing was read from it.
+    case unreadableFile(String, DeckFileProblem)
+    /// The file with this name couldn't be written, so the deck's cards
+    /// weren't exported to it. The engine logs why.
     case unwritableFile(String)
     /// The file of the one of Ficha's decks with this name isn't in the app,
     /// which comes with it, so it can't be added: the copy of the app is
@@ -582,82 +582,12 @@ extension EngineError: LocalizedError {
     }
 }
 
-extension CardsFileProblem {
+extension DeckFileProblem {
     /// What happened to the file named `name`, and what to do about it.
     fileprivate func message(forFileNamed name: String) -> LocalizedStringResource {
         switch self {
         case .cannotOpen:
             LocalizedStringResource("Ficha couldn't open “\(name)”. Check that the file is still there, and try again.")
-        case .notUTF8:
-            LocalizedStringResource(
-                """
-                “\(name)” isn't UTF-8 text, which is what Ficha reads. Save it again as UTF-8 text, or from a \
-                spreadsheet as “CSV UTF-8”, and import that.
-                """
-            )
-        case .unknownSeparator(let separator):
-            LocalizedStringResource(
-                """
-                The #separator line of “\(name)” says “\(separator)”, which Ficha can't separate columns by. Make \
-                it Tab, Comma or Semicolon, or remove it.
-                """
-            )
-        case .unknownHTML(let value):
-            LocalizedStringResource(
-                """
-                The #html line of “\(name)” says “\(value)”: make it true when the file holds HTML, or false when \
-                it doesn't.
-                """
-            )
-        case .unknownColumnNumber(let header, let value):
-            LocalizedStringResource(
-                """
-                The #\(header) line of “\(name)” says “\(value)”, which isn't a column's number. Make it the \
-                number of the column, counting the first one as 1.
-                """
-            )
-        case .missingColumn(let column):
-            LocalizedStringResource(
-                """
-                The #columns line of “\(name)” names no \(column.rawValue) column, which every card needs. Name \
-                its columns Front, Back, Tags, Type and Source, or remove the line.
-                """
-            )
-        case .unreadableZip:
-            LocalizedStringResource(
-                """
-                Ficha couldn't open “\(name)” as a zip: it may be damaged. Zip the text file of cards and its \
-                images and sounds again, and import that.
-                """
-            )
-        case .noTextFileInZip:
-            LocalizedStringResource(
-                """
-                “\(name)” holds no text file of cards: Ficha looks for one ending in .txt, .csv or .tsv beside \
-                the images and sounds. Add it, zip them again, and import that.
-                """
-            )
-        case .severalTextFilesInZip(let files):
-            LocalizedStringResource(
-                """
-                “\(name)” holds several text files of cards, \(quotedList(files)), and Ficha imports one at a \
-                time. Zip each with its images and sounds on its own, and import them one by one.
-                """
-            )
-        case .unreadableAnkiPackage:
-            LocalizedStringResource(
-                """
-                Ficha couldn't read “\(name)” as an Anki package: it may be damaged. Export the deck from Anki \
-                again, and import that.
-                """
-            )
-        case .ankiPackageTooNew:
-            LocalizedStringResource(
-                """
-                “\(name)” was exported by an Anki newer than Ficha knows. In Anki, export the deck again with \
-                “Support older Anki versions” ticked, and import that.
-                """
-            )
         case .notADeckFile:
             LocalizedStringResource(
                 """
