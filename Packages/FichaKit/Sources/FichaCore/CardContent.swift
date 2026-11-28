@@ -1,7 +1,7 @@
 import Foundation
 
 /// What a card holds, and the one check of what a valid card is, wherever it
-/// comes from: approving a capture or an expansion, fixing or editing a card,
+/// comes from: adding cards with `ficha add`, fixing or editing a card,
 /// creating one, and the sample cards. A new way in, such as a form or an
 /// import, builds one too, and never writes a card's content around it, so
 /// that no way in lets in a card another refuses. Each side, the front and

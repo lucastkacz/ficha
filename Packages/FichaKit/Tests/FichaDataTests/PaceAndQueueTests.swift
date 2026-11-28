@@ -43,14 +43,14 @@ struct PaceAndQueueTests {
         .bug(id: 490))
     func newCardsComeFromTheFirstDeckAlone() throws {
         time.move(to: try morning(of: 13, in: calendar))
-        let ubuntu = try approveInDeck("ubuntu", deck: "Lenguaje", in: engine)
+        let ubuntu = try newCardInDeck("ubuntu", deck: "Lenguaje", in: engine)
         try engine.meet(ubuntu)
         time.move(to: try morning(of: 14, in: calendar))
-        var arte = try ["La Gioconda", "Las Meninas"].map { try approveInDeck($0, deck: "Arte", in: engine) }
+        var arte = try ["La Gioconda", "Las Meninas"].map { try newCardInDeck($0, deck: "Arte", in: engine) }
         time.advance(by: minutes(1))
-        let coliseo = try approveInDeck("Coliseo", deck: "Historia", in: engine)
+        let coliseo = try newCardInDeck("Coliseo", deck: "Historia", in: engine)
         time.advance(by: minutes(1))
-        arte.append(try approveInDeck("El Grito", deck: "Arte", in: engine))
+        arte.append(try newCardInDeck("El Grito", deck: "Arte", in: engine))
 
         let firstDay = try meetEachNewCard()
         time.move(to: try morning(of: 15, in: calendar))
@@ -68,16 +68,16 @@ struct PaceAndQueueTests {
         "a deck that comes in goes last in the queue, or first when asked, and can move to any place, while a deck inside another comes with it",
         .bug(id: 490))
     func aDeckThatComesInGoesLast() throws {
-        try approveInDeck("La Gioconda", deck: "Arte", in: engine)
+        try newCardInDeck("La Gioconda", deck: "Arte", in: engine)
         time.advance(by: minutes(1))
-        try approveInDeck("Coliseo", deck: "Historia", in: engine)
+        try newCardInDeck("Coliseo", deck: "Historia", in: engine)
         time.advance(by: minutes(1))
-        try approveInDeck("Las Meninas", deck: "Arte::Barroco", in: engine)
+        try newCardInDeck("Las Meninas", deck: "Arte::Barroco", in: engine)
         let withADeckInside = try queuedDecks()
-        try approveInDeck("Bach", deck: "Música", in: engine)
+        try newCardInDeck("Bach", deck: "Música", in: engine)
         let lastIn = try queuedDecks()
         time.advance(by: minutes(1))
-        let ubuntu = try approveInDeck("ubuntu", deck: "Lenguaje", in: engine)
+        let ubuntu = try newCardInDeck("ubuntu", deck: "Lenguaje", in: engine)
         try engine.moveInQueue(deck: "Lenguaje", to: .first)
         let firstIn = try queuedDecks()
         let newCards = try engine.reviewNow(settings)
@@ -98,11 +98,11 @@ struct PaceAndQueueTests {
         "a set-aside deck leaves the queue and comes back to its place, and a priority deck's new cards come first",
         .bug(id: 490))
     func aSetAsideDeckLeavesTheQueue() throws {
-        try approveInDeck("La Gioconda", deck: "Arte", in: engine)
+        try newCardInDeck("La Gioconda", deck: "Arte", in: engine)
         time.advance(by: minutes(1))
-        let coliseo = try approveInDeck("Coliseo", deck: "Historia", in: engine)
+        let coliseo = try newCardInDeck("Coliseo", deck: "Historia", in: engine)
         time.advance(by: minutes(1))
-        let bach = try approveInDeck("Bach", deck: "Música::Barroco", in: engine)
+        let bach = try newCardInDeck("Bach", deck: "Música::Barroco", in: engine)
 
         try engine.setAside(deck: "Arte")
         let setAside = try queuedDecks()
@@ -127,11 +127,11 @@ struct PaceAndQueueTests {
         .bug(id: 490))
     func aDecksFinishDate() throws {
         for front in ["La Gioconda", "Las Meninas", "El Grito"] {
-            try approveInDeck(front, deck: "Arte", in: engine)
+            try newCardInDeck(front, deck: "Arte", in: engine)
         }
         time.advance(by: minutes(1))
         for front in ["Coliseo", "Partenón", "Machu Picchu", "Chichén Itzá"] {
-            try approveInDeck(front, deck: "Historia", in: engine)
+            try newCardInDeck(front, deck: "Historia", in: engine)
         }
         var faster = settings
         faster.newCardsPerDay = Pace.faster.newCardsPerDay
@@ -171,8 +171,8 @@ struct PaceAndQueueTests {
         "a deck's finish date counts a card's back-first way still to come and the new cards met today, and today brings none once active hours are over",
         .bug(id: 490))
     func aDecksFinishDateCountsWhatTodayStillBrings() throws {
-        let gioconda = try approveInDeck("La Gioconda", deck: "Arte", in: engine)
-        try approveInDeck("Las Meninas", deck: "Arte", in: engine)
+        let gioconda = try newCardInDeck("La Gioconda", deck: "Arte", in: engine)
+        try newCardInDeck("Las Meninas", deck: "Arte", in: engine)
         let bothWays = try #require(try engine.setBothWays(true, of: [gioconda.id]).first)
         var faster = settings
         faster.newCardsPerDay = Pace.faster.newCardsPerDay
@@ -195,7 +195,7 @@ struct PaceAndQueueTests {
     @Test("decks that came in at once go in the queue by name, and a move parts them", .bug(id: 490))
     func decksThatCameInAtOnceGoByName() throws {
         for deck in ["Música", "Historia", "Arte"] {
-            try approveInDeck("Una de \(deck)", deck: deck, in: engine)
+            try newCardInDeck("Una de \(deck)", deck: deck, in: engine)
         }
         let atOnce = try queuedDecks()
         try engine.moveInQueue(deck: "Música", to: .at(1))
@@ -211,10 +211,10 @@ struct PaceAndQueueTests {
     @Test("a move that passes no deck changes no place, not even of decks that came in at once", .bug(id: 490))
     func aMoveThatPassesNoDeckChangesNoPlace() throws {
         for deck in ["Arte", "Biología", "Música"] {
-            try approveInDeck("Una de \(deck)", deck: deck, in: engine)
+            try newCardInDeck("Una de \(deck)", deck: deck, in: engine)
         }
         time.advance(by: minutes(1))
-        try approveInDeck("Coliseo", deck: "Historia", in: engine)
+        try newCardInDeck("Coliseo", deck: "Historia", in: engine)
 
         try engine.setAside(deck: "Música")
         try engine.moveInQueue(deck: "Historia", to: .last)
@@ -229,7 +229,7 @@ struct PaceAndQueueTests {
     @Test("a move among decks that came in at once parts those it passes, not the deck after them", .bug(id: 490))
     func aMoveAmongDecksThatCameInAtOncePartsThoseItPasses() throws {
         for deck in ["Arte", "Biología", "Historia", "Música"] {
-            try approveInDeck("Una de \(deck)", deck: deck, in: engine)
+            try newCardInDeck("Una de \(deck)", deck: deck, in: engine)
         }
 
         try engine.setAside(deck: "Música")
@@ -246,7 +246,7 @@ struct PaceAndQueueTests {
     @Test("a move with decks at one place on either side of those it passes parts those after them too", .bug(id: 490))
     func aMoveWithDecksAtOnePlaceOnEitherSidePartsTheDecksAfterThem() throws {
         for deck in ["Arte", "Biología", "Historia", "Música", "Zoología"] {
-            try approveInDeck("Una de \(deck)", deck: deck, in: engine)
+            try newCardInDeck("Una de \(deck)", deck: deck, in: engine)
         }
 
         try engine.setAside(deck: "Zoología")
@@ -267,15 +267,15 @@ struct PaceAndQueueTests {
         .bug(id: 490))
     func priorityDecksInTheQueue() throws {
         for front in ["Coliseo", "Partenón"] {
-            try approveInDeck(front, deck: "Historia", in: engine)
+            try newCardInDeck(front, deck: "Historia", in: engine)
         }
         time.advance(by: minutes(1))
-        try approveInDeck("Las Meninas", deck: "Arte::Barroco", in: engine)
+        try newCardInDeck("Las Meninas", deck: "Arte::Barroco", in: engine)
         for front in ["La Gioconda", "El nacimiento de Venus"] {
-            try approveInDeck(front, deck: "Arte::Renacimiento", in: engine)
+            try newCardInDeck(front, deck: "Arte::Renacimiento", in: engine)
         }
         time.advance(by: minutes(1))
-        try approveInDeck("Bach", deck: "Música", in: engine)
+        try newCardInDeck("Bach", deck: "Música", in: engine)
         try engine.setPriority(true, ofDeck: "Arte::Barroco")
         try engine.setPriority(true, ofDeck: "Música")
 

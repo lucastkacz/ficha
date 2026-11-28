@@ -150,7 +150,7 @@ final class ImportingTests {
 
     @Test("a card the import updates keeps its deck, whatever deck the file names")
     func anUpdatedCardKeepsItsDeck() async throws {
-        let serendipia = try approve(card(.word, front: "serendipia", back: "Un hallazgo."), in: engine)
+        let serendipia = try newCard(card(.word, front: "serendipia", back: "Un hallazgo."), in: engine)
         try engine.changeDeck(of: [serendipia.id], to: "Lecturas")
         let file = try file(
             "Palabras.txt",
@@ -360,8 +360,8 @@ final class ImportingTests {
         "a card's tags that differ only in case and accents come in as one, named as the user named the proposed tag, or as the user's card the import updates has it, but año and ano stay two"
     )
     func tagsThatDifferOnlyInCaseAndAccentsComeInAsOne() async throws {
-        try approve(card(.concept, front: "petricor", back: "Un olor.", tags: ["Filosofía Griega"]), in: engine)
-        try approve(card(.word, front: "efímero", back: "Breve.", tags: ["FILOSOFÍA GRIEGA"]), in: engine)
+        try newCard(card(.concept, front: "petricor", back: "Un olor.", tags: ["Filosofía Griega"]), in: engine)
+        try newCard(card(.word, front: "efímero", back: "Breve.", tags: ["FILOSOFÍA GRIEGA"]), in: engine)
         let file = try file(
             "Filosofía griega.txt",
             """
@@ -383,9 +383,9 @@ final class ImportingTests {
         "repeated cards are updated with everything the file gives them but their front, keeping their progress and review log"
     )
     func repeatedCardsAreUpdatedKeepingTheirProgressAndReviewLog() async throws {
-        let serendipia = try approve(
+        let serendipia = try newCard(
             card(.word, front: "serendipia", back: "Un hallazgo.", tags: ["palabras"], source: "Un libro"), in: engine)
-        let petricor = try approve(
+        let petricor = try newCard(
             card(.concept, front: "petricor", back: "Un olor.", tags: ["lenguaje"], source: "Wikipedia"), in: engine)
         try engine.climb(serendipia, goods: 2, movingForward: time)
         try engine.meet(petricor)
@@ -424,8 +424,8 @@ final class ImportingTests {
     // a card changes.
     @Test("an import that updates a repeated card with a new back keeps when; one that brings the same back doesn't")
     func anImportThatUpdatesABackKeepsWhen() async throws {
-        try approve(card(.word, front: "serendipia", back: "Un hallazgo."), in: engine)
-        try approve(card(.word, front: "petricor", back: "El olor de la tierra mojada."), in: engine)
+        try newCard(card(.word, front: "serendipia", back: "Un hallazgo."), in: engine)
+        try newCard(card(.word, front: "petricor", back: "El olor de la tierra mojada."), in: engine)
         time.advance(by: hours(1))
         let file = try file(
             "Palabras.txt", "serendipia\tUn hallazgo valioso, por casualidad.\npetricor\tEl olor de la tierra mojada.\n"
@@ -441,7 +441,7 @@ final class ImportingTests {
 
     @Test("repeated cards are skipped when chosen, and stay as they were")
     func repeatedCardsAreSkippedWhenChosen() async throws {
-        let serendipia = try approve(
+        let serendipia = try newCard(
             card(.word, front: "serendipia", back: "Un hallazgo.", tags: ["palabras"]), in: engine)
         let file = try file("Palabras.txt", "serendipia\tUn hallazgo valioso.\nefímero\tQue dura poco.\n")
 
@@ -457,7 +457,7 @@ final class ImportingTests {
     // has them flat, and the same deck imported after brings them in Unicode.
     @Test("an imported front repeats a card's front that differs only in superscripts and subscripts")
     func superscriptsAndSubscriptsDontKeepImportedFrontsApart() async throws {
-        let calcium = try approve(card(.word, front: "Ca2+", back: "Un ion."), in: engine)
+        let calcium = try newCard(card(.word, front: "Ca2+", back: "Un ion."), in: engine)
         let file = try file("Química.txt", "Ca²⁺\tEl ion del calcio.\nH₂O\tEl agua.\n")
 
         let outcome = try await importFile(file)
@@ -520,7 +520,7 @@ final class ImportingTests {
         let engine = try Engine(
             location: .folder(folder.appending(path: "Ficha", directoryHint: .isDirectory)), time: time,
             calendar: calendar)
-        try approve(card(.word, front: "serendipia", back: "Un hallazgo."), in: engine)
+        try newCard(card(.word, front: "serendipia", back: "Un hallazgo."), in: engine)
         let before = try engine.cards()
         let file = try file("Palabras.txt", "serendipia\tUn hallazgo valioso.\nefímero\tQue dura poco.\n")
 

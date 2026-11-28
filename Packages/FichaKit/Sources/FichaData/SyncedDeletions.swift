@@ -6,7 +6,7 @@ internal import GRDB
 // review log deleted on one device is deleted on the others, and wins over
 // what they changed of it meanwhile. A device takes another's deletion as it
 // takes its own on one device: a card goes with its review log, and the
-// captures that expand it or follow it up stay in the inbox as captures; the
+// captures that expand it or follow it up stay, as captures; the
 // cards approved from a capture stay. What that changes on the device, which
 // iCloud may hold as it was, is sent like any change of its own, so that no
 // device keeps waiting for a row that's gone, and iCloud keeps no review of a

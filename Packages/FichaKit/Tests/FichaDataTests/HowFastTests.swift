@@ -130,7 +130,7 @@ final class HowFastTests {
         "How fast?, for a deck whose only deck ahead is a priority deck, says it goes after that deck, and offers no Put it first, as the priority deck's new cards come first wherever the deck goes",
         .bug(id: 491))
     func itGoesAfterAPriorityDeckWithNoPutItFirst() async throws {
-        try approveInDeck("Bach", deck: "Música", in: engine)
+        try newCardInDeck("Bach", deck: "Música", in: engine)
         try engine.setPriority(true, ofDeck: "Música")
         time.advance(by: minutes(1))
         let historiaFile = try write("Historia.txt", historia)
@@ -155,7 +155,7 @@ final class HowFastTests {
         "after New Deck…'s OK, How fast? offers the paces alone, with no finish date and no Put it first, at Steady while the user's new cards a day are no pace, and Start sets the pace",
         .bug(id: 491))
     func howFastAfterNewDeck() throws {
-        try approveInDeck("La Gioconda", deck: "Arte", in: engine)
+        try newCardInDeck("La Gioconda", deck: "Arte", in: engine)
         let old = try engine.progressSettings()
         var noPace = old
         noPace.newCardsPerDay = 3
@@ -190,7 +190,7 @@ final class HowFastTests {
         "How fast? opens once the Import sheet's Done closes it after an import that brought new cards into one deck, for that deck, and not after one that brought none",
         .bug(id: 491))
     func howFastAfterAnImport() async throws {
-        try approveInDeck("Coliseo", deck: "Historia", in: engine)
+        try newCardInDeck("Coliseo", deck: "Historia", in: engine)
         time.advance(by: minutes(1))
         let update = try write("Repaso.txt", "Coliseo\tEn Roma, del siglo I.\n")
         let arte = try write(
@@ -232,9 +232,9 @@ final class HowFastTests {
         "How fast? doesn't open after an import whose new cards all came into a deck the user had, or into decks inside it, which keeps its place in the queue, at the pace there was",
         .bug(id: 491))
     func noHowFastForADeckTheUserHad() async throws {
-        try approveInDeck("Coliseo", deck: "Historia", in: engine)
+        try newCardInDeck("Coliseo", deck: "Historia", in: engine)
         time.advance(by: minutes(1))
-        try approveInDeck("La Gioconda", deck: "Arte", in: engine)
+        try newCardInDeck("La Gioconda", deck: "Arte", in: engine)
         time.advance(by: minutes(1))
         let more = try write(
             "Historia.txt",
@@ -329,9 +329,9 @@ final class HowFastTests {
     /// Arte's three cards, in `engine`, with La Gioconda met now: the deck
     /// the user is meeting.
     private func meetArte(in engine: Engine) throws {
-        let gioconda = try approveInDeck("La Gioconda", deck: "Arte", in: engine)
-        try approveInDeck("Las Meninas", deck: "Arte", in: engine)
-        try approveInDeck("El Grito", deck: "Arte", in: engine)
+        let gioconda = try newCardInDeck("La Gioconda", deck: "Arte", in: engine)
+        try newCardInDeck("Las Meninas", deck: "Arte", in: engine)
+        try newCardInDeck("El Grito", deck: "Arte", in: engine)
         try engine.meet(gioconda)
     }
 

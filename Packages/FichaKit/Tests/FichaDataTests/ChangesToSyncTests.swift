@@ -29,23 +29,22 @@ final class ChangesToSyncTests {
         try? FileManager.default.removeItem(at: folder)
     }
 
-    @Test(
-        "a new card waits to be sent under an ID unique across devices, as do the capture it came from and its first review"
-    )
+    // A card comes from no capture since #540.
+    @Test("a new card waits to be sent under an ID unique across devices, as does its first review", .bug(id: 540))
     func aNewCardWaitsToBeSent() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         let ubuntu = try engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
         try engine.meet(ubuntu)
 
         let waiting = try engine.waiting()
 
-        #expect(waiting.map(\.row.recordType) == [.capture, .card, .card, .reviewLogEntry])
-        #expect(waiting.map(\.kind) == [.saved, .saved, .saved, .saved])
-        #expect(Set(waiting.map(\.row)).count == 4)
-        #expect(waiting[3].row == .reviewLogEntry(try #require(try engine.reviewLog().only?.uuid)))
+        #expect(waiting.map(\.row.recordType) == [.card, .card, .reviewLogEntry])
+        #expect(waiting.map(\.kind) == [.saved, .saved, .saved])
+        #expect(Set(waiting.map(\.row)).count == 3)
+        #expect(waiting[2].row == .reviewLogEntry(try #require(try engine.reviewLog().only?.uuid)))
         // Each card's later change waits under the same row.
-        #expect(try engine.recorded { try engine.bury(serendipia.id) }.map(\.row) == [waiting[1].row])
-        #expect(try engine.recorded { try engine.bury(ubuntu.id) }.map(\.row) == [waiting[2].row])
+        #expect(try engine.recorded { try engine.bury(serendipia.id) }.map(\.row) == [waiting[0].row])
+        #expect(try engine.recorded { try engine.bury(ubuntu.id) }.map(\.row) == [waiting[1].row])
     }
 
     @Test(
@@ -97,7 +96,7 @@ final class ChangesToSyncTests {
 
     @Test("flagging, fixing, burying and unburying a card record when its flag and its burial changed")
     func flagsAndBurialsRecordTheirChanges() throws {
-        let (ubuntu, row) = try engine.synced(.card) { try approveCard("ubuntu", in: engine) }
+        let (ubuntu, row) = try engine.synced(.card) { try newCard("ubuntu", in: engine) }
         let flagged = time.now + minutes(1)
         let fixed = flagged + minutes(1)
         let buried = fixed + minutes(1)
@@ -214,74 +213,31 @@ final class ChangesToSyncTests {
         #expect(try engine.decks() == [Deck(name: "Historia")])
     }
 
-    @Test("capturing, editing, discarding, expanding and approving record the captures' changes and the cards'")
+    // Ficha no longer captures (#540), but the database keeps the captures,
+    // which sync as before, since an older version on another device may
+    // still write them.
+    @Test(
+        "a capture written as an older version did, and taken out of its inbox there, records its changes",
+        .bug(id: 540))
     func capturesRecordTheirChanges() throws {
-        let (_, cardRow) = try engine.synced(.card) { try approveCard("serendipia", in: engine) }
-        let edited = time.now + minutes(1)
-        let discarded = edited + minutes(1)
-        let approved = discarded + minutes(1)
+        let refined = time.now + minutes(1)
 
-        let captured = try #require(try engine.recorded { try engine.newCapture("ojalá") }.only)
-        time.move(to: edited)
-        let capture = try #require(try engine.inbox().captures.first)
-        let afterEdit = try engine.recorded {
-            try engine.editCapture(capture.id, text: "ojalá", note: "Del árabe", source: "Un podcast")
-        }
-        time.move(to: discarded)
-        let afterDiscard = try engine.recorded { try engine.discard(capture.id) }
-        let expanded = try #require(
-            try engine.recorded { try engine.expand(text: "Serendipia", note: nil, source: nil) }.only)
-        time.move(to: approved)
-        let expansion = try #require(try engine.inbox().expansions.first)
-        let afterApproval = try engine.recorded {
-            try engine.approveExpansion(
-                expansion.capture.id,
-                into: card(.word, front: "serendipia", back: "Un hallazgo valioso por casualidad."))
-        }
+        let captured = try #require(try engine.recorded { try engine.olderCapture("ojalá") }.only)
+        let capture = try #require(try engine.olderCaptures().only?.capture)
+        time.move(to: refined)
+        let afterRefining = try engine.recorded { try engine.refineOlderCapture(capture.id) }
 
         #expect(captured.row.recordType == .capture)
         #expect(captured.kind == .saved)
-        #expect(
-            afterEdit == [
-                Waiting(row: captured.row, kind: .saved, fieldTimes: [.note: edited, .source: edited])
-            ])
-        #expect(
-            afterDiscard == [
-                Waiting(
-                    row: captured.row, kind: .saved,
-                    fieldTimes: [.note: edited, .source: edited, .refined: discarded])
-            ])
-        #expect(expanded.row.recordType == .capture)
-        #expect(expanded.row != captured.row)
-        #expect(
-            afterApproval == [
-                Waiting(row: expanded.row, kind: .saved, fieldTimes: [.refined: approved]),
-                Waiting(row: cardRow, kind: .saved, fieldTimes: [.back: approved]),
-            ])
-    }
-
-    @Test("a follow-up waits to be sent, and one taken back waits as a deletion")
-    func followUpsRecordTheirChanges() throws {
-        let ubuntu = try approveCard("ubuntu", in: engine)
-        let followUp = try #require(
-            try engine.recorded { try engine.followUp(ubuntu.id, text: "¿De qué lengua viene?") }.only)
-
-        let takenBack = try engine.recorded {
-            let capture = try #require(try engine.inbox().followUps.first?.capture)
-            try engine.takeBackFollowUp(capture.id, of: ubuntu.id)
-        }
-
-        #expect(followUp.row.recordType == .capture)
-        #expect(followUp.kind == .saved)
-        #expect(takenBack == [Waiting(row: followUp.row, kind: .deleted)])
+        #expect(afterRefining == [Waiting(row: captured.row, kind: .saved, fieldTimes: [.refined: refined])])
     }
 
     @Test("deleting a card waits as its deletion and its review log's, and its expansion lets go of it")
     func deletingWaitsAsDeletions() throws {
-        let (serendipia, cardRow) = try engine.synced(.card) { try approveCard("serendipia", in: engine) }
+        let (serendipia, cardRow) = try engine.synced(.card) { try newCard("serendipia", in: engine) }
         let firstReview = try #require(try engine.recorded { try engine.meet(serendipia) }.only)
         let expansion = try #require(
-            try engine.recorded { try engine.expand(text: "Serendipia", note: nil, source: nil) }.only)
+            try engine.recorded { try engine.olderCapture("Serendipia", expanding: serendipia.id) }.only)
         try engine.edit(serendipia.id, with: card(.word, front: "serendipia", back: "Un hallazgo."))
         let deleted = time.now + minutes(1)
 
@@ -357,25 +313,23 @@ final class ChangesToSyncTests {
         let app = try Engine(location: .folder(folder), time: time, calendar: calendar)
         let cli = try Engine(location: .folder(folder), time: time, calendar: calendar)
         let sound = try await app.addSound(tone(seconds: 1, hertz: 440), named: "la.wav")
-        let capture = try cli.newCapture("ojalá")
-        let approved = time.now + minutes(1)
-        let detached = approved + minutes(1)
+        let addedAt = time.now + minutes(1)
+        let detached = addedAt + minutes(1)
 
-        time.move(to: approved)
-        let ojala = try #require(
-            try await cli.approve(
-                capture.id,
-                into: [draft(.word, front: "ojalá", back: "Que Dios quiera.", frontSound: .put(.sound(sound)))]
-            ).first)
+        time.move(to: addedAt)
+        let added = try await cli.add([
+            draft(.word, front: "ojalá", back: "Que Dios quiera.", frontSound: .put(.sound(sound)))
+        ])
+        let ojala = try #require(try cli.cards().only)
         time.move(to: detached)
         try cli.detach(.sound, from: .front, of: ojala.id)
 
         let waiting = try app.waiting()
-        #expect(waiting.map(\.row.recordType) == [.capture, .card])
-        #expect(waiting.map(\.kind) == [.saved, .saved])
-        #expect(waiting.first?.fieldTimes == [.refined: approved])
-        #expect(waiting.last?.fieldTimes == [.frontSound: detached])
-        #expect(try app.recorded { try app.bury(ojala.id) }.map(\.row) == [waiting[1].row])
+        #expect(added == .added([ojala]))
+        #expect(waiting.map(\.row.recordType) == [.card])
+        #expect(waiting.map(\.kind) == [.saved])
+        #expect(waiting.first?.fieldTimes == [.frontSound: detached])
+        #expect(try app.recorded { try app.bury(ojala.id) }.map(\.row) == [waiting[0].row])
     }
 
     // What comes from iCloud is applied this way (#312), and must never be
@@ -389,7 +343,7 @@ final class ChangesToSyncTests {
 
         try engine.writeWithoutRecording { db in
             let petricor = try insertCard(
-                card(.word, front: "petricor", back: "El olor de la lluvia."), capturedAs: nil, at: now, in: db)
+                card(.word, front: "petricor", back: "El olor de la lluvia."), at: now, in: db)
             _ = try replaceContent(
                 of: petricor, with: card(.word, front: "petricor", back: "El olor de la tierra mojada."), at: now,
                 in: db)
@@ -407,7 +361,7 @@ final class ChangesToSyncTests {
         "with sync off, nothing waits to be sent, and turning it on leaves everything waiting, with when each field changed"
     )
     func turningSyncOnSendsEverything() throws {
-        let (serendipia, serendipiaRow) = try engine.synced(.card) { try approveCard("serendipia", in: engine) }
+        let (serendipia, serendipiaRow) = try engine.synced(.card) { try newCard("serendipia", in: engine) }
         try engine.setColor(.green, of: "lenguaje")
         try engine.setColor(nil, of: "lenguaje")
 
@@ -424,7 +378,7 @@ final class ChangesToSyncTests {
         #expect(whileOff.isEmpty)
         #expect(try engine.syncIsOn())
         let waiting = try engine.waiting()
-        #expect(waiting.map(\.row.recordType) == [.card, .card, .capture, .reviewLogEntry, .tag])
+        #expect(waiting.map(\.row.recordType) == [.card, .card, .reviewLogEntry, .tag])
         #expect(waiting.allSatisfy { $0.kind == .saved })
         #expect(
             waiting.first == Waiting(row: serendipiaRow, kind: .saved, fieldTimes: [.flag: flagged]))

@@ -24,9 +24,9 @@ struct DeletingTagsTests {
         "deleting a tag takes it, and every tag inside it, off every card, buried ones too, removes their rows, and deletes no card"
     )
     func deletingATag() throws {
-        try approveCard("Martín Fierro", tags: ["literatura::poesía", "historia"])
-        let ficciones = try approveCard("Ficciones", tags: ["literatura"])
-        try approveCard("Revolución de Mayo", tags: ["historia"])
+        try addCard("Martín Fierro", tags: ["literatura::poesía", "historia"])
+        let ficciones = try addCard("Ficciones", tags: ["literatura"])
+        try addCard("Revolución de Mayo", tags: ["historia"])
         try engine.bury(ficciones.id)
         try engine.setColor(.purple, of: "literatura::poesía")
         try engine.pin("literatura::poesía")
@@ -43,11 +43,11 @@ struct DeletingTagsTests {
     // nothing of it; Ficciones is buried.
     @Test("deleting a tag counts the tags inside and the cards that carried them, under selective sync too")
     func deletingCounts() throws {
-        try approveCard("Martín Fierro", tags: ["literatura::poesía", "historia"])
-        let ficciones = try approveCard("Ficciones", tags: ["literatura"])
-        try approveInDeck("El Aleph", deck: "Borges", tags: ["literatura", "argentina"], in: engine)
-        try approveCard("Facundo", tags: ["literatura", "política"])
-        try approveCard("Revolución de Mayo", tags: ["historia"])
+        try addCard("Martín Fierro", tags: ["literatura::poesía", "historia"])
+        let ficciones = try addCard("Ficciones", tags: ["literatura"])
+        try newCardInDeck("El Aleph", deck: "Borges", tags: ["literatura", "argentina"], in: engine)
+        try addCard("Facundo", tags: ["literatura", "política"])
+        try addCard("Revolución de Mayo", tags: ["historia"])
         try engine.bury(ficciones.id)
         try engine.syncOnlyChosenDecks(true)
         try engine.setChosenToSync(true, ofDeck: "Borges")
@@ -61,7 +61,7 @@ struct DeletingTagsTests {
 
     @Test("deleting a tag with a tag inside it among those chosen deletes each once, the tag inside it with it")
     func deletingATagAndATagInsideIt() throws {
-        try approveCard("Martín Fierro", tags: ["literatura::poesía::gauchesca", "historia"])
+        try addCard("Martín Fierro", tags: ["literatura::poesía::gauchesca", "historia"])
 
         let deletion = try engine.deleteTags(["literatura::poesía", "literatura", "literatura"])
 
@@ -74,7 +74,7 @@ struct DeletingTagsTests {
     // música::tango and cine have something of their own and no card.
     @Test("clearing the unused tags deletes each tag with a row of its own that no card carries, nor a tag inside it")
     func clearingUnusedTags() throws {
-        try approveCard("Martín Fierro", tags: ["literatura::poesía"])
+        try addCard("Martín Fierro", tags: ["literatura::poesía"])
         try engine.setColor(.purple, of: "literatura")
         try engine.setColor(.blue, of: "música")
         try engine.pin("música::tango")
@@ -91,7 +91,7 @@ struct DeletingTagsTests {
     // clearing the unused tags never changes (`SelectiveSyncTests`).
     @Test("under selective sync, clearing the unused tags considers every tag no card here carries, whatever syncs")
     func clearingUnusedTagsUnderSelectiveSync() throws {
-        try approveCard("Martín Fierro", tags: ["literatura"])
+        try addCard("Martín Fierro", tags: ["literatura"])
         try engine.setColor(.purple, of: "literatura")
         try engine.pin("música::tango")
         try engine.setEmoji(Emoji("🎬"), of: "cine")
@@ -107,13 +107,13 @@ struct DeletingTagsTests {
     @Test("each tag counts the cards it lists, those inside it too but buried ones, and those due in the reviews")
     func cardsAndDuePerTag() throws {
         let scheduler = ReviewSettings.defaults.scheduler
-        try engine.meet(try approveCard("Martín Fierro", tags: ["literatura::poesía", "historia"]))
-        let ficciones = try approveCard("Ficciones", tags: ["literatura"])
+        try engine.meet(try addCard("Martín Fierro", tags: ["literatura::poesía", "historia"]))
+        let ficciones = try addCard("Ficciones", tags: ["literatura"])
         try engine.meet(ficciones)
         try engine.bury(ficciones.id)
-        try engine.meet(try approveCard("Facundo", tags: ["historia::argentina"]))
-        try approveCard("Rayuela", tags: ["literatura"])
-        let aleph = try approveCard("El Aleph", tags: ["cine"])
+        try engine.meet(try addCard("Facundo", tags: ["historia::argentina"]))
+        try addCard("Rayuela", tags: ["literatura"])
+        let aleph = try addCard("El Aleph", tags: ["cine"])
         try engine.meet(aleph)
         try engine.changeDeck(of: [aleph.id], to: "Borges")
         try engine.setAside(deck: "Borges")
@@ -131,7 +131,7 @@ struct DeletingTagsTests {
     }
 
     @discardableResult
-    private func approveCard(_ front: String, tags: [String]) throws -> Card {
-        try approve(card(.word, front: front, back: "Lo que quiere decir «\(front)».", tags: tags), in: engine)
+    private func addCard(_ front: String, tags: [String]) throws -> Card {
+        try newCard(card(.word, front: front, back: "Lo que quiere decir «\(front)».", tags: tags), in: engine)
     }
 }

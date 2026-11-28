@@ -18,8 +18,8 @@ struct TagColorAndEmojiTests {
 
     @Test("a tag's color and emoji are stored and read back with every tag")
     func aTagsColorAndEmojiAreStoredAndReadBack() throws {
-        try approveCard("Revolución de Mayo", tags: ["historia", "argentina"])
-        try approveCard("fotosíntesis", tags: ["ciencia", "lenguaje"])
+        try addCard("Revolución de Mayo", tags: ["historia", "argentina"])
+        try addCard("fotosíntesis", tags: ["ciencia", "lenguaje"])
 
         try engine.setColor(.green, of: "ciencia")
         try engine.setEmoji(Emoji("🇦🇷"), of: "argentina")
@@ -37,7 +37,7 @@ struct TagColorAndEmojiTests {
     // fails unless the row goes.
     @Test("removing both from a tag with nothing else deletes its row, and removing one keeps the other")
     func removingBothFromATagWithNothingElseDeletesItsRow() throws {
-        try approveCard("fotosíntesis", tags: ["ciencia"])
+        try addCard("fotosíntesis", tags: ["ciencia"])
         try engine.setColor(.green, of: "ciencia")
         try engine.setEmoji(Emoji("🔬"), of: "ciencia")
 
@@ -53,7 +53,7 @@ struct TagColorAndEmojiTests {
         "an emoji that isn't one emoji, such as a word, two emoji or a letter, is refused",
         arguments: ["argentina", "🇦🇷🇺🇾", "a", "7", "❤", "", " "])
     func anEmojiThatIsntOneEmojiIsRefused(_ emoji: String) throws {
-        try approveCard("Revolución de Mayo", tags: ["argentina"])
+        try addCard("Revolución de Mayo", tags: ["argentina"])
         try engine.setEmoji(Emoji("🇦🇷"), of: "argentina")
 
         #expect(throws: EngineError.notOneEmoji) {
@@ -73,7 +73,7 @@ struct TagColorAndEmojiTests {
             ("\u{270C}\u{1F3FE}", "\u{270C}\u{1F3FE}"), ("👍🏽", "👍🏽"), (" 📜\n", "📜"),
         ])
     func oneEmojiIsTakenHoweverManyScalarsItHas(_ emoji: String, _ stored: String) throws {
-        try approveCard("Revolución de Mayo", tags: ["argentina"])
+        try addCard("Revolución de Mayo", tags: ["argentina"])
 
         try engine.setEmoji(Emoji(emoji), of: "argentina")
 
@@ -84,8 +84,8 @@ struct TagColorAndEmojiTests {
         "a colored tag that loses its last card stays listed with its color and emoji, which it keeps once a card gets it again"
     )
     func aColoredTagThatLosesItsLastCardKeepsItsColorAndEmoji() throws {
-        let mayo = try approveCard("Revolución de Mayo", tags: ["argentina"])
-        try approveCard("serendipia", tags: [])
+        let mayo = try addCard("Revolución de Mayo", tags: ["argentina"])
+        try addCard("serendipia", tags: [])
         try engine.setColor(.blue, of: "argentina")
         try engine.setEmoji(Emoji("🇦🇷"), of: "argentina")
         let argentina = CardTag(name: "argentina", color: .blue, emoji: "🇦🇷")
@@ -93,15 +93,15 @@ struct TagColorAndEmojiTests {
         try engine.delete([mayo.id])
         #expect(try engine.allTags() == [argentina])
 
-        let martin = try approveCard("San Martín", tags: ["argentina"])
+        let martin = try addCard("San Martín", tags: ["argentina"])
         #expect(try engine.allTags() == [argentina])
         #expect(try engine.cards().filter { $0.tags == ["argentina"] }.map(\.id) == [martin.id])
     }
 
-    /// Approves a capture into one word card with this front and these
-    /// tags, the way refining saves cards, and returns the card.
+    /// Makes one word card with this front and these tags, and returns the
+    /// card.
     @discardableResult
-    private func approveCard(_ front: String, tags: [String]) throws -> Card {
-        try approve(card(.word, front: front, back: "Lo que quiere decir «\(front)».", tags: tags), in: engine)
+    private func addCard(_ front: String, tags: [String]) throws -> Card {
+        try newCard(card(.word, front: front, back: "Lo que quiere decir «\(front)».", tags: tags), in: engine)
     }
 }

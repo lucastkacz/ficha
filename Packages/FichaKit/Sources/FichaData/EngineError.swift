@@ -11,26 +11,15 @@ public enum EngineError: Error, Equatable {
     /// The database has migrations this version doesn't know: a newer version
     /// of Ficha migrated it, so this one refuses to open it.
     case migratedByNewerVersion
-    /// A capture's text was empty, so there was nothing to save.
-    case emptyCapture
-    /// The capture with this id isn't in the inbox, so it can't be approved or
-    /// discarded: it already was, or it doesn't exist.
-    case captureNotInInbox(Int64)
-    /// The capture with this id doesn't expand a card, so it can't be approved
-    /// as an expansion: it's approved into cards instead, or discarded.
-    case notAnExpansion(Int64)
-    /// A capture was approved into no cards. One that becomes no cards is
-    /// discarded instead.
-    case noCards
-    /// A new card, the one at this position, from 0, among the cards a
-    /// capture is approved into or a list `ficha add` adds, has a side, its
-    /// front or its back, with neither text, an image nor a sound.
+    /// A new card, the one at this position, from 0, among the cards a list
+    /// `ficha add` adds, has a side, its front or its back, with neither
+    /// text, an image nor a sound.
     case blankSideOnNewCard(position: Int)
-    /// A refine session's change would leave the card with this id with a
+    /// A `ficha` command's change would leave the card with this id with a
     /// side, its front or its back, with neither text, an image nor a sound,
     /// so it wasn't made.
     case sideLeftBlank(Int64)
-    /// A refine session asked to take the image or the sound, as the kind
+    /// A `ficha` command asked to take the image or the sound, as the kind
     /// says, off a side of the card with this id, and that side has none.
     case noFileOnSide(Int64, FileKind, CardSide)
     /// There's no card with this id: it was deleted, or it never existed.
@@ -43,16 +32,16 @@ public enum EngineError: Error, Equatable {
     /// A placement was recorded as an answer to the card with this id, and
     /// refused: only an import places a card, as it comes in.
     case placementIsNotAnAnswer(Int64)
-    /// The card with this id is flagged, so it waits in the inbox: it can't be
+    /// The card with this id is flagged, so it waits in its deck: it can't be
     /// answered or flagged again until it's fixed.
     case cardFlagged(Int64)
     /// The card with this id isn't flagged, so there's no flag to fix or take
     /// off: it was already fixed, or it was never flagged.
     case cardNotFlagged(Int64)
     /// The card with this id is set aside on its own, which the engine keeps
-    /// as its burial, so it can't be answered, flagged, expanded or set aside
-    /// again, nor fixed in a refine session, until it's put back. The Cards
-    /// window edits it all the same.
+    /// as its burial, so it can't be answered, flagged or set aside again,
+    /// nor fixed with `ficha fix`, until it's put back. The Cards window
+    /// edits it all the same.
     case cardBuried(Int64)
     /// The card with this id isn't set aside on its own, so it can't be put
     /// back: it never was, or it was put back, or only its deck is set aside.
@@ -118,13 +107,10 @@ public enum EngineError: Error, Equatable {
     /// A user type was to be renamed, given an emoji or given to a card, and
     /// it was deleted meanwhile, as on another device, so nothing changed.
     case userTypeNotFound
-    /// The card with this id changed outside the review panel, as a refine
-    /// session can change it, so ⌘Z can't undo what Lucas did with it.
+    /// The card with this id changed outside the review panel, as the Cards
+    /// window or a `ficha` command can change it, so ⌘Z can't undo what Lucas
+    /// did with it.
     case cannotUndo(Int64)
-    /// A follow-up Lucas asked in the review panel about the card with this
-    /// id was approved or discarded outside the panel, as a refine session or
-    /// the Cards window can, so ⌘Z can't take it back. The card didn't change.
-    case cannotUndoFollowUp(Int64)
     /// The review log of the card with this id has an entry the scheduler
     /// can't follow, as `SchedulingError.unexpectedReviewLog` says, so it
     /// isn't known where the card stands. The engine logs it.
@@ -156,28 +142,28 @@ public enum EngineError: Error, Equatable {
     /// expects. The engine logs why.
     case soundConversion
     /// The file with this name, dragged or pasted for a side of a card, or
-    /// given by a refine session, as its image or its sound, couldn't be
+    /// given by a `ficha` command, as its image or its sound, couldn't be
     /// read. The engine logs why.
     case unreadableFileForSide(String)
-    /// A refine session gave a side of a card the file at this path on the
+    /// A `ficha` command gave a side of a card the file at this path on the
     /// Mac, and there's none there.
     case noSuchFile(String)
-    /// A refine session gave a side of a card the file with this name from
+    /// A `ficha` command gave a side of a card the file with this name from
     /// outside the Downloads folder, the only one the `ficha` CLI's sandbox
     /// lets it read (ADR 0018).
     case fileNotInDownloads(String)
-    /// A refine session gave a side of a card the file with this name, or
+    /// A `ficha` command gave a side of a card the file with this name, or
     /// the sound Ficha holds by it, as its image, and it isn't an image the
     /// system can read.
     case fileNotAnImage(String)
-    /// A refine session gave a side of a card the file with this name, or
+    /// A `ficha` command gave a side of a card the file with this name, or
     /// the image Ficha holds by it, as its sound, and it holds no sound the
     /// system can read.
     case fileNotASound(String)
-    /// A refine session gave a side of a card the file with this name to put
+    /// A `ficha` command gave a side of a card the file with this name to put
     /// on it, and it's neither an image nor a sound the system can read.
     case notAnImageOrSound(String)
-    /// A refine session gave a side of a card the image or the sound with
+    /// A `ficha` command gave a side of a card the image or the sound with
     /// this name, and Ficha holds none by it: it was mistyped, or no card
     /// uses it any more.
     case noFileNamed(String)
@@ -216,21 +202,6 @@ extension EngineError: LocalizedError {
                 A newer version of Ficha changed the database, and this version won't open it, so as not to \
                 damage your cards. Open it with the version that changed it, or a newer one.
                 """
-            )
-        case .emptyCapture:
-            LocalizedStringResource("The capture is empty: write what you want to remember.")
-        case .captureNotInInbox(let id):
-            LocalizedStringResource(
-                """
-                Capture \(id) isn't in the inbox: it was already approved or discarded, or it doesn't exist. \
-                Check what's in the inbox.
-                """
-            )
-        case .notAnExpansion(let id):
-            LocalizedStringResource("Capture \(id) doesn't expand a card. Approve it into cards, or discard it.")
-        case .noCards:
-            LocalizedStringResource(
-                "A capture is approved into one or more cards. To take it out of the inbox without cards, discard it."
             )
         case .blankSideOnNewCard(let position):
             LocalizedStringResource(
@@ -297,7 +268,7 @@ extension EngineError: LocalizedError {
         case .cardFlagged(let id):
             LocalizedStringResource(
                 """
-                Card \(id) is flagged: it waits in the inbox to be fixed. Close the review panel and open “Review \
+                Card \(id) is flagged: it waits in its deck to be fixed. Close the review panel and open “Review \
                 now” again.
                 """
             )
@@ -305,7 +276,7 @@ extension EngineError: LocalizedError {
             LocalizedStringResource(
                 """
                 Card \(id) isn't flagged, so there's nothing to fix: it was already fixed, or it was never \
-                flagged. Check what's in the inbox.
+                flagged. Check the card's id.
                 """
             )
         case .cardBuried(let id):
@@ -432,13 +403,6 @@ extension EngineError: LocalizedError {
                 """
                 Card \(id) changed outside the review panel, so ⌘Z can't undo it. Close the review panel and open \
                 “Review now” again.
-                """
-            )
-        case .cannotUndoFollowUp(let id):
-            LocalizedStringResource(
-                """
-                Your question about card \(id) was approved or discarded outside the review panel, so ⌘Z can't \
-                take it back. If it became cards you don't want, delete them in the Cards window.
                 """
             )
         case .unreadableReviewLog(let id):

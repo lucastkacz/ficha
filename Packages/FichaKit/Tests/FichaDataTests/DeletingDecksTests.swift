@@ -1,7 +1,8 @@
 import FichaCore
-import FichaData
 import Foundation
 import Testing
+
+@testable import FichaData
 
 /// Tests on deleting a deck (ADR 0024), as Anki deletes one: the deck goes
 /// with the decks inside it and every card that lives in them, buried ones
@@ -23,10 +24,10 @@ struct DeletingDecksTests {
     // Arte does, and sits inside no deck.
     @Test("Delete… counts first the decks inside the deck and the cards it deletes, buried ones too, changing nothing")
     func deleteCountsFirst() throws {
-        try approveInDeck("La Gioconda", deck: "Arte::Pintura", in: engine)
-        let guernica = try approveInDeck("Guernica", deck: "Arte::Pintura::Óleo", in: engine)
-        try approveInDeck("La Piedad", deck: "Arte", in: engine)
-        try approveInDeck("fuga", deck: "Artes", in: engine)
+        try newCardInDeck("La Gioconda", deck: "Arte::Pintura", in: engine)
+        let guernica = try newCardInDeck("Guernica", deck: "Arte::Pintura::Óleo", in: engine)
+        try newCardInDeck("La Piedad", deck: "Arte", in: engine)
+        try newCardInDeck("fuga", deck: "Artes", in: engine)
         try engine.makeDeck(named: "Arte::Escultura")
         try engine.bury(guernica.id)
 
@@ -44,24 +45,25 @@ struct DeletingDecksTests {
     }
 
     // Guernica is buried; Coliseo lives in Historia and petricor in Default.
-    // La Gioconda's expansion waits in the inbox, as does a follow-up about
-    // La Piedad.
+    // An older version of Ficha, on another device, expanded La Gioconda and
+    // followed up La Piedad, and the database keeps those captures (#540).
     @Test(
-        "deleting a deck deletes it with the decks inside it and every card in them, with their review logs, and leaves expansions and follow-ups in the inbox"
-    )
+        "deleting a deck deletes it with the decks inside it and every card in them, with their review logs, and keeps the captures that expand or follow up one",
+        .bug(id: 540))
     func deletingADeck() throws {
-        let gioconda = try approveInDeck("La Gioconda", deck: "Arte::Pintura", in: engine)
-        let guernica = try approveInDeck("Guernica", deck: "Arte::Pintura", in: engine)
-        let piedad = try approveInDeck("La Piedad", deck: "Arte", in: engine)
-        let coliseo = try approveInDeck("Coliseo", deck: "Historia", in: engine)
-        let petricor = try approveInDeck("petricor", in: engine)
+        let gioconda = try newCardInDeck("La Gioconda", deck: "Arte::Pintura", in: engine)
+        let guernica = try newCardInDeck("Guernica", deck: "Arte::Pintura", in: engine)
+        let piedad = try newCardInDeck("La Piedad", deck: "Arte", in: engine)
+        let coliseo = try newCardInDeck("Coliseo", deck: "Historia", in: engine)
+        let petricor = try newCardInDeck("petricor", in: engine)
         try engine.makeDeck(named: "Arte::Escultura")
         for card in [gioconda, piedad, coliseo] {
             try engine.meet(card)
         }
         try engine.bury(guernica.id)
-        let expansion = try engine.expand(text: "La Gioconda", note: "También se llama Mona Lisa", source: nil)
-        let followUp = try engine.followUp(piedad.id, text: "¿Dónde está?")
+        let expansion = try engine.olderCapture(
+            "La Gioconda", note: "También se llama Mona Lisa", expanding: gioconda.id)
+        let followUp = try engine.olderCapture("¿Dónde está?", followingUp: piedad.id)
         let standing = try engine.standing(of: coliseo.id, with: scheduler)
 
         let deletion = try engine.deleteDeck("Arte")
@@ -71,15 +73,15 @@ struct DeletingDecksTests {
         #expect(try engine.cards().map(\.id) == [coliseo.id, petricor.id])
         #expect(try engine.reviewLog().map(\.cardID) == [coliseo.id])
         #expect(try engine.standing(of: coliseo.id, with: scheduler) == standing)
-        let inbox = try engine.inbox()
-        #expect(inbox.captures.map(\.id) == [expansion.id, followUp.id])
-        #expect(inbox.captures.map(\.expandsCardID) == [nil, nil])
-        #expect(inbox.captures.map(\.followsUpCardID) == [nil, nil])
+        let captures = try engine.olderCaptures().map(\.capture)
+        #expect(captures.map(\.id) == [expansion.id, followUp.id])
+        #expect(captures.map(\.expandsCardID) == [nil, nil])
+        #expect(captures.map(\.followsUpCardID) == [nil, nil])
     }
 
     @Test("deleting is refused for Default and for a deck that isn't there, deleting nothing")
     func deletingRefuses() throws {
-        try approveInDeck("petricor", in: engine)
+        try newCardInDeck("petricor", in: engine)
 
         #expect(throws: EngineError.defaultDeckStays) { try engine.deletion(ofDeck: Deck.defaultName) }
         #expect(throws: EngineError.defaultDeckStays) { try engine.deleteDeck(Deck.defaultName) }

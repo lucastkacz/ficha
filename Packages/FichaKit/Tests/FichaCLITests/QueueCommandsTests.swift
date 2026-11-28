@@ -9,7 +9,7 @@ import Testing
 @testable import FichaCLI
 
 /// Tests on the `ficha` CLI's pace and queue (ADR 0034): each command parsed
-/// from its arguments, as a refine session types them, run on an engine in
+/// from its arguments, as an agent types them, run on an engine in
 /// memory at noon on the first day of 1970 in UTC, inside Ficha's active
 /// hours, and the JSON it prints.
 struct QueueCommandsTests {
@@ -65,11 +65,11 @@ struct QueueCommandsTests {
         .bug(id: 490))
     func queuePrintsAndMovesDecks() async throws {
         for front in ["La Gioconda", "Las Meninas", "El Grito"] {
-            try approveCard(front, deck: "Arte")
+            try addCard(front, deck: "Arte")
         }
         time.advance(by: 60)
         for front in ["Coliseo", "Partenón", "Machu Picchu", "Chichén Itzá"] {
-            try approveCard(front, deck: "Historia")
+            try addCard(front, deck: "Historia")
         }
 
         let queue = try await ficha("queue")
@@ -125,7 +125,7 @@ struct QueueCommandsTests {
         "`ficha deck queue` refuses a deck no one has, and wants one of --first, --last or --place, from 1",
         .bug(id: 490))
     func queueDeckRefusesAnUnknownDeckAndAMissingPlace() async throws {
-        try approveCard("La Gioconda", deck: "Arte")
+        try addCard("La Gioconda", deck: "Arte")
 
         await #expect(throws: UnknownDeckError.self) { try await ficha("deck", "queue", "Música", "--first") }
         for arguments in [["Arte"], ["Arte", "--first", "--last"], ["Arte", "--place", "0"]] {
@@ -146,15 +146,12 @@ struct QueueCommandsTests {
         try JSONDecoder().decode([QueuedDeckAsPrinted].self, from: Data(printed.utf8)).map(\.deck)
     }
 
-    /// Approves a capture into one word card with this front, in `deck`.
+    /// Makes one word card with this front, in `deck`.
     @discardableResult
-    private func approveCard(_ front: String, deck: String) throws -> Card {
-        guard case .saved(let capture) = try engine.capture(text: front, note: nil, source: nil) else {
-            throw EngineError.emptyCapture
-        }
+    private func addCard(_ front: String, deck: String) throws -> Card {
         let content = try #require(
             CardContent(type: .word, front: front, back: "Lo que quiere decir «\(front)».", tags: [], source: nil))
-        return try #require(try engine.approve(capture.id, into: [content], deck: deck).first)
+        return try engine.create(content, deck: deck)
     }
 }
 

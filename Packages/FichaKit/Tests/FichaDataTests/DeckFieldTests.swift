@@ -4,9 +4,8 @@ import Foundation
 import Testing
 
 /// Tests on the Deck field (ADR 0024), in the Cards window's card form and in
-/// its editor: the deck a new card starts in, New Deck… in the field, an edit
-/// that moves a card, and Convert to Card putting a capture's cards in the
-/// deck chosen.
+/// its editor: the deck a new card starts in, New Deck… in the field, and an
+/// edit that moves a card.
 struct DeckFieldTests {
     let time = ManualTimeSource(now: Date(timeIntervalSince1970: 1_760_000_000))
     let engine: Engine
@@ -35,15 +34,16 @@ struct DeckFieldTests {
     // As Anki's Add window does, so that a series of cards needs no extra
     // step. Each device remembers that deck on its own, as a preference the
     // app keeps and opens the window with. The window opens on a deck, so
-    // each chooses the inbox first.
+    // each shows one of Ficha's decks first, as the inbox did before #540.
     @Test(
-        "with no deck chosen in the sidebar, as with the inbox, a new card's form starts in the deck the last card was added to, kept for the next window, or in Default once that deck is gone"
-    )
-    func aNewCardStartsInTheLastDeckAddedTo() throws {
+        "with no deck chosen in the sidebar, as with one of Ficha's decks shown, a new card's form starts in the deck the last card was added to, kept for the next window, or in Default once that deck is gone",
+        .bug(id: 540))
+    func aNewCardStartsInTheLastDeckAddedTo() async throws {
         try engine.makeDeck(named: "Arte")
         try engine.makeDeck(named: "Música::Tango")
-        var window = openWindow()
-        window.choose(.inbox)
+        let palabras = try await palabrasLindas()
+        var window = openWindow(showing: palabras)
+        let shownAtFirst = window.shownFichaDeck?.deck
         let rememberedAtFirst = window.lastDeckAddedTo
 
         window.openNewCardForm()
@@ -54,13 +54,12 @@ struct DeckFieldTests {
         window.closeCardForm()
         window.openNewCardForm()
         let afterAdding = window.cardForm?.draft.deck
-        var nextWindow = openWindow(lastDeckAddedTo: window.lastDeckAddedTo)
-        nextWindow.choose(.inbox)
+        var nextWindow = openWindow(lastDeckAddedTo: window.lastDeckAddedTo, showing: palabras)
         nextWindow.openNewCardForm()
-        var windowAfterTheDeckWent = openWindow(lastDeckAddedTo: "Cine")
-        windowAfterTheDeckWent.choose(.inbox)
+        var windowAfterTheDeckWent = openWindow(lastDeckAddedTo: "Cine", showing: palabras)
         windowAfterTheDeckWent.openNewCardForm()
 
+        #expect(shownAtFirst == .palabrasLindas)
         #expect(rememberedAtFirst == Deck.defaultName)
         #expect(atFirst == Deck.defaultName)
         #expect(window.lastDeckAddedTo == "Música::Tango")
@@ -157,53 +156,6 @@ struct DeckFieldTests {
         #expect(try engine.standing(of: gioconda.id, with: scheduler) == standing)
     }
 
-    @Test(
-        "Convert to Card on a capture starts in the deck the last card was added to, and the cards it adds go to the deck chosen, approved there once the form closes"
-    )
-    func convertToCardPutsTheCardsInTheDeckChosen() throws {
-        try engine.makeDeck(named: "Humanidades::Filosofía")
-        let capture = try engine.newCapture("Ubuntu: soy porque somos")
-        var window = openWindow(lastDeckAddedTo: "Humanidades")
-        window.choose(.inbox)
-        window.selectInInbox(.capture(capture.id))
-
-        window.convertToCard()
-        let atFirst = window.cardForm?.draft.deck
-        window.chooseDeck("Humanidades::Filosofía")
-        window.type(front: "ubuntu", back: "Soy porque somos.")
-        window.addCard()
-        window.type(front: "¿De dónde viene «ubuntu»?", back: "De los pueblos bantúes.")
-        window.addCard()
-        window.closeCardForm()
-
-        #expect(atFirst == "Humanidades")
-        #expect(window.failure == nil)
-        #expect(try engine.inbox().captures.isEmpty)
-        let cards = try engine.cards()
-        #expect(cards.map(\.captureID) == [capture.id, capture.id])
-        #expect(cards.map(\.deck) == ["Humanidades::Filosofía", "Humanidades::Filosofía"])
-    }
-
-    // So that they land beside it.
-    @Test("Convert to Card on a follow-up starts in its card's deck, whatever the last card was added to")
-    func aFollowUpsCardsStartInItsCardsDeck() throws {
-        let poderes = try approve(
-            card(.concept, front: "La división de poderes", back: "Ejecutivo, Legislativo y Judicial."), in: engine)
-        try engine.changeDeck(of: [poderes.id], to: "Sociedad::Política")
-        try engine.makeDeck(named: "Arte")
-        let followUp = try engine.followUp(poderes.id, text: "¿Cómo se eligen los jueces?")
-        var window = openWindow(lastDeckAddedTo: "Arte")
-        window.choose(.inbox)
-        window.selectInInbox(.capture(followUp.id))
-
-        window.convertToCard()
-        window.type(front: "¿Quién propone a los jueces de la Corte Suprema?", back: "El presidente.")
-        window.addCard()
-
-        #expect(try engine.cards().map(\.deck) == ["Sociedad::Política", "Sociedad::Política"])
-        #expect(window.lastDeckAddedTo == "Sociedad::Política")
-    }
-
     /// The window as it opens, on the first deck of the queue new cards come
     /// from that the sidebar lists, with the cards read, remembering
     /// `lastDeckAddedTo` as the deck the last card was added to.
@@ -211,6 +163,24 @@ struct DeckFieldTests {
         var window = engine.openCardsWindow(with: scheduler, lastDeckAddedTo: lastDeckAddedTo)
         window.read(with: scheduler)
         return window
+    }
+
+    /// The window as `openWindow(lastDeckAddedTo:)` opens it, offered
+    /// `fichaDeck`, one of Ficha's decks, and showing it in the grid's place:
+    /// the sidebar then chooses no deck of the user's.
+    private func openWindow(lastDeckAddedTo: String = Deck.defaultName, showing fichaDeck: FichaDeckFile)
+        -> CardsWindowState
+    {
+        var window = openWindow(lastDeckAddedTo: lastDeckAddedTo)
+        window.offerFichaDecks([fichaDeck.deck: .success(fichaDeck)])
+        window.choose(.fichaDeck(fichaDeck.deck))
+        return window
+    }
+
+    /// Palabras lindas, one of Ficha's decks, as the app reads it from its
+    /// bundle, from its file in the repo.
+    private func palabrasLindas() async throws -> FichaDeckFile {
+        try await engine.readFichaDeck(.palabrasLindas, at: try fichaDeckFileInTheRepo(of: .palabrasLindas))
     }
 }
 

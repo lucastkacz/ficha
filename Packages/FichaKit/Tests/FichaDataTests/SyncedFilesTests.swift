@@ -130,7 +130,7 @@ final class SyncedFilesTests {
         #expect(try panelOnceThere.sounds[song]?.get().data == mac.engine.sound(song))
     }
 
-    // A capture comes in on the Mac while it fetches, so a change waits to
+    // A card comes in on the Mac while it fetches, so a change waits to
     // go up when the fetch ends. Once that one goes too, the next fetch ends
     // in sync, and the next send deletes the image.
     @Test(
@@ -146,7 +146,7 @@ final class SyncedFilesTests {
 
         try mac.sync.sendWhatChanged(to: mac.iCloud)
         try await mac.iCloud.sendChanges()
-        try mac.engine.newCapture("petricor")
+        try mac.engine.create(card(.word, front: "petricor", back: "El olor de la lluvia."))
         try await mac.iCloud.fetchChanges()
         try await mac.iCloud.sendChanges()
 

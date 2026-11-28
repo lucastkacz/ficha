@@ -58,7 +58,7 @@ final class FichaDecksTests {
         .bug(id: 458),
         arguments: [(FichaDeck.palabrasLindas, 40), (FichaDeck.arteArgentino, 50), (FichaDeck.floresDeBuenosAires, 30)])
     func eachDeckComesInThroughTheImport(deck: FichaDeck, cardCount: Int) async throws {
-        let shipped = try fileInTheRepo(of: deck)
+        let shipped = try fichaDeckFileInTheRepo(of: deck)
         let imported = try await cardsAsTheImportBringsThem(from: shipped)
         let file = try await engine.readFichaDeck(deck, at: shipped)
 
@@ -88,7 +88,7 @@ final class FichaDecksTests {
     func everyPictureIsCredited() async throws {
         var pictures: [Card] = []
         for deck in FichaDeck.allCases {
-            let cards = try await cardsAsTheImportBringsThem(from: try fileInTheRepo(of: deck))
+            let cards = try await cardsAsTheImportBringsThem(from: try fichaDeckFileInTheRepo(of: deck))
             pictures += cards.filter { $0.frontImage != nil || $0.backImage != nil }
         }
 
@@ -108,7 +108,7 @@ final class FichaDecksTests {
         "every painting of Arte argentino is by a painter who died before 1956, and from a year before 1931",
         .bug(id: 458))
     func everyPaintingIsInThePublicDomain() async throws {
-        let paintings = try await cardsAsTheImportBringsThem(from: try fileInTheRepo(of: .arteArgentino))
+        let paintings = try await cardsAsTheImportBringsThem(from: try fichaDeckFileInTheRepo(of: .arteArgentino))
 
         let lines = paintings.map { $0.back.components(separatedBy: "\n") }
         let byOthers = lines.filter { $0.count < 2 || painters[$0[1]] == nil }
@@ -126,7 +126,7 @@ final class FichaDecksTests {
         "an update of the app leaves a deck the user added, and its progress, as they were: a newer file of it, with a card's back changed and one card more, finds it added, and the Cards window doesn't offer it",
         .bug(id: 458))
     func anUpdateLeavesAnAddedDeckAsItWas() async throws {
-        let shipped = try fileInTheRepo(of: .arteArgentino)
+        let shipped = try fichaDeckFileInTheRepo(of: .arteArgentino)
         let data = folder.appending(path: "Ficha", directoryHint: .isDirectory)
         let before = try await addArte(from: shipped, in: data)
         let newer = try await newerArte(than: shipped)
@@ -151,10 +151,10 @@ final class FichaDecksTests {
     func theCardsWindowOffersFichasDecks() async throws {
         var files: [FichaDeck: Result<FichaDeckFile, EngineError>] = [:]
         for deck in FichaDeck.allCases {
-            let shipped = try fileInTheRepo(of: deck)
+            let shipped = try fichaDeckFileInTheRepo(of: deck)
             files[deck] = .success(try await engine.readFichaDeck(deck, at: shipped))
         }
-        try approveInDeck("serendipia", deck: "Lenguaje", in: engine)
+        try newCardInDeck("serendipia", deck: "Lenguaje", in: engine)
         time.advance(by: minutes(1))
         var window = engine.openCardsWindow(with: scheduler)
         window.read(with: scheduler)
@@ -173,7 +173,7 @@ final class FichaDecksTests {
         let asked = window.howFast
         window.startHowFast()
 
-        #expect(sections == [.inbox, .decks, .fichaDecks])
+        #expect(sections == [.decks, .fichaDecks])
         #expect(offered == FichaDeck.allCases)
         #expect(words.deck == .palabrasLindas)
         #expect(words.firstCard?.front.isEmpty == false)
@@ -198,7 +198,7 @@ final class FichaDecksTests {
         "the Cards window lists those of Ficha's decks the app could read, in their order, and says why the one it couldn't read isn't there",
         .bug(id: 458))
     func aDeckThatCouldNotBeReadIsNotListed() async throws {
-        let arte = try await engine.readFichaDeck(.arteArgentino, at: try fileInTheRepo(of: .arteArgentino))
+        let arte = try await engine.readFichaDeck(.arteArgentino, at: try fichaDeckFileInTheRepo(of: .arteArgentino))
         let missing = EngineError.fichaDeckMissing(FichaDeck.floresDeBuenosAires.name)
         var window = engine.openCardsWindow(with: scheduler)
         window.read(with: scheduler)
@@ -218,8 +218,8 @@ final class FichaDecksTests {
         "the review panel's ask for one of Ficha's decks waits while the Cards window asks something else, and How fast? asks for it as soon as that closes, after a new deck's own How fast?, with the sidebar where it was meanwhile",
         .bug(id: 458))
     func anAskForOneOfFichasDecksWaits() async throws {
-        let arte = try await engine.readFichaDeck(.arteArgentino, at: try fileInTheRepo(of: .arteArgentino))
-        try approveInDeck("serendipia", deck: "Lenguaje", in: engine)
+        let arte = try await engine.readFichaDeck(.arteArgentino, at: try fichaDeckFileInTheRepo(of: .arteArgentino))
+        try newCardInDeck("serendipia", deck: "Lenguaje", in: engine)
         var window = engine.openCardsWindow(with: scheduler)
         window.read(with: scheduler)
         window.offerFichaDecks([.arteArgentino: .success(arte)])
@@ -247,18 +247,19 @@ final class FichaDecksTests {
     }
 
     // Lenguaje has serendipia, which the card form's front repeats, while
-    // the sidebar chose the inbox; the review panel asks for Arte argentino
+    // the sidebar chose Historia; the review panel asks for Arte argentino
     // meanwhile.
     @Test(
         "the review panel's ask for one of Ficha's decks waits while the card form is open, so Show Card shows the card the front repeats, and How fast? asks for it at the window's next read",
         .bug(id: 458))
     func anAskForOneOfFichasDecksWaitsForShowCard() async throws {
-        let arte = try await engine.readFichaDeck(.arteArgentino, at: try fileInTheRepo(of: .arteArgentino))
-        let serendipia = try approveInDeck("serendipia", deck: "Lenguaje", in: engine)
+        let arte = try await engine.readFichaDeck(.arteArgentino, at: try fichaDeckFileInTheRepo(of: .arteArgentino))
+        let serendipia = try newCardInDeck("serendipia", deck: "Lenguaje", in: engine)
+        try engine.makeDeck(named: "Historia")
         var window = engine.openCardsWindow(with: scheduler)
         window.read(with: scheduler)
         window.offerFichaDecks([.arteArgentino: .success(arte)])
-        window.choose(.inbox)
+        window.choose(.cards(.deck("Historia")))
         window.openNewCardForm()
         var draft = try #require(window.cardForm?.draft)
         draft.front.text = "Serendipia"
@@ -288,18 +289,18 @@ final class FichaDecksTests {
         "How fast? for one of Ficha's decks says when it's all met at each pace, last in the queue and, ticked, first, after a priority deck's new card, which Put it first doesn't pass, and Start with Faster and Put it first adds it and sets the pace and its place as ficha pace and ficha deck queue --first do",
         .bug(id: 458), .bug(id: 491))
     func howFastForOneOfFichasDecks() async throws {
-        let shipped = try fileInTheRepo(of: .arteArgentino)
+        let shipped = try fichaDeckFileInTheRepo(of: .arteArgentino)
         let name = FichaDeck.arteArgentino.name
         let ficha = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
         for each in [engine, ficha] {
-            let ubuntu = try approveInDeck("ubuntu", deck: "Lenguaje", in: each)
-            let ojala = try approveInDeck("ojalá", deck: "Lenguaje", in: each)
+            let ubuntu = try newCardInDeck("ubuntu", deck: "Lenguaje", in: each)
+            let ojala = try newCardInDeck("ojalá", deck: "Lenguaje", in: each)
             try each.setBothWays(true, of: [ubuntu.id, ojala.id])
             try each.meet(ubuntu)
         }
         time.advance(by: minutes(1))
         for each in [engine, ficha] {
-            try approveInDeck("Bach", deck: "Música", in: each)
+            try newCardInDeck("Bach", deck: "Música", in: each)
             try each.setPriority(true, ofDeck: "Música")
         }
         time.advance(by: minutes(1))
@@ -354,16 +355,16 @@ final class FichaDecksTests {
         "How fast? for one of Ficha's decks counts only the cards that come in, leaving out those that repeat the user's, and, when the user has a deck by its name, says when it's all met where that deck is in the queue",
         .bug(id: 458), .bug(id: 491))
     func howFastCountsTheCardsThatComeIn() async throws {
-        let shipped = try fileInTheRepo(of: .palabrasLindas)
+        let shipped = try fichaDeckFileInTheRepo(of: .palabrasLindas)
         let name = FichaDeck.palabrasLindas.name
         let ficha = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
         time.move(to: try morning(of: 13, in: calendar))
         for each in [engine, ficha] {
-            try approveInDeck("serendipia", deck: name, in: each)
+            try newCardInDeck("serendipia", deck: name, in: each)
         }
         time.advance(by: minutes(1))
         for each in [engine, ficha] {
-            try approveInDeck("Coliseo", deck: "Historia", in: each)
+            try newCardInDeck("Coliseo", deck: "Historia", in: each)
         }
         time.move(to: try morning(of: 14, in: calendar))
         let file = try await engine.readFichaDeck(.palabrasLindas, at: shipped)
@@ -393,20 +394,6 @@ final class FichaDecksTests {
         var paced = ReviewSettings.defaults
         paced.newCardsPerDay = pace.newCardsPerDay
         return try engine.queue(paced).first { $0.deck == deck }?.finish
-    }
-
-    /// The file of `deck` in the repo's `App/FichaDecks/`, five folders up
-    /// from this file, which the app bundles: the test fails while it isn't
-    /// there.
-    private func fileInTheRepo(of deck: FichaDeck) throws -> URL {
-        let file = URL(filePath: #filePath)
-            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
-            .deletingLastPathComponent().deletingLastPathComponent()
-            .appending(path: "App/FichaDecks/\(deck.fileName).zip")
-        try #require(
-            FileManager.default.fileExists(atPath: file.path(percentEncoded: false)),
-            "App/FichaDecks/\(deck.fileName).zip isn't in the repo: add the file of \(deck.name).")
-        return file
     }
 
     /// The cards of `file`, as the Import sheet's import brings a Ficha
@@ -484,6 +471,20 @@ private func isLicense(_ license: String) -> Bool {
             && version.allSatisfy { !$0.isEmpty && $0.allSatisfy { $0.isASCII && $0.isNumber } }
     }
     return false
+}
+
+/// The file of `deck`, one of Ficha's decks, in the repo's `App/FichaDecks/`,
+/// five folders up from this file, which the app bundles: the test fails
+/// while it isn't there.
+func fichaDeckFileInTheRepo(of deck: FichaDeck) throws -> URL {
+    let file = URL(filePath: #filePath)
+        .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        .deletingLastPathComponent().deletingLastPathComponent()
+        .appending(path: "App/FichaDecks/\(deck.fileName).zip")
+    try #require(
+        FileManager.default.fileExists(atPath: file.path(percentEncoded: false)),
+        "App/FichaDecks/\(deck.fileName).zip isn't in the repo: add the file of \(deck.name).")
+    return file
 }
 
 extension CardsWindowState {

@@ -29,9 +29,9 @@ struct SettingAsideTests {
         // eudaimonía gets learned, graduated to wait 21 days or more, ubuntu
         // goes to the first learning step, and both come due. ataraxia is
         // new.
-        let ubuntu = try approveCard("ubuntu", deck: "Lenguaje")
-        let eudaimonia = try approveCard("eudaimonía", deck: "Filosofía")
-        try approveCard("ataraxia", deck: "Filosofía")
+        let ubuntu = try addCard("ubuntu", deck: "Lenguaje")
+        let eudaimonia = try addCard("eudaimonía", deck: "Filosofía")
+        try addCard("ataraxia", deck: "Filosofía")
         try engine.climbUntilLearned(eudaimonia, movingForward: time)
         try engine.meet(ubuntu)
         time.move(to: try #require(try engine.standing(of: eudaimonia.id, with: settings.scheduler).due))
@@ -98,7 +98,7 @@ struct SettingAsideTests {
         "a card in a deck inside a set-aside deck is set aside, by every set-aside deck it sits in, the outermost first"
     )
     func aCardInADeckInsideASetAsideDeckIsSetAside() throws {
-        let ubuntu = try approveCard("ubuntu", deck: "Filosofía::Ética")
+        let ubuntu = try addCard("ubuntu", deck: "Filosofía::Ética")
 
         try engine.setAside(deck: "Filosofía::Ética")
         try engine.setAside(deck: "Filosofía")
@@ -110,20 +110,20 @@ struct SettingAsideTests {
         #expect(ubuntu.standing == .inReviews)
     }
 
-    // Change Deck moves cards, and a refine session approves new cards into
-    // the deck. serendipia gets to the second step, which waits 4 hours, and
-    // comes due while it's set aside.
+    // Change Deck moves cards, and `ficha add` adds new cards into the deck.
+    // serendipia gets to the second step, which waits 4 hours, and comes due
+    // while it's set aside.
     @Test(
         "a card moved into a set-aside deck, or into a deck inside one, leaves Lucas's reviews, and moved out comes back where it stood, due when it was"
     )
     func aCardMovedIntoASetAsideDeckLeavesReviews() throws {
-        let serendipia = try approveCard("serendipia")
-        let coliseo = try approveCard("Coliseo")
+        let serendipia = try addCard("serendipia")
+        let coliseo = try addCard("Coliseo")
         try engine.climb(serendipia, goods: 1, movingForward: time)
         let standing = try engine.standing(of: serendipia.id, with: settings.scheduler)
         try engine.setAside(deck: "Historia")
 
-        let mayo = try approveCard("Revolución de Mayo", deck: "Historia")
+        let mayo = try addCard("Revolución de Mayo", deck: "Historia")
         try engine.changeDeck(of: [serendipia.id], to: "Historia")
         try engine.changeDeck(of: [coliseo.id], to: "Historia::Roma")
         time.advance(by: hours(5))
@@ -143,7 +143,7 @@ struct SettingAsideTests {
     func aPriorityDeckInsideASetAsideDeckBringsNoCard() throws {
         let ubuntu = try meetCard("ubuntu", deck: "Lenguaje", dueAt: try at(10, 0))
         try meetCard("Coliseo", deck: "Historia::Roma", dueAt: try at(10, 1))
-        try approveCard("Foro Romano", deck: "Historia::Roma")
+        try addCard("Foro Romano", deck: "Historia::Roma")
         time.move(to: try at(10, 1))
         try engine.togglePriority(ofDeck: "Historia::Roma")
 
@@ -157,8 +157,8 @@ struct SettingAsideTests {
 
     @Test("Default can be set aside, which takes out its cards alone, and Default goes by its name, empty")
     func defaultCanBeSetAside() throws {
-        let petricor = try approveCard("petricor")
-        let gioconda = try approveCard("Gioconda", deck: "Arte")
+        let petricor = try addCard("petricor")
+        let gioconda = try addCard("Gioconda", deck: "Arte")
 
         try engine.setAside(deck: Deck.defaultName)
 
@@ -177,8 +177,8 @@ struct SettingAsideTests {
     func stoppingSettingADeckAsideBringsItsCardsBack() throws {
         // eudaimonía gets to the second step, which waits 4 hours, and
         // ataraxia is new.
-        let eudaimonia = try approveCard("eudaimonía", deck: "Filosofía")
-        let ataraxia = try approveCard("ataraxia", deck: "Filosofía")
+        let eudaimonia = try addCard("eudaimonía", deck: "Filosofía")
+        let ataraxia = try addCard("ataraxia", deck: "Filosofía")
         try engine.climb(eudaimonia, goods: 1, movingForward: time)
         let standing = try engine.standing(of: eudaimonia.id, with: settings.scheduler)
         try engine.setAside(deck: "Filosofía")
@@ -197,7 +197,7 @@ struct SettingAsideTests {
         "setting a deck aside takes both ways of its cards out of reviews, and stopping brings both back where they stood"
     )
     func settingADeckAsideTakesOutBothWays() throws {
-        let eudaimonia = try approveCard("eudaimonía", deck: "Filosofía")
+        let eudaimonia = try addCard("eudaimonía", deck: "Filosofía")
         let bothWays = try engine.setBothWays(true, of: [eudaimonia.id])
         try engine.meet(eudaimonia)
         try engine.meet(eudaimonia, way: .backFirst)
@@ -211,36 +211,35 @@ struct SettingAsideTests {
         #expect(try engine.reviewNow(settings) == [.review(bothWays[0]), .review(bothWays[0], .backFirst)])
     }
 
-    // Buried, then the inbox, then set aside, then reviews (ADR 0011).
+    // Buried, then flagged, then set aside, then reviews (ADR 0011).
     @Test(
-        "a flagged card stays in the inbox and a buried card stays buried whatever their deck, and fixing or unburying a card in a set-aside deck leaves it set aside"
-    )
-    func theInboxAndBurialsWinOverSetAside() throws {
-        let ubuntu = try approveCard("ubuntu", deck: "Filosofía")
-        let eudaimonia = try approveCard("eudaimonía", deck: "Filosofía")
+        "a flagged card stays flagged and a buried card stays buried whatever their deck, and fixing or unburying a card in a set-aside deck leaves it set aside",
+        .bug(id: 540))
+    func flagsAndBurialsWinOverSetAside() throws {
+        let ubuntu = try addCard("ubuntu", deck: "Filosofía")
+        let eudaimonia = try addCard("eudaimonía", deck: "Filosofía")
         let flag = try engine.flag(ubuntu.id, note: note("Falta un ejemplo"))
         let buried = try engine.bury(eudaimonia.id)
 
         try engine.setAside(deck: "Filosofía")
 
-        #expect(try engine.inbox().flaggedCards.map(\.id) == [ubuntu.id])
-        #expect(try engine.progress(settings).inInbox == 1)
+        #expect(try engine.flaggedCards().map(\.id) == [ubuntu.id])
         #expect(
             try engine.cards().map(\.standing) == [
-                .inInbox(try #require(flag.flag)), .buried(at: try #require(buried.buriedAt), flag: nil),
+                .flagged(try #require(flag.flag)), .buried(at: try #require(buried.buriedAt), flag: nil),
             ])
         let fixed = try engine.fix(ubuntu.id, with: card(.word, front: "ubuntu", back: "Humanidad hacia los otros."))
         let unburied = try engine.unbury(eudaimonia.id)
         #expect(fixed.standing == .setAside(by: ["Filosofía"]))
         #expect(unburied.standing == .setAside(by: ["Filosofía"]))
-        #expect(try engine.inbox().flaggedCards.isEmpty)
+        #expect(try engine.flaggedCards().isEmpty)
         #expect(try engine.reviewNow(settings).isEmpty)
     }
 
     // The review panel shows it as it shows a buried card's.
     @Test("answering a set-aside card is refused, naming its set-aside decks, and the review log doesn't change")
     func answeringASetAsideCardIsRefused() throws {
-        let ubuntu = try approveCard("ubuntu", deck: "Filosofía::Ética")
+        let ubuntu = try addCard("ubuntu", deck: "Filosofía::Ética")
         try engine.setAside(deck: "Filosofía::Ética")
         try engine.setAside(deck: "Filosofía")
 
@@ -250,26 +249,20 @@ struct SettingAsideTests {
         #expect(try engine.reviewLog().isEmpty)
     }
 
-    @Test("a set-aside card can be flagged, buried, edited and expanded, as a card in Lucas's reviews can")
-    func aSetAsideCardCanBeFlaggedBuriedEditedAndExpanded() throws {
-        let ubuntu = try approveCard("ubuntu", deck: "Filosofía")
-        let eudaimonia = try approveCard("eudaimonía", deck: "Filosofía")
-        let ataraxia = try approveCard("ataraxia", deck: "Filosofía")
+    @Test("a set-aside card can be flagged, buried and edited, as a card in Lucas's reviews can", .bug(id: 540))
+    func aSetAsideCardCanBeFlaggedBuriedAndEdited() throws {
+        let ubuntu = try addCard("ubuntu", deck: "Filosofía")
+        let eudaimonia = try addCard("eudaimonía", deck: "Filosofía")
+        let ataraxia = try addCard("ataraxia", deck: "Filosofía")
         try engine.setAside(deck: "Filosofía")
 
         let flagged = try engine.flag(ubuntu.id, note: note("Falta un ejemplo"))
         let buried = try engine.bury(eudaimonia.id)
         let edited = try engine.edit(ataraxia.id, with: card(.concept, front: "ataraxia", back: "Serenidad."))
-        let expansion = try engine.expand(text: "ataraxia", note: "Es de Epicuro", source: nil)
-        let expanded = try engine.approveExpansion(
-            expansion.id, into: card(.concept, front: "ataraxia", back: "Serenidad, según Epicuro."))
 
-        #expect(flagged.standing == .inInbox(try #require(flagged.flag)))
+        #expect(flagged.standing == .flagged(try #require(flagged.flag)))
         #expect(buried.standing == .buried(at: time.now, flag: nil))
         #expect(edited.standing == .setAside(by: ["Filosofía"]))
-        #expect(expansion.expandsCardID == ataraxia.id)
-        #expect(expanded.back == "Serenidad, según Epicuro.")
-        #expect(expanded.standing == .setAside(by: ["Filosofía"]))
     }
 
     // A deck stays while it has a row (ADR 0024), so a set-aside deck no card
@@ -278,7 +271,7 @@ struct SettingAsideTests {
         "setting aside a deck that isn't there makes it, and stopping keeps it, while stopping on a deck that isn't there makes none"
     )
     func settingAsideMakesTheDeckAndStoppingMakesNone() throws {
-        try approveCard("ubuntu", deck: "Lenguaje")
+        try addCard("ubuntu", deck: "Lenguaje")
 
         try engine.setAside(deck: " Historia :: Roma ")
         #expect(try engine.decks().map(\.name) == ["Historia", "Historia::Roma", "Lenguaje"])
@@ -294,11 +287,11 @@ struct SettingAsideTests {
         #expect(throws: EngineError.defaultDeckName("Default")) { try engine.setAside(deck: "Default::Viejo") }
     }
 
-    // `ficha cards` prints the cards this way, for a refine session to know.
+    // `ficha cards` prints the cards this way, for an agent to know.
     @Test("a card's encoding has setAsideBy for a card in a set-aside deck, and leaves it out otherwise")
     func aCardsEncodingHasSetAsideByWhenItsDeckIsSetAside() throws {
-        try approveCard("ubuntu", deck: "Filosofía::Ética")
-        try approveCard("serendipia", deck: "Lenguaje")
+        try addCard("ubuntu", deck: "Filosofía::Ética")
+        try addCard("serendipia", deck: "Lenguaje")
         try engine.setAside(deck: "Filosofía")
         try engine.setAside(deck: "Filosofía::Ética")
 
@@ -315,9 +308,9 @@ struct SettingAsideTests {
         "a tag sets no card aside, even one named as a set-aside deck, and a tag's switch from before decks counts nowhere"
     )
     func aTagSetsNoCardAside() throws {
-        let ubuntu = try approveCard("ubuntu", tags: ["Filosofía"])
-        let eudaimonia = try approveCard("eudaimonía", tags: ["ética"])
-        let petricor = try approveCard("petricor", tags: ["lenguaje"])
+        let ubuntu = try addCard("ubuntu", tags: ["Filosofía"])
+        let eudaimonia = try addCard("eudaimonía", tags: ["ética"])
+        let petricor = try addCard("petricor", tags: ["lenguaje"])
         try engine.setAside(deck: "Filosofía")
         try engine.write { db in
             try changeOwnTags(["ética"], in: db) { $0.switchedOn = .setAside }
@@ -333,12 +326,12 @@ struct SettingAsideTests {
         #expect(try engine.reviewNow(settings) == [ubuntu, eudaimonia, petricor].map { PanelCard.review($0) })
     }
 
-    /// Approves a card with this front, in this deck, and meets it, an hour
-    /// before `due`, so that it's due then, after the first step's wait. Each card is met after the ones before it, so they
-    /// come due in order.
+    /// Makes a card with this front, in this deck, and meets it, an hour
+    /// before `due`, so that it's due then, after the first step's wait. Each
+    /// card is met after the ones before it, so they come due in order.
     @discardableResult
     private func meetCard(_ front: String, deck: String = Deck.defaultName, dueAt due: Date) throws -> Card {
-        let card = try approveCard(front, deck: deck)
+        let card = try addCard(front, deck: deck)
         time.move(to: due - hours(1))
         try engine.meet(card)
         return card
@@ -349,11 +342,10 @@ struct SettingAsideTests {
         try #require(calendar.date(from: DateComponents(year: 2026, month: 10, day: 14, hour: hour, minute: minute)))
     }
 
-    /// Approves a capture into one word card with this front and these tags,
-    /// the way refining saves cards, moves it to `deck` with Change Deck,
-    /// and returns the card as it is then.
+    /// Makes one word card with this front and these tags, moves it to `deck`
+    /// with Change Deck, and returns the card as it is then.
     @discardableResult
-    private func approveCard(_ front: String, deck: String = Deck.defaultName, tags: [String] = []) throws -> Card {
-        try approveInDeck(front, deck: deck, tags: tags, in: engine)
+    private func addCard(_ front: String, deck: String = Deck.defaultName, tags: [String] = []) throws -> Card {
+        try newCardInDeck(front, deck: deck, tags: tags, in: engine)
     }
 }

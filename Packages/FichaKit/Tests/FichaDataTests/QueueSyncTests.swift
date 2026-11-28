@@ -26,9 +26,9 @@ final class QueueSyncTests {
     // Arte first again, later.
     @Test("a deck's place in the queue syncs to the other device, and its latest move wins", .bug(id: 490))
     func aDecksPlaceSyncs() async throws {
-        try approveInDeck("La Gioconda", deck: "Arte", in: mac.engine)
+        try newCardInDeck("La Gioconda", deck: "Arte", in: mac.engine)
         time.advance(by: minutes(1))
-        try approveInDeck("Coliseo", deck: "Historia", in: mac.engine)
+        try newCardInDeck("Coliseo", deck: "Historia", in: mac.engine)
         try await syncBoth()
         let before = try iPhone.engine.queue(settings).map(\.deck)
 
@@ -49,8 +49,8 @@ final class QueueSyncTests {
     // import's decks do.
     @Test("decks that came in at once go in the same order on every device", .bug(id: 490))
     func decksThatCameInAtOnceGoAlike() async throws {
-        try approveInDeck("Coliseo", deck: "Historia", in: mac.engine)
-        try approveInDeck("La Gioconda", deck: "Arte", in: mac.engine)
+        try newCardInDeck("Coliseo", deck: "Historia", in: mac.engine)
+        try newCardInDeck("La Gioconda", deck: "Arte", in: mac.engine)
         try await syncBoth()
 
         #expect(try mac.engine.queue(settings).map(\.deck) == ["Arte", "Historia"])

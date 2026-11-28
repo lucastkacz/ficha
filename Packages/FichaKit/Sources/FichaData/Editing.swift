@@ -5,16 +5,16 @@ internal import GRDB
 extension Engine {
     /// Edits a card, as Lucas does in the Cards window: replaces its content
     /// with `content`, its images and sounds included, which Ficha already
-    /// keeps, and keeps its review log, and so its interval and due time,
-    /// when he approved it and the capture it came from. Editing a flagged card fixes
-    /// it: its flag goes, and it's back in his reviews, where it stood, unless
-    /// it's buried, since an edited card stays buried. An edit that changes
-    /// its front or back keeps when. An image or a sound it no longer has
-    /// goes, unless another card uses it. `deck` moves it to that deck, as
-    /// `changeDeck(of:to:)` does, and nil, or the deck it lives in, leaves it
-    /// there, which makes no deck on this device. `bothWays` turns Both ways
-    /// on or off, as `setBothWays(_:of:)` does, and nil leaves it as it was.
-    /// Returns the card.
+    /// keeps, and keeps its review log, and so its interval and due time, and
+    /// when it came in. Editing a flagged card fixes it: its flag goes, and
+    /// it's back in his reviews, where it stood, unless it's buried, since an
+    /// edited card stays buried. An edit that changes its front or back keeps
+    /// when. An image or a sound it no longer has goes, unless another card
+    /// uses it. `deck` moves it to that deck, as `changeDeck(of:to:)` does, and
+    /// nil, or the deck it lives in, leaves it there, which makes no deck on
+    /// this device. `bothWays` turns Both ways on or off, as
+    /// `setBothWays(_:of:)` does, and nil leaves it as it was. Returns the
+    /// card.
     @discardableResult
     public func edit(_ cardID: Int64, with content: CardContent, deck: String? = nil, bothWays: Bool? = nil)
         throws(EngineError) -> Card
@@ -62,29 +62,6 @@ extension Engine {
         }
     }
 
-    /// Edits a capture in the inbox, as Lucas does in the Cards window:
-    /// replaces its text, note and source, cleaned up as `CaptureContent`
-    /// says, and keeps when he captured it and, for an expansion, the card it
-    /// expands. Unlike capturing, it doesn't check whether the text repeats a
-    /// card or a capture. A capture without text isn't saved, nor one that
-    /// already left the inbox. Returns the capture.
-    @discardableResult
-    public func editCapture(_ captureID: Int64, text: String, note: String?, source: String?) throws(EngineError)
-        -> Capture
-    {
-        guard let content = CaptureContent(text: text, note: note, source: source) else {
-            throw .emptyCapture
-        }
-        return try write { db in
-            _ = try captureInInbox(captureID, in: db)
-            try db.execute(
-                sql: "UPDATE capture SET text = ?, note = ?, source = ? WHERE id = ?",
-                arguments: [content.text, content.note, content.source, captureID]
-            )
-            return try captureInInbox(captureID, in: db)
-        }
-    }
-
     /// Turns Both ways on for the card with this id when `bothWays` is true,
     /// or off when it's false, and returns the card as it is then.
     func setBothWays(_ bothWays: Bool, of cardID: Int64, in db: Database) throws -> Card {
@@ -95,8 +72,8 @@ extension Engine {
     /// its content with `content` at `now`, as `replaceContent(of:with:at:in:)`
     /// does, moves it to `deck`, as `move(_:to:in:)` does, nil leaving it
     /// where it lives, and turns Both ways on or off as `bothWays` says, nil
-    /// leaving it as it was. Returns the card as it is then: how an edit, a
-    /// fix and an approved expansion change a card.
+    /// leaving it as it was. Returns the card as it is then: how an edit and
+    /// a fix change a card.
     func change(
         _ card: Card, to content: CardContent, deck: String?, bothWays: Bool?, at now: Date, in db: Database
     ) throws -> Card {

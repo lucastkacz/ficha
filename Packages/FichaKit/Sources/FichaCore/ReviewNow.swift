@@ -56,7 +56,7 @@ extension ReviewSettings {
     /// priority cards' first: new cards and new back-first ways take turns, as
     /// the new way goes the other way from Lucas's latest first review today,
     /// front first when he had none, unless none of that deck waits that way;
-    /// each way's new ones come by card in the order he approved them. With no
+    /// each way's new ones come by card in the order they came in. With no
     /// priority cards, that's the due ways and then a new way.
     func pickCards(
         after standings: [(way: CardWay, standing: WayStanding)],
@@ -133,13 +133,13 @@ private struct SortedStandings {
     /// The started ways that aren't due by then: the closest to being due
     /// first.
     let notDue: [CardWay]
-    /// The new ways, by card in the order Lucas approved them, each card's
-    /// front-first way first.
+    /// The new ways, by card in the order they came in, each card's front-first
+    /// way first.
     let new: [CardWay]
 
-    /// The ways that stand as `standings` say, by card in the order Lucas
-    /// approved them, each card's front-first way first, sorted by whether
-    /// they're due by `horizon`.
+    /// The ways that stand as `standings` say, by card in the order they came
+    /// in, each card's front-first way first, sorted by whether they're due by
+    /// `horizon`.
     init(_ standings: [(way: CardWay, standing: WayStanding)], dueBy horizon: Date) {
         var due: [(way: CardWay, interval: Duration, due: Date, order: Int)] = []
         var notDue: [(way: CardWay, due: Date, order: Int)] = []
@@ -155,8 +155,8 @@ private struct SortedStandings {
             }
         }
         // Ways with the same interval and due at the same time keep their
-        // order: by card in the order Lucas approved them, each card's
-        // front-first way first.
+        // order: by card in the order they came in, each card's front-first way
+        // first.
         self.due = due.sorted { ($0.interval, $0.due, $0.order) < ($1.interval, $1.due, $1.order) }.map(\.way)
         self.notDue = notDue.sorted { ($0.due, $0.order) < ($1.due, $1.order) }.map(\.way)
         self.new = new

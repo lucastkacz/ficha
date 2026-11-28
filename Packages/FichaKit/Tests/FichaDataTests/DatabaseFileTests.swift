@@ -20,15 +20,17 @@ final class DatabaseFileTests {
         try? FileManager.default.removeItem(at: folder)
     }
 
-    @Test("the inbox still counts its captures after the database is opened again")
-    func inboxCountSurvivesReopening() throws {
+    // Ficha no longer reads them (ADR 0041, #540), and deletes nothing an
+    // older version on another device may still sync.
+    @Test("the database keeps its captures, unread, after it's opened again", .bug(id: 540))
+    func capturesSurviveReopening() throws {
         let engine = try Engine(location: .folder(folder), time: time)
-        try engine.newCapture("serendipia")
-        try engine.newCapture("¿Por qué el cielo es azul?", source: "Una charla")
+        let serendipia = try engine.olderCapture("serendipia")
+        let cielo = try engine.olderCapture("¿Por qué el cielo es azul?", source: "Una charla")
 
         let reopened = try Engine(location: .folder(folder), time: time)
 
-        #expect(try reopened.progress(.defaults).inInbox == 2)
+        #expect(try reopened.olderCaptures().map(\.capture) == [serendipia, cielo])
     }
 
     @Test("a database that a newer version of Ficha migrated is refused")
@@ -51,7 +53,7 @@ final class DatabaseFileTests {
 
         let engine = try Engine(location: .folder(folder), time: time)
 
-        #expect(try engine.inbox().captures.map(\.text) == ["serendipia"])
+        #expect(try engine.olderCaptures().map(\.capture.text) == ["serendipia"])
         let copy = try #require(try engine.copies().first)
         #expect(try engine.copies().map(\.kind) == [.beforeUpdate])
         #expect(copy.savedAt == time.now)
@@ -136,7 +138,7 @@ final class DatabaseFileTests {
 
         #expect(
             try engine.cards().map(\.standing) == [
-                .inReviews, .inInbox(Flag(note: "Falta un ejemplo", flaggedAt: time.now)),
+                .inReviews, .flagged(Flag(note: "Falta un ejemplo", flaggedAt: time.now)),
                 .buried(at: time.now, flag: nil),
             ])
         #expect(
@@ -632,16 +634,14 @@ final class DatabaseFileTests {
         let app = try Engine(location: .folder(folder), time: time)
         let cli = try Engine(location: .folder(folder), time: time)
 
-        let capture = try app.newCapture("serendipia")
-        #expect(try cli.inbox().captures.map(\.text) == ["serendipia"])
+        let serendipia = try newCard("serendipia", in: app)
+        #expect(try cli.cards() == [serendipia])
 
-        try cli.approve(
-            capture.id, into: [card(.word, front: "serendipia", back: "Un hallazgo valioso por casualidad.")])
-        #expect(try app.progress(.defaults).inInbox == 0)
-        #expect(try app.cards().map(\.front) == ["serendipia"])
+        try cli.flag(serendipia.id, note: note("Falta un ejemplo"))
+        #expect(try app.flaggedCards().map(\.id) == [serendipia.id])
     }
 
-    // The menu counts the inbox again whenever the CLI changes it.
+    // The menu counts the cards again whenever the CLI changes them.
     @Test(
         "an engine hears when another engine on the same database changes it",
         .timeLimit(.minutes(1))
@@ -651,10 +651,10 @@ final class DatabaseFileTests {
         let cli = try Engine(location: .folder(folder), time: time)
         var changes = app.changes().makeAsyncIterator()
 
-        try cli.newCapture("serendipia")
+        try newCard("serendipia", in: cli)
 
         #expect(await changes.next() != nil)
-        #expect(try app.progress(.defaults).inInbox == 1)
+        #expect(try app.cards().map(\.front) == ["serendipia"])
     }
 
     // Ficha started with 5 new cards a day and a desired retention of 90%
@@ -1251,7 +1251,7 @@ func expectEveryRowWithAnIDAsBeforeIDs(in engine: Engine, at time: Date) throws 
                 backImage: nil, frontSound: nil, backSound: nil, deck: Deck.defaultName, tags: ["lenguaje"],
                 source: nil,
                 createdAt: time,
-                editedAt: nil, captureID: 1, flag: nil, buriedAt: nil, setAsideBy: nil, bothWays: false),
+                editedAt: nil, flag: nil, buriedAt: nil, setAsideBy: nil, bothWays: false),
             Card(
                 id: 2, type: .concept, front: "ubuntu", back: "Soy porque somos.",
                 frontImage: ImageName(rawValue: ubuntuFiles.frontImage),
@@ -1259,25 +1259,27 @@ func expectEveryRowWithAnIDAsBeforeIDs(in engine: Engine, at time: Date) throws 
                 frontSound: SoundName(rawValue: ubuntuFiles.frontSound),
                 backSound: SoundName(rawValue: ubuntuFiles.backSound), deck: Deck.defaultName, tags: ["filosofía"],
                 source: "Desmond Tutu",
-                createdAt: time, editedAt: time + hours(3), captureID: nil,
+                createdAt: time, editedAt: time + hours(3),
                 flag: Flag(note: "Falta un ejemplo", flaggedAt: time + hours(4)), buriedAt: time + hours(5),
                 setAsideBy: nil, bothWays: true),
         ])
     #expect(try engine.allTags() == [CardTag(name: "filosofía"), CardTag(name: "lenguaje", color: .blue)])
-    let inbox = try engine.inbox()
-    #expect(inbox.captures.isEmpty)
+    // The database keeps the captures, unread (#540).
+    #expect(try engine.capturesCardsCameFrom() == [1, nil])
+    let captures = try engine.olderCaptures()
     #expect(
-        inbox.followUps.map(\.capture) == [
+        captures.map(\.capture) == [
+            Capture(
+                id: 1, text: "serendipia", note: nil, source: nil, createdAt: time, expandsCardID: nil,
+                followsUpCardID: nil),
             Capture(
                 id: 2, text: "ojalá", note: nil, source: nil, createdAt: time, expandsCardID: nil,
-                followsUpCardID: 1)
-        ])
-    #expect(
-        inbox.expansions.map(\.capture) == [
+                followsUpCardID: 1),
             Capture(
                 id: 3, text: "ubuntu, en zulú", note: "Del proverbio", source: "Una charla", createdAt: time,
-                expandsCardID: 2, followsUpCardID: nil)
+                expandsCardID: 2, followsUpCardID: nil),
         ])
+    #expect(captures.map(\.isRefined) == [true, false, false])
     // The placement holds the interval of its step on the ladder Ficha
     // shipped, as the database held no other (#407).
     #expect(
@@ -1302,17 +1304,18 @@ func expectEveryRowWithAnIDAsBeforeIDs(in engine: Engine, at time: Date) throws 
     #expect(log.map(\.answeredEntry) == [nil, log[0].uuid, log[1].uuid, nil])
     // The ids of the card and the capture deleted before aren't given again.
     #expect(try engine.create(card(nil, front: "ataraxia", back: "Serenidad.")).id == 4)
-    #expect(try engine.newCapture("eudaimonía").id == 5)
+    #expect(try engine.olderCapture("eudaimonía").id == 5)
 }
 
 /// Checks that `engine` has every card of `saveDatabaseBeforeOptionalTypes`
-/// as it was saved at `time`: its type, capture, standing, step and review
-/// log, and the expansion still attached to its card, which follows none up.
+/// as it was saved at `time`: its type, standing, step and review log, and,
+/// in the database, unread, its capture, and the expansion still attached
+/// to its card, which follows none up.
 func expectEveryCardAsItWasBeforeOptionalTypes(in engine: Engine, at time: Date) throws {
     let cards = try engine.cards()
     #expect(cards.map(\.id) == [1, 2, 3])
     #expect(cards.map(\.type) == [.word, .question, .concept])
-    #expect(cards.map(\.captureID) == [1, 1, 2])
+    #expect(try engine.capturesCardsCameFrom() == [1, 1, 2])
     #expect(cards.map(\.front) == ["serendipia", "¿De dónde viene «serendipia»?", "ubuntu"])
     #expect(cards.map(\.back) == ["Un hallazgo por casualidad.", "De un cuento persa.", "Soy porque somos."])
     #expect(cards.map(\.tags) == [["lenguaje"], ["lenguaje", "historia"], ["filosofía"]])
@@ -1320,7 +1323,7 @@ func expectEveryCardAsItWasBeforeOptionalTypes(in engine: Engine, at time: Date)
     #expect(cards.map(\.createdAt) == [time, time, time])
     #expect(
         cards.map(\.standing) == [
-            .inReviews, .inInbox(Flag(note: "Falta un ejemplo", flaggedAt: time)), .buried(at: time, flag: nil),
+            .inReviews, .flagged(Flag(note: "Falta un ejemplo", flaggedAt: time)), .buried(at: time, flag: nil),
         ])
     let scheduler = ReviewSettings.defaults.scheduler
     // Its first view, then good an hour later: the second learning step,
@@ -1340,8 +1343,9 @@ func expectEveryCardAsItWasBeforeOptionalTypes(in engine: Engine, at time: Date)
                 cardID: 3, kind: .review(.again), answeredAt: time, responseTime: .seconds(6), trigger: .appearance,
                 interval: .seconds(hours(1))),
         ])
-    #expect(try engine.inbox().expansions.map(\.card.id) == [1])
-    #expect(try engine.inbox().followUps.isEmpty)
+    let expansion = try #require(try engine.olderCaptures().first { $0.capture.id == 3 })
+    #expect(expansion.capture.expandsCardID == 1)
+    #expect(expansion.capture.followsUpCardID == nil)
 }
 
 /// Saves a database at `file` as the first version of Ficha left it, written

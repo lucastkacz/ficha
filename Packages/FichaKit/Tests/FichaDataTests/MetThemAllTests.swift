@@ -29,10 +29,10 @@ struct MetThemAllTests {
         .bug(id: 491))
     func theAnswerThatMeetsADecksLastNewCard() throws {
         time.move(to: try morning(of: 13, in: calendar))
-        try engine.meet(try approveInDeck("La Gioconda", deck: "Arte", in: engine))
-        let meninas = try approveInDeck("Las Meninas", deck: "Arte", in: engine)
+        try engine.meet(try newCardInDeck("La Gioconda", deck: "Arte", in: engine))
+        let meninas = try newCardInDeck("Las Meninas", deck: "Arte", in: engine)
         time.advance(by: minutes(1))
-        try approveInDeck("Coliseo", deck: "Historia", in: engine)
+        try newCardInDeck("Coliseo", deck: "Historia", in: engine)
         try engine.setEmoji(try Emoji("🎨"), ofDeck: "Arte")
         try engine.setEmoji(try Emoji("📜"), ofDeck: "Historia")
         time.move(to: try morning(of: 14, in: calendar))
@@ -61,8 +61,8 @@ struct MetThemAllTests {
         "the answer that meets the first of a deck's two new cards makes the done panel say nothing of the deck",
         .bug(id: 491))
     func theFirstOfTwoNewCardsMeetsNothingInFull() throws {
-        let gioconda = try approveInDeck("La Gioconda", deck: "Arte", in: engine)
-        try approveInDeck("Las Meninas", deck: "Arte", in: engine)
+        let gioconda = try newCardInDeck("La Gioconda", deck: "Arte", in: engine)
+        try newCardInDeck("Las Meninas", deck: "Arte", in: engine)
         var panel = try engine.openPanel(.reviewNow, with: [.new(gioconda)], settings: settings)
 
         try panel.answer(.review(.good), responseTime: .seconds(3))
@@ -79,8 +79,8 @@ struct MetThemAllTests {
         "the answer that meets a deck's last new card in the reviews makes the done panel say you've met them all, with a buried new card left, as the deck's row in the Cards window says",
         .bug(id: 491))
     func aBuriedNewCardLeavesTheDeckMetInFull() throws {
-        let gioconda = try approveInDeck("La Gioconda", deck: "Arte", in: engine)
-        let grito = try approveInDeck("El Grito", deck: "Arte", in: engine)
+        let gioconda = try newCardInDeck("La Gioconda", deck: "Arte", in: engine)
+        let grito = try newCardInDeck("El Grito", deck: "Arte", in: engine)
         try engine.bury(grito.id)
         var panel = try engine.openPanel(.reviewNow, with: [.new(gioconda)], settings: settings)
 
@@ -98,8 +98,8 @@ struct MetThemAllTests {
         "once the answer that meets a deck's last new card leaves no deck in the queue, the done panel says nothing waits",
         .bug(id: 491))
     func nothingWaitsOnceTheLastDeckIsMet() throws {
-        try engine.meet(try approveInDeck("ubuntu", deck: "Lenguaje", in: engine))
-        let gioconda = try approveInDeck("La Gioconda", deck: "Arte", in: engine)
+        try engine.meet(try newCardInDeck("ubuntu", deck: "Lenguaje", in: engine))
+        let gioconda = try newCardInDeck("La Gioconda", deck: "Arte", in: engine)
         var panel = try engine.openPanel(.reviewNow, with: [.new(gioconda)], settings: settings)
 
         try panel.answer(.review(.good), responseTime: .seconds(3))
@@ -135,8 +135,8 @@ struct MetThemAllTests {
             try Data(text.utf8).write(to: file)
             files[deck] = .success(try await engine.readFichaDeck(deck, at: file))
         }
-        try engine.meet(try approveInDeck("ubuntu", deck: "Lenguaje", in: engine))
-        let gioconda = try approveInDeck("La Gioconda", deck: "Arte", in: engine)
+        try engine.meet(try newCardInDeck("ubuntu", deck: "Lenguaje", in: engine))
+        let gioconda = try newCardInDeck("La Gioconda", deck: "Arte", in: engine)
         var panel = try engine.openPanel(.reviewNow, with: [.new(gioconda)], settings: settings)
 
         try panel.answer(.review(.good), responseTime: .seconds(3))

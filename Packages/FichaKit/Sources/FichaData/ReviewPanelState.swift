@@ -9,8 +9,7 @@ import Foundation
 /// flips and rates a new way, in its first review, a due way, or one he reviews
 /// ahead. He plays a side's sound only when he asks, one at a time, until he
 /// answers the card, writes about it or leaves it, or the panel closes. He can
-/// also flag any card with a note on what to fix, or set it aside, and ask
-/// questions about it, each a follow-up in the inbox, without leaving it. When
+/// also flag any card with a note on what to fix, or set it aside. When
 /// his rating of again makes a card forgotten often, the panel offers to flag
 /// it, with a note that says how many times he forgot it, and back first when
 /// it was that way. Each is saved as he does it, and ⌘Z undoes it, the last
@@ -53,9 +52,6 @@ public struct ReviewPanelState: Sendable {
         /// not, while he writes a note on what to fix in it, also when the
         /// panel offers to flag it.
         case flagging(Card, Way = .frontFirst, showsLowerSide: Bool)
-        /// The card Lucas is on, as it showed, its lower side included or
-        /// not, while he writes a question about it, to follow it up.
-        case asking(Card, Way = .frontFirst, showsLowerSide: Bool)
         /// Lucas went through every card. "See more" can bring more.
         case done
     }
@@ -77,8 +73,6 @@ public struct ReviewPanelState: Sendable {
         case flag
         /// He set a card aside.
         case setAside
-        /// He asked a question about a card, to follow it up.
-        case ask
         /// He undid the last thing he did.
         case undo
         /// He went through every card, and the panel looked for more to
@@ -163,16 +157,9 @@ public struct ReviewPanelState: Sendable {
     /// The note Lucas is writing to flag the card he's on, while he writes
     /// it.
     private var flagging: Flagging?
-    /// The question Lucas is writing about the card he's on, while he writes
-    /// it.
-    private var asking: Asking?
     /// What Lucas did with each card he went through, in order, and how he
     /// left it: ⌘Z undoes the last one, and shows the card that way again.
     private var wentThrough: [Visit] = []
-    /// The ids of the follow-ups Lucas asked about the card he's on, in the
-    /// order he asked them: ⌘Z deletes the last one before it goes back to
-    /// the card before.
-    private var followUpsOnCard: [Int64] = []
     /// The deck at the top of the tree whose last new card Lucas's answer to
     /// the card he's on met, by its whole name, until he moves on, as when
     /// the panel offers to flag the card first: his visit to it keeps it.
@@ -212,7 +199,7 @@ public struct ReviewPanelState: Sendable {
 
     /// What the panel shows: the card Lucas is on, the way it came, its
     /// upper side alone or with its lower side, or as it showed while he
-    /// writes a note to flag it or a question about it, or that there was
+    /// writes a note to flag it, or that there was
     /// nothing to review, or that he went through every card. A new way
     /// shows its upper side until he flips it, as a review does, and says it's
     /// new.
@@ -226,9 +213,6 @@ public struct ReviewPanelState: Sendable {
         let (card, way) = (current.card, current.way)
         if flagging != nil {
             return .flagging(card, way, showsLowerSide: showsLowerSide)
-        }
-        if asking != nil {
-            return .asking(card, way, showsLowerSide: showsLowerSide)
         }
         return switch (current, showsLowerSide) {
         case (.new, false): .upperSide(card, way, isNew: true)
@@ -268,8 +252,8 @@ public struct ReviewPanelState: Sendable {
     }
 
     /// What the panel's ⋯ menu offers to do with the card Lucas is on, each
-    /// also on its key (`CardAction`): asking about it, flagging it and
-    /// setting it aside while it shows, and nothing while he writes about it
+    /// also on its key (`CardAction`): flagging it and setting it aside while
+    /// it shows, and nothing while he writes about it
     /// or once he went through every card.
     public var cardActions: [CardAction] {
         isOnACard ? CardAction.allCases : []
@@ -282,7 +266,7 @@ public struct ReviewPanelState: Sendable {
     public var menuOffersUndo: Bool {
         switch content {
         case .upperSide, .bothSides, .done: true
-        case .nothingToReview, .flagging, .asking: false
+        case .nothingToReview, .flagging: false
         }
     }
 
@@ -319,23 +303,10 @@ public struct ReviewPanelState: Sendable {
         flagging?.isOffer == true
     }
 
-    /// The question Lucas is writing about the card he's on, while he writes
-    /// it.
-    public var question: String? {
-        asking?.question
-    }
-
-    /// Whether the question asks something, so it can be saved as a
-    /// follow-up: a blank one can't.
-    public var questionAsksSomething: Bool {
-        question.flatMap { CaptureContent(text: $0, note: nil, source: nil) } != nil
-    }
-
-    /// Whether ⌘Z has something to undo: a follow-up Lucas asked about the
-    /// card he's on, or what he did with a card he went through, while the
-    /// panel is open and he isn't writing a note or a question.
+    /// Whether ⌘Z has something to undo: what Lucas did with a card he went
+    /// through, while the panel is open and he isn't writing a note.
     public var canUndo: Bool {
-        outcome == nil && (!followUpsOnCard.isEmpty || !wentThrough.isEmpty) && flagging == nil && asking == nil
+        outcome == nil && !wentThrough.isEmpty && flagging == nil
     }
 
     /// Whether the card Lucas is on shows its lower side under its upper one:
@@ -344,19 +315,19 @@ public struct ReviewPanelState: Sendable {
         current != nil && isFlipped
     }
 
-    /// Whether Lucas is on a card, as it shows, to answer, flag, set aside or
-    /// ask about it.
+    /// Whether Lucas is on a card, as it shows, to answer, flag or set aside
+    /// it.
     var isOnACard: Bool {
         switch content {
         case .upperSide, .bothSides: true
-        case .nothingToReview, .flagging, .asking, .done: false
+        case .nothingToReview, .flagging, .done: false
         }
     }
 
     /// How long Lucas has been on the card he's on: while he writes a note to
-    /// flag it or a question about it, as long as when he started.
+    /// flag it, as long as when he started.
     private var timeOnCard: Duration {
-        flagging?.timeOnCard ?? asking?.timeOnCard ?? sinceOpening() - cardShownAt
+        flagging?.timeOnCard ?? sinceOpening() - cardShownAt
     }
 
     /// Shows the lower side of the card Lucas is on under its upper side:
@@ -434,63 +405,19 @@ public struct ReviewPanelState: Sendable {
         touch()
     }
 
-    /// Flags the card with the note Lucas wrote, which sends it to the inbox
-    /// until it's fixed, and moves on to the next card, also when the panel
-    /// offered it, after his rating. When it can't be saved, the card stays,
-    /// with the note, and the panel says why.
+    /// Flags the card with the note Lucas wrote, which takes it out of his
+    /// reviews, to wait in its deck until it's fixed, and moves on to the
+    /// next card, also when the panel offered it, after his rating. When it
+    /// can't be saved, the card stays, with the note, and the panel says why.
     public mutating func finishFlagging() {
         guard let note = note.flatMap(FlagNote.init) else { return }
         perform(.flag) { panel throws(EngineError) in try panel.flag(note: note) }
     }
 
-    /// Starts asking about the card Lucas is on, its upper side alone or with
-    /// its lower side: the panel asks for his question, the card's response
-    /// time waits while he writes it, and its sound stops.
-    public mutating func startAsking() {
-        guard isOnACard else { return }
-        asking = Asking(question: "", timeOnCard: timeOnCard)
-        playingSound = nil
-        touch()
-    }
-
-    /// Takes the question as Lucas writes it, which keeps the panel open.
-    public mutating func write(question: String) {
-        guard asking != nil else { return }
-        asking?.question = question
-        touch()
-    }
-
-    /// Stops asking about the card: it stays as it showed, and its response
-    /// time goes on from where it waited.
-    public mutating func cancelAsking() {
-        guard let asking else { return }
-        self.asking = nil
-        startTiming(from: asking.timeOnCard)
-        touch()
-    }
-
-    /// Saves the question Lucas wrote as a follow-up on the card he's on,
-    /// which waits in the inbox tied to it, without rating the card: the
-    /// panel stays on it, its side as it was, and its response time goes on
-    /// from where it waited. He can ask again. A blank question isn't saved.
-    /// When it can't be saved, the question stays, and the panel says why.
-    public mutating func finishAsking() {
-        guard let asking, questionAsksSomething, outcome == nil, let current else { return }
-        perform(.ask) { panel throws(EngineError) in
-            let followUp = try panel.engine.followUp(current.card.id, text: asking.question)
-            panel.followUpsOnCard.append(followUp.id)
-            panel.asking = nil
-            panel.startTiming(from: asking.timeOnCard)
-            panel.touch()
-        }
-    }
-
     /// Does `action` with the card Lucas is on, which he chose from the ⋯
-    /// menu or with its key: starts asking about it or flagging it, or sets
-    /// it aside.
+    /// menu or with its key: starts flagging it, or sets it aside.
     public mutating func choose(_ action: CardAction) {
         switch action {
-        case .ask: startAsking()
         case .flag: startFlagging()
         case .setAside: setCardAside()
         }
@@ -504,10 +431,9 @@ public struct ReviewPanelState: Sendable {
         perform(.setAside) { panel throws(EngineError) in try panel.setAside() }
     }
 
-    /// Undoes the last thing Lucas did: the last follow-up he asked about the
-    /// card he's on, or else what he did with the last card he went through,
-    /// and shows that card again as he left it: ⌘Z. When it can't be undone,
-    /// the panel stays where it is, and says why.
+    /// Undoes what Lucas did with the last card he went through, and shows
+    /// that card again as he left it: ⌘Z. When it can't be undone, the panel
+    /// stays where it is, and says why.
     public mutating func undoLastCard() {
         guard canUndo else { return }
         perform(.undo) { panel throws(EngineError) in try panel.undo() }
@@ -621,8 +547,9 @@ public struct ReviewPanelState: Sendable {
         images.show(Set(cards.flatMap(\.card.images)), readingWith: engine)
     }
 
-    /// Flags the current card with Lucas's note on what to fix, which sends
-    /// it to the inbox, and moves on to the next card. When the panel offered
+    /// Flags the current card with Lucas's note on what to fix, which takes
+    /// it out of his reviews, to wait in its deck, and moves on to the next
+    /// card. When the panel offered
     /// it, ⌘Z then undoes his rating along with the flag. The panel's button
     /// flags it through `finishFlagging()`, with the note he wrote, which
     /// says what failed.
@@ -646,28 +573,18 @@ public struct ReviewPanelState: Sendable {
         moveOn(after: [.setAside], timeOnCard: timeOnCard)
     }
 
-    /// Undoes the last thing Lucas did, ⌘Z, the last first. On the card he's
-    /// on, the engine takes back the last follow-up he asked about it, and
-    /// the panel stays on the card as it shows. With none left there, it
-    /// undoes what he did with the last card he went through, which puts the
-    /// card's way back where it stood, and goes back to it, as he left it,
-    /// its lower side showing or not, with its time going on from where it
-    /// was, and with the follow-ups he asked about it, which the next ⌘Z
-    /// takes back: also once he went through every card. The engine takes
-    /// back his answer to that way, unflags the card or puts it back, or, for
-    /// a card he flagged when the panel offered it, unflags it and then takes
-    /// back his answer. When the card or the follow-up changed outside the
-    /// panel since, nothing more is undone. Nothing is left to undo once the
-    /// panel closed. The panel's ⌘Z undoes through `undoLastCard()`, which
-    /// says what failed.
+    /// Undoes the last thing Lucas did, ⌘Z, the last first: what he did with
+    /// the last card he went through, which puts the card's way back where
+    /// it stood, and goes back to it, as he left it, its lower side showing
+    /// or not, with its time going on from where it was: also once he went
+    /// through every card. The engine takes back his answer to that way,
+    /// unflags the card or puts it back, or, for a card he flagged when the
+    /// panel offered it, unflags it and then takes back his answer. When the
+    /// card changed outside the panel since, nothing more is undone. Nothing
+    /// is left to undo once the panel closed. The panel's ⌘Z undoes through
+    /// `undoLastCard()`, which says what failed.
     public mutating func undo() throws(EngineError) {
         guard canUndo else { return }
-        if let followUpID = followUpsOnCard.last, let current {
-            try engine.takeBackFollowUp(followUpID, of: current.card.id)
-            followUpsOnCard.removeLast()
-            touch()
-            return
-        }
         guard let last = wentThrough.last else { return }
         let undone = cards[wentThrough.count - 1]
         // The last first. What's taken back leaves the visit at once, so
@@ -678,7 +595,6 @@ public struct ReviewPanelState: Sendable {
         }
         wentThrough.removeLast()
         showSounds()
-        followUpsOnCard = last.followUps
         moreCards = []
         isFlipped = last.showedLowerSide
         workOutIntervals()
@@ -689,8 +605,9 @@ public struct ReviewPanelState: Sendable {
     /// Takes back `action`, which Lucas did with `undone`, a card the panel
     /// showed one of its ways, in the engine: his answer to that way, or the
     /// card's flag, or its setting aside, which the engine undoes by
-    /// unburying it. When a refine session or the Cards window fixed the
-    /// card, set it aside or put it back since, it can't be undone.
+    /// unburying it. When the Cards window or `ficha fix` fixed the card, or
+    /// the Cards window set it aside or put it back since, it can't be
+    /// undone.
     private func takeBack(_ action: PanelAction, of undone: PanelCard) throws(EngineError) {
         let cardID = undone.card.id
         do throws(EngineError) {
@@ -712,15 +629,12 @@ public struct ReviewPanelState: Sendable {
     private mutating func moveOn(after actions: [PanelAction], timeOnCard: Duration) {
         wentThrough.append(
             Visit(
-                actions: actions, followUps: followUpsOnCard, showedLowerSide: isFlipped, timeOnCard: timeOnCard,
-                metInFull: answerMetInFull))
+                actions: actions, showedLowerSide: isFlipped, timeOnCard: timeOnCard, metInFull: answerMetInFull))
         showSounds()
-        followUpsOnCard = []
         answerMetInFull = nil
         isFlipped = false
         shownIntervals = nil
         flagging = nil
-        asking = nil
         startTiming()
         touch()
         if current == nil {
@@ -829,8 +743,7 @@ private enum PanelAction: Sendable {
 }
 
 /// A card Lucas went through in the review panel: what he did with it, which
-/// ⌘Z undoes, the follow-ups he asked about it, which ⌘Z takes back once it's
-/// back on the card, how he left it, which ⌘Z shows again: whether its
+/// ⌘Z undoes, how he left it, which ⌘Z shows again: whether its
 /// lower side showed, and how long he had been on it, and the deck his
 /// answer to it met in full, which ⌘Z forgets along with the visit.
 private struct Visit: Sendable {
@@ -838,8 +751,6 @@ private struct Visit: Sendable {
     /// flag, when the panel offered it. One ⌘Z undoes them all, the last
     /// first.
     var actions: [PanelAction]
-    /// The ids of the follow-ups, in the order he asked them.
-    let followUps: [Int64]
     let showedLowerSide: Bool
     let timeOnCard: Duration
     /// The deck at the top of the tree whose last new card his answer met,
@@ -854,13 +765,6 @@ private struct Flagging: Sendable {
     var note: String
     let timeOnCard: Duration
     let isOffer: Bool
-}
-
-/// The question Lucas is writing about the card he's on, and how long he had
-/// been on the card when he started.
-private struct Asking: Sendable {
-    var question: String
-    let timeOnCard: Duration
 }
 
 extension Engine {

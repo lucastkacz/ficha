@@ -61,7 +61,7 @@ final class CardsWindowImportTests {
         "the Import sheet starts before a file is chosen, and choosing one shows its preview, which Import goes on from"
     )
     func choosingAFileShowsItsPreview() async throws {
-        try approveCard("serendipia", in: engine)
+        try newCard("serendipia", in: engine)
         var window = engine.openCardsWindow(with: scheduler)
         window.read(with: scheduler)
 
@@ -101,7 +101,7 @@ final class CardsWindowImportTests {
 
     @Test("with Skip, Import is off while every card repeats one of yours, and the repeated cards stay as they are")
     func skipLeavesTheRepeatedCardsAsTheyAre() async throws {
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         var window = try await importSheet(on: "Palabras.txt", "serendipia\tUn hallazgo valioso.\n")
 
         window.chooseForRepeatedCards(.skip)
@@ -120,8 +120,8 @@ final class CardsWindowImportTests {
         "once the import is done, the sheet says how many cards came in, were updated and were skipped, and the grid lists them"
     )
     func theSheetSaysWhatTheImportDid() async throws {
-        let serendipia = try approveCard("serendipia", in: engine)
-        try approveCard("petricor", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
+        try newCard("petricor", in: engine)
         var window = try await importSheet(
             on: "Palabras.txt",
             "serendipia\tUn hallazgo valioso.\npetricor\tEl olor de la lluvia.\nefímero\tQue dura poco.\n")
@@ -144,7 +144,7 @@ final class CardsWindowImportTests {
         "once a file with a Both ways column is imported, the grid lists its cards going both ways as the column says, an updated one too"
     )
     func importedCardsGoBothWaysAsTheColumnSays() async throws {
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         var window = try await importSheet(
             on: "Palabras.txt",
             """
@@ -238,7 +238,7 @@ final class CardsWindowImportTests {
         "the sheet lists Default among the decks the cards come into while some new cards name no deck beside others that name one, and a menu of decks while none names one"
     )
     func defaultIsListedWhileSomeNewCardsNameNoDeck() async throws {
-        try approveCard("fémur", in: engine)
+        try newCard("fémur", in: engine)
         let mixed = try await ankiImportSheet(
             on: "Medicina.apkg",
             AnkiPackage(notes: [
@@ -414,7 +414,7 @@ final class CardsWindowImportTests {
 
 extension CardsWindowState {
     /// The fronts of the cards the grid lists, in the order the engine
-    /// read them, or nil when it lists the inbox or couldn't read them.
+    /// read them, or nil when it couldn't read them.
     fileprivate var listedFronts: [String]? {
         guard case .success(.cards(let rows)) = listing else {
             return nil
@@ -423,8 +423,7 @@ extension CardsWindowState {
     }
 
     /// Whether each card the grid lists goes both ways, in the order the
-    /// engine read them, or nil when it lists the inbox or couldn't read
-    /// them.
+    /// engine read them, or nil when it couldn't read them.
     fileprivate var listedBothWays: [Bool]? {
         guard case .success(.cards(let rows)) = listing else {
             return nil

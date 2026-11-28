@@ -1,7 +1,8 @@
 import FichaCore
-import FichaData
 import Foundation
 import Testing
+
+@testable import FichaData
 
 /// Tests on deleting cards in the Cards window, one or several at once: they
 /// leave Ficha for good with their review logs, which burying keeps, and
@@ -21,9 +22,9 @@ struct DeletingTests {
     @Test("deleting cards takes them out of Ficha with their review logs, and leaves the other cards as they were")
     func deletingTakesTheCardsAndTheirReviewLogs() throws {
         // serendipia and ojalá have their first reviews, and ubuntu is buried.
-        let serendipia = try approveCard("serendipia", in: engine)
-        let ubuntu = try approveCard("ubuntu", in: engine)
-        let ojala = try approveCard("ojalá", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
+        let ojala = try newCard("ojalá", in: engine)
         try engine.meet(serendipia)
         try engine.meet(ojala)
         try engine.bury(ubuntu.id)
@@ -42,37 +43,39 @@ struct DeletingTests {
         #expect(try engine.reviewNow(settings) == [.review(ojala)])
     }
 
-    // The capture serendipia was approved from, and its expansion approved
-    // into it, were refined already, so they stay out of the inbox.
-    @Test("deleting a card leaves its expansion in the inbox as a plain capture, and what was refined out of it")
-    func anExpansionOfADeletedCardBecomesACapture() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
-        let approved = try engine.expand(text: "Serendipia", note: "También es una película", source: nil)
-        try engine.approveExpansion(
-            approved.id, into: card(.word, front: "serendipia", back: "Un hallazgo valioso por casualidad."))
-        let waiting = try engine.expand(text: "serendipia", note: "Viene de un cuento persa", source: "Un podcast")
+    // An older version of Ficha, on another device, may still expand a card or
+    // follow it up, and the database keeps what it saved, unread (#540).
+    @Test(
+        "deleting a card lets go of the captures that expand it or follow it up, which stay as they were but for that",
+        .bug(id: 540))
+    func deletingACardLetsGoOfItsCaptures() throws {
+        let serendipia = try newCard("serendipia", in: engine)
+        let refined = try engine.olderCapture("Serendipia", note: "También es una película", expanding: serendipia.id)
+        try engine.refineOlderCapture(refined.id)
+        try engine.olderCapture(
+            "serendipia", note: "Viene de un cuento persa", source: "Un podcast", expanding: serendipia.id)
+        try engine.olderCapture("¿Quién inventó la palabra?", followingUp: serendipia.id)
 
         try engine.delete([serendipia.id])
 
-        let inbox = try engine.inbox()
-        #expect(inbox.expansions.isEmpty)
-        #expect(inbox.captures.map(\.id) == [waiting.id])
-        #expect(inbox.captures.map(\.expandsCardID) == [nil])
-        #expect(inbox.captures.map(\.text) == ["serendipia"])
-        #expect(inbox.captures.map(\.note) == ["Viene de un cuento persa"])
-        #expect(inbox.captures.map(\.source) == ["Un podcast"])
-        #expect(try engine.progress(settings).inInbox == 1)
+        let captures = try engine.olderCaptures()
+        #expect(captures.map(\.capture.expandsCardID) == [nil, nil, nil])
+        #expect(captures.map(\.capture.followsUpCardID) == [nil, nil, nil])
+        #expect(captures.map(\.capture.text) == ["Serendipia", "serendipia", "¿Quién inventó la palabra?"])
+        #expect(captures.map(\.capture.note) == ["También es una película", "Viene de un cuento persa", nil])
+        #expect(captures.map(\.capture.source) == [nil, "Un podcast", nil])
+        #expect(captures.map(\.isRefined) == [true, false, false])
     }
 
-    @Test("the menu's counts leave the deleted cards out: a due one, a learned one and a flagged one")
+    @Test("the menu's counts leave the deleted cards out: a due one and a learned one", .bug(id: 540))
     func theMenusCountsLeaveTheDeletedCardsOut() throws {
         // serendipia gets learned, graduated to wait 21 days or more, and
         // comes due, as ubuntu does on the first learning step. ojalá is
-        // flagged.
-        let serendipia = try approveCard("serendipia", in: engine)
+        // flagged, so it counts nowhere.
+        let serendipia = try newCard("serendipia", in: engine)
         try engine.climbUntilLearned(serendipia, movingForward: time)
-        let ubuntu = try approveCard("ubuntu", in: engine)
-        let ojala = try approveCard("ojalá", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
+        let ojala = try newCard("ojalá", in: engine)
         try engine.meet(ubuntu)
         try engine.flag(ojala.id, note: note("Falta un ejemplo"))
         time.move(to: try #require(try engine.standing(of: serendipia.id, with: settings.scheduler).due))
@@ -83,10 +86,8 @@ struct DeletingTests {
         let after = try engine.progress(settings)
         #expect(before.due == 2)
         #expect(before.learned == 1)
-        #expect(before.inInbox == 1)
         #expect(after.due == 1)
         #expect(after.learned == 0)
-        #expect(after.inInbox == 0)
         #expect(try engine.reviewNow(settings) == [.review(ubuntu)])
     }
 
@@ -94,40 +95,40 @@ struct DeletingTests {
     // at all.
     @Test("deleting several cards deletes none of them when one doesn't exist")
     func deletingSeveralCardsIsAllOrNothing() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
-        let ubuntu = try approveCard("ubuntu", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
         try engine.meet(serendipia)
-        try engine.expand(text: "Serendipia", note: "También es una película", source: nil)
+        try engine.olderCapture("Serendipia", note: "También es una película", expanding: serendipia.id)
         let log = try engine.reviewLog()
-        let inbox = try engine.inbox()
+        let captures = try engine.olderCaptures().map(\.capture)
 
         #expect(throws: EngineError.cardNotFound(99)) {
             try engine.delete([serendipia.id, ubuntu.id, 99])
         }
         #expect(try engine.cards() == [serendipia, ubuntu])
         #expect(try engine.reviewLog() == log)
-        #expect(try engine.inbox().expansions == inbox.expansions)
+        #expect(try engine.olderCaptures().map(\.capture) == captures)
     }
 
-    // A card's step can't be reset: Lucas deletes it and captures it again
-    // (#87).
-    @Test("once a card is deleted, capturing its front again saves a new capture in the inbox")
-    func aDeletedCardsFrontCanBeCapturedAgain() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
+    // A card's step can't be reset: Lucas deletes it and adds it again (#87).
+    @Test("once a card is deleted, adding its front again makes a new card", .bug(id: 540))
+    func aDeletedCardsFrontCanBeAddedAgain() async throws {
+        let serendipia = try newCard("serendipia", in: engine)
         try engine.delete([serendipia.id])
 
-        let result = try engine.capture(text: "Serendipia", note: nil, source: nil)
+        let result = try await engine.add([draft(.word, front: "Serendipia", back: "Un hallazgo por casualidad.")])
 
-        let capture = try #require(result.saved)
-        #expect(try engine.inbox().captures == [capture])
+        let cards = try engine.cards()
+        #expect(result == .added(cards))
+        #expect(cards.map(\.front) == ["Serendipia"])
     }
 
     // The panel's cards were picked when it opened, and Lucas can delete one
-    // of them in the Cards window meanwhile, as a refine session can bury one.
+    // of them in the Cards window meanwhile, or set one aside.
     @Test("the review panel can't answer, flag or set aside a card deleted meanwhile, and stays on it until it closes")
     func thePanelRefusesACardDeletedMeanwhile() throws {
-        let ubuntu = try approveCard("ubuntu", in: engine)
-        let petricor = try approveCard("petricor", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
+        let petricor = try newCard("petricor", in: engine)
         try engine.meet(ubuntu)
         try engine.meet(petricor)
         time.advance(by: hours(1))
@@ -153,8 +154,8 @@ struct DeletingTests {
 
     @Test("⌘Z can't undo what Lucas did with a card deleted meanwhile, and says so")
     func undoRefusesACardDeletedMeanwhile() throws {
-        let ubuntu = try approveCard("ubuntu", in: engine)
-        let petricor = try approveCard("petricor", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
+        let petricor = try newCard("petricor", in: engine)
         try engine.meet(ubuntu)
         try engine.meet(petricor)
         time.advance(by: hours(1))

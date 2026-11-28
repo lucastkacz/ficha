@@ -1,27 +1,28 @@
 import FichaCore
 import Foundation
+internal import GRDB
 
-/// Ficha Dev's cards, so Lucas and agents can try a change without capturing
-/// and refining first: the Mac's debug menu loads them, and so does the
-/// iPhone app. They're written by hand, never taken from Lucas's cards, and
-/// follow the rules the content guide starts from: Rioplatense Spanish, one
+/// Ficha Dev's cards, so Lucas and agents can try a change without making cards
+/// first: the Mac's debug menu loads them, and so does the iPhone app. They're
+/// written by hand, never taken from Lucas's cards, in Rioplatense Spanish, one
 /// idea per card, a one-line front and a back of at most 40 words, and words
 /// from other languages explained in Spanish. There are 50, words most of all,
 /// in decks by subject, some inside others, and one in Default; their tags
 /// stay, as labels that cross decks.
 public enum SampleCards {
-    /// Loads the sample cards into the engine's database as new cards, each
-    /// approved from a capture of its own, the way refining leaves them, so the
-    /// inbox stays as it was. Every sample is checked before any is saved, so a
-    /// mistake in this file saves none. Loading them again adds them again.
+    /// Loads the sample cards into the engine's database as new cards, in
+    /// one write, each in its subject's deck. Every sample is checked before
+    /// any is saved, so a mistake in this file saves none. Loading them again
+    /// adds them again, as new cards, whose fronts repeat the first ones'.
     public static func load(into engine: Engine) throws {
-        let samples = try sampleCaptures.map { sample in (sample, try sample.cardContents()) }
-        for (sample, cards) in samples {
-            // Loaded again, a sample repeats the capture its cards were
-            // approved from, so it's a duplicate. Expanding saves it anyway,
-            // and approving it adds its cards again, as new ones.
-            let capture = try engine.expand(text: sample.text, note: nil, source: sample.source)
-            try engine.approve(capture.id, into: cards, deck: sample.deck)
+        let samples = try sampleSubjects.map { sample in (sample, try sample.cardContents()) }
+        let createdAt = engine.now
+        try engine.write { db in
+            for (sample, cards) in samples {
+                for card in cards {
+                    try insertCard(card, deck: sample.deck, at: createdAt, in: db)
+                }
+            }
         }
     }
 
@@ -36,17 +37,17 @@ public enum SampleCards {
     }
 }
 
-/// A capture, as Lucas might have jotted it down, and the cards it was approved
-/// into, which take its source and go to its deck.
-private struct SampleCapture {
-    let text: String
+/// A subject, as Lucas might have jotted it down, and the cards made of it,
+/// which take its source and go to its deck.
+private struct SampleSubject {
+    let subject: String
     let source: String?
     /// The deck its cards go to, or Default when it names none.
     let deck: String
     let cards: [SampleCard]
 
-    init(text: String, source: String?, deck: String = Deck.defaultName, cards: [SampleCard]) {
-        self.text = text
+    init(subject: String, source: String?, deck: String = Deck.defaultName, cards: [SampleCard]) {
+        self.subject = subject
         self.source = source
         self.deck = deck
         self.cards = cards
@@ -56,14 +57,14 @@ private struct SampleCapture {
     func cardContents() throws(SampleCardsError) -> [CardContent] {
         try cards.map { card throws(SampleCardsError) in
             guard let content = card.content(source: source) else {
-                throw .blankSide(capture: text)
+                throw .blankSide(subject: subject)
             }
             return content
         }
     }
 }
 
-/// A card a sample capture was approved into.
+/// A card of a sample subject.
 private struct SampleCard {
     let type: CardType
     let front: String
@@ -77,8 +78,8 @@ private struct SampleCard {
         self.tags = tags
     }
 
-    /// The card as the engine takes it, with its capture's source, or nil when
-    /// its front or back is blank.
+    /// The card as the engine takes it, with its subject's source, or nil
+    /// when its front or back is blank.
     func content(source: String?) -> CardContent? {
         CardContent(type: type, front: front, back: back, tags: tags, source: source)
     }
@@ -86,22 +87,22 @@ private struct SampleCard {
 
 /// A sample card written wrong in this file, so it can't be loaded.
 public enum SampleCardsError: LocalizedError {
-    /// A card of the sample capture with this text has a blank front or back.
-    case blankSide(capture: String)
+    /// A card of the sample subject with this text has a blank front or back.
+    case blankSide(subject: String)
 
     public var errorDescription: String? {
         switch self {
-        case .blankSide(let capture):
-            "A sample card of “\(capture)” has a blank front or back: complete it in SampleCards.swift."
+        case .blankSide(let subject):
+            "A sample card of “\(subject)” has a blank front or back: complete it in SampleCards.swift."
         }
     }
 }
 
-/// The sample captures, in the order they're approved, which is the order
-/// their cards come in as new cards: the types take turns.
-private let sampleCaptures = [
-    SampleCapture(
-        text: "serendipia",
+/// The sample subjects, in the order their cards come in as new cards: the
+/// types take turns.
+private let sampleSubjects = [
+    SampleSubject(
+        subject: "serendipia",
         source: "Un podcast de etimología",
         deck: "Idiomas::Español",
         cards: [
@@ -122,8 +123,8 @@ private let sampleCaptures = [
             ),
         ]
     ),
-    SampleCapture(
-        text: "ubuntu",
+    SampleSubject(
+        subject: "ubuntu",
         source: nil,
         deck: "Humanidades::Filosofía",
         cards: [
@@ -138,8 +139,8 @@ private let sampleCaptures = [
             )
         ]
     ),
-    SampleCapture(
-        text: "Caminante, no hay camino",
+    SampleSubject(
+        subject: "Caminante, no hay camino",
         source: "Campos de Castilla",
         deck: "Humanidades::Literatura",
         cards: [
@@ -154,8 +155,8 @@ private let sampleCaptures = [
             )
         ]
     ),
-    SampleCapture(
-        text: "¿Por qué el cielo es azul?",
+    SampleSubject(
+        subject: "¿Por qué el cielo es azul?",
         source: "Una charla de divulgación",
         deck: "Ciencias::Naturales",
         cards: [
@@ -170,8 +171,8 @@ private let sampleCaptures = [
             )
         ]
     ),
-    SampleCapture(
-        text: "Schadenfreude",
+    SampleSubject(
+        subject: "Schadenfreude",
         source: nil,
         deck: "Idiomas::Palabras prestadas",
         cards: [
@@ -187,8 +188,8 @@ private let sampleCaptures = [
         ]
     ),
     // The longest back: the 40 words a back can have.
-    SampleCapture(
-        text: "navaja de Ockham",
+    SampleSubject(
+        subject: "navaja de Ockham",
         source: nil,
         deck: "Humanidades::Filosofía",
         cards: [
@@ -204,8 +205,8 @@ private let sampleCaptures = [
             )
         ]
     ),
-    SampleCapture(
-        text: "Lo esencial es invisible a los ojos",
+    SampleSubject(
+        subject: "Lo esencial es invisible a los ojos",
         source: "El principito",
         deck: "Humanidades::Literatura",
         cards: [
@@ -220,8 +221,8 @@ private let sampleCaptures = [
             )
         ]
     ),
-    SampleCapture(
-        text: "cuándo llegamos a la Luna",
+    SampleSubject(
+        subject: "cuándo llegamos a la Luna",
         source: nil,
         deck: "Humanidades::Historia",
         cards: [
@@ -237,8 +238,8 @@ private let sampleCaptures = [
         ]
     ),
     // A card without tags, in Default.
-    SampleCapture(
-        text: "petricor",
+    SampleSubject(
+        subject: "petricor",
         source: nil,
         cards: [
             SampleCard(
@@ -249,8 +250,8 @@ private let sampleCaptures = [
             )
         ]
     ),
-    SampleCapture(
-        text: "costo hundido",
+    SampleSubject(
+        subject: "costo hundido",
         source: "Pensar rápido, pensar despacio",
         deck: "Ciencias::Psicología",
         cards: [
@@ -265,8 +266,8 @@ private let sampleCaptures = [
             )
         ]
     ),
-    SampleCapture(
-        text: "Solo sé que no sé nada",
+    SampleSubject(
+        subject: "Solo sé que no sé nada",
         source: nil,
         deck: "Humanidades::Filosofía",
         cards: [
@@ -281,8 +282,8 @@ private let sampleCaptures = [
             )
         ]
     ),
-    SampleCapture(
-        text: "por qué el mar es salado",
+    SampleSubject(
+        subject: "por qué el mar es salado",
         source: nil,
         deck: "Ciencias::Naturales",
         cards: [
@@ -297,8 +298,8 @@ private let sampleCaptures = [
             )
         ]
     ),
-    SampleCapture(
-        text: "ojalá viene del árabe?",
+    SampleSubject(
+        subject: "ojalá viene del árabe?",
         source: "Un libro de etimología",
         deck: "Idiomas::Español",
         cards: [
@@ -319,8 +320,8 @@ private let sampleCaptures = [
             ),
         ]
     ),
-    SampleCapture(
-        text: "efecto Dunning-Kruger",
+    SampleSubject(
+        subject: "efecto Dunning-Kruger",
         source: nil,
         deck: "Ciencias::Psicología",
         cards: [
@@ -335,8 +336,8 @@ private let sampleCaptures = [
             )
         ]
     ),
-    SampleCapture(
-        text: "pienso luego existo",
+    SampleSubject(
+        subject: "pienso luego existo",
         source: "Discurso del método",
         deck: "Humanidades::Filosofía",
         cards: [
@@ -352,8 +353,8 @@ private let sampleCaptures = [
             )
         ]
     ),
-    SampleCapture(
-        text: "procrastinar",
+    SampleSubject(
+        subject: "procrastinar",
         source: nil,
         deck: "Idiomas::Español",
         cards: [
@@ -368,8 +369,8 @@ private let sampleCaptures = [
             )
         ]
     ),
-    SampleCapture(
-        text: "cuántos huesos tenemos",
+    SampleSubject(
+        subject: "cuántos huesos tenemos",
         source: nil,
         deck: "Ciencias::Naturales",
         cards: [
@@ -384,8 +385,8 @@ private let sampleCaptures = [
             )
         ]
     ),
-    SampleCapture(
-        text: "sesgo de confirmación",
+    SampleSubject(
+        subject: "sesgo de confirmación",
         source: "Pensar rápido, pensar despacio",
         deck: "Ciencias::Psicología",
         cards: [
@@ -400,8 +401,8 @@ private let sampleCaptures = [
             )
         ]
     ),
-    SampleCapture(
-        text: "efímero",
+    SampleSubject(
+        subject: "efímero",
         source: nil,
         deck: "Idiomas::Español",
         cards: [
@@ -416,8 +417,8 @@ private let sampleCaptures = [
             )
         ]
     ),
-    SampleCapture(
-        text: "yo soy yo y mi circunstancia",
+    SampleSubject(
+        subject: "yo soy yo y mi circunstancia",
         source: "Meditaciones del Quijote",
         deck: "Humanidades::Filosofía",
         cards: [
@@ -432,8 +433,8 @@ private let sampleCaptures = [
             )
         ]
     ),
-    SampleCapture(
-        text: "inefable",
+    SampleSubject(
+        subject: "inefable",
         source: nil,
         deck: "Idiomas::Español",
         cards: [
@@ -448,8 +449,8 @@ private let sampleCaptures = [
             )
         ]
     ),
-    SampleCapture(
-        text: "ley de Parkinson",
+    SampleSubject(
+        subject: "ley de Parkinson",
         source: "Un artículo sobre productividad",
         deck: "Sociedad",
         cards: [
@@ -464,8 +465,8 @@ private let sampleCaptures = [
             )
         ]
     ),
-    SampleCapture(
-        text: "planeta más caliente",
+    SampleSubject(
+        subject: "planeta más caliente",
         source: "Un documental del espacio",
         deck: "Ciencias::Naturales",
         cards: [
@@ -480,8 +481,8 @@ private let sampleCaptures = [
             )
         ]
     ),
-    SampleCapture(
-        text: "resiliencia",
+    SampleSubject(
+        subject: "resiliencia",
         source: nil,
         deck: "Idiomas::Español",
         cards: [
@@ -496,8 +497,8 @@ private let sampleCaptures = [
             )
         ]
     ),
-    SampleCapture(
-        text: "regla del 80/20",
+    SampleSubject(
+        subject: "regla del 80/20",
         source: nil,
         deck: "Sociedad::Economía",
         cards: [
@@ -512,8 +513,8 @@ private let sampleCaptures = [
             )
         ]
     ),
-    SampleCapture(
-        text: "hygge",
+    SampleSubject(
+        subject: "hygge",
         source: "Un viaje a Copenhague",
         deck: "Idiomas::Palabras prestadas",
         cards: [
@@ -528,8 +529,8 @@ private let sampleCaptures = [
             )
         ]
     ),
-    SampleCapture(
-        text: "lo que no te mata te hace más fuerte",
+    SampleSubject(
+        subject: "lo que no te mata te hace más fuerte",
         source: "Crepúsculo de los ídolos",
         deck: "Humanidades::Filosofía",
         cards: [
@@ -544,8 +545,8 @@ private let sampleCaptures = [
             )
         ]
     ),
-    SampleCapture(
-        text: "años bisiestos",
+    SampleSubject(
+        subject: "años bisiestos",
         source: nil,
         deck: "Ciencias::Naturales",
         cards: [
@@ -560,8 +561,8 @@ private let sampleCaptures = [
             )
         ]
     ),
-    SampleCapture(
-        text: "saudade",
+    SampleSubject(
+        subject: "saudade",
         source: nil,
         deck: "Idiomas::Palabras prestadas",
         cards: [
@@ -576,8 +577,8 @@ private let sampleCaptures = [
             )
         ]
     ),
-    SampleCapture(
-        text: "efecto placebo",
+    SampleSubject(
+        subject: "efecto placebo",
         source: nil,
         deck: "Ciencias::Naturales",
         cards: [
@@ -592,8 +593,8 @@ private let sampleCaptures = [
             )
         ]
     ),
-    SampleCapture(
-        text: "Zeitgeist",
+    SampleSubject(
+        subject: "Zeitgeist",
         source: nil,
         deck: "Idiomas::Palabras prestadas",
         cards: [
@@ -609,8 +610,8 @@ private let sampleCaptures = [
             )
         ]
     ),
-    SampleCapture(
-        text: "sangre, sudor y lágrimas",
+    SampleSubject(
+        subject: "sangre, sudor y lágrimas",
         source: "Un documental sobre la Segunda Guerra",
         deck: "Humanidades::Historia",
         cards: [
@@ -626,8 +627,8 @@ private let sampleCaptures = [
             )
         ]
     ),
-    SampleCapture(
-        text: "efecto Streisand",
+    SampleSubject(
+        subject: "efecto Streisand",
         source: nil,
         deck: "Sociedad",
         cards: [
@@ -643,8 +644,8 @@ private let sampleCaptures = [
             )
         ]
     ),
-    SampleCapture(
-        text: "sobremesa",
+    SampleSubject(
+        subject: "sobremesa",
         source: nil,
         deck: "Idiomas::Español",
         cards: [
@@ -659,8 +660,8 @@ private let sampleCaptures = [
             )
         ]
     ),
-    SampleCapture(
-        text: "caída del Muro de Berlín",
+    SampleSubject(
+        subject: "caída del Muro de Berlín",
         source: nil,
         deck: "Humanidades::Historia",
         cards: [
@@ -675,8 +676,8 @@ private let sampleCaptures = [
             )
         ]
     ),
-    SampleCapture(
-        text: "tragedia de los comunes",
+    SampleSubject(
+        subject: "tragedia de los comunes",
         source: "Un curso de economía",
         deck: "Sociedad::Economía",
         cards: [
@@ -691,8 +692,8 @@ private let sampleCaptures = [
             )
         ]
     ),
-    SampleCapture(
-        text: "nefelibata",
+    SampleSubject(
+        subject: "nefelibata",
         source: nil,
         deck: "Idiomas::Español",
         cards: [
@@ -707,8 +708,8 @@ private let sampleCaptures = [
             )
         ]
     ),
-    SampleCapture(
-        text: "el hombre es un lobo para el hombre",
+    SampleSubject(
+        subject: "el hombre es un lobo para el hombre",
         source: nil,
         deck: "Humanidades::Filosofía",
         cards: [
@@ -723,8 +724,8 @@ private let sampleCaptures = [
             )
         ]
     ),
-    SampleCapture(
-        text: "epifanía",
+    SampleSubject(
+        subject: "epifanía",
         source: nil,
         deck: "Idiomas::Español",
         cards: [
@@ -739,8 +740,8 @@ private let sampleCaptures = [
             )
         ]
     ),
-    SampleCapture(
-        text: "quién inventó la imprenta",
+    SampleSubject(
+        subject: "quién inventó la imprenta",
         source: nil,
         deck: "Humanidades::Historia",
         cards: [
@@ -755,8 +756,8 @@ private let sampleCaptures = [
             )
         ]
     ),
-    SampleCapture(
-        text: "efecto mariposa",
+    SampleSubject(
+        subject: "efecto mariposa",
         source: nil,
         deck: "Ciencias::Naturales",
         cards: [
@@ -772,8 +773,8 @@ private let sampleCaptures = [
             )
         ]
     ),
-    SampleCapture(
-        text: "idiosincrasia",
+    SampleSubject(
+        subject: "idiosincrasia",
         source: nil,
         deck: "Idiomas::Español",
         cards: [
@@ -788,8 +789,8 @@ private let sampleCaptures = [
             )
         ]
     ),
-    SampleCapture(
-        text: "por qué vemos siempre la misma cara de la luna",
+    SampleSubject(
+        subject: "por qué vemos siempre la misma cara de la luna",
         source: "Una charla de divulgación",
         deck: "Ciencias::Naturales",
         cards: [
@@ -804,8 +805,8 @@ private let sampleCaptures = [
             )
         ]
     ),
-    SampleCapture(
-        text: "chamuyo",
+    SampleSubject(
+        subject: "chamuyo",
         source: nil,
         deck: "Idiomas::Español::Rioplatense",
         cards: [
@@ -821,8 +822,8 @@ private let sampleCaptures = [
         ]
     ),
     // The most tags: the three a card can have.
-    SampleCapture(
-        text: "sesgo de supervivencia, los aviones de la guerra",
+    SampleSubject(
+        subject: "sesgo de supervivencia, los aviones de la guerra",
         source: "Un video de estadística",
         deck: "Ciencias::Psicología",
         cards: [
@@ -838,8 +839,8 @@ private let sampleCaptures = [
             )
         ]
     ),
-    SampleCapture(
-        text: "ikigai",
+    SampleSubject(
+        subject: "ikigai",
         source: nil,
         deck: "Idiomas::Palabras prestadas",
         cards: [
@@ -854,8 +855,8 @@ private let sampleCaptures = [
             )
         ]
     ),
-    SampleCapture(
-        text: "síndrome del impostor",
+    SampleSubject(
+        subject: "síndrome del impostor",
         source: nil,
         deck: "Ciencias::Psicología",
         cards: [
@@ -870,8 +871,8 @@ private let sampleCaptures = [
             )
         ]
     ),
-    SampleCapture(
-        text: "nostalgia",
+    SampleSubject(
+        subject: "nostalgia",
         source: nil,
         deck: "Idiomas::Español",
         cards: [

@@ -12,9 +12,9 @@ import Foundation
 /// the window listens for the reasons to read them again, and then for each
 /// of them, the engine's changes, the passing of time, new scheduling
 /// settings, and Ficha Dev moving the time. What Lucas does in the window goes through it too,
-/// on what he selected as he acts: he edits the card or the capture the
-/// detail shows, the window asks before it discards, deletes or flags, it
-/// sets cards aside and puts them back at once, turns Both ways on or off for
+/// on what he selected as he acts: he edits the card the detail shows, the
+/// window asks before it deletes or flags, it sets cards aside and puts them
+/// back at once, turns Both ways on or off for
 /// several cards at once, and moves them to the deck Lucas picks in the Change Deck sheet,
 /// whose tree the sidebar lists too, where a deck's menu sets it aside,
 /// prioritizes it, and gives it a color or asks for its emoji
@@ -36,11 +36,10 @@ import Foundation
 /// offers Ficha's decks the user hasn't added, each with its first card, which
 /// Add Deck… adds after How fast? (`CardsWindowFichaDecks.swift`).
 public struct CardsWindowState: Sendable {
-    /// What the sidebar offers, one at a time: a deck's cards, the inbox, or
-    /// one of Ficha's decks.
+    /// What the sidebar offers, one at a time: a deck's cards, or one of
+    /// Ficha's decks.
     public enum SidebarItem: Sendable, Hashable {
         case cards(CardGroup)
-        case inbox
         /// One of Ficha's decks the user hasn't added, which the window shows
         /// in the grid's and the detail's place, with Add Deck…:
         /// `CardsWindowFichaDecks.swift`.
@@ -50,8 +49,6 @@ public struct CardsWindowState: Sendable {
     /// A section of the sidebar, as `sidebarSections` lists them, with what
     /// it offers.
     public enum SidebarSection: Sendable, Equatable, Identifiable {
-        /// The inbox.
-        case inbox
         /// The Your Decks section: every deck as a tree, as `deckRows` lists
         /// them (`CardsWindowDecks.swift`).
         case decks([DeckRow])
@@ -61,14 +58,12 @@ public struct CardsWindowState: Sendable {
 
         /// Which section it is, whatever it lists.
         public enum ID: Sendable, Hashable {
-            case inbox
             case decks
             case fichaDecks
         }
 
         public var id: ID {
             switch self {
-            case .inbox: .inbox
             case .decks: .decks
             case .fichaDecks: .fichaDecks
             }
@@ -77,7 +72,6 @@ public struct CardsWindowState: Sendable {
         /// What it offers, in its order.
         public var items: [SidebarItem] {
             switch self {
-            case .inbox: [.inbox]
             case .decks(let rows): rows.flatMap(\.flattened).map(\.item)
             case .fichaDecks(let files): files.map(\.deck).map(SidebarItem.fichaDeck)
             }
@@ -85,24 +79,14 @@ public struct CardsWindowState: Sendable {
     }
 
     /// What the window lists between the sidebar and the detail: the cards of
-    /// a deck, which the grid shows as tiles, or what waits in the inbox; no
-    /// card while one of Ficha's decks shows in the grid's place, or while
-    /// the sidebar chose nothing.
+    /// a deck, which the grid shows as tiles; no card while one of Ficha's
+    /// decks shows in the grid's place, or while the sidebar chose nothing.
     public enum Listing: Sendable, Equatable {
         case cards([CardRow])
-        case inbox([InboxRow])
     }
 
     /// What the detail shows.
     public enum Detail: Sendable, Equatable {
-        /// The capture selected in the inbox, whole.
-        case capture(Capture)
-        /// The expansion selected in the inbox, whole, with the card it
-        /// expands.
-        case expansion(Expansion)
-        /// The follow-up selected in the inbox, whole, with the card it
-        /// follows up.
-        case followUp(FollowUp)
         /// The selected card, whole, while it's the only one selected, with
         /// its review log, oldest first, or why it couldn't be read: nil only
         /// until it's read.
@@ -110,19 +94,14 @@ public struct CardsWindowState: Sendable {
         /// The cards Lucas selected, when they're several, which the detail
         /// counts.
         case cards([CardRow])
-        /// That nothing in the inbox is selected.
-        case nothingSelectedInInbox
         /// That no card is selected.
         case noCardSelected
     }
 
     /// What Lucas can do with what the detail shows.
     public enum Action: Sendable, Hashable {
-        /// Edit the card or the capture, in fields that take the detail's
-        /// place.
+        /// Edit the card, in fields that take the detail's place.
         case edit
-        /// Turn the capture into cards, in the card form opened from it.
-        case convertToCard
         /// Move the cards to another deck, which the Change Deck sheet asks
         /// for: `CardsWindowDecks.swift`.
         case changeDeck
@@ -139,15 +118,12 @@ public struct CardsWindowState: Sendable {
         case turnOffBothWays
         /// Delete the cards for good, asking first.
         case delete
-        /// Discard the capture, asking first.
-        case discard
     }
 
     /// What Lucas edits, in fields that take the detail's place, as it was
-    /// when he started: a card, or a capture in the inbox.
+    /// when he started: a card.
     public enum Editing: Sendable, Equatable {
         case card(Card)
-        case capture(Capture)
     }
 
     /// An item of the Color submenu in a deck's menu.
@@ -179,8 +155,6 @@ public struct CardsWindowState: Sendable {
 
     /// What the window asks before it acts, until Lucas confirms or cancels.
     public enum Question: Sendable, Equatable {
-        /// Whether to discard this capture in the inbox.
-        case discard(Capture)
         /// Whether to delete these cards for good.
         case delete([CardRow])
         /// What needs fixing in this card, to flag it with that note.
@@ -259,15 +233,8 @@ public struct CardsWindowState: Sendable {
     public enum FailedAction: Sendable, Equatable {
         /// He saved the card he edited.
         case saveCard
-        /// He saved the capture he edited.
-        case saveCapture
-        /// He discarded a capture.
-        case discard
         /// He added a card in the card form.
         case addCard
-        /// He closed the card form opened from a capture, after adding cards
-        /// from it, which approves the capture.
-        case approveCapture
         /// He dragged or pasted something onto a side of the card he makes
         /// or edits, as its image.
         case putImage
@@ -329,7 +296,7 @@ public struct CardsWindowState: Sendable {
 
     /// What the sidebar chose: the deck the window opens on (`deckToOpenOn`),
     /// the first of the queue new cards come from, until Lucas picks another,
-    /// or the inbox or one of Ficha's decks; or nothing, while Your Decks
+    /// or one of Ficha's decks; or nothing, while Your Decks
     /// lists no deck and Lucas picked nothing else, as before the window
     /// first reads the cards, and when a new user opens it.
     public internal(set) var sidebarItem: SidebarItem?
@@ -347,9 +314,6 @@ public struct CardsWindowState: Sendable {
     /// clicked, moved to or selected alone, and none once a click between
     /// the tiles selects none.
     var currentCard: CardRow.ID?
-    /// The row Lucas selected in the inbox, one at a time, which its table
-    /// may no longer list, as with the cards.
-    public private(set) var inboxSelection: InboxRow.ID?
     /// The card the grid scrolls to, until it has: the one Show Card or Add
     /// selected, or an arrow key moved to, which may be far down the grid.
     public internal(set) var cardToReveal: CardRow.ID?
@@ -476,14 +440,14 @@ public struct CardsWindowState: Sendable {
         now = engine.now
     }
 
-    /// The sidebar's sections, in its order: the inbox, the decks as a tree,
-    /// and Ficha's decks the user hasn't added, while there are some. No
-    /// group of cards by where they stand, such as every card, the new ones
-    /// or those set aside: a deck's cards show where each stands on its tile
-    /// (ADR 0041). Nor by what labels them: the cards' tags and types stay
-    /// in the database, which the sidebar no longer lists (#538).
+    /// The sidebar's sections, in its order: the decks as a tree, and Ficha's
+    /// decks the user hasn't added, while there are some. No group of cards by
+    /// where they stand, such as every card, the new ones or those set aside: a
+    /// deck's cards show where each stands on its tile (ADR 0041). Nor by what
+    /// labels them: the cards' tags and types stay in the database, which the
+    /// sidebar no longer lists (#538).
     public var sidebarSections: [SidebarSection] {
-        var sections: [SidebarSection] = [.inbox, .decks(deckRows)]
+        var sections: [SidebarSection] = [.decks(deckRows)]
         if !fichaDecksNotAdded.isEmpty {
             sections.append(.fichaDecks(fichaDecksNotAdded))
         }
@@ -505,40 +469,12 @@ public struct CardsWindowState: Sendable {
     }
 
     /// The selected cards the grid lists, which the detail shows and the
-    /// actions act on: those Lucas selected in a group of cards, or the
-    /// flagged card he selected in the inbox.
+    /// actions act on.
     public var selectedRows: [CardRow] {
-        switch listing {
-        case .success(.cards(let rows)):
-            rows.filter { selection.contains($0.id) }
-        case .success(.inbox):
-            selectedInboxRow?.flaggedCard.map { [$0] } ?? []
-        case .failure, nil:
-            []
+        guard case .success(.cards(let rows))? = listing else {
+            return []
         }
-    }
-
-    /// The row Lucas selected in the inbox, while its table lists it.
-    private var selectedInboxRow: InboxRow? {
-        guard case .success(.inbox(let rows))? = listing else {
-            return nil
-        }
-        return rows.first { $0.id == inboxSelection }
-    }
-
-    /// The capture the detail shows, on its own, as an expansion or as a
-    /// follow-up.
-    private var shownCapture: Capture? {
-        switch detail {
-        case .capture(let capture):
-            capture
-        case .expansion(let expansion):
-            expansion.capture
-        case .followUp(let followUp):
-            followUp.capture
-        case .card, .cards, .nothingSelectedInInbox, .noCardSelected:
-            nil
-        }
+        return rows.filter { selection.contains($0.id) }
     }
 
     /// The selected card the grid lists, while it's the only one.
@@ -547,21 +483,9 @@ public struct CardsWindowState: Sendable {
         return rows.count == 1 ? rows.first : nil
     }
 
-    /// What the detail shows: the capture, the expansion or the follow-up
-    /// selected in the inbox, the selected cards the grid lists, or that
-    /// nothing is selected.
+    /// What the detail shows: the selected cards the grid lists, or that
+    /// none is selected.
     public var detail: Detail {
-        switch selectedInboxRow?.item {
-        case .capture(let capture):
-            return .capture(capture)
-        case .expansion(let expansion):
-            return .expansion(expansion)
-        case .followUp(let followUp):
-            return .followUp(followUp)
-        case .flaggedCard, nil:
-            // A flagged card shows as a card, below.
-            break
-        }
         let rows = selectedRows
         if rows.count > 1 {
             return .cards(rows)
@@ -569,30 +493,21 @@ public struct CardsWindowState: Sendable {
             // Never another card's review log.
             return .card(row, reviewLog: reviewLog?.cardID == row.id ? reviewLog?.rows : nil)
         }
-        switch sidebarItem {
-        case .inbox?: return .nothingSelectedInInbox
-        case .cards?, .fichaDeck?, nil: return .noCardSelected
-        }
+        return .noCardSelected
     }
 
-    /// What the user can do with what the detail shows: with a capture or a
-    /// follow-up, edit it, convert it to cards and discard it; with an
-    /// expansion, edit it and discard it; with one card, edit it, flag it
-    /// while it's in the user's reviews, set it aside or put it back, move it
-    /// to another deck, and delete it; with several, set them aside or put
-    /// them back, turn Both ways on or off for them, move them to another
-    /// deck, and delete them.
+    /// What the user can do with what the detail shows: with one card, edit
+    /// it, flag it while it's in the user's reviews, set it aside or put it
+    /// back, move it to another deck, and delete it; with several, set them
+    /// aside or put them back, turn Both ways on or off for them, move them
+    /// to another deck, and delete them.
     public var actions: Set<Action> {
         switch detail {
-        case .capture, .followUp:
-            return [.edit, .convertToCard, .discard]
-        case .expansion:
-            return [.edit, .discard]
         case .card(let row, _):
             return Self.actions(for: row.cardStanding).union([.edit, .changeDeck, .delete])
         case .cards(let rows):
             return setAsideOrPutBack(rows).union([Self.bothWaysAction(for: rows), .changeDeck, .delete])
-        case .nothingSelectedInInbox, .noCardSelected:
+        case .noCardSelected:
             return []
         }
     }
@@ -605,7 +520,7 @@ public struct CardsWindowState: Sendable {
     private static func actions(for standing: CardStanding) -> Set<Action> {
         switch standing {
         case .inReviews, .setAside: [.flag, .setAside]
-        case .inInbox: [.setAside]
+        case .flagged: [.setAside]
         case .buried: [.putBack]
         }
     }
@@ -657,28 +572,16 @@ public struct CardsWindowState: Sendable {
         readReviewLog()
     }
 
-    /// Selects the row with `id` in the inbox, or none.
-    public mutating func selectInInbox(_ id: InboxRow.ID?) {
-        guard id != inboxSelection else { return }
-        inboxSelection = id
-        readReviewLog()
-    }
-
-    /// Starts editing the card or the capture the detail shows, while Edit is
-    /// offered.
+    /// Starts editing the card the detail shows, while Edit is offered.
     public mutating func startEditing() {
-        guard actions.contains(.edit) else { return }
-        if let capture = shownCapture {
-            editing = .capture(capture)
-        } else if case .card(let row, _) = detail {
-            editing = .card(row.card)
-            editedImages = SideImages(front: row.card.frontImage, back: row.card.backImage)
-            editedSounds = SideSounds(front: row.card.frontSound, back: row.card.backSound)
-            editedBothWays = row.card.bothWays
-            editedDeck = row.card.deck
-            // The editor takes the detail's place, and its sound's.
-            showFiles()
-        }
+        guard actions.contains(.edit), case .card(let row, _) = detail else { return }
+        editing = .card(row.card)
+        editedImages = SideImages(front: row.card.frontImage, back: row.card.backImage)
+        editedSounds = SideSounds(front: row.card.frontSound, back: row.card.backSound)
+        editedBothWays = row.card.bothWays
+        editedDeck = row.card.deck
+        // The editor takes the detail's place, and its sound's.
+        showFiles()
     }
 
     /// Turns Both ways on for the card the user edits, or off when `bothWays`
@@ -692,11 +595,8 @@ public struct CardsWindowState: Sendable {
     /// open, and the editor's while Lucas edits a card.
     func areOpen(_ fields: CardFields) -> Bool {
         switch fields {
-        case .form:
-            return cardForm != nil
-        case .editor:
-            guard case .card = editing else { return false }
-            return true
+        case .form: cardForm != nil
+        case .editor: editing != nil
         }
     }
 
@@ -719,23 +619,6 @@ public struct CardsWindowState: Sendable {
         }
         if saved {
             endEditing()
-            readAgain()
-            askForTheFichaDeckAskedToAdd()
-        }
-    }
-
-    /// Saves the capture Lucas edits with its text, note and source, as its
-    /// fields hold them, and ends the edit, or records why it couldn't and
-    /// goes on with it. An expansion stays attached to its card, and a
-    /// follow-up tied to its own. As with a card, the detail shows it as
-    /// saved at once.
-    public mutating func saveCapture(text: String, note: String, source: String) {
-        guard case .capture(let capture) = editing else { return }
-        let saved = perform(.saveCapture) { engine throws(EngineError) in
-            try engine.editCapture(capture.id, text: text, note: note, source: source)
-        }
-        if saved {
-            editing = nil
             readAgain()
             askForTheFichaDeckAskedToAdd()
         }
@@ -768,8 +651,10 @@ public struct CardsWindowState: Sendable {
     }
 
     /// Flags the card the window asks about with Lucas's note on what to
-    /// fix: it leaves his reviews and waits in the inbox. When it can't, it
-    /// records why and goes on asking, so the note he wrote stays.
+    /// fix: it leaves his reviews and waits in its deck, with its flag on its
+    /// tile (`Tile.Mark.flagged`) and its note in the detail, until it's
+    /// fixed. When it can't, it records why and goes on asking, so the note
+    /// he wrote stays.
     public mutating func flag(note: FlagNote) {
         guard case .flag(let row) = question else { return }
         let flagged = perform(.flag) { engine throws(EngineError) in try engine.flag(row.id, note: note) }
@@ -781,10 +666,10 @@ public struct CardsWindowState: Sendable {
 
     /// Sets the selected cards the window lists aside, all at once, while Set
     /// Aside is offered, or records why it couldn't: each leaves the user's
-    /// reviews, and the inbox if it's flagged, until it's put back, and its
-    /// deck still lists it, its tile dimmed (`Tile.Mark.setAside`). The
-    /// engine buries them, as the database keeps a card set aside on its own,
-    /// with no migration (ADR 0041).
+    /// reviews, flagged or not, until it's put back, and its deck still lists
+    /// it, its tile dimmed (`Tile.Mark.setAside`). The engine buries them, as
+    /// the database keeps a card set aside on its own, with no migration
+    /// (ADR 0041).
     public mutating func setAside() {
         guard actions.contains(.setAside) else { return }
         let cardIDs = Set(selectedRows.map(\.id))
@@ -793,9 +678,9 @@ public struct CardsWindowState: Sendable {
 
     /// Puts the selected cards the window lists back, all at once, while Put
     /// Back is offered, or records why it couldn't: each goes back where it
-    /// stood, in the user's reviews with the progress it had, in the inbox
-    /// when it's flagged, or set aside with its deck when that deck is, as
-    /// the engine unburies it.
+    /// stood, in the user's reviews with the progress it had, flagged when
+    /// it has a flag, or set aside with its deck when that deck is, as the
+    /// engine unburies it.
     public mutating func putBack() {
         guard actions.contains(.putBack) else { return }
         let cardIDs = Set(selectedRows.map(\.id))
@@ -845,22 +730,6 @@ public struct CardsWindowState: Sendable {
         question = nil
         let cardIDs = Set(rows.map(\.id))
         perform(.delete(cardCount: cardIDs.count)) { engine throws(EngineError) in try engine.delete(cardIDs) }
-        askForTheFichaDeckAskedToAdd()
-    }
-
-    /// Asks whether to discard the capture, the expansion or the follow-up
-    /// the detail shows, while Discard is offered.
-    public mutating func askToDiscard() {
-        guard actions.contains(.discard), let capture = shownCapture else { return }
-        question = .discard(capture)
-    }
-
-    /// Discards `capture`, which the window asked about and Lucas confirmed,
-    /// so it leaves the inbox without becoming cards, or records why it
-    /// couldn't. The dialog hands `capture` back, as Delete's hands its cards.
-    public mutating func discard(_ capture: Capture) {
-        question = nil
-        perform(.discard) { engine throws(EngineError) in try engine.discard(capture.id) }
         askForTheFichaDeckAskedToAdd()
     }
 
@@ -1006,8 +875,6 @@ public struct CardsWindowState: Sendable {
             }
             if case .cards(let group) = sidebarItem {
                 listing = .success(.cards(try engine.cardRows(in: group, matching: search, with: scheduler)))
-            } else if sidebarItem == .inbox {
-                listing = .success(.inbox(try engine.inboxRows(matching: search, with: scheduler)))
             } else {
                 // One of Ficha's decks shows in the grid's place
                 // (`shownFichaDeck`), and while the sidebar chose nothing,
@@ -1025,12 +892,12 @@ public struct CardsWindowState: Sendable {
     }
 
     /// Whether the sidebar offers `group`, as last read: a deck while the
-    /// Your Decks section lists it. It never offers every card, nor the
-    /// flagged ones, which only the engine's counts and the inbox read.
+    /// Your Decks section lists it. It never offers every card, which only
+    /// the engine's counts read.
     private func offers(_ group: CardGroup) -> Bool {
         switch group {
         case .deck(let deck): listedDeck(deck) != nil
-        case .all, .flagged: false
+        case .all: false
         }
     }
 

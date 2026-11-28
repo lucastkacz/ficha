@@ -44,7 +44,7 @@ public struct Engine: Sendable {
     /// The Downloads folder, when the files the `ficha` CLI puts on cards may
     /// come from there alone, as in its sandbox (ADR 0018), or nil when they
     /// may come from anywhere.
-    let refineFilesOnlyIn: URL?
+    let cardFilesOnlyIn: URL?
     /// A new SVG drawer for each import's SVGs, or nil when its imports draw
     /// none.
     let newSVGDrawer: (@Sendable () -> any SVGDrawer)?
@@ -68,7 +68,7 @@ public struct Engine: Sendable {
         time: any TimeSource,
         ids: any IDSource = RandomIDSource(),
         calendar: Calendar = .autoupdatingCurrent,
-        refineFilesOnlyIn downloads: URL? = nil,
+        cardFilesOnlyIn downloads: URL? = nil,
         drawingSVGsWith newSVGDrawer: (@Sendable () -> any SVGDrawer)? = nil
     ) throws(EngineError) {
         switch location {
@@ -94,13 +94,13 @@ public struct Engine: Sendable {
                 return pool
             }
             self.init(
-                database: pool, in: folder, time: time, ids: ids, calendar: calendar, refineFilesOnlyIn: downloads,
+                database: pool, in: folder, time: time, ids: ids, calendar: calendar, cardFilesOnlyIn: downloads,
                 drawingSVGsWith: newSVGDrawer)
         case .inMemory:
             let queue = try reportingStorageErrors { try DatabaseQueue() }
             try migrate(queue, savingACopyIn: nil, at: time.now)
             self.init(
-                database: queue, in: nil, time: time, ids: ids, calendar: calendar, refineFilesOnlyIn: downloads,
+                database: queue, in: nil, time: time, ids: ids, calendar: calendar, cardFilesOnlyIn: downloads,
                 drawingSVGsWith: newSVGDrawer)
         }
     }
@@ -125,7 +125,7 @@ public struct Engine: Sendable {
             return nil
         }
         self.init(
-            database: pool, in: folder, time: time, ids: RandomIDSource(), calendar: calendar, refineFilesOnlyIn: nil,
+            database: pool, in: folder, time: time, ids: RandomIDSource(), calendar: calendar, cardFilesOnlyIn: nil,
             drawingSVGsWith: nil)
     }
 
@@ -138,7 +138,7 @@ public struct Engine: Sendable {
         time: any TimeSource,
         ids: any IDSource,
         calendar: Calendar,
-        refineFilesOnlyIn downloads: URL?,
+        cardFilesOnlyIn downloads: URL?,
         drawingSVGsWith newSVGDrawer: (@Sendable () -> any SVGDrawer)?
     ) {
         self.database = database
@@ -156,7 +156,7 @@ public struct Engine: Sendable {
         self.time = time
         self.ids = ids
         self.calendar = calendar
-        refineFilesOnlyIn = downloads
+        cardFilesOnlyIn = downloads
         self.newSVGDrawer = newSVGDrawer
     }
 
@@ -172,88 +172,6 @@ public struct Engine: Sendable {
     /// and in Ficha Dev, whose debug tools move it forward.
     public var now: Date {
         time.now
-    }
-
-    /// Saves a capture in the inbox, cleaned up as `CaptureContent` says, and
-    /// returns it, unless it's a duplicate of a card or a capture in the inbox:
-    /// then it isn't saved, and the result says what it repeats, for Lucas to
-    /// expand or ignore it. A capture without text isn't saved.
-    public func capture(text: String, note: String?, source: String?) throws(EngineError) -> CaptureResult {
-        guard let content = CaptureContent(text: text, note: note, source: source) else {
-            throw .emptyCapture
-        }
-        let createdAt = time.now
-        return try write { db in
-            if let repeated = try repeated(by: content.text, in: db) {
-                return .duplicate(of: repeated)
-            }
-            return .saved(try save(content, expanding: nil, at: createdAt, in: db))
-        }
-    }
-
-    /// What waits in the inbox: the captures, the expansions and the
-    /// follow-ups, oldest first, and the flagged cards, the first flagged
-    /// first.
-    public func inbox() throws(EngineError) -> Inbox {
-        try read { db in
-            let captures = try capturesWaiting(in: db)
-            return Inbox(
-                captures: captures.filter { $0.expandsCardID == nil && $0.followsUpCardID == nil },
-                expansions: try captures.compactMap { try $0.expansion(in: db) },
-                followUps: try captures.compactMap { try $0.followUp(in: db) },
-                flaggedCards: try flaggedCardsWaiting(in: db)
-            )
-        }
-    }
-
-    /// Approves a capture into one or more cards: saves them as new cards,
-    /// each going one way, in the order given, in the deck `deck`, made if
-    /// it isn't there, or in Default, as `create(_:deck:bothWays:from:)`
-    /// takes a deck, takes the capture out of the inbox and returns the
-    /// cards.
-    @discardableResult
-    public func approve(_ captureID: Int64, into cards: [CardContent], deck: String = Deck.defaultName)
-        throws(EngineError) -> [Card]
-    {
-        try approve(captureID) { _ in cards.map { ApprovedCard(content: $0, deck: deck, bothWays: false) } }
-    }
-
-    /// Approves a capture into one or more cards, as `approve(_:into:deck:)`
-    /// does, into those `newCards` makes in the write that saves them, each
-    /// in its own deck, made if it isn't there, and going both ways when it
-    /// says so, or into none when it throws: as a refine session's drafts
-    /// find or make the user types they name in that write
-    /// (`CardTypesByName`), each naming its deck.
-    func approve(_ captureID: Int64, into newCards: (Database) throws -> [ApprovedCard]) throws(EngineError)
-        -> [Card]
-    {
-        let createdAt = time.now
-        return try write { db in
-            let cards = try newCards(db)
-            guard !cards.isEmpty else {
-                throw EngineError.noCards
-            }
-            try takeOutOfInbox(captureID, at: createdAt, in: db)
-            for card in cards {
-                try insertCard(
-                    card.content, deck: card.deck, bothWays: card.bothWays, capturedAs: captureID, at: createdAt,
-                    in: db)
-            }
-            return try FichaData.cards(
-                in: Row.fetchAll(
-                    db, sql: "SELECT * FROM card WHERE captureId = ? ORDER BY id", arguments: [captureID]),
-                in: db)
-        }
-    }
-
-    /// Discards a capture: takes it out of the inbox without cards, and
-    /// returns it.
-    @discardableResult
-    public func discard(_ captureID: Int64) throws(EngineError) -> Capture {
-        let refinedAt = time.now
-        return try write { db in
-            try takeOutOfInbox(captureID, at: refinedAt, in: db)
-        }
     }
 
     /// Every card, in the order they came in.
@@ -277,11 +195,11 @@ public struct Engine: Sendable {
     /// Runs `updates` in one transaction, as `write` does, but tells no
     /// engine that the database changed: for a write that changes no card,
     /// which an engine listening for changes would answer with another one.
-    /// Every write to the cards, captures, review log and tags goes through
-    /// here, which first tells the triggers that record each change to sync
-    /// when the write happens. Two writes don't, and record nothing: a
-    /// restore, which replaces the whole database, as it was when it was
-    /// copied, and a migration, which changes the schema.
+    /// Every write to the cards, their review log, their tags and the rest
+    /// of what syncs goes through here, which first tells the triggers that
+    /// record each change to sync when the write happens. Two writes don't,
+    /// and record nothing: a restore, which replaces the whole database, as
+    /// it was when it was copied, and a migration, which changes the schema.
     func writeWithoutTelling<Value>(_ updates: (Database) throws -> Value) throws(EngineError) -> Value {
         let now = time.now
         return try reportingStorageErrors {
@@ -418,38 +336,13 @@ private func firstMigrationToApply(_ db: Database) throws -> String? {
     return Schema.migrator.migrations.first { !applied.contains($0) }
 }
 
-/// The captures that wait in the inbox: those not refined yet, into cards or
-/// into none.
-var capturesInInbox: QueryInterfaceRequest<Row> {
-    Table("capture").filter(Column("refinedAt") == nil)
-}
-
-/// The capture with this id, as it is now, or an error when it isn't in the
-/// inbox.
-func captureInInbox(_ captureID: Int64, in db: Database) throws -> Capture {
-    guard let row = try capturesInInbox.filter(Column("id") == captureID).fetchOne(db) else {
-        throw EngineError.captureNotInInbox(captureID)
-    }
-    return try Capture(row: row)
-}
-
-/// A card a capture is approved into, as `Engine.approve(_:into:)` saves it,
-/// or one `Engine.add(_:)` adds with no capture: what it holds, the deck it
-/// goes to, by its whole name, made if it isn't there, or Default, and
-/// whether it goes both ways.
-struct ApprovedCard {
+/// A card `Engine.add(_:)` adds: what it holds, the deck it goes to, by its
+/// whole name, made if it isn't there, or Default, and whether it goes both
+/// ways.
+struct CardToAdd {
     let content: CardContent
     let deck: String
     let bothWays: Bool
-}
-
-/// Takes a capture out of the inbox, as refined at `time`, and returns it, or
-/// throws when it isn't in the inbox.
-@discardableResult
-func takeOutOfInbox(_ captureID: Int64, at time: Date, in db: Database) throws -> Capture {
-    let capture = try captureInInbox(captureID, in: db)
-    try db.execute(sql: "UPDATE capture SET refinedAt = ? WHERE id = ?", arguments: [time, captureID])
-    return capture
 }
 
 /// Runs work on the database. The engine's own errors pass through as they

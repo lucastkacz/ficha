@@ -12,11 +12,11 @@ internal import GRDB
 // description (ADR 0044), choice to sync and place in the queue new cards come
 // from (ADR 0034), which sync as a tag's do (`SyncedDecks.swift`), and whether
 // the user made it on this device, which doesn't: making a deck, or putting
-// cards in it, as New Deck…, Change Deck, the card form, Approve and an import
-// do, says so, also of a deck this device heard of from another, and nothing
-// else does. Default gets its row once something is set on it, and is listed
-// only while it holds cards or has a switch on, so that its switch can be
-// turned off. Under selective sync, a device lists only the decks that sync,
+// cards in it, as New Deck…, Change Deck, the card form, `ficha add` and an
+// import do, says so, also of a deck this device heard of from another, and
+// nothing else does. Default gets its row once something is set on it, and is
+// listed only while it holds cards or has a switch on, so that its switch can
+// be turned off. Under selective sync, a device lists only the decks that sync,
 // those it holds cards of and those made on it (`SelectiveSync.swift`).
 
 /// A switch a deck can have on, which changes which of its cards show up
@@ -381,11 +381,10 @@ func moveCards(_ cardIDs: [Int64], to deck: String, in db: Database) throws {
     }
 }
 
-/// Moves `card` to the deck `deck`, in the write `db`, as
-/// `moveCards(_:to:in:)` moves it, unless `deck` is nil or the deck the card
-/// lives in, which leaves it there and makes no deck on this device: how an
-/// edit, a fix and an approved expansion set a card's deck. Refuses a name
-/// `madeDeck(named:in:)` refuses.
+/// Moves `card` to the deck `deck`, in the write `db`, as `moveCards(_:to:in:)`
+/// moves it, unless `deck` is nil or the deck the card lives in, which leaves
+/// it there and makes no deck on this device: how an edit and a fix set a
+/// card's deck. Refuses a name `madeDeck(named:in:)` refuses.
 func move(_ card: Card, to deck: String?, in db: Database) throws {
     if let deck, try checkedDeckOrDefault(deck) != card.deck {
         try moveCards([card.id], to: deck, in: db)

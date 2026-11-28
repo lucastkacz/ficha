@@ -4,8 +4,7 @@ internal import GRDB
 
 // Deleting a deck (ADR 0024), as Anki deletes one: the deck goes with every
 // deck inside it and every card that lives in them, buried ones too, each as
-// deleting a card deletes it (`Deleting.swift`), with its review log, while
-// its expansions and follow-ups stay in the inbox as plain captures; and
+// deleting a card deletes it (`Deleting.swift`), with its review log; and
 // their rows go, with what they had of their own. Default is never deleted.
 // The deletion reaches every device as a change to the deck
 // (`DeckChanges.swift`), which names the cards it deleted: each deletes them

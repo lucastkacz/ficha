@@ -6,9 +6,9 @@ internal import GRDB
 /// reviews and in the scheduler each way, and when he last saw it.
 public struct CardRow: Sendable, Equatable, Identifiable {
     public let card: Card
-    /// Where the card stands: in Lucas's reviews, waiting in the inbox to be
-    /// fixed, or set aside, on its own, which the engine keeps as its burial,
-    /// or with its deck.
+    /// Where the card stands: in Lucas's reviews, flagged and waiting in its
+    /// deck to be fixed, or set aside, on its own, which the engine keeps as
+    /// its burial, or with its deck.
     public let cardStanding: CardStanding
     /// Where its front-first way stands, which every card has, as the
     /// detail says in words whether the card is new and when it's back
@@ -121,7 +121,7 @@ public struct WayProgress: Sendable, Equatable {
     public var dueWording: DueWording {
         switch cardStanding {
         case .setAside, .buried: .setAside
-        case .inReviews, .inInbox: due.map(DueWording.due) ?? .nothing
+        case .inReviews, .flagged: due.map(DueWording.due) ?? .nothing
         }
     }
 
@@ -160,20 +160,15 @@ public struct ReviewLogRow: Sendable, Equatable {
     public let interval: Duration
 }
 
-/// A group of cards the engine lists: a deck the Cards window's sidebar
-/// offers, which the window lists one at a time, or every card or the flagged
-/// ones, which the sidebar doesn't offer. No group of a tag or a type: the
-/// database keeps the cards' tags and types, which the window doesn't show
-/// (#538).
+/// A group of cards the engine lists: a deck the Cards window's sidebar offers,
+/// which the window lists one at a time, or every card, which the sidebar
+/// doesn't offer. No group of a tag or a type: the database keeps the cards'
+/// tags and types, which the window doesn't show (#538).
 public enum CardGroup: Sendable, Hashable {
     /// Every card that isn't set aside on its own, which the engine keeps as
     /// its burial, flagged ones and those set aside with their decks too,
     /// which the engine counts each tag's cards from (`Engine.countedTags`).
     case all
-    /// The flagged cards that wait in the inbox to be fixed: those that
-    /// aren't set aside on their own, which the inbox lists
-    /// (`Engine.inboxRows`).
-    case flagged
     /// Every card that lives in the deck with this whole name, or in a deck
     /// inside it, flagged ones and set-aside ones too, on their own or with
     /// their decks, as the deck's grid lists them and the engine counts them
@@ -182,115 +177,16 @@ public enum CardGroup: Sendable, Hashable {
     case deck(String)
 }
 
-/// Something that waits in the inbox, as the Cards window lists it, with when
-/// it came there.
-public struct InboxRow: Sendable, Equatable, Identifiable {
-    /// What waits in the inbox.
-    public enum Item: Sendable, Equatable {
-        /// A capture that expands no card and follows none up.
-        case capture(Capture)
-        /// A capture attached to the card it repeats, with the card.
-        case expansion(Expansion)
-        /// A capture Lucas asked about a card in the review panel, tied to
-        /// it, with the card.
-        case followUp(FollowUp)
-        /// A flagged card that isn't set aside on its own, with where it
-        /// stands.
-        case flaggedCard(CardRow)
-    }
-
-    /// A row's id: its capture's, or its card's, which are numbered apart.
-    public enum ID: Sendable, Hashable {
-        case capture(Int64)
-        case card(Int64)
-    }
-
-    public let item: Item
-    /// When it came to the inbox: when Lucas captured it, or flagged the card.
-    public let addedAt: Date
-
-    public var id: ID {
-        switch item {
-        case .capture(let capture): .capture(capture.id)
-        case .expansion(let expansion): .capture(expansion.capture.id)
-        case .followUp(let followUp): .capture(followUp.capture.id)
-        case .flaggedCard(let row): .card(row.id)
-        }
-    }
-
-    /// What the row says it is: a capture's text, or a flagged card's front.
-    public var text: String {
-        switch item {
-        case .capture(let capture): capture.text
-        case .expansion(let expansion): expansion.capture.text
-        case .followUp(let followUp): followUp.capture.text
-        case .flaggedCard(let row): row.card.front
-        }
-    }
-
-    /// The capture it is, or the expansion's or the follow-up's, or nil for
-    /// a flagged card.
-    public var capture: Capture? {
-        switch item {
-        case .capture(let capture): capture
-        case .expansion(let expansion): expansion.capture
-        case .followUp(let followUp): followUp.capture
-        case .flaggedCard: nil
-        }
-    }
-
-    /// The flagged card it is, with where it stands, or nil for a capture, an
-    /// expansion or a follow-up.
-    public var flaggedCard: CardRow? {
-        guard case .flaggedCard(let row) = item else {
-            return nil
-        }
-        return row
-    }
-}
-
 extension Engine {
     /// The cards in `group` that mention `search` in their front, back or
-    /// source, as the Cards window lists them, in the order Lucas approved
-    /// them, each standing as `scheduler` replays its log. A blank search
-    /// narrows nothing.
+    /// source, as the Cards window lists them, in the order they came in, each
+    /// standing as `scheduler` replays its log. A blank search narrows nothing.
     public func cardRows(in group: CardGroup, matching search: String = "", with scheduler: Scheduler)
         throws(EngineError) -> [CardRow]
     {
         let now = time.now
         return try read { db in
             try FichaData.cardRows(in: group, matching: search, with: scheduler, at: now, in: db)
-        }
-    }
-
-    /// What waits in the inbox that mentions `search`, as the Cards window
-    /// lists it, the latest added first: the captures, the expansions and the
-    /// follow-ups that mention it in their text or source, and the flagged
-    /// cards that mention it in their front, back or source, as the flagged
-    /// group holds them, each standing as `scheduler` replays its log. A
-    /// blank search narrows nothing.
-    public func inboxRows(matching search: String = "", with scheduler: Scheduler) throws(EngineError)
-        -> [InboxRow]
-    {
-        let now = time.now
-        return try read { db in
-            let captures = try capturesWaiting(in: db).filter { $0.matches(search) }.map { capture in
-                InboxRow(
-                    item: try capture.expansion(in: db).map(InboxRow.Item.expansion)
-                        ?? capture.followUp(in: db).map(InboxRow.Item.followUp) ?? .capture(capture),
-                    addedAt: capture.createdAt)
-            }
-            let flaggedCards = try FichaData.cardRows(
-                in: .flagged, matching: search, with: scheduler, at: now, in: db
-            )
-            .map { row in
-                // The flagged group holds only cards waiting in the inbox.
-                guard case .inInbox(let flag) = row.cardStanding else {
-                    throw EngineError.cardNotFlagged(row.id)
-                }
-                return InboxRow(item: .flaggedCard(row), addedAt: flag.flaggedAt)
-            }
-            return (captures + flaggedCards).sorted { $0.addedAt > $1.addedAt }
         }
     }
 
@@ -321,8 +217,8 @@ extension Engine {
 }
 
 /// The cards in `group` that mention `search` in their front, back or source,
-/// in the order Lucas approved them, each standing as `scheduler` replays its
-/// log at `now`.
+/// in the order they came in, each standing as `scheduler` replays its log at
+/// `now`.
 func cardRows(
     in group: CardGroup,
     matching search: String,
@@ -333,9 +229,9 @@ func cardRows(
     try everyCardRow(matching: search, with: scheduler, at: now, in: db).filter { group.holds($0) }
 }
 
-/// Every card that mentions `search` in its front, back or source, wherever
-/// it stands, in the order Lucas approved them, each standing as `scheduler`
-/// replays its log at `now`. A blank search narrows nothing.
+/// Every card that mentions `search` in its front, back or source, wherever it
+/// stands, in the order they came in, each standing as `scheduler` replays its
+/// log at `now`. A blank search narrows nothing.
 func everyCardRow(
     matching search: String = "",
     with scheduler: Scheduler,
@@ -355,23 +251,11 @@ extension Card {
     }
 }
 
-extension Capture {
-    /// Whether the capture's text or source mentions `search`.
-    fileprivate func matches(_ search: String) -> Bool {
-        [text, source].compactMap(\.self).contains { mentions($0, search) }
-    }
-}
-
 extension CardGroup {
     /// Whether the group holds the card in `row`.
     fileprivate func holds(_ row: CardRow) -> Bool {
         switch self {
         case .all: row.cardStanding.isInAllCards
-        case .flagged:
-            switch row.cardStanding {
-            case .inInbox: true
-            case .inReviews, .buried, .setAside: false
-            }
         case .deck(let deck): TagPath.isTag(row.card.deck, within: deck)
         }
     }
@@ -384,7 +268,7 @@ extension CardStanding {
     /// with their decks are there. A deck holds every card in it (#539).
     var isInAllCards: Bool {
         switch self {
-        case .inReviews, .inInbox, .setAside: true
+        case .inReviews, .flagged, .setAside: true
         case .buried: false
         }
     }

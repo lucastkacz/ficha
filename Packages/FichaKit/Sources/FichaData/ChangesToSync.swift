@@ -143,7 +143,7 @@ enum SyncedField: String, Sendable, CaseIterable {
     // A capture's fields, besides its source.
     case text
     case note
-    /// When it left the inbox, approved or discarded.
+    /// When it was refined, into cards or discarded.
     case refined
     /// The card it expands.
     case expandedCard

@@ -1,8 +1,8 @@
 import ArgumentParser
 import FichaData
 
-/// `ficha attach`: puts an image or a sound on a side of any card, as a
-/// refine session does where Lucas asked for it.
+/// `ficha attach`: puts an image or a sound on a side of any card, in a
+/// session where Lucas asked for it (`CLAUDE.md`).
 struct AttachCommand: EngineCommand {
     static let configuration = CommandConfiguration(
         commandName: "attach",
@@ -18,7 +18,7 @@ struct AttachCommand: EngineCommand {
             """
     )
 
-    @Argument(help: "The card's id, as `ficha cards` or `ficha inbox` shows it.")
+    @Argument(help: "The card's id, as `ficha cards` shows it.")
     var cardID: Int64
 
     @Option(
@@ -64,8 +64,8 @@ struct AttachCommand: EngineCommand {
         """
 }
 
-/// `ficha detach`: takes an image or a sound off a side of any card, as a
-/// refine session does where Lucas asked for it.
+/// `ficha detach`: takes an image or a sound off a side of any card, in a
+/// session where Lucas asked for it (`CLAUDE.md`).
 struct DetachCommand: EngineCommand {
     static let configuration = CommandConfiguration(
         commandName: "detach",
@@ -79,7 +79,7 @@ struct DetachCommand: EngineCommand {
             """
     )
 
-    @Argument(help: "The card's id, as `ficha cards` or `ficha inbox` shows it.")
+    @Argument(help: "The card's id, as `ficha cards` shows it.")
     var cardID: Int64
 
     @Option(help: ArgumentHelp("What to take off the card's front.", valueName: "kind"))

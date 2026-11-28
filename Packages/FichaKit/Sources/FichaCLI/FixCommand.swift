@@ -2,7 +2,7 @@ import ArgumentParser
 import FichaData
 
 /// `ficha fix`: fixes a flagged card with new content. It reads the card as
-/// JSON from standard input, like `ficha approve`.
+/// JSON from standard input, like `ficha add`.
 struct FixCommand: EngineCommand {
     static let configuration = CommandConfiguration(
         commandName: "fix",
@@ -21,12 +21,12 @@ struct FixCommand: EngineCommand {
             top, or doesn't; left out, the card keeps its own. deck moves the card to that deck; left out, it \
             stays in its own.
 
-            Only a flagged card can be fixed. It leaves the inbox and goes back to your reviews, with its progress, \
+            Only a flagged card can be fixed. Its flag goes, and it goes back to your reviews, with its progress, \
             unless its deck, or a deck it sits inside, is set aside, and the command prints it.
             """
     )
 
-    @Argument(help: "The flagged card's id, as `ficha inbox` shows it.")
+    @Argument(help: "The flagged card's id, as `ficha cards` shows it, with its note in \"flag\".")
     var cardID: Int64
 
     func validate() throws {

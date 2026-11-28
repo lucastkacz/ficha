@@ -18,10 +18,10 @@ struct TagsInsideTagsTests {
         engine = try Engine(location: .inMemory, time: time, calendar: calendar)
     }
 
-    // As a refine session or a file might write them.
+    // As `ficha add` or a file might write them.
     @Test("a tag's levels lose the spaces around them, and an empty level goes, wherever a card comes from")
     func aTagsLevelsAreCleanedUp() throws {
-        let inflacion = try approveCard("inflación", tags: [" economía :: Argentina ", "economía::::mundial", ":: "])
+        let inflacion = try addCard("inflación", tags: [" economía :: Argentina ", "economía::::mundial", ":: "])
 
         #expect(inflacion.tags == ["economía::Argentina", "economía::mundial"])
     }
@@ -30,7 +30,7 @@ struct TagsInsideTagsTests {
     // emoji and shows economía's color, and deuda shows Argentina's emoji.
     @Test("a tag with no color or emoji of its own shows the nearest one's of the tags it sits inside")
     func aTagShowsItsNearestParentsColorAndEmoji() throws {
-        try approveCard("deuda", tags: ["economía::Argentina::deuda", "lenguaje"])
+        try addCard("deuda", tags: ["economía::Argentina::deuda", "lenguaje"])
         try engine.setColor(.green, of: "economía")
         try engine.setEmoji(Emoji("📈"), of: "economía")
         try engine.setEmoji(Emoji("🇦🇷"), of: "economía::Argentina")
@@ -49,9 +49,9 @@ struct TagsInsideTagsTests {
         "renaming a tag moves every card and every tag inside it to the new name, with their color, emoji and pin"
     )
     func renamingMovesEveryCardAndTagInside() throws {
-        try approveCard("inflación", tags: ["economía::Argentina", "lenguaje"])
-        try approveCard("ahorro", tags: ["economía"])
-        try approveCard("deuda", tags: ["economía::Argentina::deuda"])
+        try addCard("inflación", tags: ["economía::Argentina", "lenguaje"])
+        try addCard("ahorro", tags: ["economía"])
+        try addCard("deuda", tags: ["economía::Argentina::deuda"])
         try engine.setColor(.green, of: "economía")
         try engine.setEmoji(Emoji("📈"), of: "economía")
         try engine.pin("economía::Argentina")
@@ -82,9 +82,9 @@ struct TagsInsideTagsTests {
         "renaming a tag onto a name that exists joins them, a card that carried both carries it once, and the tag already there stays as it was"
     )
     func renamingOntoANameThatExistsJoinsThem() throws {
-        try approveCard("inflación", tags: ["economía::Argentina", "Argentina"])
-        try approveCard("deuda", tags: ["economía::Argentina::deuda"])
-        try approveCard("tango", tags: ["Argentina"])
+        try addCard("inflación", tags: ["economía::Argentina", "Argentina"])
+        try addCard("deuda", tags: ["economía::Argentina::deuda"])
+        try addCard("tango", tags: ["Argentina"])
         try engine.setColor(.blue, of: "Argentina")
         try engine.setColor(.green, of: "economía::Argentina")
         try engine.setEmoji(Emoji("🧉"), of: "economía::Argentina")
@@ -103,8 +103,8 @@ struct TagsInsideTagsTests {
         "joining a tag onto one only cards carry keeps that one as it was, with nothing of its own, and so for each tag inside them"
     )
     func joiningOntoATagOnlyCardsCarryKeepsIt() throws {
-        try approveCard("Revolución de Mayo", tags: ["historia::Argentina", "historia::Roma"])
-        try approveCard("inflación", tags: ["economía", "economía::Argentina"])
+        try addCard("Revolución de Mayo", tags: ["historia::Argentina", "historia::Roma"])
+        try addCard("inflación", tags: ["economía", "economía::Argentina"])
         try engine.setColor(.red, of: "historia")
         try engine.setEmoji(Emoji("📜"), of: "historia")
         try engine.setColor(.green, of: "historia::Argentina")
@@ -122,8 +122,8 @@ struct TagsInsideTagsTests {
 
     @Test("joining a tag onto one that exists only as the parent of tags inside it keeps that parent as it was")
     func joiningOntoAParentKeepsIt() throws {
-        try approveCard("inflación", tags: ["economía::Argentina"])
-        try approveCard("Revolución de Mayo", tags: ["historia"])
+        try addCard("inflación", tags: ["economía::Argentina"])
+        try addCard("Revolución de Mayo", tags: ["historia"])
         try engine.setEmoji(Emoji("📜"), of: "historia")
 
         try engine.renameTag("historia", to: "economía")
@@ -138,7 +138,7 @@ struct TagsInsideTagsTests {
 
     @Test("renaming a tag inside itself, or inside a tag inside it, or to a blank name is refused, and nothing changes")
     func renamingATagInsideItselfIsRefused() throws {
-        try approveCard("inflación", tags: ["economía::Argentina"])
+        try addCard("inflación", tags: ["economía::Argentina"])
         try engine.setColor(.green, of: "economía")
 
         #expect(throws: EngineError.tagInsideItself("economía")) {
@@ -169,10 +169,10 @@ struct TagsInsideTagsTests {
             ])
     }
 
-    /// Approves a capture into one word card with this front and these
-    /// tags, the way refining saves cards, and returns the card.
+    /// Makes one word card with this front and these tags, and returns the
+    /// card.
     @discardableResult
-    private func approveCard(_ front: String, tags: [String]) throws -> Card {
-        try approve(card(.word, front: front, back: "Lo que quiere decir «\(front)».", tags: tags), in: engine)
+    private func addCard(_ front: String, tags: [String]) throws -> Card {
+        try newCard(card(.word, front: front, back: "Lo que quiere decir «\(front)».", tags: tags), in: engine)
     }
 }

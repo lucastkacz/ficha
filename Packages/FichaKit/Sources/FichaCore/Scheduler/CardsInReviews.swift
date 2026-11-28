@@ -2,13 +2,13 @@ import Foundation
 
 /// The cards in Lucas's reviews, the only ones that show up, as the planners
 /// pick from them: out of every card, the ways of those whose standing is in
-/// his reviews, by card in the order he approved them, with which cards are
+/// his reviews, by card in the order they came in, with which cards are
 /// priority cards, the queue of decks their new ways come from, and the whole
 /// review log. The planners take nothing else, so which ways can show up, and
 /// which come first, is decided here, from where each card stands and its
 /// deck, and `make upload` lists its changes.
 public struct CardsInReviews: Sendable, Equatable {
-    /// The ways in Lucas's reviews, by card in the order he approved them:
+    /// The ways in Lucas's reviews, by card in the order they came in:
     /// each card's front-first way, and then its back-first way, when it has
     /// one.
     let ways: [CardWay]
@@ -31,7 +31,7 @@ public struct CardsInReviews: Sendable, Equatable {
 
     /// The cards in Lucas's reviews out of `cards`, every card by id with
     /// where it stands, its deck, by its whole name, whether it goes both
-    /// ways and when it came in, in the order he approved them, those that
+    /// ways and when it came in, in the order they came in, those that
     /// live in one of `priorityDecks`, or in a deck inside one, as `TagPath`
     /// reads a deck's levels, as priority cards, along with `log`, the whole
     /// review log, in the order it was written. A card's tags never make it
@@ -103,7 +103,7 @@ public struct CardsInReviews: Sendable, Equatable {
     }
 
     /// Where each way stands with `scheduler`'s settings, by card in the
-    /// order Lucas approved them, after the review log.
+    /// order they came in, after the review log.
     func standings(with scheduler: Scheduler) throws(SchedulingError) -> [(way: CardWay, standing: WayStanding)] {
         try scheduler.standings(of: ways, after: log)
     }
@@ -127,7 +127,7 @@ public struct CardsInReviews: Sendable, Equatable {
     }
 
     /// The new ways, those no entry of the log started yet, by card in the
-    /// order Lucas approved them, each card's front-first way first.
+    /// order they came in, each card's front-first way first.
     var newWays: [CardWay] {
         let started = Set(log.map { CardWay(cardID: $0.cardID, way: $0.way) })
         return ways.filter { !started.contains($0) }

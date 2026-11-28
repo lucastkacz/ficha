@@ -8,11 +8,11 @@ struct SettingsTabsTests {
     /// Each row of the seven tabs Settings had before #492, by its tab and
     /// its title there, with the row of the five it became: New cards per
     /// day became How fast?'s pace. The Language row went before, with
-    /// #488 (ADR 0036).
+    /// #488 (ADR 0036), and the Capture shortcut row after, with Capture
+    /// (#540).
     static let rowsBefore: [(tab: String, title: String, row: SettingsRow)] = [
         ("General", "Start at login", .startAtLogin),
         ("General", "Show how many cards are due in the menu bar", .dueCountInMenuBar),
-        ("General", "Capture shortcut", .captureShortcut),
         ("General", "Card size", .cardSize),
         ("Appearances", "Start at", .activeHoursStart),
         ("Appearances", "End at", .activeHoursEnd),

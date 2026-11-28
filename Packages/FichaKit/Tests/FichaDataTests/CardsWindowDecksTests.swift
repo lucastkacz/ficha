@@ -23,8 +23,8 @@ struct CardsWindowDecksTests {
     // own, which Pintura's grid lists and its count holds, though not among
     // those due (#539). Música::Tango has no card.
     @Test(
-        "the Your Decks section, after Inbox, lists every deck as a tree, Default first while it holds cards, each with its due cards, those inside it counted"
-    )
+        "the Your Decks section, first in the sidebar, lists every deck as a tree, Default first while it holds cards, each with its due cards, those inside it counted",
+        .bug(id: 540))
     func theDecksSection() throws {
         let gioconda = try engine.create(card(.concept, front: "La Gioconda", back: "De Leonardo."))
         let guernica = try engine.create(card(.concept, front: "Guernica", back: "De Picasso."))
@@ -41,10 +41,10 @@ struct CardsWindowDecksTests {
 
         let window = openWindow()
 
-        #expect(window.sidebarSections.map(\.id) == [.inbox, .decks])
+        #expect(window.sidebarSections.map(\.id) == [.decks])
         #expect(window.deckRows.outline == ["Default 1", "Arte 2", "  Pintura 1", "Música 0", "  Tango 0"])
         #expect(
-            window.sidebarSections[1].items
+            window.sidebarSections[0].items
                 == [Deck.defaultName, "Arte", "Arte::Pintura", "Música", "Música::Tango"].map {
                     .cards(.deck($0))
                 })
@@ -386,8 +386,8 @@ struct CardsWindowDecksTests {
 }
 
 extension CardsWindowState {
-    /// The ids of the cards the grid lists, or nil when it lists the inbox
-    /// or couldn't read them.
+    /// The ids of the cards the grid lists, or nil when it couldn't read
+    /// them.
     fileprivate var listedCardIDs: [Int64]? {
         guard case .success(.cards(let rows)) = listing else {
             return nil

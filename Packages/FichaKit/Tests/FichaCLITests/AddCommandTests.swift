@@ -32,23 +32,17 @@ final class AddCommandTests {
         self.time = time
         self.folder = folder
         self.downloads = downloads
-        engine = try Engine(location: .inMemory, time: time, refineFilesOnlyIn: downloads)
+        engine = try Engine(location: .inMemory, time: time, cardFilesOnlyIn: downloads)
     }
 
     deinit {
         try? FileManager.default.removeItem(at: folder)
     }
 
-    // The capture waits in the inbox before and after: the cards come in
-    // without it.
     @Test(
-        "`ficha add` saves a list's cards as new, in its order, each in its deck, and prints them as `ficha approve` does, with no capture",
-        .bug(id: 534))
+        "`ficha add` saves a list's cards as new, in its order, each in its deck, and prints them as `ficha cards` does",
+        .bug(id: 534), .bug(id: 540))
     func addSavesTheCardsAsNew() async throws {
-        guard case .saved(let capture) = try engine.capture(text: "coloratura", note: nil, source: nil) else {
-            Issue.record("The capture wasn't saved.")
-            return
-        }
         let input = Data(
             """
             [
@@ -73,15 +67,14 @@ final class AddCommandTests {
         #expect(cards.map(\.deck) == ["Idiomas::Español", Deck.defaultName])
         #expect(cards.map(\.bothWays) == [true, false])
         #expect(cards.map(\.source) == [nil, "Aves argentinas"])
-        #expect(cards.allSatisfy { $0.captureID == nil && $0.createdAt == time.now && $0.standing == .inReviews })
+        #expect(cards.allSatisfy { $0.createdAt == time.now && $0.standing == .inReviews })
         #expect(try engine.reviewLog().isEmpty)
         #expect(try printed == json(cards))
-        #expect(try engine.inbox().captures == [capture])
     }
 
     @Test(
-        "`ficha add` puts on a side a picture or a sound from Downloads, given in the same file fields as `ficha approve`",
-        .bug(id: 534))
+        "`ficha add` puts on a side a picture or a sound from Downloads, given in the same file fields as `ficha fix`",
+        .bug(id: 534), .bug(id: 540))
     func addPutsFilesFromDownloads() async throws {
         let photo = downloads.appending(path: "hornero.png")
         let song = downloads.appending(path: "canto.wav")

@@ -287,10 +287,10 @@ extension Engine {
     /// can't be created, those no card uses go again.
     @discardableResult
     func create(
-        keeping held: HeldFiles, _ content: CardContent, deck: String, bothWays: Bool, from captureID: Int64?
+        keeping held: HeldFiles, _ content: CardContent, deck: String, bothWays: Bool
     ) throws(EngineError) -> Card {
         try keeping(held) { () throws(EngineError) in
-            try create(content, deck: deck, bothWays: bothWays, from: captureID)
+            try create(content, deck: deck, bothWays: bothWays)
         }
     }
 

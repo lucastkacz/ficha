@@ -10,7 +10,7 @@ import FichaCLI
 let variant = AppVariant.current
 let readsOnlyDownloads = signedEntitlement("com.apple.security.files.downloads.read-only") as? Bool == true
 await FichaCommand.main(
-    dataFolder: { try variant.dataFolder }, refineFilesOnlyIn: readsOnlyDownloads ? URL.downloadsDirectory : nil,
+    dataFolder: { try variant.dataFolder }, cardFilesOnlyIn: readsOnlyDownloads ? URL.downloadsDirectory : nil,
     runsOnDebugTime: variant.hasDebugMenu, appName: variant.name,
     appIsRunning: { !NSRunningApplication.runningApplications(withBundleIdentifier: variant.bundleIdentifier).isEmpty }
 )

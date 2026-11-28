@@ -97,7 +97,7 @@ public enum SettingsSection: Sendable, CaseIterable {
     /// The section's rows, in the order it shows them.
     public var rows: [SettingsRow] {
         switch self {
-        case .general: [.startAtLogin, .dueCountInMenuBar, .captureShortcut]
+        case .general: [.startAtLogin, .dueCountInMenuBar]
         case .cardSize: [.cardSize]
         case .about: [.version, .privacyPolicy]
         case .howFast: [.pace]
@@ -125,9 +125,6 @@ public enum SettingsRow: Sendable, CaseIterable {
     case startAtLogin
     /// Whether the menu bar shows how many cards are due.
     case dueCountInMenuBar
-    /// The shortcut that opens Capture… from any app, until #540 takes it
-    /// out with Capture.
-    case captureShortcut
     /// How large a card's text and images show.
     case cardSize
     /// Which version of the app this is.

@@ -25,8 +25,8 @@ struct CardReviewLogTests {
         "a card's review log has its entries, oldest first, each with the interval it set: the learning steps', whole days once graduated, and the relearning step's after a lapse"
     )
     func eachEntryHasTheIntervalItSet() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
-        let ubuntu = try approveCard("ubuntu", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
         let metAt = time.now
         try engine.meet(serendipia)
         try engine.meet(ubuntu)
@@ -59,7 +59,7 @@ struct CardReviewLogTests {
 
     @Test("each good of a graduated card, rated when it's due, waits longer than the one before in its review log")
     func eachGoodWaitsLongerInTheReviewLog() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         try engine.climb(serendipia, goods: 6, movingForward: time)
 
         let log = try engine.reviewLogRows(of: serendipia.id, with: scheduler)
@@ -80,7 +80,7 @@ struct CardReviewLogTests {
         for _ in 0..<2 {
             let time = ManualTimeSource(now: try morning(of: 14, in: calendar))
             let engine = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
-            let serendipia = try approveCard("serendipia", in: engine)
+            let serendipia = try newCard("serendipia", in: engine)
             try engine.climb(serendipia, goods: 6, movingForward: time)
             logs.append(try engine.reviewLogRows(of: serendipia.id, with: scheduler))
         }
@@ -92,7 +92,7 @@ struct CardReviewLogTests {
 
     @Test("a card's reviews ahead are in its review log, marked ahead, and an again ahead sends it to relearn")
     func reviewsAheadAreInTheReviewLog() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         try engine.climb(serendipia, goods: 2, movingForward: time)
         // Due in days: these are reviews ahead.
         for rating in [Rating.good, .hard, .again] {
@@ -117,19 +117,19 @@ struct CardReviewLogTests {
         "the last interval in a card's review log is the card's own, as the detail's Interval row says it, with the settings Lucas set, which keep it"
     )
     func theReviewLogEndsOnTheCardsInterval() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         try engine.climb(serendipia, goods: 3, movingForward: time)
         try engine.reviewWhenDue(serendipia, .again, movingForward: time)
         try engine.reviewWhenDue(serendipia, .good, movingForward: time)
-        let ubuntu = try approveCard("ubuntu", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
         try engine.climb(ubuntu, goods: 6, movingForward: time)
-        let ojala = try approveCard("ojalá", in: engine)
+        let ojala = try newCard("ojalá", in: engine)
         try engine.meet(ojala)
         time.advance(by: minutes(10))
         try engine.record(
             .review(.good), of: ojala.id, responseTime: .seconds(3), trigger: .reviewNow, settings: .defaults,
             reviewingAhead: true)
-        try approveCard("acaso", in: engine)
+        try newCard("acaso", in: engine)
         // Lucas changed the settings the cards were reviewed with.
         let changed = try #require(
             Scheduler(
@@ -154,7 +154,7 @@ struct CardReviewLogTests {
         "a card that goes both ways has both ways' entries in its review log, each saying its way, with the interval it set that way"
     )
     func eachEntrySaysItsWayAndHasItsWaysInterval() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         try engine.setBothWays(true, of: [serendipia.id])
         try engine.meet(serendipia)
         time.advance(by: minutes(10))
@@ -185,8 +185,8 @@ struct CardReviewLogTests {
         "a card's review log lists another device's entries by when they were answered, each with the interval it set where it falls"
     )
     func anotherDevicesEntriesAreListedByWhenTheyWereAnswered() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
-        let ubuntu = try approveCard("ubuntu", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
         let metAt = time.now
         try engine.meet(serendipia)
         try engine.meet(ubuntu)
@@ -208,7 +208,7 @@ struct CardReviewLogTests {
 
     @Test("a card's Last seen is its latest review, also when another device's earlier one came last")
     func lastSeenIsTheLatestAnswer() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         let metAt = time.now
         try engine.meet(serendipia)
         try engine.reviewWhenDue(serendipia, .good, movingForward: time)
@@ -223,7 +223,7 @@ struct CardReviewLogTests {
         "a card's Reviews counts every rating, on time or ahead: 0 while it's new, and 1 after its first review, which is a review like any other"
     )
     func reviewsCountEveryRating() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
 
         #expect(try reviews(of: serendipia) == 0)
         try engine.meet(serendipia)
@@ -243,7 +243,7 @@ struct CardReviewLogTests {
         "a card that goes both ways adds up its reviews in Reviews and keeps each way's, and switching Both ways off keeps every review, as its chart does"
     )
     func reviewsAddUpBothWays() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         try engine.setBothWays(true, of: [serendipia.id])
         try engine.climb(serendipia, goods: 2, movingForward: time)
         try engine.meet(serendipia, way: .backFirst)
@@ -262,7 +262,7 @@ struct CardReviewLogTests {
 
     @Test("a card's Reviews goes back down when an answer is taken back")
     func reviewsGoDownWhenAnAnswerIsTakenBack() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         try engine.meet(serendipia)
         try engine.reviewWhenDue(serendipia, .good, movingForward: time)
         #expect(try reviews(of: serendipia) == 2)
@@ -288,7 +288,7 @@ struct CardReviewLogTests {
 
     @Test("a new card's review log is empty, and a card that doesn't exist isn't found")
     func aNewCardsReviewLogIsEmpty() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
 
         #expect(try engine.reviewLogRows(of: serendipia.id, with: scheduler).isEmpty)
         #expect(throws: EngineError.cardNotFound(99)) {

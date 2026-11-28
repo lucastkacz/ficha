@@ -27,8 +27,8 @@ struct CardsWindowStateTests {
     }
 
     @Test(
-        "the window offers New Card and Import… while there are no cards, no search, and the sidebar chose nothing, and not once it chose the inbox",
-        .bug(id: 536))
+        "the window offers New Card and Import… while there are no cards, no search, and the sidebar chose nothing",
+        .bug(id: 536), .bug(id: 540))
     func theWindowOffersTheFirstCardsWhileThereAreNone() throws {
         var window = openWindow()
         #expect(window.sidebarItem == nil)
@@ -39,11 +39,7 @@ struct CardsWindowStateTests {
         window.search(for: "  ")
         #expect(window.offersFirstCards)
 
-        var inTheInbox = window
-        inTheInbox.choose(.inbox)
-        #expect(!inTheInbox.offersFirstCards)
-
-        try approveCard("serendipia", in: engine)
+        try newCard("serendipia", in: engine)
         window.read(with: scheduler)
         #expect(window.sidebarItem == .cards(.deck(Deck.defaultName)))
         #expect(!window.offersFirstCards)
@@ -54,7 +50,7 @@ struct CardsWindowStateTests {
     // none yet.
     @Test("the window offers no first cards while every card is set aside", .bug(id: 539))
     func theWindowOffersNoFirstCardsWhileEveryCardIsSetAside() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         try engine.bury(serendipia.id)
 
         let window = openWindow()
@@ -67,8 +63,8 @@ struct CardsWindowStateTests {
     // too.
     @Test("a set-aside deck stays listed without cards, and choosing it lists no cards rather than another deck's")
     func aSetAsideDeckStaysListedWithoutCards() throws {
-        let mayo = try approveInDeck("Revolución de Mayo", deck: "Historia", in: engine)
-        try approveCard("serendipia", in: engine)
+        let mayo = try newCardInDeck("Revolución de Mayo", deck: "Historia", in: engine)
+        try newCard("serendipia", in: engine)
         var window = openWindow()
         window.chooseSetAside(onDeck: "Historia")
         window.choose(.cards(.deck("Historia")))
@@ -85,7 +81,7 @@ struct CardsWindowStateTests {
     // The sheet says why while OK refuses, so nothing fails.
     @Test("the emoji sheet refuses what isn't one emoji, and takes a field of spaces as removing the deck's emoji")
     func theEmojiSheetRefusesWhatIsntOneEmoji() throws {
-        try approveInDeck("Revolución de Mayo", deck: "Historia::Argentina", in: engine)
+        try newCardInDeck("Revolución de Mayo", deck: "Historia::Argentina", in: engine)
         var window = openWindow()
         window.askForEmoji(onDeck: "Historia")
         #expect(window.question == .deckEmoji(Deck(name: "Historia")))
@@ -112,8 +108,8 @@ struct CardsWindowStateTests {
     func aSetAsideDecksCardsStayListed() throws {
         // eudaimonía gets learned, graduated to wait 21 days or more, and
         // comes due; ataraxia is new.
-        let eudaimonia = try approveInDeck("eudaimonía", deck: "Filosofía", in: engine)
-        let ataraxia = try approveInDeck("ataraxia", deck: "Filosofía", in: engine)
+        let eudaimonia = try newCardInDeck("eudaimonía", deck: "Filosofía", in: engine)
+        let ataraxia = try newCardInDeck("ataraxia", deck: "Filosofía", in: engine)
         try engine.climbUntilLearned(eudaimonia, movingForward: time)
         time.move(to: try #require(try engine.standing(of: eudaimonia.id, with: .standard).due))
         var window = openWindow()
@@ -127,9 +123,9 @@ struct CardsWindowStateTests {
 
     @Test("the detail's Due row says a set-aside card is set aside, where its due time goes")
     func theDueRowSaysASetAsideCardIsSetAside() throws {
-        let eudaimonia = try approveInDeck("eudaimonía", deck: "Filosofía", in: engine)
+        let eudaimonia = try newCardInDeck("eudaimonía", deck: "Filosofía", in: engine)
         try engine.meet(eudaimonia)
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         try engine.meet(serendipia)
         var window = openWindow()
 
@@ -146,8 +142,8 @@ struct CardsWindowStateTests {
 
     @Test("selected cards the grid no longer lists are left out of the selected rows")
     func selectedCardsTheGridNoLongerListsAreLeftOut() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
-        let ubuntu = try approveCard("ubuntu", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
         var window = openWindow()
         window.select([serendipia.id, ubuntu.id])
         #expect(window.selectedRows.map(\.id) == [serendipia.id, ubuntu.id])
@@ -159,138 +155,24 @@ struct CardsWindowStateTests {
         #expect(window.shownCard?.row.id == serendipia.id)
     }
 
-    @Test("selecting a flagged card in the inbox shows the card, with its review log, and offers what a card offers")
-    func aFlaggedCardInTheInboxShowsAsTheCard() throws {
-        let ubuntu = try approveCard("ubuntu", in: engine)
+    // Flagged already, it's offered no Flag; a fix brings it back.
+    @Test(
+        "selecting a flagged card in its deck shows the card, with its flag and its review log, and offers what a card offers but Flag",
+        .bug(id: 540))
+    func aFlaggedCardInItsDeckShowsAsTheCard() throws {
+        let ubuntu = try newCard("ubuntu", in: engine)
         try engine.climb(ubuntu, goods: 1, movingForward: time)
         try engine.flag(ubuntu.id, note: note("Falta un ejemplo"))
-        try engine.newCapture("¿Por qué bostezamos?")
         var window = openWindow()
-        window.choose(.inbox)
 
-        window.selectInInbox(.card(ubuntu.id))
+        window.select([ubuntu.id])
 
         let shown = try #require(window.shownCard)
         #expect(window.selectedRows.map(\.id) == [ubuntu.id])
         #expect(shown.row.id == ubuntu.id)
+        #expect(shown.row.card.flag?.note == "Falta un ejemplo")
         #expect(try shown.reviewLog?.get().map(\.entry.kind) == [.review(.again), .review(.good)])
         #expect(window.actions == [.edit, .setAside, .changeDeck, .delete])
-    }
-
-    @Test("selecting an expansion in the inbox shows it, with the card it expands, and offers Edit and Discard")
-    func anExpansionInTheInboxOffersEditAndDiscard() throws {
-        try approveCard("serendipia", in: engine)
-        try engine.expand(text: "Serendipia", note: "También es una película", source: nil)
-        let expansion = try #require(try engine.inbox().expansions.first)
-        var window = openWindow()
-        window.choose(.inbox)
-
-        window.selectInInbox(.capture(expansion.capture.id))
-
-        #expect(window.selectedRows.isEmpty)
-        #expect(window.detail == .expansion(expansion))
-        #expect(window.actions == [.edit, .discard])
-    }
-
-    @Test(
-        "the inbox lists a follow-up with its card, among the rest by when it was added, and a search finds it by its text"
-    )
-    func theInboxListsAFollowUpWithItsCard() throws {
-        let poderes = try approve(
-            card(
-                .concept, front: "La división de poderes en la Argentina",
-                back: "Ejecutivo, Legislativo y Judicial.", tags: ["política", "argentina"]),
-            in: engine)
-        time.advance(by: hours(1))
-        let navaja = try engine.newCapture("Navaja de Ockham")
-        time.advance(by: hours(1))
-        try engine.followUp(poderes.id, text: "¿Cómo se eligen los jueces?")
-        time.advance(by: hours(1))
-        let bostezo = try engine.newCapture("¿Por qué bostezamos?")
-        let followUp = try #require(try engine.inbox().followUps.first)
-        var window = openWindow()
-
-        window.choose(.inbox)
-        let listed = window.listedInboxRows
-        window.search(for: "JUECES")
-
-        #expect(followUp.card == poderes)
-        #expect(listed?.map(\.item) == [.capture(bostezo), .followUp(followUp), .capture(navaja)])
-        #expect(listed?.map(\.text) == ["¿Por qué bostezamos?", "¿Cómo se eligen los jueces?", "Navaja de Ockham"])
-        #expect(window.listedInboxRows?.map(\.item) == [.followUp(followUp)])
-    }
-
-    @Test(
-        "selecting a follow-up in the inbox shows it, with its card, and offers Edit, Convert to Card and Discard")
-    func aFollowUpInTheInboxShowsItsCard() throws {
-        let poderes = try approve(
-            card(
-                .concept, front: "La división de poderes en la Argentina",
-                back: "Ejecutivo, Legislativo y Judicial.", tags: ["política", "argentina"]),
-            in: engine)
-        let saved = try engine.followUp(poderes.id, text: "¿Cómo se eligen los jueces?")
-        var window = openWindow()
-        window.choose(.inbox)
-
-        window.selectInInbox(.capture(saved.id))
-
-        let followUp = try #require(window.shownFollowUp)
-        #expect(window.selectedRows.isEmpty)
-        #expect(followUp.capture == saved)
-        #expect(followUp.card == poderes)
-        #expect(window.actions == [.edit, .convertToCard, .discard])
-    }
-
-    @Test("editing a follow-up keeps its card, and discarding it takes it out of the inbox")
-    func editingAFollowUpKeepsItsCard() throws {
-        let poderes = try approveCard("La división de poderes", in: engine)
-        let followUp = try engine.followUp(poderes.id, text: "¿Cómo se eligen los jueces?")
-        var window = openWindow()
-        window.choose(.inbox)
-        window.selectInInbox(.capture(followUp.id))
-
-        window.startEditing()
-        let editing = window.editing
-        window.saveCapture(
-            text: "¿Cómo se eligen los jueces de la Corte?", note: "Y quién los puede remover", source: "")
-        let edited = window.shownFollowUp
-        window.askToDiscard()
-        let asked = window.question
-        let toDiscard = try #require(edited?.capture)
-        window.discard(toDiscard)
-        // As the window does once the engine says the inbox changed.
-        window.read(with: scheduler)
-
-        #expect(editing == .capture(followUp))
-        #expect(edited?.capture.text == "¿Cómo se eligen los jueces de la Corte?")
-        #expect(edited?.capture.note == "Y quién los puede remover")
-        #expect(edited?.capture.followsUpCardID == poderes.id)
-        #expect(edited?.card == poderes)
-        #expect(asked == .discard(toDiscard))
-        #expect(window.failure == nil)
-        #expect(window.listedInboxRows == [])
-        #expect(try engine.inbox().followUps.isEmpty)
-        #expect(try engine.cards() == [poderes])
-    }
-
-    @Test("a follow-up whose card was deleted shows as a plain capture")
-    func aFollowUpWhoseCardWasDeletedShowsAsACapture() throws {
-        let poderes = try approveCard("La división de poderes", in: engine)
-        let followUp = try engine.followUp(poderes.id, text: "¿Cómo se eligen los jueces?")
-        var window = openWindow()
-        window.select([poderes.id])
-        window.askToDelete()
-        window.delete(try #require(window.cardsToDelete))
-
-        window.choose(.inbox)
-        window.selectInInbox(.capture(followUp.id))
-
-        let capture = try #require(try engine.inbox().captures.first)
-        #expect(capture.text == "¿Cómo se eligen los jueces?")
-        #expect(capture.followsUpCardID == nil)
-        #expect(window.listedInboxRows?.map(\.item) == [.capture(capture)])
-        #expect(window.detail == .capture(capture))
-        #expect(window.actions == [.edit, .convertToCard, .discard])
     }
 
     // A deck lists the cards set aside on their own too, dimmed (#539), so
@@ -301,9 +183,9 @@ struct CardsWindowStateTests {
         "Set Aside is offered for cards none of them set aside, Put Back for cards all set aside, a deck listing both",
         .bug(id: 539))
     func setAsideOrPutBackIsOfferedForTheSelectedCards() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
-        let ubuntu = try approveCard("ubuntu", in: engine)
-        let ojala = try approveCard("ojalá", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
+        let ojala = try newCard("ojalá", in: engine)
         try engine.bury(ojala.id)
         var window = openWindow()
 
@@ -322,9 +204,9 @@ struct CardsWindowStateTests {
     // So that a whole subject goes both ways from its tag, ⌘A and one click.
     @Test("several selected cards offer Turn On Both Ways while any goes one way, and Turn Off once all go both ways")
     func theSelectionTurnsBothWaysOnOrOff() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
-        let ubuntu = try approveCard("ubuntu", in: engine)
-        let petricor = try approveCard("petricor", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
+        let petricor = try newCard("petricor", in: engine)
         try engine.setBothWays(true, of: [ubuntu.id])
         var window = openWindow()
 
@@ -354,9 +236,9 @@ struct CardsWindowStateTests {
         "turning Both ways on gives the selected cards a back-first way, new, and turning it off takes it from the window, keeping its progress"
     )
     func turningBothWaysOnAndOffGivesAndTakesTheBackFirstWay() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
-        let ubuntu = try approveCard("ubuntu", in: engine)
-        try approveCard("petricor", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
+        try newCard("petricor", in: engine)
         try engine.meet(serendipia)
         var window = openWindow()
         let before = try #require(window.listedCardRows).map(\.backFirst)
@@ -385,8 +267,8 @@ struct CardsWindowStateTests {
     @Test(
         "the detail shows a card's front-first and back-first ways, and its review log says which way each entry went")
     func theDetailShowsEachWayAndItsReviewLogsWays() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
-        let ubuntu = try approveCard("ubuntu", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
         try engine.setBothWays(true, of: [serendipia.id])
         try engine.meet(serendipia)
         try engine.meet(ubuntu)
@@ -417,7 +299,7 @@ struct CardsWindowStateTests {
     // defines stability.
     @Test("a reviewed way's detail has its stability, difficulty and retrievability, and a new way's has none")
     func aReviewedWaysDetailHasItsMemoryAndANewWaysHasNone() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         try engine.setBothWays(true, of: [serendipia.id])
         try engine.review(serendipia, .good)
         time.advance(by: 2.3065 * days(1))
@@ -436,9 +318,9 @@ struct CardsWindowStateTests {
 
     @Test("Flag is offered only for a single card in Lucas's reviews")
     func flagIsOfferedOnlyForASingleCardInReviews() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
-        let ubuntu = try approveCard("ubuntu", in: engine)
-        let ojala = try approveCard("ojalá", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
+        let ojala = try newCard("ojalá", in: engine)
         try engine.flag(ojala.id, note: note("Falta un ejemplo"))
         var window = openWindow()
 
@@ -456,8 +338,8 @@ struct CardsWindowStateTests {
 
     @Test("Delete asks only about the selected cards the grid lists")
     func deleteAsksOnlyAboutTheSelectedCardsTheGridLists() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
-        let ubuntu = try approveCard("ubuntu", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
         var window = openWindow()
         window.select([serendipia.id, ubuntu.id])
         window.search(for: "seren")
@@ -474,8 +356,8 @@ struct CardsWindowStateTests {
 
     @Test("an action that fails records the action and how many cards it was on")
     func anActionThatFailsRecordsTheActionAndHowManyCards() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
-        let ubuntu = try approveCard("ubuntu", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
         var window = openWindow()
         window.select([serendipia.id, ubuntu.id])
         // Deleted outside the window, before it reads the cards again.
@@ -489,7 +371,7 @@ struct CardsWindowStateTests {
 
     @Test("saving an edit ends it, and the detail shows the card as saved at once")
     func savingAnEditShowsTheCardAsSavedAtOnce() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         var window = openWindow()
         window.select([serendipia.id])
 
@@ -506,7 +388,7 @@ struct CardsWindowStateTests {
     // 0041): whatever the content Save gets, the card keeps its own.
     @Test("saving an edit keeps the card's tags and type, which the editor doesn't show", .bug(id: 538))
     func savingAnEditKeepsTheCardsTagsAndType() throws {
-        let mayo = try approve(
+        let mayo = try newCard(
             card(.concept, front: "Revolución de Mayo", back: "1810.", tags: ["historia::Argentina", "política"]),
             in: engine)
         var window = openWindow()
@@ -524,8 +406,8 @@ struct CardsWindowStateTests {
 
     @Test("editing a card starts with its Both ways, and saving turns it on or off as the editor says")
     func editingACardKeepsOrSwitchesBothWays() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
-        let ubuntu = try approveCard("ubuntu", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
         try engine.setBothWays(true, of: [ubuntu.id])
         var window = openWindow()
 
@@ -547,9 +429,9 @@ struct CardsWindowStateTests {
 
     @Test("the window lists a card with when its front or back last changed, and one never edited with none")
     func theWindowListsWhenACardWasEdited() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
-        let ubuntu = try approveCard("ubuntu", in: engine)
-        try approveCard("petricor", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
+        try newCard("petricor", in: engine)
         var window = openWindow()
         time.advance(by: hours(1))
         window.select([serendipia.id])
@@ -639,36 +521,18 @@ struct CardsWindowStateTests {
 
 extension CardsWindowState {
     /// The ids of the cards the grid lists, in the order the engine read
-    /// them, or nil when the window lists the inbox or couldn't read them.
+    /// them, or nil when the window couldn't read them.
     fileprivate var listedCardIDs: [Int64]? {
         listedCardRows?.map(\.id)
     }
 
     /// The cards the grid lists, in the order the engine read them, or nil
-    /// when the window lists the inbox or couldn't read them.
+    /// when the window couldn't read them.
     fileprivate var listedCardRows: [CardRow]? {
         guard case .success(.cards(let rows)) = listing else {
             return nil
         }
         return rows
-    }
-
-    /// What the window lists in the inbox, in the order the engine read it,
-    /// or nil when it lists cards or couldn't read the inbox.
-    fileprivate var listedInboxRows: [InboxRow]? {
-        guard case .success(.inbox(let rows)) = listing else {
-            return nil
-        }
-        return rows
-    }
-
-    /// The follow-up the detail shows, with its card, or nil when it shows
-    /// something else.
-    fileprivate var shownFollowUp: FollowUp? {
-        guard case .followUp(let followUp) = detail else {
-            return nil
-        }
-        return followUp
     }
 
     /// The card the detail shows whole, with its review log, or nil when it

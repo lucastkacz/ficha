@@ -173,8 +173,8 @@ final class AnkiImportingTests {
         "a reversed note repeats a card of the user's by its first card's front, and updates it keeping its own Both ways",
         arguments: schemas)
     func aReversedNoteRepeatsByItsFront(format: AnkiPackage.Format) async throws {
-        try approveCard("gato", in: engine)
-        try approveCard("dog", in: engine)
+        try newCard("gato", in: engine)
+        try newCard("dog", in: engine)
         let package = AnkiPackage(
             format: format,
             notes: [
@@ -703,9 +703,9 @@ final class AnkiImportingTests {
         arguments: schemas, [ImportChoices.RepeatedCards.update, .skip])
     func repeatedCardsAreUpdatedOrSkipped(format: AnkiPackage.Format, choice: ImportChoices.RepeatedCards) async throws
     {
-        let approved = try approve(
+        let made = try newCard(
             card(.word, front: "Corazón", back: "Un órgano.", tags: ["biología"], source: "Un libro"), in: engine)
-        try engine.changeDeck(of: [approved.id], to: "Biología")
+        try engine.changeDeck(of: [made.id], to: "Biología")
         let heart = try #require(try engine.cards().first)
         let package = AnkiPackage(
             format: format,

@@ -109,8 +109,8 @@ struct UpcomingAppearanceTests {
 
     @Test("once Lucas met the day's 2 new cards, the next one is planned for the next day's active hours")
     func theNextNewCardWaitsForTheNextDay() throws {
-        let met = try ["ubuntu", "petricor"].map { try approveCard($0, in: engine) }
-        let sunkCost = try approveCard("costo hundido", in: engine)
+        let met = try ["ubuntu", "petricor"].map { try newCard($0, in: engine) }
+        let sunkCost = try newCard("costo hundido", in: engine)
         // Met at 9:00 and good twice, they're due again on the 16th.
         for card in met {
             try engine.meet(card)
@@ -178,12 +178,12 @@ struct UpcomingAppearanceTests {
         #expect(next == UpcomingAppearance(time: try at(10, 0), cards: [.review(bothWays[0]), .review(bothWays[1])]))
     }
 
-    /// Approves a card with this front and meets it, an hour before `due`, so
+    /// Makes a card with this front and meets it, an hour before `due`, so
     /// that it's due then, after the first step's wait. Each card is met after
     /// the ones before it, so they come due in order.
     @discardableResult
     private func meetCard(_ front: String, dueAt due: Date) throws -> Card {
-        let card = try approveCard(front, in: engine)
+        let card = try newCard(front, in: engine)
         time.move(to: due - hours(1))
         try engine.meet(card)
         return card
