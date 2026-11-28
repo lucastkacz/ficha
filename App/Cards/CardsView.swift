@@ -44,7 +44,11 @@ import SwiftUI
 /// for a deck's `.ficha`, and one opened in Finder opens the window on it:
 /// the deck it holds comes in, with its emoji and description, after How
 /// fast?, and a deck Lucas has takes only the cards it lacks (ADR 0044,
-/// `OpenDeck.swift`). The grid lists the cards in the order they came in. He
+/// `OpenDeck.swift`). A deck's description shows above its cards, and one of
+/// Ficha's in the grid's place; Description… in a deck's menu edits it in
+/// place, and Share Deck… opens macOS's Share menu on the deck's `.ficha`,
+/// ending in Save to File… (`DeckMenu.swift`, `ShareDeck.swift`). The grid
+/// lists the cards in the order they came in. He
 /// edits a card or a capture right there, in fields that take the detail's
 /// place while the sidebar and the grid or the inbox wait. He selects several
 /// tiles with ⌘ or Shift, as in the Finder, or all of them with Select All,
@@ -644,6 +648,31 @@ struct CardsView: View {
                         How fast?'s Start on the deck of a deck's .ficha file, with the file's name.
                         """),
                 error: error)
+        case .setDeckDescription(let deck):
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't change the description of “\(Deck.shownName(deck))”",
+                    comment: """
+                        An alert's title in the Cards window, after Done in the field of a deck's description, with \
+                        the deck.
+                        """),
+                error: error)
+        case .shareDeck(let deck):
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't share “\(Deck.shownName(deck))”",
+                    comment: "An alert's title in the Cards window, after Share Deck… in a deck's menu, with the deck."
+                ),
+                error: error)
+        case .saveSharedDeck(let fileName):
+            return Failure(
+                title: LocalizedStringResource(
+                    "Couldn't save “\(fileName)”",
+                    comment: """
+                        An alert's title in the Cards window, after Save to File… in the Share menu of Share Deck… and \
+                        Save in its save panel, with the file's name.
+                        """),
+                error: error)
         }
     }
 
@@ -825,7 +854,8 @@ struct CardsView: View {
 
     /// One of Ficha's decks, in the grid's place while the sidebar chose it,
     /// as the mock draws it: its emoji and name, with "40 cards · one of
-    /// Ficha's decks" under them, and Add Deck…, on Return while the search
+    /// Ficha's decks" under them, its description, as its `deck.json` holds
+    /// it (ADR 0044), and Add Deck…, on Return while the search
     /// field doesn't have it, which asks How fast? for the deck before it
     /// comes in. The detail shows its first card.
     private func fichaDeckHead(_ file: FichaDeckFile) -> some View {
@@ -842,6 +872,12 @@ struct CardsView: View {
                     Text(verbatim: CardsWindowState.HowFast.Line.fichaDeck(cardCount: file.cardCount).text)
                         .foregroundStyle(.secondary)
                 }
+            }
+            if let description = file.description {
+                TextAsItReads(description)
+                    .font(.callout)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: 470, alignment: .leading)
             }
             Button {
                 state.askToAddFichaDeck()

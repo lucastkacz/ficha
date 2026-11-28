@@ -76,8 +76,9 @@ public struct FichaDeckFile: Sendable, Equatable {
         file.emoji
     }
 
-    /// The description its file's `deck.json` holds, which the deck takes
-    /// when it comes in new: nil for none.
+    /// The description its file's `deck.json` holds, which the Cards window
+    /// shows under its name in the grid's place, and the deck takes when it
+    /// comes in new: nil for none.
     public var description: String? {
         file.description
     }

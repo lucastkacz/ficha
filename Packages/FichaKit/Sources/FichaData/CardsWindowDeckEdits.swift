@@ -12,7 +12,7 @@ import Foundation
 // inside it, or to the top when it's dropped on the Your Decks section's title.
 // The window follows a deck it holds by name to its new one: the deck the
 // sidebar chose, the decks it closed, the deck the card form and the editor
-// hold, and the one the last card was added to; and lets go of one deleted.
+// hold, the one Description… edits, and the one the last card was added to; and lets go of one deleted.
 // It does so as it reads the cards again, after each change to decks this
 // device applied since it last read them (`DeckChangesSince`), whoever made
 // it: the window itself, the `ficha` CLI on the same database, or another
@@ -232,9 +232,10 @@ extension CardsWindowState {
     /// cards, whoever made them, as it reads them, once it read the decks
     /// (`DeckChangesSince.name(of:)`): the deck the sidebar chose, the decks
     /// it closed, the deck the card form holds, and the one Show Card set
-    /// aside, the editor's, and the one the last card was added to. A deck
-    /// deleted lets go: the sidebar chooses nothing, until the read chooses
-    /// the deck the window opens on (`deckToOpenOn`), the forms' decks go to
+    /// aside, the editor's, the one Description… edits, and the one the last
+    /// card was added to. A deck deleted lets go: the sidebar chooses
+    /// nothing, until the read chooses the deck the window opens on
+    /// (`deckToOpenOn`), Description…'s edit ends, the forms' decks go to
     /// the deck a new card starts in, and the editor's and the one the last
     /// card was added to, to Default.
     mutating func follow(_ changes: DeckChangesSince) {
@@ -245,6 +246,7 @@ extension CardsWindowState {
         }
         closedDecks = Set(closedDecks.compactMap(changes.name(of:)))
         editedDeck = changes.name(of: editedDeck) ?? Deck.defaultName
+        describedDeckName = describedDeckName.flatMap(changes.name(of:))
         lastDeckAddedTo = changes.name(of: lastDeckAddedTo) ?? Deck.defaultName
         let startingDeck = deckANewCardStartsIn
         if let formsDeck = cardForm?.draft.deck {

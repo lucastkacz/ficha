@@ -103,8 +103,16 @@ enum Window: String, CaseIterable {
     /// A deck's menu in the Cards window, Idiomas's, as its row's context
     /// menu in the sidebar and the Actions menu above the grid hold it, its
     /// content drawn in a window, since the tool can't open the menu: New
-    /// Deck… and Open Deck… first, then the deck's own actions.
+    /// Deck… and Open Deck… first, then the deck's own actions, Description…
+    /// and Share Deck… among them.
     case cardsDeckMenu = "cards-deck-menu"
+    /// The Cards window on Arte argentino, one of Ficha's decks, which the
+    /// tool adds to the sample cards from the repo's `App/FichaDecks/`: its
+    /// description, from its `deck.json`, in the bar above its cards.
+    case cardsDeckDescription = "cards-deck-description"
+    /// The same once Description… in its menu, which the tool can't open,
+    /// opened the field in the description's place, with Cancel and Done.
+    case cardsDescriptionField = "cards-description-field"
     /// The Cards window on Palabras lindas, one of Ficha's decks, which its
     /// sidebar's Ficha's Decks section lists after Your Decks with the other
     /// two, all three read from the repo's `App/FichaDecks/`, its sidebar
@@ -113,9 +121,9 @@ enum Window: String, CaseIterable {
     /// How fast? for, and its first card, a word, front and back, in the
     /// detail's.
     case cardsFichaDeckWords = "cards-ficha-deck-words"
-    /// The same on Arte argentino, whose first card's front is a painting,
-    /// and its back the painting's title, painter, year and museum, and its
-    /// credit.
+    /// The same on Arte argentino, with its description under its name,
+    /// whose first card's front is a painting, and its back the painting's
+    /// title, painter, year and museum, and its credit.
     case cardsFichaDeckPicture = "cards-ficha-deck-picture"
     /// The same on Flores de Buenos Aires, whose first card's front is a
     /// photo of a rose alone, with no text, and its back the flower's name, a
@@ -1428,6 +1436,13 @@ func model(for name: Window) throws -> AppModel {
         let due = try longestWaitingSampleCard(in: engine).due
         time.advance(by: due.timeIntervalSince(time.now))
         return try AppModel(engine: engine)
+    case .cardsDeckDescription, .cardsDescriptionField:
+        let engine = try sampleEngine(at: .inMemory).engine
+        guard case .success(let arte)? = try fichaDecksInTheRepo(readBy: engine)[.arteArgentino] else {
+            throw RenderError(description: "Arte argentino's file couldn't be read: fix App/FichaDecks/.")
+        }
+        try engine.addFichaDeck(arte)
+        return try AppModel(engine: engine)
     case .cardsBothWays: return try bothWaysModel()
     case .cardsSetAside: return try AppModel(engine: try sampleEngine(at: .inMemory).engine)
     case .panelArabic, .cardsArabic:
@@ -1576,6 +1591,21 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         return window
     case .cardsDeckMenu:
         return try deckMenuWindow(model: model)
+    case .cardsDeckDescription, .cardsDescriptionField:
+        let deck = FichaDeck.arteArgentino.name
+        var state = model.openCardsWindow()
+        state.read(with: state.scheduler)
+        state.choose(.cards(.deck(deck)))
+        if name == .cardsDescriptionField {
+            state.askForDescription(onDeck: deck)
+        }
+        guard state.chosenDeckDescription != nil || state.describedDeck?.description != nil else {
+            throw RenderError(
+                description: "The Cards window shows no description for \(deck): fix CardsWindowDeckDescription.swift.")
+        }
+        let window = CardsWindow(model: model)
+        window.makeContent(opening: state)
+        return window
     case .cardsFichaDeckWords, .cardsFichaDeckPicture, .cardsFichaDeckFlower:
         let deck: FichaDeck =
             switch name {

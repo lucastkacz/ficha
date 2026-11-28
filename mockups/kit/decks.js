@@ -6,8 +6,9 @@
  * #458): `ficha: true`, and the Welcome page and the Cards window offer them.
  * Their cards are those in the app's `App/FichaDecks/` files, one deck a
  * line between the <ficha-decks> lines, so a change to those files changes
- * these lines too. A card with `picture: true` has an image on its front,
- * which the mock draws as a stand-in.
+ * these lines too, and their descriptions, below them. A card with
+ * `picture: true` has an image on its front, which the mock draws as a
+ * stand-in.
  * One stands for a deck someone sent the user, as its .ficha, which Open
  * Deck… opens (ADR 0044, #554): made up, never Lucas's, in Spanish too, as
  * cards are the user's, in any language (ADR 0036).
@@ -44,6 +45,20 @@
       ],
     },
   ];
+
+  // Each of Ficha's decks' description, as its deck.json in App/FichaDecks/
+  // holds it (ADR 0044, #557), which the Cards window shows above its cards
+  // and in Ficha's Decks.
+  const descriptions = {
+    'palabras-lindas': '40 palabras del español que dan gusto: qué quieren decir y de dónde vienen.',
+    'arte-argentino':
+      '50 pinturas de 15 artistas argentinos, de 1839 a 1930, que están en museos de Buenos Aires: cuál es, quién la pintó y cuándo.',
+    'flores-de-buenos-aires':
+      '30 flores y follajes de las florerías porteñas, por su foto: cómo se llaman y algo para reconocerlas.',
+  };
+  decks.forEach((d) => {
+    if (descriptions[d.id]) d.description = descriptions[d.id];
+  });
 
   root.FichaDecks = decks;
 })(typeof window !== 'undefined' ? window : globalThis);

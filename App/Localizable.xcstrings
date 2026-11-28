@@ -1345,6 +1345,9 @@
     "Couldn't change the color of “%@”" : {
       "comment" : "An alert's title in the Cards window, after a color in a deck's menu, with the deck."
     },
+    "Couldn't change the description of “%@”" : {
+      "comment" : "An alert's title in the Cards window, after Done in the field of a deck's description, with the deck."
+    },
     "Couldn't change the emoji of “%@”" : {
       "comment" : "An alert's title in the Cards window's emoji sheet, after OK, with the deck."
     },
@@ -1530,6 +1533,9 @@
     "Couldn't save your question" : {
 
     },
+    "Couldn't save “%@”" : {
+      "comment" : "An alert's title in the Cards window, after Save to File… in the Share menu of Share Deck… and Save in its save panel, with the file's name."
+    },
     "Couldn't set %lld cards aside" : {
       "comment" : "An alert's title in the Cards window, after Set Aside.",
       "localizations" : {
@@ -1558,6 +1564,9 @@
     },
     "Couldn't set “%@” aside" : {
       "comment" : "An alert's title in the Cards window, after Set Aside in a deck's menu, with the deck."
+    },
+    "Couldn't share “%@”" : {
+      "comment" : "An alert's title in the Cards window, after Share Deck… in a deck's menu, with the deck."
     },
     "Couldn't show this image." : {
       "comment" : "In place of an image on a card's side that can't be read."
@@ -1686,6 +1695,12 @@
     "Delete… (⌘⌫)" : {
       "comment" : "The tooltip of Settings' Backups button that deletes copies.\nThe tooltip of the Cards window's button that deletes the cards."
     },
+    "Description" : {
+      "comment" : "The field Description… opens above a deck's cards in the Cards window: its label, and what it shows while it's empty."
+    },
+    "Description…" : {
+      "comment" : "An item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu above the grid: it edits the deck's description, one or two lines on what it holds, in place above its cards."
+    },
     "Desired retention" : {
       "comment" : "Settings, under Advanced: how likely the user wants to be to remember a card when it's due."
     },
@@ -1717,7 +1732,7 @@
       "comment" : "The button that declines the review panel's offer to flag a card the user forgot often: the card stays in their reviews."
     },
     "Done" : {
-      "comment" : "A button that closes the review panel once every card was gone through.\nThe Import sheet's button that closes it once the cards came in."
+      "comment" : "A button that closes the review panel once every card was gone through.\nThe Import sheet's button that closes it once the cards came in.\nThe button under the field of a deck's description in the Cards window, which gives the deck what the field holds."
     },
     "Drop or paste a sound" : {
       "comment" : "In the empty place for the sound on a side of a card."
@@ -2901,6 +2916,9 @@
     "Save" : {
 
     },
+    "Save to File…" : {
+      "comment" : "The last item of the Share menu Share Deck… opens in the Cards window: it saves the deck's .ficha file where the user picks."
+    },
     "Saved" : {
       "comment" : "Settings, under Backups: the column of when a copy was saved."
     },
@@ -2976,6 +2994,9 @@
     },
     "Settings…" : {
 
+    },
+    "Share Deck…" : {
+      "comment" : "An item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu above the grid: it opens macOS's Share menu with the deck's .ficha file, which ends in Save to File…."
     },
     "Show Card" : {
       "comment" : "In the Cards window's card form: closes it and selects the card the front repeats."

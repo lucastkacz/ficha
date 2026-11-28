@@ -67,16 +67,16 @@ extension CardsWindowState {
 
     /// Asks How fast? for the deck of the `.ficha` the window read
     /// (`finishOpenDeck(_:)`), as soon as it can: while it asks nothing
-    /// else, Lucas edits nothing, and no sheet of its own is open, as for
-    /// one of Ficha's decks the review panel asks for
-    /// (`askForTheFichaDeckAskedToAdd()`, which calls it first). Its cards
-    /// are counted as they'd come in now, those that repeat none of the
-    /// user's, into the deck at the top of the tree they come into, at its
-    /// place in the queue, or else last. When the queue can't be read, it
+    /// else, Lucas edits nothing, a deck's description included, and no
+    /// sheet of its own is open, as for one of Ficha's decks the review
+    /// panel asks for (`askForTheFichaDeckAskedToAdd()`, which calls it
+    /// first). Its cards are counted as they'd come in now, those that
+    /// repeat none of the user's, into the deck at the top of the tree they
+    /// come into, at its place in the queue, or else last. When the queue can't be read, it
     /// asks nothing, and says why. It forgets the file once it asks.
     mutating func askForTheDeckFileOpened() {
-        guard let file = deckFileOpened, question == nil, editing == nil, cardForm == nil, importing == nil,
-            exporting == nil
+        guard let file = deckFileOpened, question == nil, editing == nil, describedDeckName == nil, cardForm == nil,
+            importing == nil, exporting == nil
         else { return }
         deckFileOpened = nil
         do throws(EngineError) {

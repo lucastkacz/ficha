@@ -83,7 +83,8 @@ extension CardsWindowState {
     /// (`askForTheDeckFileOpened()`), and else for the one of Ficha's decks
     /// the review panel asked for (`askToAddFichaDeck(_:)`): once the app
     /// gave it the deck's file, and while it asks nothing else, Lucas edits
-    /// nothing, and no sheet of its own is open. The app's read of the
+    /// nothing, a deck's description included, and no sheet of its own is
+    /// open. The app's read of the
     /// cards calls it (`read(with:)`), and so does the end of each way out
     /// of a question, an edit, the card form or a sheet, once it's over,
     /// never a read partway through one (`readAgain()`), so the sidebar stays
@@ -94,7 +95,8 @@ extension CardsWindowState {
     mutating func askForTheFichaDeckAskedToAdd() {
         askForTheDeckFileOpened()
         guard let deck = fichaDeckAskedToAdd, fichaDeckFiles.contains(where: { $0.deck == deck }),
-            question == nil, editing == nil, cardForm == nil, importing == nil, exporting == nil
+            question == nil, editing == nil, describedDeckName == nil, cardForm == nil, importing == nil,
+            exporting == nil
         else { return }
         fichaDeckAskedToAdd = nil
         guard fichaDecksNotAdded.contains(where: { $0.deck == deck }) else { return }
