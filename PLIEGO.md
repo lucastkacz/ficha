@@ -139,7 +139,7 @@ FichaSVG                                     WebKit
 
 The executables:
 
-- ✓ **Ficha** (`App/`): the Mac app, thin, built as the real Ficha or as Ficha Dev, which alone has the Debug menu. It declares the `.ficha` file type and opens it, once ADR 0044's node builds it. It bundles `docs/instructions-for-an-ai.md`, which the Import sheet copies, until ADR 0041's node takes both out.
+- ✓ **Ficha** (`App/`): the Mac app, thin, built as the real Ficha or as Ficha Dev, which alone has the Debug menu. It declares the `.ficha` file type, which the real Ficha owns and Ficha Dev opens as an alternate, through a build setting of each configuration in `project.yml`, and opens it from Finder and Open Deck… (ADR 0044). It bundles `docs/instructions-for-an-ai.md`, which the Import sheet copies, until ADR 0041's node takes both out.
 - ✓ **ficha** (`CLI/`): runs FichaCLI's commands in a sandbox of its own, inside the app.
 - ✓ **FichaWidget** (`Widget/`): the Next Card widget, inside the app.
 - ✓ **SVGDrawer** (`SVGDrawer/`): an XPC service inside the app, the only part with the network entitlement WebKit needs in the sandbox (ADR 0018).
@@ -150,14 +150,14 @@ The libraries, in `Packages/FichaKit/`, a Swift package for macOS and iOS:
 
 - ✓ **FichaCore**: the rules, as pure functions: scheduling, the planners, where a card stands, and reading Anki, until ADR 0041's node takes it out.
 - ✓ **FichaFSRS**: fsrs-rs's arithmetic for FichaCore, from our crate in `Rust/`, which `make fsrs` builds into an XCFramework (ADR 0026).
-- ✓ **FichaData**: the engine: SQLite through GRDB, import and export (ADR 0041 takes zstd out with Anki's packages, and ADR 0044 keeps a deck's `.ficha` alone, in and out, provisional, once its node builds it), sync's logic behind `ICloudSyncEngine`, backups, the windows' states, Ficha Dev's sample cards.
+- ✓ **FichaData**: the engine: SQLite through GRDB, import and export (ADR 0041 takes zstd out with Anki's packages, and ADR 0044 keeps a deck's `.ficha` alone, in and out, provisional: it writes a deck as one, reads one, and brings one in), sync's logic behind `ICloudSyncEngine`, backups, the windows' states, Ficha Dev's sample cards.
 - ✓ **FichaSVG**: draws an import's SVGs with WebKit: in the app, through the SVGDrawer service; in `swift test`, in the process.
 - ✓ **FichaICloud**: the thin adapter that puts CloudKit's `CKSyncEngine` behind FichaData's `ICloudSyncEngine`; the only part that loads CloudKit, and the Mac app alone links it.
 - ✓ **FichaCLI**: the `ficha` command's commands, with swift-argument-parser (ADR 0008).
 
 The rest:
 
-- ✓ Ficha's decks: a file each, in the app's resources, with each image's license, which come in through the engine's import; #458 brought them (ADR 0035, ADR 0040). Each becomes a `.ficha`, with its emoji and description, which the same import reads from any deck's file, once ADR 0044's node builds it.
+- ✓ Ficha's decks: a deck's `.ficha` each, in `App/FichaDecks/`, which the app bundles, with each image's license, and their emoji and description in its `deck.json`, which come in as any deck's file does; #458 brought them, and #554 made them `.ficha` files (ADR 0035, ADR 0040, ADR 0044).
 - ✓ `scripts/`: the render tools and the import-preview tool, which reach FichaKit by path (the render tool compiles `App/`'s files too); the hook tests; the watchdog for hung runs, with its tests; the build of fsrs-rs's XCFramework; the wrapper `make` runs `xcodebuild` through; what unregisters an app's other copies from LaunchServices; the reader of Ficha Dev's last crash, with its tests; the runner of its `ficha` on a scratch folder; the cleanup after a merge, with its tests; the list of what changed the cards' data since the last upload, with its tests; the check that an upload's app holds English alone, with its tests; and the check that the clock and the review log's IDs come from their sources.
 - ✓ `docs/`: `development.md`, how to build, draw, test and publish; `agents/`, what agents read about the issues and the domain; `adr/`; `app-review-notes.md`, what App Review is told; `instructions-for-an-ai.md`; `research/`; `prototypes/`; and `images/`, the README's pictures.
 - ✓ `.claude/`: the permissions, the hooks, the rules, the method's seven skills and what they share (`method/`), with its page kit (`method/kit/`) and its map, and the subagents' types.

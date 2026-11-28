@@ -77,7 +77,7 @@ What `desktop/` shows that the app doesn't yet, or not where the mock has it, so
 
 - The Welcome page's steps, `WelcomePage` (#467).
 - In the Cards window, a deck's bar, with Put it first and Set aside: the app has Set Aside in the deck's menu, and Put it first in How fast? and in Settings' Pace tab.
-- The Cards window's "Your Own" section, with New Deck… and Open Deck…, which the app keeps elsewhere: both in a deck's menu and the Your Decks title's, Open Deck… on ⌘O too, and beside New Card while the user has no cards. The mock's Open Deck… shows the deck a made-up `.ficha` holds, as the app's open panel would choose it, with Add Deck…, which asks How fast? for it (#554).
+- The Cards window's "Your Own" section, with New Deck… and Open Deck…, which the app keeps elsewhere: both in a deck's menu and the Your Decks title's, Open Deck… on ⌘O too, and beside New Card while the user has no cards. The mock's Open Deck… shows the deck a made-up `.ficha` holds, as the app's open panel would choose it, with Add Deck…, which asks How fast? for it, where the app goes from its open panel, or from Finder, straight to How fast?, whose line names the file (#554).
 
 ### Sizes
 
