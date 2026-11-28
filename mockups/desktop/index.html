@@ -282,7 +282,8 @@
   const {
     html, Icon, useStore, useClock, useTheme, useScreen, Stage, MenuBar, Menu, MenuContent,
     ReviewPanelView, CaptureView, DocumentWindow, CallWindow, VideoWindow, Dock, DOCK, Window, Button, Capsule, Divider,
-    DisclosureGroup, DeskToast, MockControls, HudGroup, HudChoice, CardPicture, formatDay, formatTime, formatFinish,
+    DisclosureGroup, DeskToast, MockControls, HudGroup, HudChoice, CardPicture, formatDay, formatTime, sameCalendarDay,
+    formatFinish,
     metBy,
   } = FichaUI;
   const E = FichaEngine;
@@ -448,7 +449,7 @@
     if (!total) return { line: 'No cards yet', share: 0, empty: true };
     if (d.setAside) return { line: `Set aside · ${met} of ${total} met`, share: met / total };
     if (!app.newLeft(d.id)) {
-      // Calendar days, counting the day it came in and the day its last card was met.
+      // Ficha's days, counting the day it came in and the day its last card was met.
       const days = d.metAllAt && d.addedAt ? Math.round((E.startOfDay(d.metAllAt) - E.startOfDay(d.addedAt)) / E.DAY) + 1 : null;
       return { line: `Met them all${days ? ` · ${total} cards in ${days} day${days > 1 ? 's' : ''}` : ''}`, share: 1, done: true };
     }
@@ -466,15 +467,21 @@
   const markOf = (app, c, deck, now) =>
     app.isSetAside(c.id) ? 'aside' : c.state === 'new' ? null : c.due <= now && !deck.setAside ? 'due' : 'met';
   /**
-   * When a card the user has met is back, as the app's detail says it
-   * (#537): due now, later today at a time, on a later day, or not while
-   * it's out of the reviews, set aside on its own or with its deck. Its
-   * days are Ficha's, as the engine's startOfDay counts them.
+   * When a card is back, as the app's detail says it (#537): due now, later
+   * today at a time, on a later day, with its year when it isn't this
+   * year's, or not while it's out of the reviews, set aside on its own or
+   * with its deck, new or met. Its days are Ficha's, as the engine's
+   * startOfDay counts them, so a later day is the calendar day its Ficha's
+   * day starts on, as FichaCore's `calendarDay(ofFichasDayOf:startingAt:)`
+   * names it.
    */
   function backWords(c, outOfReviews, now) {
     if (outOfReviews) return 'Out of your reviews';
     if (c.due <= now) return 'Due now';
-    return E.startOfDay(c.due) === E.startOfDay(now) ? `Back today at ${formatTime(c.due)}` : `Back on ${formatDay(c.due)}`;
+    const day = E.startOfDay(c.due);
+    const today = E.startOfDay(now);
+    if (day === today) return `Back today at ${formatTime(c.due)}`;
+    return `Back on ${formatDay(day, new Date(day).getFullYear() !== new Date(today).getFullYear())}`;
   }
   /** How many times the user has seen a card, as the detail says it. */
   const seenWords = (n) => (n === 0 ? 'Not seen in Ficha yet' : n === 1 ? 'Seen once' : `Seen ${n} times`);
@@ -484,7 +491,8 @@
    * What a card's Details hold, as the app's detail has them under its
    * disclosure (#537): its interval, when it's due, FSRS's stability,
    * difficulty, as Anki shows it, and retrievability, when it was last seen
-   * and how many times, and its review log, the latest first.
+   * and how many times, when it came in, and when its front or back last
+   * changed, once it did, and its review log, the latest first.
    */
   function CardNumbers({ card: c, outOfReviews, now }) {
     const interval = c.state === 'new' ? 'New' : c.state === 'learning' ? 'Learning' : E.formatInterval(c.due - c.last);
@@ -499,6 +507,8 @@
     }
     if (c.last != null) rows.push(['Last seen', `${formatDay(c.last)}, ${formatTime(c.last)}`]);
     rows.push(['Reviews', String(c.reps || 0)]);
+    if (c.createdAt != null) rows.push(['Created', `${formatDay(c.createdAt)}, ${formatTime(c.createdAt)}`]);
+    if (c.editedAt != null) rows.push(['Edited', `${formatDay(c.editedAt)}, ${formatTime(c.editedAt)}`]);
     const log = c.reviewLog || [];
     return html`<dl className="numbers">${rows.map(([k, v]) => html`<dt key=${`${k}-t`}>${k}</dt><dd key=${`${k}-d`}>${v}</dd>`)}</dl>
       ${log.length
@@ -691,7 +701,7 @@
               : deck.setAside && html`<p className="aside-note">${Icon.setAside(13)}Set aside with ${deck.name}</p>`}
             <div className="sides"><div className="side"><small>Front</small>${chosenCard.picture ? html`<${CardPicture} card=${chosenCard} />` : chosenCard.front}</div>
               <div className="side"><small>Back</small>${chosenCard.back}</div></div>
-            <div className="words">${chosenCard.state === 'new'
+            <div className="words">${chosenCard.state === 'new' && !chosenOutOfReviews
               ? html`<p>New: it waits its turn in the queue.</p>`
               : html`<p>${backWords(chosenCard, chosenOutOfReviews, state.now)}</p><p className="sub">${seenWords(chosenCard.reps || 0)}</p>`}</div>
             <${DisclosureGroup} label="Details" open=${detailsOpen} onChange=${setDetailsOpen}>

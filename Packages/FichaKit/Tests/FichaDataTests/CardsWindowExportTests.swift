@@ -78,7 +78,9 @@ final class CardsWindowExportTests {
     }
 
     // Which another Ficha proposes as their tag when it imports them.
-    @Test("the save panel proposes the deck's name for its cards, and a name for the selected cards or all of them")
+    @Test(
+        "the save panel proposes the deck's name for its cards, and a name for the selected cards or all of them",
+        .bug(id: 538))
     func theSavePanelProposesTheDecksName() throws {
         let mayo = try approveCard("Revolución de Mayo")
         let ubuntu = try approveCard("ubuntu")
@@ -101,8 +103,8 @@ final class CardsWindowExportTests {
 
     // One selected card is often just the one the detail shows.
     @Test(
-        "the Export sheet starts on the selected cards when several are selected, else on the deck the sidebar chose, else on all cards"
-    )
+        "the Export sheet starts on the selected cards when several are selected, else on the deck the sidebar chose, else on all cards",
+        .bug(id: 538))
     func theExportSheetStartsOnWhatTheWindowPointsAt() throws {
         let mayo = try approveCard("Revolución de Mayo")
         let socrates = try approveCard("Sócrates")
@@ -130,8 +132,8 @@ final class CardsWindowExportTests {
     }
 
     @Test(
-        "Export writes what the user chose to the file they picked, the selected cards, a deck's or all, and closes the sheet"
-    )
+        "Export writes what the user chose to the file they picked, the selected cards, a deck's or all, and closes the sheet",
+        .bug(id: 538))
     func exportWritesWhatTheUserChose() async throws {
         let mayo = try approveCard("Revolución de Mayo")
         let socrates = try approveCard("Sócrates")

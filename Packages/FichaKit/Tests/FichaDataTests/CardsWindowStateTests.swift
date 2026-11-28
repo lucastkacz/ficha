@@ -82,33 +82,10 @@ struct CardsWindowStateTests {
         #expect(window.listedCardIDs == [])
     }
 
-    // The sheet says why while OK refuses, so nothing fails.
-    @Test("the emoji sheet refuses what isn't one emoji, and takes a field of spaces as removing the deck's emoji")
-    func theEmojiSheetRefusesWhatIsntOneEmoji() throws {
-        try approveInDeck("Revolución de Mayo", deck: "Historia::Argentina", in: engine)
-        var window = openWindow()
-        window.askForEmoji(onDeck: "Historia")
-        #expect(window.question == .deckEmoji(Deck(name: "Historia")))
-        #expect(window.emojiEntry("argentina") == .refused(.notOneEmoji))
-        #expect(window.emojiEntry("🇦🇷🇺🇾") == .refused(.notOneEmoji))
-        #expect(window.emojiEntry(" ") == .removal)
-        #expect(window.emojiEntry("🇦🇷") == .emoji(try Emoji("🇦🇷")))
-
-        window.chooseEmoji("🇦🇷")
-        #expect(window.question == nil)
-        window.askForEmoji(onDeck: "Historia")
-        #expect(window.question == .deckEmoji(Deck(name: "Historia", emoji: "🇦🇷")))
-        window.chooseEmoji(" ")
-
-        #expect(window.question == nil)
-        #expect(window.deckRows.map(\.deck.shownEmoji) == [nil])
-        #expect(window.failure == nil)
-    }
-
     // A set-aside card won't show up, so its tile's dot never says it's due.
     @Test(
         "a set-aside deck's group holds its set-aside cards, whose tiles say they're met or new, never due",
-        .bug(id: 536))
+        .bug(id: 536), .bug(id: 538))
     func aSetAsideDecksCardsStayListed() throws {
         // eudaimonía gets learned, graduated to wait 21 days or more, and
         // comes due; ataraxia is new.
@@ -563,10 +540,14 @@ struct CardsWindowStateTests {
         window.saveCard(try card(.word, front: "ubuntu", back: "Soy porque somos."))
         window.select([serendipia.id])
         window.startEditing()
-        window.saveCard(try card(.word, front: "serendipia", back: "Un hallazgo valioso que se da por accidente."))
+        window.saveCard(
+            try card(
+                .word, front: "serendipia", back: "Un hallazgo valioso que se da por accidente.",
+                source: "Un ensayo de Borges"))
 
         let rows = try #require(window.listedCardRows)
         #expect(rows.map(\.card.front) == ["serendipia", "ubuntu", "petricor"])
+        #expect(rows.map(\.card.source) == ["Un ensayo de Borges", nil, nil])
         #expect(rows.map(\.card.editedAt) == [serendipiaEditedAt, time.now, nil])
     }
 

@@ -459,7 +459,8 @@ final class DatabaseFileTests {
 
         let engine = try Engine(location: .folder(folder), time: time)
 
-        let settings = ProgressSettings(scheduler: .standard, newCardsPerDay: 12, forgottenOftenAfter: 4)
+        let settings = ProgressSettings(
+            scheduler: .standard, newCardsPerDay: 12, dayStartsAtHour: 4, forgottenOftenAfter: 4)
         #expect(try engine.progressSettings() == settings)
         #expect(
             try engine.reviewLog().map(\.withoutIDs) == [
@@ -514,7 +515,7 @@ final class DatabaseFileTests {
                 desiredRetention: 0.9, longestIntervalInDays: 36_500, parameters: []))
         #expect(
             try engine.progressSettings()
-                == ProgressSettings(scheduler: stored, newCardsPerDay: 12, forgottenOftenAfter: 4))
+                == ProgressSettings(scheduler: stored, newCardsPerDay: 12, dayStartsAtHour: 4, forgottenOftenAfter: 4))
         let log = try engine.reviewLog()
         let serendipia = log.filter { $0.cardID == 1 }
         let ubuntu = log.filter { $0.cardID == 2 }

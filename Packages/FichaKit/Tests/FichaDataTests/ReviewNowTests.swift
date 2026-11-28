@@ -101,20 +101,26 @@ struct ReviewNowTests {
         #expect(try engine.reviewNow(settings) == met.map { PanelCard.review($0) })
     }
 
-    @Test("new cards stop at Steady's 2 a day, and start again when the day does, by the Mac's calendar")
+    @Test(
+        "new cards stop at Steady's 2 a day, and start again when Ficha's day does, at 4:00 by the Mac's clock",
+        .bug(id: 562))
     func newCardsStopAtTheDaysLimit() throws {
         let cards = try ["ubuntu", "petricor", "serendipia"].map { try approveCard($0, in: engine) }
-        // At 23:10 in Buenos Aires, so that none is due again before midnight
-        // there, which is 3 in the morning in UTC.
+        // At 23:10 in Buenos Aires, 2:10 in the morning in UTC. The cards met
+        // are due again an hour later, after midnight, still on that day.
         time.advance(by: hours(14) + minutes(10))
         try engine.meet(cards[0])
         #expect(try engine.reviewNow(settings) == [.new(cards[1])])
+        time.advance(by: minutes(1))
         try engine.meet(cards[1])
         #expect(try engine.reviewNow(settings).isEmpty)
+        time.advance(by: hours(1) + minutes(1))
+        #expect(try engine.reviewNow(settings) == [.review(cards[0]), .review(cards[1])])
 
-        time.move(to: calendar.startOfDay(for: try morning(of: 15, in: calendar)))
+        let morning = try morning(of: 15, in: calendar)
+        time.move(to: try #require(calendar.date(bySettingHour: 4, minute: 0, second: 0, of: morning)))
 
-        #expect(try engine.reviewNow(settings) == [.new(cards[2])])
+        #expect(try engine.reviewNow(settings) == [.review(cards[0]), .review(cards[1]), .new(cards[2])])
     }
 
     @Test(

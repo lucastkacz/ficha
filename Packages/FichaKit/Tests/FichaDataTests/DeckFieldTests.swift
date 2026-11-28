@@ -120,8 +120,8 @@ struct DeckFieldTests {
     // As Change Deck does: the card keeps its progress, its review log and its
     // tags.
     @Test(
-        "editing a card shows its deck in the Deck field, and Save moves it to the deck chosen there, or named with New Deck…, keeping its progress"
-    )
+        "editing a card shows its deck in the Deck field, and Save moves it to the deck chosen there, or named with New Deck…, keeping its progress",
+        .bug(id: 538))
     func anEditMovesTheCard() throws {
         let gioconda = try engine.create(
             card(.concept, front: "La Gioconda", back: "De Leonardo.", tags: ["renacimiento"]), deck: "Arte")

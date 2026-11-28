@@ -46,18 +46,18 @@ extension ReviewSettings {
 
     /// The ways the review panel brings at `now`, out of `cards`, standing as
     /// `standings` says, up to `cardsPerAppearance`: the priority cards' ways
-    /// due by `horizon`; then a new way of a priority card, if there's room
-    /// and Lucas hasn't had `newCardsPerDay` first reviews of new ways today,
-    /// either way, by `calendar`'s day; then the other ways due by `horizon`;
-    /// then, if no new way came yet, another new way, if there's room
-    /// (ADR 0003) and he's under the limit. Due ways come shortest interval
-    /// first, and then the longest overdue. A new way comes from the deck
-    /// that goes first in the queue among those with one (ADR 0034), the
-    /// priority cards' first: new cards and new back-first ways take turns,
-    /// as the new way goes the other way from Lucas's latest first review
-    /// today, front first when he had none, unless none of that deck waits
-    /// that way; each way's new ones come by card in the order he approved
-    /// them. With no priority cards, that's the due ways and then a new way.
+    /// due by `horizon`; then a new way of a priority card, if there's room and
+    /// Lucas hasn't had `newCardsPerDay` first reviews of new ways today,
+    /// either way, by Ficha's day (ADR 0045), by `calendar`; then the other
+    /// ways due by `horizon`; then, if no new way came yet, another new way, if
+    /// there's room (ADR 0003) and he's under the limit. Due ways come shortest
+    /// interval first, and then the longest overdue. A new way comes from the
+    /// deck that goes first in the queue among those with one (ADR 0034), the
+    /// priority cards' first: new cards and new back-first ways take turns, as
+    /// the new way goes the other way from Lucas's latest first review today,
+    /// front first when he had none, unless none of that deck waits that way;
+    /// each way's new ones come by card in the order he approved them. With no
+    /// priority cards, that's the due ways and then a new way.
     func pickCards(
         after standings: [(way: CardWay, standing: WayStanding)],
         of cards: CardsInReviews,
@@ -68,7 +68,8 @@ extension ReviewSettings {
         let sorted = SortedStandings(standings, dueBy: horizon)
         let due = cards.splitByPriority(sorted.due)
         let new = cards.splitByPriority(sorted.new)
-        let firstReviewsToday = cards.firstReviews(onTheDayOf: now, calendar: calendar)
+        let firstReviewsToday = cards.firstReviews(
+            onTheFichasDayOf: now, startingAt: dayStartsAtHour, calendar: calendar)
         let metToday = firstReviewsToday.count
         let turn: Way = firstReviewsToday.last?.way == .frontFirst ? .backFirst : .frontFirst
         // A new way of a priority card only waits for the due ways of

@@ -3,10 +3,10 @@ import FichaData
 import Foundation
 import Testing
 
-/// Tests on a tag's color and emoji, which Lucas picked so that subjects
-/// stood apart at a glance (#206), each optional: the database keeps them,
-/// and the `ficha` CLI sets and lists them, since tags left the app's face
-/// (#538).
+/// Tests on the tags the database keeps, listed as `ficha tags` lists them,
+/// and on a tag's color and emoji, which Lucas picked so that subjects stood
+/// apart at a glance (#206), each optional: the database keeps them, and the
+/// `ficha` CLI sets and lists them, since tags left the app's face (#538).
 struct TagColorAndEmojiTests {
     let engine: Engine
 
@@ -14,6 +14,19 @@ struct TagColorAndEmojiTests {
         let calendar = try buenosAiresCalendar()
         engine = try Engine(
             location: .inMemory, time: ManualTimeSource(now: try morning(of: 14, in: calendar)), calendar: calendar)
+    }
+
+    // `ficha tags` lists the tags of `countedTags(with:)`, which are those
+    // `allTags()` lists.
+    @Test("every tag of the cards is listed, buried ones too, once each, alphabetically")
+    func everyTagOfTheCardsIsListed() throws {
+        try approveCard("Ubuntu", tags: ["lenguaje", "filosofía"])
+        try approveCard("Eudaimonía", tags: ["ética", "filosofía"])
+        let mercantilismo = try approveCard("Mercantilismo", tags: ["economía", "historia"])
+        try engine.bury(mercantilismo.id)
+        try approveCard("serendipia", tags: [])
+
+        #expect(try engine.allTags().map(\.name) == ["economía", "ética", "filosofía", "historia", "lenguaje"])
     }
 
     @Test("a tag's color and emoji are stored and read back with every tag")

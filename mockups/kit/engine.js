@@ -215,8 +215,10 @@
     // decks, ADR 0034's "one pace split between them". The app itself takes
     // them as 'queue' does (ReviewNow.pickCards).
     newCardsFrom: 'queue',
-    // New cards a day count by the calendar day, as ReviewNow's metToday does.
-    dayStartsAtHour: 0,
+    // New cards a day count by Ficha's day, from 4:00 to 4:00, as
+    // ReviewNow's metToday does, and so do the finish date and the days the
+    // mock names (ADR 0045).
+    dayStartsAtHour: 4,
   };
 
   /**
@@ -266,13 +268,17 @@
     d.setHours(hour, 0, 0, 0);
     return d.getTime();
   };
-  /** The first moment at or after t inside active hours. */
+  /**
+   * The first moment at or after t inside active hours, which cross
+   * midnight when they end before they start, as from 20 to 3 they do
+   * (ADR 0045).
+   */
   function intoActiveHours(t, s = SETTINGS) {
     const h = new Date(t).getHours();
     const [from, to] = s.activeHours;
-    if (h < from) return atHour(t, from);
-    if (h >= to) return atHour(t + DAY, from);
-    return t;
+    const inside = from < to ? h >= from && h < to : h >= from || h < to;
+    if (inside) return t;
+    return h < from ? atHour(t, from) : atHour(t + DAY, from);
   }
   const inActiveHours = (t, s = SETTINGS) => intoActiveHours(t, s) === t;
 
@@ -335,6 +341,12 @@
             mem: null,
             due: null,
             last: null,
+            // When it came in, with its deck, and when its front or back
+            // last changed, as the Cards window's Details say them: null
+            // until its deck is added, and always, since no mock edits a
+            // card.
+            createdAt: null,
+            editedAt: null,
             // Its review log, oldest first: when it was rated, how, and how
             // long it waits after, as the Cards window's Details lists it.
             reviewLog: [],
@@ -604,6 +616,7 @@
       d.added = true;
       d.setAside = false;
       d.addedAt = d.addedAt ?? s.now;
+      for (const c of this.deckCards(id)) c.createdAt = c.createdAt ?? s.now;
       s.queue = [...s.queue.filter((x) => x !== id), id];
       if (first) this.moveFirst(id);
       this.log(`Added ${d.name}, ${first ? 'first' : 'last'} in the queue`, 'deck');
@@ -627,7 +640,7 @@
       s.cards = [
         ...s.cards,
         { id: `${deckId}-${order}`, deckId, order, front, back, picture: false, source, bothWays, tags: [], state: 'new',
-          step: 0, mem: null, due: null, last: null, reviewLog: [] },
+          step: 0, mem: null, due: null, last: null, createdAt: s.now, editedAt: null, reviewLog: [] },
       ];
       this.log(`Added “${front}” to ${this.deck(deckId).name}`, 'deck');
       this.changed();
@@ -670,9 +683,12 @@
       this.changed();
       this.emit();
     }
-    /** Whether a new card can still come today, before active hours end. */
+    /**
+     * Whether a new card can still come today: while active hours inside
+     * today's Ficha day aren't over, as DeckQueue's newCardsLeftToday says.
+     */
     canMeetToday(at = this.state.now) {
-      return new Date(at).getHours() < this.settings.activeHours[1];
+      return intoActiveHours(at, this.settings) < startOfDay(at, this.settings) + DAY;
     }
     /**
      * Each queued deck's finish date (ADR 0034): when the user will have met

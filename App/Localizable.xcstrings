@@ -1101,10 +1101,10 @@
       "comment" : "A badge on a card the review panel shows back first, its back on top and its front under it once flipped, and beside a review that went that way in the Cards window's review log.\nIn the key of the Cards window's review log chart: the line of a card that goes both ways, back first."
     },
     "Back on %@" : {
-      "comment" : "In the Cards window's detail: the card is due again on a later day, by its weekday, month and day, like “Back on Tue, Dec 15”."
+      "comment" : "In the Cards window's detail: the card is due again on a later day, by its weekday, month and day, and its year when it isn't this year, like “Back on Tue, Dec 15” or “Back on Fri, Jan 21, 2028”. The day is Ficha's, which starts at 4:00, or the hour the user set, so a card due at 2:00 AM on a Friday is back on Thursday."
     },
     "Back today at %@" : {
-      "comment" : "In the Cards window's detail: the card is due again later today, at this time, like “Back today at 3:00 PM”."
+      "comment" : "In the Cards window's detail: the card is due again later today, at this time, like “Back today at 3:00 PM”. Today is Ficha's day, which runs until 4:00 the next morning, or the hour the user set, so at 11:00 PM a card due at 2:00 AM is back today."
     },
     "Back up" : {
       "comment" : "Settings, under Backups: how often Ficha backs up on its own."
@@ -2914,7 +2914,7 @@
 
     },
     "Seen %lld times" : {
-      "comment" : "In the Cards window's detail, under when the card is back: how many times the user reviewed it, either way, like “Seen 3 times”. None for a card an import from Anki brought in with its progress, which the user hasn't reviewed in Ficha since.",
+      "comment" : "In the Cards window's detail, under when the card is back: how many times the user reviewed it, either way, like “Seen 3 times”. None for a new card out of the user's reviews, and for a card an import from Anki brought in with its progress, which the user hasn't reviewed in Ficha since.",
       "localizations" : {
         "en" : {
           "variations" : {

@@ -23,8 +23,8 @@ struct CardsWindowDecksTests {
     // own, which Pintura's grid lists and its count holds, though not among
     // those due (#539). Música::Tango has no card.
     @Test(
-        "the Your Decks section, after Inbox, lists every deck as a tree, Default first while it holds cards, each with its due cards, those inside it counted"
-    )
+        "the Your Decks section, after Inbox, lists every deck as a tree, Default first while it holds cards, each with its due cards, those inside it counted",
+        .bug(id: 538))
     func theDecksSection() throws {
         let gioconda = try engine.create(card(.concept, front: "La Gioconda", back: "De Leonardo."))
         let guernica = try engine.create(card(.concept, front: "Guernica", back: "De Picasso."))

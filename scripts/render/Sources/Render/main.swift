@@ -31,9 +31,10 @@ enum Window: String, CaseIterable {
     /// selected in its deck, its detail saying in words when it's back, on a
     /// later day, and how many times it was seen, with Details closed.
     case cardsCard = "cards-card"
-    /// The same with Details open: its interval, due time, stability,
-    /// difficulty and retrievability, when it was last seen, its reviews and
-    /// when it was made, and its review log, in a chart and in full.
+    /// The same with Details open and its detail scrolled to its end, below
+    /// its interval, due time, stability, difficulty and retrievability, when
+    /// it was last seen, its reviews and when it was made: its review log, in
+    /// a chart and in full.
     case cardsCardDetails = "cards-card-details"
     /// The Cards window with no cards at all, as a new user's opens: it
     /// offers New Card, Open Deck… and Import… in plain sight, and its
@@ -73,7 +74,8 @@ enum Window: String, CaseIterable {
     case cardsImportAnki = "cards-import-anki"
     /// The Cards window once that Anki package came in with its progress,
     /// with a card it brought Anki's interval to selected, and reviewed since,
-    /// its Details open on its review log.
+    /// its Details open and its detail scrolled to its end, on its review
+    /// log.
     case cardsAnkiImported = "cards-anki-imported"
     /// The Cards window with its Import sheet showing the preview of a zip
     /// of cards whose images weigh 240 MB, while sync is on, which says they
@@ -931,7 +933,7 @@ func progressSettingsModel() throws -> AppModel {
             description: "The sample's scheduling settings break the scheduler's rules: fix progressSettingsModel().")
     }
     try engine.saveProgressSettings(
-        ProgressSettings(scheduler: scheduler, newCardsPerDay: 8, forgottenOftenAfter: 6),
+        ProgressSettings(scheduler: scheduler, newCardsPerDay: 8, dayStartsAtHour: 4, forgottenOftenAfter: 6),
         changedFrom: ReviewSettings.defaults.progress)
     return try AppModel(engine: engine)
 }
@@ -1087,8 +1089,9 @@ func isNearerLeadingSide(_ view: NSView, than other: NSView, in window: NSWindow
 }
 
 /// Scrolls the detail of the Cards window `window`, once it shows, to its
-/// end, where a card's chart and its key show below the rows of its ways,
-/// for the same reason as `scrollSidebarToEnd(of:)`.
+/// end, where a card's review log, its chart with its key and its entries,
+/// shows below the rows of its ways, for the same reason as
+/// `scrollSidebarToEnd(of:)`.
 func scrollDetailToEnd(of window: NSWindow) throws {
     // The sidebar and the grid scroll too: the detail is the one at the
     // trailing side.
@@ -2318,7 +2321,10 @@ do {
         try scrollSidebarToSelection(of: window)
         try wait(0.5)
     }
-    if name == .cardsBothWays {
+    // The card's review log, which Details puts below its numbers, past
+    // what the window shows at its first size once the card has a few
+    // reviews.
+    if [.cardsCardDetails, .cardsAnkiImported, .cardsBothWays].contains(name) {
         try scrollDetailToEnd(of: window)
         try wait(0.5)
     }

@@ -400,13 +400,18 @@ public struct CardsWindowState: Sendable {
     /// the detail's words for when a card is back and its Due rows count
     /// from.
     public private(set) var now: Date
+    /// The hour Ficha's day starts at (ADR 0045), as the settings that decide
+    /// progress held it when the cards were read, which the detail's words
+    /// for when a card is back count days by: Ficha's own until the window
+    /// first reads them (`readDeckLines()`).
+    var dayStartsAtHour = ReviewSettings.defaults.dayStartsAtHour
     /// The scheduling settings in Settings, which the cards stand by, and
     /// which give the intervals of a card's review log.
     public private(set) var scheduler: Scheduler
     /// The active hours in Settings, this device's own, which the queue new
     /// cards come from counts today's new cards by, as the review panel's
     /// settings count them: the decks' finish dates and How fast?'s.
-    public private(set) var activeHours: Range<Int>
+    public private(set) var activeHours: ActiveHours
     /// What Lucas edits, until he saves or cancels.
     public private(set) var editing: Editing?
     /// The form that creates cards, while it's open: `CardForm.swift`.
@@ -483,7 +488,7 @@ public struct CardsWindowState: Sendable {
     /// Internal, for the window's parts in files of their own.
     let engine: Engine
 
-    init(engine: Engine, scheduler: Scheduler, activeHours: Range<Int>, lastDeckAddedTo: String) {
+    init(engine: Engine, scheduler: Scheduler, activeHours: ActiveHours, lastDeckAddedTo: String) {
         self.engine = engine
         self.scheduler = scheduler
         self.activeHours = activeHours
@@ -719,11 +724,14 @@ public struct CardsWindowState: Sendable {
     /// `editedImages` and `editedSounds` hold them, going both ways as
     /// `editedBothWays` says, in the deck `editedDeck` says, and ends the
     /// edit, while Save is on, or records why it couldn't and goes on with
-    /// it. The card keeps its progress and its review log, and its tags and
-    /// its type as the database holds them, whatever `content` says, since
-    /// the editor shows neither (#538); a flagged one is fixed, back in the
-    /// reviews unless it's set aside. The detail shows it as saved at once,
-    /// without waiting for the engine to say it changed.
+    /// it. The card keeps its progress and its review log; and Save writes
+    /// its sides and its source alone of `content`, never its type or its
+    /// tags, since the editor shows neither (#538), so the card keeps both as
+    /// the database holds them, a user type this device doesn't hold yet
+    /// included, which the card reads as no type until it comes. A flagged
+    /// card is fixed, back in the reviews unless it's set aside. The detail
+    /// shows it as saved at once, without waiting for the engine to say it
+    /// changed.
     public mutating func saveCard(_ content: CardContent) {
         guard case .card(let card) = editing, canSaveCard else { return }
         let files = heldFiles(of: content)
@@ -988,7 +996,7 @@ public struct CardsWindowState: Sendable {
 
     /// Reads the window as `read(with:)` does, with `activeHours` too,
     /// Settings', which may have changed since the last read.
-    public mutating func read(with scheduler: Scheduler, activeHours: Range<Int>) {
+    public mutating func read(with scheduler: Scheduler, activeHours: ActiveHours) {
         self.activeHours = activeHours
         self.scheduler = scheduler
         readAgain()
@@ -1080,7 +1088,7 @@ extension Engine {
     /// `lastDeckAddedTo`, the deck he last added a card to, as this device's
     /// preferences keep it: Default when they keep none.
     public func openCardsWindow(
-        with scheduler: Scheduler, activeHours: Range<Int> = ReviewSettings.defaults.activeHours,
+        with scheduler: Scheduler, activeHours: ActiveHours = ReviewSettings.defaults.activeHours,
         lastDeckAddedTo: String = Deck.defaultName
     ) -> CardsWindowState {
         CardsWindowState(

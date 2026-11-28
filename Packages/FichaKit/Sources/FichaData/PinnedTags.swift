@@ -20,21 +20,19 @@ extension Engine {
     }
 
     /// Pins `tag`, as `pin(_:at:)` pins several: at `index` among the other
-    /// pinned tags, moving there when
-    /// it's pinned, or after them when `index` is nil, where a pinned tag
-    /// stays where it is.
+    /// pinned tags, moving there when it's pinned, or after them when `index`
+    /// is nil, where a pinned tag stays where it is.
     public func pin(_ tag: String, at index: Int? = nil) throws(EngineError) {
         try pin([tag], at: index)
     }
 
     /// Pins `tags`, next to each other in the order they're given, the first
-    /// at `index` among the other pinned
-    /// tags, whose order stays; an index past them puts them last. Those
-    /// already pinned move there. When `index` is nil, those that aren't
-    /// pinned go after the pinned tags, and the pinned ones stay where they
-    /// are. In one write, where each tag that moves gets a place between its
-    /// new neighbors', and its row alone changes, syncing as the tag's other
-    /// fields do.
+    /// at `index` among the other pinned tags, whose order stays; an index
+    /// past them puts them last. Those already pinned move there. When
+    /// `index` is nil, those that aren't pinned go after the pinned tags, and
+    /// the pinned ones stay where they are. In one write, where each tag that
+    /// moves gets a place between its new neighbors', and its row alone
+    /// changes, syncing as the tag's other fields do.
     public func pin(_ tags: [String], at index: Int? = nil) throws(EngineError) {
         try write { db in
             let pinned = try OwnTags(in: db).pinned

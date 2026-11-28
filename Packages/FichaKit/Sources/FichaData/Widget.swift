@@ -311,9 +311,9 @@ extension Engine {
             guard try Table("card").fetchCount(db) > 0 else {
                 return WidgetTimeline(entries: [WidgetTimeline.Entry(date: now, content: .noCards)], refreshAt: nil)
             }
-            // The pick reads the scheduler, the new cards a day and the cards per
-            // appearance alone: Ficha's own fill in the rest, which it never
-            // reads.
+            // The pick reads the scheduler, the new cards a day, the hour
+            // Ficha's day starts at and the cards per appearance alone:
+            // Ficha's own fill in the rest, which it never reads.
             var settings = ReviewSettings.defaults
             settings.progress = try FichaData.progressSettings(in: db)
             settings.cardsPerAppearance = widgetSettings.cardsPerAppearance

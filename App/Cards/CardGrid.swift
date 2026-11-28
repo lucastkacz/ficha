@@ -196,12 +196,13 @@ private struct GridLegend: View {
 /// alone, as the Cards window says it (`FrontCell`), with its dot at its top
 /// corner, on the trailing side, or the set-aside mark in its place; dimmed
 /// while it's new, and further while it's set aside on its own, and ringed
-/// with the accent color while it's selected. VoiceOver reads it as its front, and
-/// where it stands. A picture's tile reads its image as it appears, away
-/// from the main actor, and makes a thumbnail of it, which the grid's
-/// `TileThumbnails` keeps while there's room, and the tile while it's in
-/// sight; it reads it again each time the window reads the cards while it
-/// couldn't show it, as while it's on its way from another device.
+/// with the accent color while it's selected. VoiceOver reads it as its
+/// front, and where it stands. A picture's tile reads its image as it
+/// appears, away from the main actor, and makes a thumbnail of it, which the
+/// grid's `TileThumbnails` keeps while there's room, and the tile while it's
+/// in sight; it reads it again each time the window reads the cards while it
+/// couldn't show it, as while it's on its way from another device, and never
+/// while it shows it, even once the grid let its thumbnail go.
 private struct CardTile: View {
     /// A picture a tile shows, as it is.
     enum Picture {
@@ -311,10 +312,14 @@ private struct CardTile: View {
         return thumbnails.thumbnail(name).map(Picture.shown) ?? .unread
     }
 
-    /// Makes the tile's picture for `read`: the grid's thumbnail of its
-    /// image while it keeps one, or else one made of the image, which the
-    /// grid keeps; or that it can't be shown, or not yet.
+    /// Makes the tile's picture for `read`, unless the tile shows that image
+    /// already: the grid's thumbnail of its image while it keeps one, or else
+    /// one made of the image, which the grid keeps; or that it can't be
+    /// shown, or not yet.
     private func makePicture(_ read: PictureRead) async {
+        if let made, made.name == read.name, case .shown = made.picture {
+            return
+        }
         if let thumbnail = thumbnails.thumbnail(read.name) {
             made = (name: read.name, picture: .shown(thumbnail))
             return

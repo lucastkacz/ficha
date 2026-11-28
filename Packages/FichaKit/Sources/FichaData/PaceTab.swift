@@ -84,6 +84,7 @@ public struct PaceTabState: Sendable {
     public mutating func read(_ settings: ReviewSettings) {
         let now = engine.now
         let calendar = engine.calendar
+        let dayStartsAtHour = settings.dayStartsAtHour
         pace = Pace(newCardsPerDay: settings.newCardsPerDay)
         do throws(EngineError) {
             let (cards, own) = try engine.paceTabCards()
@@ -91,7 +92,8 @@ public struct PaceTabState: Sendable {
                 var paced = settings
                 paced.newCardsPerDay = pace.newCardsPerDay
                 let finish = paced.queue(of: cards, now: now, calendar: calendar).last?.finish
-                return PaceOption(pace: pace, finish: finish, wording: finish?.wording(now: now, calendar: calendar))
+                let wording = finish?.wording(now: now, dayStartsAtHour: dayStartsAtHour, calendar: calendar)
+                return PaceOption(pace: pace, finish: finish, wording: wording)
             }
             let inQueue = settings.queue(of: cards, now: now, calendar: calendar)
             queue = inQueue.enumerated().map { place, queued in
@@ -105,7 +107,8 @@ public struct PaceTabState: Sendable {
                 return QueueRow(
                     deck: own.deck(queued.deck),
                     newCards: queued.newCards, finish: queued.finish,
-                    wording: queued.finish?.wording(now: now, calendar: calendar), isNow: place == 0,
+                    wording: queued.finish?.wording(now: now, dayStartsAtHour: dayStartsAtHour, calendar: calendar),
+                    isNow: place == 0,
                     offersPutItFirst: ahead.contains { !stillAhead.contains($0) })
             }
             unreadable = nil

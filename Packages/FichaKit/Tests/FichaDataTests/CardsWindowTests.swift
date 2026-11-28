@@ -173,20 +173,6 @@ struct CardsWindowTests {
         #expect(inDefault.map(\.card.id) == [serendipia.id, ubuntu.id, ojala.id, acaso.id])
     }
 
-    // As `ficha tags` lists them, since tags left the window (#538).
-    @Test("every tag of the cards is listed, buried ones too, once each, alphabetically")
-    func everyTagOfTheCardsIsListed() throws {
-        try approve(card(.word, front: "Ubuntu", back: "Humanidad.", tags: ["lenguaje", "filosofía"]), in: engine)
-        try approve(card(.concept, front: "Eudaimonía", back: "Vida plena.", tags: ["ética", "filosofía"]), in: engine)
-        let mercantilismo = try approve(
-            card(.concept, front: "Mercantilismo", back: "Acumular metales.", tags: ["economía", "historia"]),
-            in: engine)
-        try engine.bury(mercantilismo.id)
-        try approveCard("serendipia", in: engine)
-
-        #expect(try engine.allTags().map(\.name) == ["economía", "ética", "filosofía", "historia", "lenguaje"])
-    }
-
     @Test("searching \"fertil\" finds a card whose back says \"fértil\", ignoring case and accents")
     func aSearchFindsTextInTheBackIgnoringCaseAndAccents() throws {
         let scheduler = ReviewSettings.defaults.scheduler
