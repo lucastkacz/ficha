@@ -52,8 +52,8 @@ public struct TagConversion: Sendable, Equatable, Encodable {
 
     /// The decks it makes, in the order a tree lists them.
     public let decks: [NewDeck]
-    /// The cards that carry two tags or more that become decks, neither
-    /// inside the other, in the order Lucas approved them.
+    /// The cards that carry two tags or more that become decks, neither inside
+    /// the other, in the order they came in.
     public let cardsWithTwoTags: [CardWithTwoTags]
 }
 

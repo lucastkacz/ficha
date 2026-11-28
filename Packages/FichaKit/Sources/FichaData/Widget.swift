@@ -167,7 +167,7 @@ extension WidgetTimeline {
 /// panel that never activates it, is never in the foreground, which alone
 /// would make them free. So it looks as it launches, since the database may
 /// have changed while it didn't run, and then once a burst of changes to the
-/// database stops, as a refine session's writes or a sync's do, and once the
+/// database stops, as an import's writes or a sync's do, and once the
 /// review panel closes, which holds them back while it's open: each card
 /// Lucas rates in it changes what the widget shows. And it reloads only when
 /// what the widget shows from then on changed, so a write that changes no

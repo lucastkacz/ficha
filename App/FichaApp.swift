@@ -12,9 +12,7 @@ struct FichaApp: App {
         MenuBarExtra {
             if let model = appDelegate.model {
                 MenuContent(
-                    model: model, openCapture: appDelegate.openCapture,
-                    captureShortcut: appDelegate.captureShortcut, openReviewPanel: appDelegate.openReviewPanel,
-                    openCards: appDelegate.openCards,
+                    model: model, openReviewPanel: appDelegate.openReviewPanel, openCards: appDelegate.openCards,
                     openDiagnostics: appDelegate.openDiagnostics,
                     openSettings: appDelegate.openSettings, openBackupSettings: appDelegate.openBackupSettings,
                     openSyncSettings: appDelegate.openSyncSettings,

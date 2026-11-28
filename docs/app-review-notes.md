@@ -14,6 +14,6 @@ The user sees what these readings say in Ficha's Diagnostics window, from its me
 
 ## The command-line tool
 
-Ficha ships a command-line tool, `ficha`, inside the app, at `Contents/Helpers/ficha`, always the same version as the app. From Terminal, the user captures ideas to turn into cards later, lists their cards, turns their captures into cards, and adds cards straight into their decks, by hand or with an assistant they run in their own terminal. The user starts every run: the tool never runs on its own, and the app never launches it.
+Ficha ships a command-line tool, `ficha`, inside the app, at `Contents/Helpers/ficha`, always the same version as the app. From Terminal, the user lists their cards, fixes the ones they flagged, and adds cards straight into their decks, by hand or with an assistant they run in their own terminal. The user starts every run: the tool never runs on its own, and the app never launches it.
 
 A terminal can't start a tool in its app's sandbox, so `ficha` runs in an App Sandbox of its own, with a bundle identifier of its own, `com.lucastkacz.ficha.cli`, in an Info.plist embedded in its binary. It holds two entitlements besides the sandbox: the app's App Group, whose folder holds the cards the tool and the app share, and `com.apple.security.files.downloads.read-only`, to read the images and sounds the user puts on cards from their Downloads folder alone. It holds no network entitlement, and it never asks for a permission.

@@ -5,7 +5,7 @@ import Testing
 
 /// Tests on renaming, moving and deleting decks in the Cards window (ADR
 /// 0024): Rename… and Delete… in a deck's menu, which the Actions menu above
-/// the card list offers too, as the keyboard's way to them, and dropping
+/// the grid offers too, as the keyboard's way to them, and dropping
 /// cards and decks on the sidebar's decks. On the default scheduler; they start
 /// at 9 in the morning in Buenos Aires, when active hours start.
 struct CardsWindowDeckEditsTests {
@@ -23,8 +23,8 @@ struct CardsWindowDeckEditsTests {
         "a deck's menu offers Rename… and Delete…, in the sidebar and in the Actions menu, and Default's offers neither"
     )
     func aDecksMenuOffersRenameAndDelete() throws {
-        try approveInDeck("petricor", in: engine)
-        try approveInDeck("La Gioconda", deck: "Arte::Pintura", in: engine)
+        try newCardInDeck("petricor", in: engine)
+        try newCardInDeck("La Gioconda", deck: "Arte::Pintura", in: engine)
         var window = openWindow()
 
         let menus = [Deck.defaultName, "Arte", "Arte::Pintura"].map(window.menu(forDeck:))
@@ -45,8 +45,8 @@ struct CardsWindowDeckEditsTests {
         "Rename… asks for the deck's whole name, refuses a blank one, Default's or one inside itself, and OK renames it, with the sidebar following it"
     )
     func renameAsksForTheWholeName() throws {
-        try approveInDeck("La Gioconda", deck: "Arte::Pintura", in: engine)
-        try approveInDeck("Coliseo", deck: "Historia", in: engine)
+        try newCardInDeck("La Gioconda", deck: "Arte::Pintura", in: engine)
+        try newCardInDeck("Coliseo", deck: "Historia", in: engine)
         var window = openWindow()
         window.choose(.cards(.deck("Arte::Pintura")))
         window.setDeckOpen(false, "Arte")
@@ -72,7 +72,7 @@ struct CardsWindowDeckEditsTests {
     // Another device renamed Arte meanwhile, as the window still lists it.
     @Test("Rename… on a deck renamed meanwhile is refused, and the window says so, going on asking")
     func renamingADeckRenamedMeanwhile() throws {
-        try approveInDeck("La Gioconda", deck: "Arte", in: engine)
+        try newCardInDeck("La Gioconda", deck: "Arte", in: engine)
         var window = openWindow()
         window.askToRenameDeck("Arte")
         try engine.renameDeck("Arte", to: "Artes")
@@ -87,12 +87,12 @@ struct CardsWindowDeckEditsTests {
 
     // The sidebar chose Arte::Pintura, which goes with Arte.
     @Test(
-        "Delete… asks first, counting the cards it deletes and the decks inside, and Delete deletes them, the sidebar going back to All cards"
-    )
+        "Delete… asks first, counting the cards it deletes and the decks inside, and Delete deletes them, the sidebar going back to the first deck of the queue new cards come from",
+        .bug(id: 536))
     func deleteAsksFirst() throws {
-        try approveInDeck("La Gioconda", deck: "Arte::Pintura", in: engine)
-        try approveInDeck("La Piedad", deck: "Arte", in: engine)
-        try approveInDeck("Coliseo", deck: "Historia", in: engine)
+        try newCardInDeck("La Gioconda", deck: "Arte::Pintura", in: engine)
+        try newCardInDeck("La Piedad", deck: "Arte", in: engine)
+        try newCardInDeck("Coliseo", deck: "Historia", in: engine)
         try engine.makeDeck(named: "Arte::Escultura")
         var window = openWindow()
         window.choose(.cards(.deck("Arte::Pintura")))
@@ -112,7 +112,7 @@ struct CardsWindowDeckEditsTests {
 
         #expect(window.question == nil)
         #expect(window.failure == nil)
-        #expect(window.sidebarItem == .cards(.all))
+        #expect(window.sidebarItem == .cards(.deck("Historia")))
         #expect(window.deckRows.outline == ["Historia 0"])
         #expect(try engine.cards().map(\.front) == ["Coliseo"])
     }
@@ -124,8 +124,8 @@ struct CardsWindowDeckEditsTests {
         "after Delete…, the card form goes back to the deck a new card starts in, and the editor and the last deck added to go to Default, never naming a deck it deleted"
     )
     func deletingADeckTheFieldsHold() throws {
-        try approveInDeck("La Gioconda", deck: "Arte::Pintura", in: engine)
-        let coliseo = try approveInDeck("Coliseo", deck: "Historia", in: engine)
+        try newCardInDeck("La Gioconda", deck: "Arte::Pintura", in: engine)
+        let coliseo = try newCardInDeck("Coliseo", deck: "Historia", in: engine)
         var window = engine.openCardsWindow(with: scheduler, lastDeckAddedTo: "Arte::Pintura")
         window.read(with: scheduler)
         window.choose(.cards(.deck("Historia")))
@@ -151,16 +151,17 @@ struct CardsWindowDeckEditsTests {
         #expect(window.deckFieldChoices(.form).map(\.name) == [Deck.defaultName, "Historia"])
     }
 
-    // petricor and Coliseo are selected; Coliseo lives in Historia already,
-    // and ojalá keeps Default in the sidebar.
+    // The window opens on Default, whose grid lists petricor and ojalá, which
+    // keeps Default in the sidebar; Coliseo lives in Historia already, so
+    // dropping it moves it only from Historia's grid.
     @Test(
         "dropping cards on a deck in the sidebar moves them there, as Change Deck does, Default too, and refuses a drop that moves none"
     )
     func droppingCardsOnADeck() throws {
-        let petricor = try approveInDeck("petricor", in: engine)
-        let coliseo = try approveInDeck("Coliseo", deck: "Historia", in: engine)
-        try approveInDeck("La Gioconda", deck: "Arte", in: engine)
-        try approveInDeck("ojalá", in: engine)
+        let petricor = try newCardInDeck("petricor", in: engine)
+        let coliseo = try newCardInDeck("Coliseo", deck: "Historia", in: engine)
+        try newCardInDeck("La Gioconda", deck: "Arte", in: engine)
+        try newCardInDeck("ojalá", in: engine)
         var window = openWindow()
         window.select([petricor.id, coliseo.id])
 
@@ -170,6 +171,8 @@ struct CardsWindowDeckEditsTests {
             window.drop([.card(99)], onDeck: "Arte"),
         ]
         let moved = try engine.cards().map(\.deck)
+        let toDefaultFromDefault = window.drop([.card(coliseo.id)], onDeck: Deck.defaultName)
+        window.choose(.cards(.deck("Historia")))
         let toDefault = window.drop([.card(coliseo.id)], onDeck: Deck.defaultName)
         window.select([petricor.id])
         window.startEditing()
@@ -178,6 +181,7 @@ struct CardsWindowDeckEditsTests {
 
         #expect(drops == [true, false, false])
         #expect(moved == ["Historia", "Historia", "Arte", Deck.defaultName])
+        #expect(!toDefaultFromDefault)
         #expect(toDefault)
         #expect(!whileEditing)
         #expect(try engine.cards().map(\.deck) == ["Historia", Deck.defaultName, "Arte", Deck.defaultName])
@@ -190,8 +194,8 @@ struct CardsWindowDeckEditsTests {
         "dropping a deck on another moves it inside, with the sidebar following it and the deck it went into open, and on the Your Decks title to the top"
     )
     func droppingADeck() throws {
-        try approveInDeck("La Gioconda", deck: "Arte::Pintura", in: engine)
-        try approveInDeck("Coliseo", deck: "Historia", in: engine)
+        try newCardInDeck("La Gioconda", deck: "Arte::Pintura", in: engine)
+        try newCardInDeck("Coliseo", deck: "Historia", in: engine)
         var window = openWindow()
         window.choose(.cards(.deck("Arte::Pintura")))
         window.setDeckOpen(false, "Historia")
@@ -214,10 +218,10 @@ struct CardsWindowDeckEditsTests {
         "a deck dropped on itself, on a deck inside it or on Default, Default dropped, a deck dropped where it is already, and a drop of cards with a deck, of two decks, of nothing or of cards on the Your Decks title, are refused, saying nothing"
     )
     func refusedDeckDrops() throws {
-        let petricor = try approveInDeck("petricor", in: engine)
-        try approveInDeck("La Gioconda", deck: "Arte::Pintura", in: engine)
-        try approveInDeck("Coliseo", deck: "Historia", in: engine)
-        try approveInDeck("fuga", deck: "Música", in: engine)
+        let petricor = try newCardInDeck("petricor", in: engine)
+        try newCardInDeck("La Gioconda", deck: "Arte::Pintura", in: engine)
+        try newCardInDeck("Coliseo", deck: "Historia", in: engine)
+        try newCardInDeck("fuga", deck: "Música", in: engine)
         var window = openWindow()
         let rows = window.deckRows
 
@@ -238,7 +242,8 @@ struct CardsWindowDeckEditsTests {
         #expect(window.failure == nil)
     }
 
-    /// The window as it opens, on All cards, with the cards read.
+    /// The window as it opens, on the first deck of the queue new cards come
+    /// from that the sidebar lists, with the cards read.
     private func openWindow() -> CardsWindowState {
         var window = engine.openCardsWindow(with: scheduler)
         window.read(with: scheduler)

@@ -3,21 +3,21 @@ import FichaData
 import Foundation
 import Testing
 
-/// Approves a capture into one word card with this front and these tags, the
-/// way refining saves cards, moves it to `deck` with Change Deck, unless it's
-/// Default, where a card lives when it has no other, and returns the card as
-/// it is then: a new card, after the ones approved before it.
+/// Creates one word card with this front and these tags, moves it to
+/// `deck` with Change Deck, unless it's Default, where a card lives when it
+/// has no other, and returns the card as it is then: a new card, after the
+/// ones before it.
 @discardableResult
-func approveInDeck(
+func newCardInDeck(
     _ front: String, deck: String = Deck.defaultName, tags: [String] = [], in engine: Engine
 ) throws -> Card {
-    let approved = try approve(
+    let created = try newCard(
         card(.word, front: front, back: "Lo que quiere decir «\(front)».", tags: tags), in: engine)
     guard deck != Deck.defaultName else {
-        return approved
+        return created
     }
-    try engine.changeDeck(of: [approved.id], to: deck)
-    return try #require(try engine.cards().first { $0.id == approved.id })
+    try engine.changeDeck(of: [created.id], to: deck)
+    return try #require(try engine.cards().first { $0.id == created.id })
 }
 
 extension [CardsWindowState.DeckRow] {

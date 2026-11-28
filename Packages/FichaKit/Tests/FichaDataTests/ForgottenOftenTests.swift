@@ -1,7 +1,10 @@
 import FichaCore
-import FichaData
 import Foundation
 import Testing
+
+// For `Engine.edit(_:with:deck:bothWays:)`, an edit with a card's whole
+// content, which only the tests make.
+@testable import FichaData
 
 /// Tests on cards forgotten often: recording a rating of again says whether
 /// the card is now forgotten often, and how many times Lucas forgot it which
@@ -21,7 +24,7 @@ struct ForgottenOftenTests {
 
     @Test("the eighth lapse of a card never edited says it's forgotten often, and how many times")
     func theEighthLapseSaysTheCardIsForgottenOften() throws {
-        let ubuntu = try approveCard("ubuntu", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
         try graduate(ubuntu)
 
         let firstSeven = try (1...7).map { _ in try forget(ubuntu) }
@@ -34,7 +37,7 @@ struct ForgottenOftenTests {
     // As Anki warns again about a leech at every half of its number.
     @Test("after the eighth, a lapse says so again every four more, and not between")
     func itSaysSoAgainEveryHalfTheNumberMore() throws {
-        let ubuntu = try approveCard("ubuntu", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
         try graduate(ubuntu)
 
         let saidSo = try (1...17).map { _ in try forget(ubuntu)?.times }
@@ -46,7 +49,7 @@ struct ForgottenOftenTests {
         "each way of a card that goes both ways counts its own lapses: seven each way say nothing, and the eighth of either says so, and which way"
     )
     func eachWayCountsItsOwnLapses() throws {
-        let ubuntu = try approveCard("ubuntu", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
         try engine.setBothWays(true, of: [ubuntu.id])
         try graduate(ubuntu)
         try graduate(ubuntu, way: .backFirst)
@@ -66,7 +69,7 @@ struct ForgottenOftenTests {
         "hard and good never say it, and neither they nor the agains of a new card's learning steps or a lapse's relearning step count"
     )
     func otherRatingsAndLearningAgainsDoNotCount() throws {
-        let ubuntu = try approveCard("ubuntu", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
         try engine.meet(ubuntu)
         var saidSo: [Int?] = []
         for _ in 1...8 {
@@ -92,7 +95,7 @@ struct ForgottenOftenTests {
 
     @Test("a lapse in a review ahead counts")
     func aLapseInAReviewAheadCounts() throws {
-        let ubuntu = try approveCard("ubuntu", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
         try graduate(ubuntu)
         for _ in 1...4 {
             try forget(ubuntu)
@@ -114,8 +117,8 @@ struct ForgottenOftenTests {
         "a new front or back starts the count over, from the edit, while new tags don't; a card never edited counts every lapse"
     )
     func anEditToTheSidesStartsTheCountOver() throws {
-        let ubuntu = try approveCard("ubuntu", in: engine)
-        let petricor = try approveCard("petricor", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
+        let petricor = try newCard("petricor", in: engine)
         try graduate(ubuntu)
         try graduate(petricor)
         for _ in 1...7 {
@@ -135,8 +138,8 @@ struct ForgottenOftenTests {
 
     @Test("a new front or back starts both ways' counts over, while switching Both ways off and on starts neither")
     func anEditStartsBothWaysOverWhileSwitchingDoesNot() throws {
-        let ubuntu = try approveCard("ubuntu", in: engine)
-        let petricor = try approveCard("petricor", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
+        let petricor = try newCard("petricor", in: engine)
         try engine.setBothWays(true, of: [ubuntu.id, petricor.id])
         for card in [ubuntu, petricor] {
             try graduate(card)
@@ -168,7 +171,7 @@ struct ForgottenOftenTests {
     func aLapseInTheInstantOfAnEditCounts() throws {
         var settings = ReviewSettings.defaults
         settings.forgottenOftenAfter = 1
-        let ubuntu = try approveCard("ubuntu", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
         try graduate(ubuntu)
         time.move(to: try #require(try engine.standing(of: ubuntu.id, with: settings.scheduler).due))
 

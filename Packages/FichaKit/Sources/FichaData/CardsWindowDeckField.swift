@@ -1,14 +1,13 @@
 import FichaCore
 import Foundation
 
-// The Deck field (ADR 0024), in the Cards window's card form and in its
-// editor, which says the deck a card lives in. It offers Default and every
-// deck the sidebar lists, as a tree, then New Deck…, which names a deck in
-// the New Deck sheet for the field to hold, and Add or Save makes it. A new
-// card's form starts in the deck the sidebar chose, or else the deck Lucas
-// last added a card to, as Anki's Add window does, which each device
-// remembers on its own, as a preference the app keeps; a follow-up's form
-// starts in its card's deck. The editor starts in the card's own deck, and
+// The Deck field (ADR 0024), in the Cards window's card form and in its editor,
+// which says the deck a card lives in. It offers Default and every deck the
+// sidebar lists, as a tree, then New Deck…, which names a deck in the New Deck
+// sheet for the field to hold, and Add or Save makes it. A new card's form
+// starts in the deck the sidebar chose, or else the deck Lucas last added a
+// card to, as Anki's Add window does, which each device remembers on its own,
+// as a preference the app keeps. The editor starts in the card's own deck, and
 // Save moves the card to the one the field holds, as Change Deck does.
 
 extension CardsWindowState {

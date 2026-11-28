@@ -3,10 +3,11 @@ import Foundation
 internal import GRDB
 
 /// One small thing Lucas wants to remember, with a front and a back, as the
-/// engine saved it when he approved it, an agent added it or the user created
-/// it. Each side holds text, an image, a sound, or any of them together. The
-/// `ficha` CLI prints it as JSON, without the type, images, sounds, source,
-/// edited time, capture, flag, burial or set-aside decks it doesn't have.
+/// engine saved it when an agent added it, the user created it or an import
+/// brought it. Each side holds text, an image, a sound, or any of them
+/// together. The `ficha` CLI prints it as JSON, without the type, images,
+/// sounds, source, edited time, flag, time it was set aside on its own
+/// (`buriedAt`) or set-aside decks it doesn't have.
 public struct Card: Sendable, Equatable, Encodable {
     public let id: Int64
     /// Its type, or nil when it has none, as when its user type was deleted,
@@ -32,25 +33,25 @@ public struct Card: Sendable, Equatable, Encodable {
     public let deck: String
     public let tags: [String]
     public let source: String?
-    /// When it came in: when it was approved from a capture or added with
-    /// `ficha add`, or the user created it.
+    /// When it came in: when it was added with `ficha add`, the user created
+    /// it or an import brought it.
     public let createdAt: Date
     /// When its front or back last changed, a side's image or sound included,
     /// or nil when neither changed since it came in, or since before Ficha
     /// kept it.
     public let editedAt: Date?
-    /// The capture it was refined from, or nil when it came in another way,
-    /// such as `ficha add`, the Cards window's form or an import.
-    public let captureID: Int64?
-    /// Lucas's flag, while the card waits to be fixed, buried or not. Where
-    /// the card stands is read from `standing`, never from this.
+    /// Lucas's flag, while the card waits to be fixed, set aside or not.
+    /// Where the card stands is read from `standing`, never from this.
     public let flag: Flag?
-    /// When Lucas buried it, while it's buried. Where the card stands is read
-    /// from `standing`, never from this.
+    /// When Lucas set it aside on its own, while it is: its burial, as the
+    /// database keeps a card set aside with no migration, and as the CLI
+    /// prints it, under this name (ADR 0041, #539). Where the card stands is
+    /// read from `standing`, never from this.
     public let buriedAt: Date?
     /// The set-aside decks it's set aside by, its deck and the decks it sits
     /// inside, as the user set them aside, Idiomas and not Idiomas::Inglés,
-    /// the outermost first, flagged or buried or not, or nil when none is.
+    /// the outermost first, flagged or set aside on its own or not, or nil
+    /// when none is.
     /// Where the card stands is read from `standing`, never from this.
     public let setAsideBy: [String]?
     /// Whether the user also reviews it back first, its back and then its
@@ -58,9 +59,9 @@ public struct Card: Sendable, Equatable, Encodable {
     /// it holds: changing its content keeps it.
     public let bothWays: Bool
 
-    /// Where the card stands: in Lucas's reviews, waiting in the inbox to be
-    /// fixed, buried, or set aside with its deck, or a deck its deck sits
-    /// inside.
+    /// Where the card stands: in Lucas's reviews, flagged and waiting in its
+    /// deck to be fixed, or set aside, on its own or with its deck, or a deck
+    /// its deck sits inside.
     public var standing: CardStanding {
         CardStanding(flag: flag, buriedAt: buriedAt, setAsideBy: setAsideBy ?? [])
     }
@@ -86,7 +87,6 @@ extension Card {
         source = try row.decode(forColumn: "source")
         createdAt = try row.decode(forColumn: "createdAt")
         editedAt = try row.decode(forColumn: "editedAt")
-        captureID = try row.decode(forColumn: "captureId")
         switch (try row.decode(forColumn: "flagNote") as String?, try row.decode(forColumn: "flaggedAt") as Date?) {
         case (nil, nil):
             flag = nil
@@ -101,8 +101,8 @@ extension Card {
         bothWays = try row.decode(forColumn: "bothWays")
     }
 
-    /// Whether it carries the tag `tag`, or a tag inside it, as choosing the
-    /// tag in the Cards window's sidebar lists it.
+    /// Whether it carries the tag `tag`, or a tag inside it, as an export of
+    /// the tag takes it.
     func hasTag(within tag: String) -> Bool {
         tags.contains { TagPath.isTag($0, within: tag) }
     }
@@ -154,42 +154,12 @@ extension Card {
         case .back: backSound
         }
     }
-
-    /// Which sides have an image, as the Cards window's Media column says,
-    /// or nil when neither does.
-    public var sidesWithImages: WhichSides? {
-        WhichSides(front: frontImage != nil, back: backImage != nil)
-    }
-
-    /// Which sides have a sound, as the Cards window's Media column says, or
-    /// nil when neither does.
-    public var sidesWithSounds: WhichSides? {
-        WhichSides(front: frontSound != nil, back: backSound != nil)
-    }
 }
 
 /// What a side without text holds instead: an image or a sound.
 public enum SideMedia: Sendable, Equatable {
     case image
     case sound
-}
-
-/// Which sides of a card have something: its front, its back or both.
-public enum WhichSides: Sendable, Equatable {
-    case front
-    case back
-    case both
-
-    /// The sides that have something, as `front` and `back` say, or nil when
-    /// neither does.
-    init?(front: Bool, back: Bool) {
-        switch (front, back) {
-        case (false, false): return nil
-        case (true, false): self = .front
-        case (false, true): self = .back
-        case (true, true): self = .both
-        }
-    }
 }
 
 /// The file, an image or a sound, a side of card `cardID` refers to in
@@ -207,8 +177,8 @@ private func fileName<Name: NameOfFileOnCard>(in row: Row, column: String, ofCar
 
 extension CardContent {
     /// This content with the images and sounds of `card` where the card has
-    /// them, as a card fixed or expanded with a content alone keeps its own,
-    /// as with a refine session's draft that leaves them out.
+    /// them, as a card fixed with a content alone keeps its own, as with a
+    /// draft that leaves them out.
     func keepingFiles(of card: Card) -> CardContent {
         keepingFiles(
             frontImage: card.frontImage, backImage: card.backImage, frontSound: card.frontSound,
@@ -256,28 +226,44 @@ func updateCard(
 /// leaves that time as it was. Returns the card as it is then. Every change
 /// to a card's content made on this device goes through here, with content
 /// `CardContent` checked, as every new card goes through `insertCard`, but
-/// three that write a column or two of many cards at once: renaming a tag
-/// writes their tags (`RenamingTags.swift`), turning tags into decks writes
-/// their decks and their tags (`TagsIntoDecks.swift`), and deleting a user
-/// type clears their type (`forgetType`). None can make a card `CardContent`
-/// refuses, and going through here would clean up each card's other fields
-/// as `CardContent` does, changing what the user didn't touch, such as a tag
-/// stored before tags sat inside tags. An image or a sound the card no
-/// longer refers to stays where Ficha keeps it: the engine removes it once
-/// no card uses it. A user type deleted meanwhile is refused.
+/// four. An edit saved in the Cards window writes its sides and its source
+/// alone (`replaceSidesAndSource(of:with:at:in:)`). Three write a column or
+/// two of many cards at once: renaming a tag writes their tags
+/// (`RenamingTags.swift`), turning tags into decks writes their decks and
+/// their tags (`TagsIntoDecks.swift`), and deleting a user type clears their
+/// type (`forgetType`). None can make a card `CardContent` refuses, and going
+/// through here would clean up each card's other fields as `CardContent`
+/// does, changing what the user didn't touch, such as a tag stored before
+/// tags sat inside tags. An image or a sound the card no longer refers to
+/// stays where Ficha keeps it: the engine removes it once no card uses it. A
+/// user type deleted meanwhile is refused.
 func replaceContent(of cardID: Int64, with content: CardContent, at now: Date, in db: Database) throws -> Card {
     try checkExists(content.type, in: db)
+    try db.execute(
+        sql: "UPDATE card SET type = ?, tags = ? WHERE id = ?",
+        arguments: [content.type?.column, try tagsJSON(content.tags), cardID])
+    return try replaceSidesAndSource(of: cardID, with: content, at: now, in: db)
+}
+
+/// Replaces a card's sides and source with `content`'s, as
+/// `replaceContent(of:with:at:in:)` does, at `now`, but leaves its type and
+/// its tags as the database holds them, whatever `content` says: the update
+/// leaves both columns out, so a user type this device doesn't hold yet,
+/// which the card reads as no type until the type's record comes, stays
+/// too. How an edit saved in the Cards window changes a card, since the
+/// window shows neither (#538). Returns the card as it is then.
+func replaceSidesAndSource(of cardID: Int64, with content: CardContent, at now: Date, in db: Database) throws -> Card {
     let before = try existingCard(cardID, in: db)
     return try updateCard(
         cardID,
         setting: """
-            type = ?, front = ?, back = ?, frontImage = ?, backImage = ?, frontSound = ?, backSound = ?, tags = ?, \
-            source = ?, editedAt = ?
+            front = ?, back = ?, frontImage = ?, backImage = ?, frontSound = ?, backSound = ?, source = ?, \
+            editedAt = ?
             """,
         to: [
-            content.type?.column, content.front, content.back, content.frontImage?.rawValue,
-            content.backImage?.rawValue, content.frontSound?.rawValue, content.backSound?.rawValue,
-            try tagsJSON(content.tags), content.source, before.hasSides(of: content) ? before.editedAt : now,
+            content.front, content.back, content.frontImage?.rawValue, content.backImage?.rawValue,
+            content.frontSound?.rawValue, content.backSound?.rawValue, content.source,
+            before.hasSides(of: content) ? before.editedAt : now,
         ],
         in: db
     )
@@ -293,18 +279,6 @@ extension Card {
                 content.backSound
             )
     }
-}
-
-/// The flagged cards that wait in the inbox to be fixed, as their standing
-/// says, the first flagged first, and then in the order Lucas approved them.
-func flaggedCardsWaiting(in db: Database) throws -> [Card] {
-    let flagged: [(card: Card, flag: Flag)] = try allCards(in: db).compactMap { card in
-        guard case .inInbox(let flag) = card.standing else {
-            return nil
-        }
-        return (card, flag)
-    }
-    return flagged.sorted { ($0.flag.flaggedAt, $0.card.id) < ($1.flag.flaggedAt, $1.card.id) }.map(\.card)
 }
 
 /// A card's tags as the `card` table keeps them: a JSON array, which

@@ -50,6 +50,66 @@ struct StringCatalogsTests {
             ADR 0039 takes out: delete it, and run the test again.
             """)
     }
+
+    // The texts the app writes a card's detail with from FichaData's
+    // `CardRow.Wording`: "Back on" a later day, as the system's date format
+    // writes the day; "Seen" a count of times, with plural variations, one
+    // and other at least; and a new card's words, as the desktop mock's card
+    // pane says them (`mockups/desktop/index.html`). Each key is the text as
+    // Xcode extracts it from the code, its value written in.
+    @Test(
+        "the app's String Catalog holds a card's Back on a day, its Seen N times with plural variations, and a new card's words",
+        .bug(id: 537))
+    func theCatalogHoldsACardsWords() throws {
+        let catalog = try StringCatalog.read(at: "App/Localizable.xcstrings")
+        let seen = catalog.strings["Seen %lld times"]?.localizations?["en"]?.variations?.plural ?? [:]
+
+        #expect(
+            catalog.strings["Back on %@"] != nil,
+            """
+            App/Localizable.xcstrings has no “Back on %@”, which a card's detail says of a card due on a later day \
+            (#537): write it in the detail from CardRow.Wording, run make strings, and run the test again.
+            """)
+        #expect(
+            Set(seen.keys).isSuperset(of: ["one", "other"]),
+            """
+            App/Localizable.xcstrings has no “Seen %lld times” with plural variations one and other, which a card's \
+            detail says of a card seen that many times (#537): write it in the detail, run make strings, give it its \
+            variations, and run the test again.
+            """)
+        #expect(
+            catalog.strings["New: it waits its turn in the queue."] != nil,
+            """
+            App/Localizable.xcstrings has no “New: it waits its turn in the queue.”, which a card's detail says of a \
+            new card, as the desktop mock does (#537): write it in the detail, run make strings, and run the test \
+            again.
+            """)
+    }
+
+    // The words: "bury", "buries", "buried", "burying", "unbury" and its
+    // forms, and "burial", in any case, as a whole word, in a text's key and
+    // in its English values, its plural variations too, since Set aside and
+    // Put back say it now, for a deck and a card alike (#539). Every
+    // catalog, the App Shortcuts', the widget's and the iPhone's too, since
+    // an error the engine words, such as a buried card's, shows up in each.
+    @Test(
+        "no String Catalog says Bury, which Set aside and Put back say now", .bug(id: 539),
+        arguments: StringCatalog.paths)
+    func noCatalogSaysBury(catalogPath: String) throws {
+        let catalog = try StringCatalog.read(at: catalogPath)
+        let bury = try NSRegularExpression(
+            pattern: #"\b(un)?bur(y|ies|ied|ying)\b|\bburials?\b"#, options: .caseInsensitive)
+        let saying = catalog.strings
+            .filter { key, entry in ([key] + entry.englishTexts).contains { bury.matches($0) } }
+            .keys.sorted()
+        #expect(
+            saying.isEmpty,
+            """
+            \(catalogPath) still says Bury, which Set aside and Put back say now, for a deck and a card alike (#539): \
+            \(saying.map { "“\($0)”" }.joined(separator: ", ")). Say it as Set aside or Put back, run make strings, \
+            and run the test again.
+            """)
+    }
 }
 
 /// The parts of a String Catalog FichaKit's tests read, from the repo.
@@ -69,15 +129,45 @@ struct StringCatalog: Decodable {
     let sourceLanguage: String
     let strings: [String: Entry]
 
-    /// A text, by the languages it has a value in, of which the tests read
-    /// only which, and whether the code still has it: `stale` when it no
-    /// longer does.
+    /// A text, by the languages it has a value in, and whether the code still
+    /// has it: `stale` when it no longer does.
     struct Entry: Decodable {
         let extractionState: String?
         let localizations: [String: Localization]?
+
+        /// Its values in English, its own and its plural variations', when it
+        /// has any of its own.
+        var englishTexts: [String] {
+            guard let english = localizations?["en"] else {
+                return []
+            }
+            let plural = english.variations?.plural?.values.compactMap { $0.stringUnit?.value } ?? []
+            return [english.stringUnit?.value].compactMap { $0 } + plural
+        }
     }
 
-    struct Localization: Decodable {}
+    /// A text's value in a language, when it has one of its own: one, or its
+    /// plural variations, by their case, such as one and other.
+    struct Localization: Decodable {
+        let stringUnit: StringUnit?
+        let variations: Variations?
+    }
+
+    /// A text's variations in a language, of which the tests read the plural
+    /// ones.
+    struct Variations: Decodable {
+        let plural: [String: Variation]?
+    }
+
+    /// One variation of a text.
+    struct Variation: Decodable {
+        let stringUnit: StringUnit?
+    }
+
+    /// A text's value.
+    struct StringUnit: Decodable {
+        let value: String
+    }
 
     /// The catalog at `path`, from the repo's folder.
     static func read(at path: String) throws -> StringCatalog {

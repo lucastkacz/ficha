@@ -12,11 +12,11 @@ internal import GRDB
 // description (ADR 0044), choice to sync and place in the queue new cards come
 // from (ADR 0034), which sync as a tag's do (`SyncedDecks.swift`), and whether
 // the user made it on this device, which doesn't: making a deck, or putting
-// cards in it, as New Deck…, Change Deck, the card form, Approve and an import
-// do, says so, also of a deck this device heard of from another, and nothing
-// else does. Default gets its row once something is set on it, and is listed
-// only while it holds cards or has a switch on, so that its switch can be
-// turned off. Under selective sync, a device lists only the decks that sync,
+// cards in it, as New Deck…, Change Deck, the card form, `ficha add` and an
+// import do, says so, also of a deck this device heard of from another, and
+// nothing else does. Default gets its row once something is set on it, and is
+// listed only while it holds cards or has a switch on, so that its switch can
+// be turned off. Under selective sync, a device lists only the decks that sync,
 // those it holds cards of and those made on it (`SelectiveSync.swift`).
 
 /// A switch a deck can have on, which changes which of its cards show up
@@ -27,7 +27,7 @@ public enum DeckSwitch: String, Sendable {
     /// show up.
     case priority
     /// Its cards, and those of every deck inside it, are out of the user's
-    /// reviews for now, without being buried.
+    /// reviews for now, each keeping whether it's set aside on its own.
     case setAside
 }
 
@@ -213,7 +213,7 @@ func deckTree<Element, Node>(
 /// A deck's counts, as the Cards window's sidebar shows them.
 public struct DeckCounts: Sendable, Equatable {
     /// How many cards the deck lists when it's chosen: those that live in it
-    /// or in a deck inside it, and aren't buried.
+    /// or in a deck inside it, set-aside ones too (#539).
     public let cards: Int
     /// How many of those are due now and in the user's reviews.
     public let due: Int
@@ -242,7 +242,7 @@ extension Engine {
     /// Every deck this device lists, in the order a tree lists them, Default
     /// first: every deck with a row, or under selective sync, while sync is
     /// on, those of them that sync and those made on this device; every deck
-    /// a card lives in, buried cards too; and every deck those sit inside,
+    /// a card lives in, set-aside cards too; and every deck those sit inside,
     /// each with what it has of its own and takes from the decks it sits
     /// inside; and Default only while it holds cards or has a switch on, so
     /// that its switch can be turned off.
@@ -267,7 +267,8 @@ extension Engine {
         return try read { db in
             let own = try OwnDecks(in: db)
             var counts: [String: (cards: Int, due: Int)] = [:]
-            for row in try FichaData.cardRows(in: .all, matching: "", with: scheduler, at: now, in: db) {
+            // Every card, as each deck's grid lists every card in it.
+            for row in try everyCardRow(with: scheduler, at: now, in: db) {
                 let isDue = row.isDue(at: now)
                 for deck in TagPath.lineage(of: row.card.deck) {
                     counts[deck, default: (0, 0)].cards += 1
@@ -380,11 +381,10 @@ func moveCards(_ cardIDs: [Int64], to deck: String, in db: Database) throws {
     }
 }
 
-/// Moves `card` to the deck `deck`, in the write `db`, as
-/// `moveCards(_:to:in:)` moves it, unless `deck` is nil or the deck the card
-/// lives in, which leaves it there and makes no deck on this device: how an
-/// edit, a fix and an approved expansion set a card's deck. Refuses a name
-/// `madeDeck(named:in:)` refuses.
+/// Moves `card` to the deck `deck`, in the write `db`, as `moveCards(_:to:in:)`
+/// moves it, unless `deck` is nil or the deck the card lives in, which leaves
+/// it there and makes no deck on this device: how an edit and a fix set a
+/// card's deck. Refuses a name `madeDeck(named:in:)` refuses.
 func move(_ card: Card, to deck: String?, in db: Database) throws {
     if let deck, try checkedDeckOrDefault(deck) != card.deck {
         try moveCards([card.id], to: deck, in: db)

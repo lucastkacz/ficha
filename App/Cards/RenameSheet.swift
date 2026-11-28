@@ -2,20 +2,16 @@ import FichaCore
 import FichaData
 import SwiftUI
 
-/// The sheet the Cards window opens from Rename… in the menu of a tag, of a
-/// deck or of a card type of the user's own, with one field for its name,
-/// which starts with the one it has: a tag's or a deck's whole name, its
-/// levels joined by `::`, as in "economía::Argentina". OK renames the tag and
-/// every tag inside it, which also moves it inside another tag, or to the
-/// top, as the name's levels say, and joins it with a tag that already has
-/// the name, which keeps what it has of its own; it refuses a blank name, or
-/// one inside the tag itself. A deck's OK does the same with decks, and also
-/// refuses one of Default's names. OK renames a type, whose cards
-/// keep it; it refuses a blank name, a name of one of the four types Ficha
-/// comes with, or another type's. The sheet says why under the field.
-/// `CardsWindowState` decides what OK takes.
+/// The sheet the Cards window opens from Rename… in a deck's menu, with one
+/// field for its name, which starts with the deck's whole name, its levels
+/// joined by `::`, as in "Idiomas::Inglés". OK renames the deck and every
+/// deck inside it, which also moves it inside another deck, or to the top, as
+/// the name's levels say, and joins it with a deck that already has the name,
+/// which keeps what it has of its own; it refuses a blank name, one of
+/// Default's names, or one inside the deck itself. The sheet says why under
+/// the field. `CardsWindowState` decides what OK takes.
 struct RenameSheet: View {
-    let subject: SheetSubject
+    let deck: Deck
     /// What couldn't be saved, as the alert over the sheet says it.
     let failure: Binding<Failure?>
     /// What OK makes of what the field holds, or nil while the window asks
@@ -28,18 +24,14 @@ struct RenameSheet: View {
     @FocusState private var fieldIsFocused: Bool
 
     init(
-        subject: SheetSubject, failure: Binding<Failure?>,
+        deck: Deck, failure: Binding<Failure?>,
         entry: @escaping (String) -> CardsWindowState.RenameEntry?, choose: @escaping (String) -> Void
     ) {
-        self.subject = subject
+        self.deck = deck
         self.failure = failure
         self.entry = entry
         self.choose = choose
-        switch subject {
-        case .tag(let tag): _name = State(initialValue: tag.name)
-        case .deck(let deck): _name = State(initialValue: deck.name)
-        case .type(let type): _name = State(initialValue: type.name)
-        }
+        _name = State(initialValue: deck.name)
     }
 
     var body: some View {
@@ -52,11 +44,7 @@ struct RenameSheet: View {
             }
             .fixedSize(horizontal: false, vertical: true)
             TextField(
-                String(
-                    localized: "Name",
-                    comment:
-                        "The field of the sheet that renames a tag or a deck, its whole name, or a card type of the user's own."
-                ),
+                String(localized: "Name", comment: "The field of the sheet that renames a deck, its whole name."),
                 text: $name
             )
             .textFieldStyle(.roundedBorder)
@@ -91,48 +79,21 @@ struct RenameSheet: View {
         .failureAlert(failure)
     }
 
-    /// The sheet's title, with the tag's or the deck's whole name, or the
-    /// type's name.
+    /// The sheet's title, with the deck's whole name.
     private var title: Text {
-        switch subject {
-        case .tag(let tag):
-            Text(
-                "Rename “\(TagPath.shown(tag.name))”",
-                comment: "The title of the Cards window's sheet that renames a tag, with the tag's whole name.")
-        case .deck(let deck):
-            Text(
-                "Rename “\(Deck.shownName(deck.name))”",
-                comment: "The title of the Cards window's sheet that renames a deck, with the deck's whole name.")
-        case .type(let type):
-            Text(
-                "Rename the type “\(type.name)”",
-                comment:
-                    "The title of the Cards window's sheet that renames a card type of the user's own, with its name.")
-        }
+        Text(
+            "Rename “\(Deck.shownName(deck.name))”",
+            comment: "The title of the Cards window's sheet that renames a deck, with the deck's whole name.")
     }
 
     /// What the sheet says under its title.
     private var explanation: Text {
-        switch subject {
-        case .tag:
-            Text(
-                """
-                Write “::” between a tag and a tag inside it, as in “economía::Argentina”. The tags inside this one \
-                move with it, and a name another tag has joins the two.
-                """,
-                comment: "Under the title of the Cards window's sheet that renames a tag.")
-        case .deck:
-            Text(
-                """
-                Write “::” between a deck and a deck inside it, as in “Idiomas::Inglés”. The decks inside this one \
-                move with it, and a name another deck has joins the two.
-                """,
-                comment: "Under the title of the Cards window's sheet that renames a deck.")
-        case .type:
-            Text(
-                "Its cards keep it, with its new name.",
-                comment: "Under the title of the Cards window's sheet that renames a card type of the user's own.")
-        }
+        Text(
+            """
+            Write “::” between a deck and a deck inside it, as in “Idiomas::Inglés”. The decks inside this one move \
+            with it, and a name another deck has joins the two.
+            """,
+            comment: "Under the title of the Cards window's sheet that renames a deck.")
     }
 
     /// Why OK refuses what the field holds, while it does.
@@ -141,8 +102,7 @@ struct RenameSheet: View {
         return error
     }
 
-    /// Renames the tag, the deck or the type to what the field holds, unless
-    /// OK refuses it.
+    /// Renames the deck to what the field holds, unless OK refuses it.
     private func submit() {
         guard refusal == nil else { return }
         choose(name)

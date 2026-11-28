@@ -127,7 +127,7 @@ struct NextCardView: View {
                 Text(
                     "No cards to review",
                     comment:
-                        "In the widget, when no card waits and none comes on its own: they're buried, flagged or set aside."
+                        "In the widget, when no card waits and none comes on its own: they're flagged or set aside."
                 ),
                 detail: nil, symbol: "checkmark.circle")
         case .content(.noCards, _):

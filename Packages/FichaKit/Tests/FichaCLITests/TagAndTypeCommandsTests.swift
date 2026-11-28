@@ -9,7 +9,7 @@ import Testing
 @testable import FichaCLI
 
 /// Tests on the `ficha` CLI's control of tags and card types (ADR 0022): each
-/// command parsed from its arguments, as a refine session types them, run on
+/// command parsed from its arguments, as an agent types them, run on
 /// an engine in memory, and the JSON it prints.
 struct TagAndTypeCommandsTests {
     let engine: Engine
@@ -25,8 +25,8 @@ struct TagAndTypeCommandsTests {
         "`ficha tags` prints every tag in tree order, with its counts, its pin and its place, and what it has of its own"
     )
     func tagsPrintsEveryTag() async throws {
-        try approveCard("Martín Fierro", tags: ["literatura::poesía", "historia"])
-        try approveCard("Facundo", tags: ["historia"])
+        try addCard("Martín Fierro", tags: ["literatura::poesía", "historia"])
+        try addCard("Facundo", tags: ["historia"])
         try engine.pin(["historia", "literatura"])
         try engine.setColor(.green, of: "historia")
         try engine.setEmoji(Emoji("📚"), of: "literatura")
@@ -72,7 +72,7 @@ struct TagAndTypeCommandsTests {
 
     @Test("`ficha tag rename` moves a tag with the tags inside it, and prints them under their new names")
     func renamingATag() async throws {
-        try approveCard("cepo", tags: ["economía::Argentina"])
+        try addCard("cepo", tags: ["economía::Argentina"])
         try engine.setColor(.green, of: "economía")
 
         let printed = try await tags(from: ficha("tag", "rename", "economía", "historia :: economía"))
@@ -88,8 +88,8 @@ struct TagAndTypeCommandsTests {
         "`ficha tag delete` deletes several tags, each with the tags inside it, and prints what it did, under selective sync too"
     )
     func deletingTags() async throws {
-        try approveCard("Martín Fierro", tags: ["literatura::poesía", "historia", "argentina"])
-        try approveCard("Facundo", tags: ["historia"])
+        try addCard("Martín Fierro", tags: ["literatura::poesía", "historia", "argentina"])
+        try addCard("Facundo", tags: ["historia"])
         try engine.syncOnlyChosenDecks(true)
 
         let printed = try await ficha("tag", "delete", "literatura", "historia")
@@ -112,7 +112,7 @@ struct TagAndTypeCommandsTests {
 
     @Test("`ficha tag clear-unused` deletes the tags no card carries, and prints their names")
     func clearingUnusedTags() async throws {
-        try approveCard("Martín Fierro", tags: ["literatura"])
+        try addCard("Martín Fierro", tags: ["literatura"])
         try engine.setColor(.blue, of: "música")
         try engine.setColor(.green, of: "literatura")
 
@@ -129,7 +129,7 @@ struct TagAndTypeCommandsTests {
 
     @Test("`ficha tag pin`, `unpin` and `move-pinned` change the pinned tags, and print them in their order")
     func pinningTags() async throws {
-        try approveCard("Martín Fierro", tags: ["literatura", "historia", "argentina"])
+        try addCard("Martín Fierro", tags: ["literatura", "historia", "argentina"])
 
         let pinnedLast = try await tags(from: ficha("tag", "pin", "literatura", "historia"))
         let pinnedFirst = try await tags(from: ficha("tag", "pin", "argentina", "--at", "0"))
@@ -143,9 +143,9 @@ struct TagAndTypeCommandsTests {
         #expect(unpinned.map(\.name) == ["historia", "literatura"])
     }
 
-    @Test("`ficha tag move-pinned` refuses a tag that isn't pinned, as the app does")
+    @Test("`ficha tag move-pinned` refuses a tag that isn't pinned")
     func movingATagThatIsntPinned() async throws {
-        try approveCard("Martín Fierro", tags: ["literatura", "historia"])
+        try addCard("Martín Fierro", tags: ["literatura", "historia"])
         try engine.pin("literatura")
 
         await #expect(throws: EngineError.tagNotPinned("historia")) {
@@ -162,7 +162,7 @@ struct TagAndTypeCommandsTests {
 
     @Test("`ficha tag color` and `emoji` set a tag's own, take it away with none, and print it")
     func settingWhatATagHasOfItsOwn() async throws {
-        try approveCard("Martín Fierro", tags: ["literatura"])
+        try addCard("Martín Fierro", tags: ["literatura"])
 
         let colored = try await tag(from: ficha("tag", "color", "literatura", "purple"))
         let withEmoji = try await tag(from: ficha("tag", "emoji", "literatura", "📚"))
@@ -197,7 +197,7 @@ struct TagAndTypeCommandsTests {
 
     @Test("a color a tag can't have, or text that isn't one emoji, is refused, and nothing changes")
     func aWrongColorOrEmojiIsRefused() async throws {
-        try approveCard("Martín Fierro", tags: ["literatura"])
+        try addCard("Martín Fierro", tags: ["literatura"])
 
         #expect(throws: (any Error).self) { try FichaCommand.parseAsRoot(["tag", "color", "literatura", "pink"]) }
         await #expect(throws: EngineError.notOneEmoji) { try await ficha("tag", "emoji", "literatura", "libro") }
@@ -206,7 +206,7 @@ struct TagAndTypeCommandsTests {
 
     @Test("a tag command refuses a tag no card carries nor has anything of its own, and changes nothing")
     func anUnknownTagIsRefused() async throws {
-        try approveCard("Martín Fierro", tags: ["literatura"])
+        try addCard("Martín Fierro", tags: ["literatura"])
 
         await #expect(throws: UnknownTagError.self) { try await ficha("tag", "pin", "literatur") }
         await #expect(throws: UnknownTagError.self) { try await ficha("tag", "delete", "literatura", "historia") }
@@ -217,8 +217,8 @@ struct TagAndTypeCommandsTests {
     @Test("`ficha types` prints the four types Ficha comes with, then the user's own, with how many cards each has")
     func typesPrintsEveryType() async throws {
         let drug = try engine.makeUserType(named: "Fármaco", emoji: Emoji("💊"))
-        try approveCard("ibuprofeno", tags: [], type: .user(drug))
-        try approveCard("serendipia", tags: [], type: .word)
+        try addCard("ibuprofeno", tags: [], type: .user(drug))
+        try addCard("serendipia", tags: [], type: .word)
 
         let printed = try await ficha("types")
 
@@ -260,7 +260,7 @@ struct TagAndTypeCommandsTests {
     )
     func changingAUserType() async throws {
         let made = try await type(from: ficha("type", "make", "Fármaco", "--emoji", "💊"))
-        try approveCard("ibuprofeno", tags: [], type: .user(try #require(try engine.userTypes().first)))
+        try addCard("ibuprofeno", tags: [], type: .user(try #require(try engine.userTypes().first)))
         let renamed = try await type(from: ficha("type", "rename", "farmaco", "Droga"))
         let withoutEmoji = try await type(from: ficha("type", "emoji", "droga", "none"))
         let deleted = try await type(from: ficha("type", "delete", "Droga"))
@@ -311,16 +311,13 @@ struct TagAndTypeCommandsTests {
         try JSONDecoder().decode(TypeAsPrinted.self, from: Data(printed.utf8))
     }
 
-    /// Approves a card with `front`, `tags` and `type` from a capture of its
-    /// own, as a refine session does, and returns it.
+    /// Makes a card with `front`, `tags` and `type`, in Default, and returns
+    /// it.
     @discardableResult
-    private func approveCard(_ front: String, tags: [String], type: CardType? = nil) throws -> Card {
-        guard case .saved(let capture) = try engine.capture(text: front, note: nil, source: nil) else {
-            throw EngineError.emptyCapture
-        }
+    private func addCard(_ front: String, tags: [String], type: CardType? = nil) throws -> Card {
         let content = try #require(
             CardContent(type: type, front: front, back: "Lo que quiere decir «\(front)».", tags: tags, source: nil))
-        return try #require(try engine.approve(capture.id, into: [content]).first)
+        return try engine.create(content)
     }
 }
 

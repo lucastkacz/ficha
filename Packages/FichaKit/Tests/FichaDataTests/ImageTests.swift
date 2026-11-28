@@ -154,56 +154,26 @@ final class ImageTests {
         #expect(try engine.keptImages() == [nest, egg])
     }
 
-    // A content alone, as from a refine session's draft that leaves the
-    // images out. Drafts that put or take them off are in
-    // RefiningWithFilesTests.
-    @Test("fixing or expanding a card with a content alone keeps its images")
-    func fixingOrExpandingWithAContentAloneKeepsACardsImages() throws {
+    // A content alone, as from `ficha fix`'s draft that leaves the images
+    // out. Drafts that put or take them off are in DraftedCardsTests.
+    @Test("fixing a card with a content alone keeps its images", .bug(id: 540))
+    func fixingWithAContentAloneKeepsACardsImages() throws {
         let engine = try Engine(location: .inMemory, time: time)
         let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))
         let nest = try engine.addImage(picture(width: 800, height: 600, red: 0.3))
-        let flagged = try engine.create(card(.word, front: "hornero", back: "Un pájaro.", frontImage: bird))
-        let expanded = try engine.create(
-            card(.word, front: "nido", back: "Donde nace un pájaro.", frontImage: nest, backImage: bird))
+        let flagged = try engine.create(
+            card(.word, front: "hornero", back: "Un pájaro.", frontImage: bird, backImage: nest))
         try engine.flag(flagged.id, note: note("Decir que hace su nido de barro"))
-        let expansion = try engine.expand(text: "nido", note: "También el de las avispas", source: nil)
-        #expect(expansion.expandsCardID == expanded.id)
 
         let fixed = try engine.fix(
             flagged.id, with: card(.word, front: "hornero", back: "Un pájaro que hace su nido de barro."))
-        let approved = try engine.approveExpansion(
-            expansion.id, into: card(.word, front: "nido", back: "Donde nace un pájaro, o viven las avispas."))
 
         #expect(fixed.back == "Un pájaro que hace su nido de barro.")
-        #expect(fixed.frontImage == bird && fixed.backImage == nil)
-        #expect(approved.back == "Donde nace un pájaro, o viven las avispas.")
-        #expect(approved.frontImage == nest && approved.backImage == bird)
+        #expect(fixed.frontImage == bird && fixed.backImage == nest)
         #expect(try engine.keptImages() == [bird, nest])
     }
 
-    // A text file without image columns gives a card text alone. A zip's
-    // back images are in ImagesInZipsTests.
-    @Test("an import that updates a card keeps its images")
-    func anImportThatUpdatesACardKeepsItsImages() async throws {
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let engine = try Engine(location: .inMemory, time: time)
-        let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))
-        let nest = try engine.addImage(picture(width: 800, height: 600, red: 0.3))
-        let hornero = try engine.create(
-            card(.word, front: "hornero", back: "Un pájaro.", frontImage: bird, backImage: nest))
-        let file = folder.appending(path: "pájaros.txt")
-        try Data("hornero\tUn pájaro que hace su nido de barro.\n".utf8).write(to: file)
-
-        let outcome = try await engine.importCards(engine.previewImport(of: file), choosing: ImportChoices())
-
-        #expect(outcome.updated == 1)
-        let updated = try #require(try engine.cards().first { $0.id == hornero.id })
-        #expect(updated.back == "Un pájaro que hace su nido de barro.")
-        #expect(updated.frontImage == bird && updated.backImage == nest)
-        #expect(try engine.keptImages() == [bird, nest])
-    }
-
-    // As `ficha cards` prints a card, so a refine session knows it has one.
+    // As `ficha cards` prints a card, so an agent knows it has one.
     @Test("a card's encoding has frontImage and backImage only when set, by name")
     func aCardsEncodingNamesItsImages() throws {
         let engine = try Engine(location: .inMemory, time: time)

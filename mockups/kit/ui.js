@@ -30,10 +30,12 @@
   const clockFmt = fmt({ weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
   const timeFmt = fmt({ hour: 'numeric', minute: '2-digit' });
   const dayFmt = fmt({ weekday: 'short', month: 'short', day: 'numeric' });
+  const dayYearFmt = fmt({ weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
   const monthDayFmt = fmt({ month: 'short', day: 'numeric' });
   const formatClock = (t) => clockFmt.format(t).replace(/,/g, '').replace(/ at /, '  ');
   const formatTime = (t) => timeFmt.format(t);
-  const formatDay = (t) => dayFmt.format(t);
+  /** "Tue, Dec 15", or with its year, "Fri, Jan 21, 2028". */
+  const formatDay = (t, withYear = false) => (withYear ? dayYearFmt : dayFmt).format(t);
   /** Whether two times fall on one calendar day, from midnight, as a clock time's day is named, not Ficha's day. */
   const sameCalendarDay = (a, b) => new Date(a).toDateString() === new Date(b).toDateString();
   /** "Nov 23", "Nov 23 – 25" or "Nov 29 – Dec 2". */
@@ -139,13 +141,13 @@
       svg(html`<path d="M4.6 1.9h7.3a.9.9 0 0 1 .9.9v9.6a.9.9 0 0 1-.9.9H4.6A1.6 1.6 0 0 1 3 11.7V3.5a1.6 1.6 0 0 1 1.6-1.6z" />
         <path d="M3 11.7a1.6 1.6 0 0 1 1.6-1.6h8.2" /><path d="M6.4 8.4 8 4.3l1.6 4.1M6.9 7.1h2.2" />`, s),
     undo: (s) => svg(html`<path d="M6 3.8 3 6.8l3 3" /><path d="M3 6.8h7a3.3 3.3 0 0 1 0 6.6H8.2" />`, s),
-    ask: (s) =>
-      svg(html`<path d="M3.5 2.4h9A1.6 1.6 0 0 1 14.1 4v6a1.6 1.6 0 0 1-1.6 1.6H8.3l-3 2.4v-2.4H3.5A1.6 1.6 0 0 1 1.9 10V4a1.6 1.6 0 0 1 1.6-1.6z" />
-        <path d="M6.7 5.3a1.4 1.4 0 1 1 2 1.3c-.5.2-.7.6-.7 1v.2" /><circle cx="8" cy="9.4" r=".55" fill="currentColor" stroke="none" />`, s),
     flag: (s) => svg(html`<path d="M3.8 14.2V2.4" /><path d="M3.8 2.8h8.6l-2 3 2 3H3.8" />`, s),
-    bury: (s) =>
+    // eye.slash: Set Aside, and a card set aside, as the app marks it.
+    setAside: (s) =>
       svg(html`<path d="M1.8 8S4 3.6 8 3.6 14.2 8 14.2 8 12 12.4 8 12.4 1.8 8 1.8 8z" /><circle cx="8" cy="8" r="2" /><path d="m2.6 2.6 10.8 10.8" />`, s),
     close: (s) => svg(html`<path d="m4 4 8 8M12 4l-8 8" />`, s),
+    // magnifyingglass: a search field's.
+    search: (s) => svg(html`<circle cx="7" cy="7" r="4.4" /><path d="m10.3 10.3 3.4 3.4" />`, s),
     // ellipsis.circle: the review panel's ⋯ menu.
     more: (s) =>
       svg(html`<circle cx="8" cy="8" r="6.3" /><circle cx="5.2" cy="8" r=".8" fill="currentColor" stroke="none" />
@@ -182,6 +184,15 @@
       onClick=${onClick}>${icon()}</button>`;
   const Capsule = ({ children, tint }) => html`<span className=${tint ? 'capsule tint' : 'capsule'}>${children}</span>`;
   const Divider = () => html`<hr className="divider" />`;
+  /**
+   * DisclosureGroup: its label after a triangle, ▸ closed and ▾ open, which a
+   * click on either toggles, as Space does once Tab gives it the focus, with
+   * what it holds under it while it's open. `open` and `onChange` keep it in
+   * the page's state, as `isExpanded` does in the app.
+   */
+  const DisclosureGroup = ({ label, open, onChange, children }) =>
+    html`<details className="disclosure" open=${open} onToggle=${(e) => onChange(e.currentTarget.open)}>
+      <summary>${label}</summary><div className="disclosure-content">${children}</div></details>`;
   /** Picker with .pickerStyle(.segmented). */
   const Segmented = ({ options, value, onChange, label }) =>
     html`<div className="segmented" role="group" aria-label=${label}>
@@ -312,18 +323,20 @@
   /**
    * A window: drag it by its title bar, resize it from its lower right
    * corner, and the green button takes it to full screen when `onZoom` is
-   * given. The front one is active.
+   * given. The front one is active. A `toolbar` sits in the title bar, at
+   * its trailing end, as SwiftUI's `.toolbar` and a `.searchable` field
+   * placed in it do in a window with a unified toolbar.
    */
   function Window({
     id, title, x, y, width, height, minWidth = 320, minHeight = 200, resizable = true, full = false, active = true,
-    centeredTitle, onClose, onZoom, onFocus, z = 10, children,
+    centeredTitle, toolbar, onClose, onZoom, onFocus, z = 10, children,
   }) {
     const { scale, w: sw, h: sh, menuBar, notch } = useScreen();
     const [frame, setFrame] = useState({ x, y, w: width, h: height });
     const drag = useRef(null);
     const begin = (mode) => (e) => {
       onFocus && onFocus(id);
-      if (mode === 'move' && e.target.closest('.traffic')) return;
+      if (mode === 'move' && e.target.closest('.traffic, .toolbar-items')) return;
       e.stopPropagation();
       drag.current = { mode, sx: e.clientX, sy: e.clientY, f: frame };
       e.currentTarget.setPointerCapture(e.pointerId);
@@ -351,6 +364,7 @@
             onClick=${onZoom} />
         </div>
         <span className="title">${title}</span>
+        ${toolbar && html`<div className="toolbar-items">${toolbar}</div>`}
       </div>
       <div className="body">${children}</div>
       ${resizable && !full && html`<div className="grip" aria-hidden="true" onPointerDown=${begin('resize')}
@@ -414,17 +428,16 @@
   // ---------------------------------------------------------------------
   // MenuContent: Ficha's menu in the menu bar.
   // ---------------------------------------------------------------------
-  function MenuContent({ app, state, onCapture, onReviewNow, onCards, onSettings, dismiss }) {
+  function MenuContent({ app, onReviewNow, onCards, onSettings, dismiss }) {
     const due = app.dueCount();
     const run = (fn) => () => {
       dismiss();
       fn && fn();
     };
     return html`
-      <${MenuRow} title="Capture…" shortcut="⌃⌥⌘C" onClick=${run(onCapture)} />
       <${MenuRow} title=${due ? `Review now (${due} due)` : 'Review now'} onClick=${run(onReviewNow)} />
       <${MenuSeparator} />
-      <${MenuNote}>${app.learnedCount()} cards learned · ${state.inbox} in the inbox</${MenuNote}>
+      <${MenuNote}>${app.learnedCount()} cards learned</${MenuNote}>
       <${MenuRow} title="Cards…" disabled=${!onCards} onClick=${run(onCards)} />
       <${MenuRow} title="Diagnostics" disabled=${true} />
       <${MenuRow} title="Settings…" shortcut="⌘ ," disabled=${!onSettings} onClick=${run(onSettings)} />
@@ -461,11 +474,16 @@
   const isTyping = (el) => el && (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT');
 
   /**
-   * A stand-in for a card's image, such as a painting's in Arte argentino:
-   * the mock's decks carry no images, so it draws where one goes.
+   * A card's image, such as a painting's in Arte argentino. The mock's decks
+   * carry no images, so it draws a stand-in where one goes; a page that
+   * publishes a mock with the decks' pictures, small, sets `FichaPictures`
+   * (each deck's id to its cards' image URLs, in the deck's order), and then
+   * it draws the card's own. `className` sizes it where it goes.
    */
-  function CardPicture() {
-    return html`<div className="card-picture" role="img" aria-label="The card's image">Image</div>`;
+  function CardPicture({ card, className = 'card-picture' } = {}) {
+    const src = card && root.FichaPictures && (root.FichaPictures[card.deckId] || [])[card.order];
+    if (src) return html`<img className=${`${className} real`} src=${src} alt="The card's image" />`;
+    return html`<div className=${className} role="img" aria-label="The card's image">Image</div>`;
   }
 
   /**
@@ -494,20 +512,19 @@
   /**
    * The ⋯ menu in the panel's corner, as the app's (`moreMenu(of:)` in
    * `App/ReviewPanelView.swift`, with `ReviewPanelState`'s `cardActions` and
-   * `menuOffersUndo`): Ask…, Flag… and Bury, then Undo and Close. While a
-   * note or a question is being written, Close alone; once the cards are
-   * done, Undo and Close. Its items show no keys, as the app's don't: A, M,
-   * E, ⌘Z and Esc work with the menu closed.
+   * `menuOffersUndo`): Flag… and Set Aside, then Undo and Close. While a
+   * note is being written, Close alone; once the cards are done, Undo and
+   * Close. Its items show no keys, as the app's don't: M, E, ⌘Z and Esc work
+   * with the menu closed.
    */
-  function MoreMenu({ app, panel, onAsk, onFlag, onClose }) {
+  function MoreMenu({ app, panel, onFlag, onClose }) {
     const item = (title, fn, disabled) => html`<button type="button" role="menuitem" className="row" disabled=${disabled}
       onClick=${() => (onClose(), fn())}><span className="title">${title}</span></button>`;
     const onACard = !panel.done && !panel.mode;
     return html`<div className="more-cover" onPointerDown=${onClose} />
       <div className="menu more-menu glass" role="menu">
-        ${onACard && html`${item('Ask…', onAsk)}
-          ${item('Flag…', onFlag)}
-          ${item('Bury', () => app.bury())}
+        ${onACard && html`${item('Flag…', onFlag)}
+          ${item('Set Aside', () => app.setCurrentCardAside())}
           <div className="sep" />`}
         ${!panel.mode && item('Undo', () => app.undo(), !panel.undo.length)}
         ${item('Close', () => app.close())}
@@ -570,9 +587,8 @@
         const rated = p.flipped && faceButtons.current.find((b) => (b.digit || b.key) === e.key);
         if (rated) return handled(), app.rate(rated.g);
         const k = e.key.toLowerCase();
-        if (k === 'a') return handled(), setMore(false), setText(''), app.setMode('ask');
         if (k === 'm') return handled(), setMore(false), setText(''), app.setMode('flag');
-        if (k === 'e') return handled(), setMore(false), app.bury();
+        if (k === 'e') return handled(), setMore(false), app.setCurrentCardAside();
       };
       window.addEventListener('keydown', onKey, true);
       return () => window.removeEventListener('keydown', onKey, true);
@@ -598,10 +614,9 @@
     const close = html`<${IconButton} icon=${Icon.close} label="Close (esc)" onClick=${() => app.close()} />`;
     const undo = html`<${IconButton} icon=${Icon.undo} label="Undo (⌘Z)" disabled=${!panel.undo.length}
       onClick=${() => app.undo()} />`;
-    const ask = () => (setText(''), app.setMode('ask'));
     const flag = () => (setText(''), app.setMode('flag'));
     const moreButton = html`<${IconButton} icon=${Icon.more} label="More" onClick=${() => setMore(!more)} />`;
-    const moreMenu = more && html`<${MoreMenu} app=${app} panel=${panel} onAsk=${ask} onFlag=${flag} onClose=${() => setMore(false)} />`;
+    const moreMenu = more && html`<${MoreMenu} app=${app} panel=${panel} onFlag=${flag} onClose=${() => setMore(false)} />`;
 
     if (panel.kind === 'empty') {
       return html`<div className=${cls} style=${style} role="dialog" aria-label="Review">
@@ -622,26 +637,25 @@
     const isNew = card.state === 'new';
     const writing = panel.mode;
     const submit = () => {
-      app.saveToInbox(writing);
+      app.flag(text.trim());
       setText('');
     };
     const icons = face === 'new'
       ? moreButton
       : html`${!writing && html`${undo}
-            <${IconButton} icon=${Icon.ask} label="Ask… (a)" onClick=${ask} />
             <${IconButton} icon=${Icon.flag} label="Flag… (m)" onClick=${flag} />
-            <${IconButton} icon=${Icon.bury} label="Bury (e)" onClick=${() => app.bury()} />`}
+            <${IconButton} icon=${Icon.setAside} label="Set Aside (e)" onClick=${() => app.setCurrentCardAside()} />`}
           ${close}`;
     let controls;
     if (writing) {
       controls = html`<form className="writing controls" onSubmit=${(e) => (e.preventDefault(), text.trim() && submit())}>
         <textarea ref=${field} id="panel-writing" className="field" rows="2" value=${text}
-          placeholder=${writing === 'ask' ? 'What do you want to know?' : 'What needs fixing?'}
+          placeholder="What needs fixing?"
           onInput=${(e) => setText(e.target.value)}
           onKeyDown=${(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), text.trim() && submit())} />
         <div className="actions">
           <${Button} title="Cancel" k="esc" onClick=${() => app.setMode(null)} />
-          <${Button} prominent title=${writing === 'ask' ? 'Ask' : 'Flag'} k="↩" disabled=${!text.trim()}
+          <${Button} prominent title="Flag" k="↩" disabled=${!text.trim()}
             onClick=${submit} />
         </div>
       </form>`;
@@ -672,7 +686,7 @@
             ${card.tags.map((t) => html`<${Capsule} key=${t}>${t}</${Capsule}>`)}
             ${isNew && html`<${Capsule} tint>New</${Capsule}>`}
           </div>`}
-          ${card.picture && html`<${CardPicture} />`}
+          ${card.picture && html`<${CardPicture} card=${card} />`}
           ${card.front && html`<div className="upper">${card.front}</div>`}
         </div>
         <div className="icons">${icons}</div>
@@ -684,34 +698,6 @@
       ${controls}
       ${moreMenu}${toast}
     </div>`;
-  }
-
-  // ---------------------------------------------------------------------
-  // CaptureView, in its window.
-  // ---------------------------------------------------------------------
-  function CaptureView({ onSave, onCancel, ...win }) {
-    const [text, setText] = useState('');
-    const [note, setNote] = useState('');
-    const [source, setSource] = useState('');
-    const first = useRef(null);
-    useEffect(() => first.current && first.current.focus(), []);
-    const save = () => text.trim() && onSave({ text, note, source });
-    return html`<${Window} title="Capture" width=${420} height=${248} onClose=${onCancel} ...${win}>
-      <form style=${{ padding: '4px 16px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}
-        onSubmit=${(e) => (e.preventDefault(), save())}
-        onKeyDown=${(e) => e.key === 'Escape' && (e.stopPropagation(), onCancel())}>
-        <textarea ref=${first} id="capture-text" className="field" rows="3" placeholder="A word, a concept, a quote or a question"
-          value=${text} onInput=${(e) => setText(e.target.value)} />
-        <input id="capture-note" className="field" placeholder="Note (optional)" value=${note}
-          onInput=${(e) => setNote(e.target.value)} />
-        <input id="capture-source" className="field" placeholder="Source (optional): a book, a podcast…" value=${source}
-          onInput=${(e) => setSource(e.target.value)} />
-        <div style=${{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 2 }}>
-          <${Button} title="Cancel" onClick=${onCancel} />
-          <${Button} prominent title="Save" disabled=${!text.trim()} onClick=${save} />
-        </div>
-      </form>
-    </${Window}>`;
   }
 
   /** A note on the desktop, under the menu bar, when no panel is open. */
@@ -888,6 +874,7 @@
     KeyLabel,
     Capsule,
     Divider,
+    DisclosureGroup,
     Segmented,
     Stage,
     MenuBar,
@@ -904,7 +891,6 @@
     DOCK,
     MenuContent,
     ReviewPanelView,
-    CaptureView,
     DeskToast,
     MockControls,
     HudGroup,

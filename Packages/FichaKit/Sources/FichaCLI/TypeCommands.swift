@@ -3,11 +3,12 @@ import FichaCore
 import FichaData
 import Foundation
 
-// The `ficha` CLI's control of card types (`GLOSSARY.md`'s Card type):
-// `ficha types` lists the four Ficha comes with and the user's own, and each
-// of `ficha type`'s commands makes, renames, gives an emoji to or deletes a
-// type of the user's own through the engine's actions, as the Cards window
-// does, so it syncs, and prints what it changed. The four are fixed.
+// The `ficha` CLI's control of card types (`GLOSSARY.md`'s Card type), which
+// the database keeps and the apps no longer show (#538): `ficha types` lists
+// the four Ficha comes with and the user's own, and each of `ficha type`'s
+// commands makes, renames, gives an emoji to or deletes a type of the user's
+// own through the engine's actions, so it syncs, and prints what it changed.
+// The four are fixed.
 
 /// `ficha types`: lists the card types.
 struct TypesCommand: EngineCommand {
@@ -18,7 +19,7 @@ struct TypesCommand: EngineCommand {
             Each type says its name in "name", as `ficha cards` writes a card's type: word, concept, quote and \
             question for the four Ficha comes with, which say so in "builtIn", and your own types by their names, \
             in alphabetical order. A type of your own has its emoji in "emoji", left out when it has none. "cards" \
-            counts its cards, buried ones too. `ficha type` changes your own.
+            counts its cards, set-aside ones too. `ficha type` changes your own.
             """
     )
 
@@ -36,8 +37,7 @@ struct TypeCommand: ParsableCommand {
         abstract: "Make, rename, give an emoji to or delete a card type of your own, and print what changed.",
         discussion: """
             Name a type of your own by its name, as `ficha types` prints it, ignoring case and accents. The four \
-            Ficha comes with are fixed. Each change syncs to your other devices, as the Cards window's does, and \
-            none asks first.
+            Ficha comes with are fixed. Each change syncs to your other devices, and none asks first.
             """,
         subcommands: [MakeTypeCommand.self, RenameTypeCommand.self, TypeEmojiCommand.self, DeleteTypeCommand.self]
     )
@@ -113,7 +113,7 @@ struct DeleteTypeCommand: EngineCommand {
     static let configuration = CommandConfiguration(
         commandName: "delete",
         abstract: "Delete a card type of your own, and print it, with how many cards it had.",
-        discussion: "Its cards stay, with no type, as the Cards window leaves them, on every device."
+        discussion: "Its cards stay, with no type, on every device."
     )
 
     @Argument(help: "Its name, as `ficha types` prints it.")

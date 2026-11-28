@@ -11,26 +11,15 @@ public enum EngineError: Error, Equatable {
     /// The database has migrations this version doesn't know: a newer version
     /// of Ficha migrated it, so this one refuses to open it.
     case migratedByNewerVersion
-    /// A capture's text was empty, so there was nothing to save.
-    case emptyCapture
-    /// The capture with this id isn't in the inbox, so it can't be approved or
-    /// discarded: it already was, or it doesn't exist.
-    case captureNotInInbox(Int64)
-    /// The capture with this id doesn't expand a card, so it can't be approved
-    /// as an expansion: it's approved into cards instead, or discarded.
-    case notAnExpansion(Int64)
-    /// A capture was approved into no cards. One that becomes no cards is
-    /// discarded instead.
-    case noCards
-    /// A new card, the one at this position, from 0, among the cards a
-    /// capture is approved into or a list `ficha add` adds, has a side, its
-    /// front or its back, with neither text, an image nor a sound.
+    /// A new card, the one at this position, from 0, among the cards a list
+    /// `ficha add` adds, has a side, its front or its back, with neither
+    /// text, an image nor a sound.
     case blankSideOnNewCard(position: Int)
-    /// A refine session's change would leave the card with this id with a
+    /// A `ficha` command's change would leave the card with this id with a
     /// side, its front or its back, with neither text, an image nor a sound,
     /// so it wasn't made.
     case sideLeftBlank(Int64)
-    /// A refine session asked to take the image or the sound, as the kind
+    /// A `ficha` command asked to take the image or the sound, as the kind
     /// says, off a side of the card with this id, and that side has none.
     case noFileOnSide(Int64, FileKind, CardSide)
     /// There's no card with this id: it was deleted, or it never existed.
@@ -43,17 +32,19 @@ public enum EngineError: Error, Equatable {
     /// A placement was recorded as an answer to the card with this id, and
     /// refused: only an import places a card, as it comes in.
     case placementIsNotAnAnswer(Int64)
-    /// The card with this id is flagged, so it waits in the inbox: it can't be
+    /// The card with this id is flagged, so it waits in its deck: it can't be
     /// answered or flagged again until it's fixed.
     case cardFlagged(Int64)
     /// The card with this id isn't flagged, so there's no flag to fix or take
     /// off: it was already fixed, or it was never flagged.
     case cardNotFlagged(Int64)
-    /// The card with this id is buried, so it can't be answered, flagged,
-    /// expanded or buried again, nor fixed in a refine session, until it's
-    /// unburied. The Cards window edits it all the same.
+    /// The card with this id is set aside on its own, which the engine keeps
+    /// as its burial, so it can't be answered, flagged or set aside again,
+    /// nor fixed with `ficha fix`, until it's put back. The Cards window
+    /// edits it all the same.
     case cardBuried(Int64)
-    /// The card with this id isn't buried, so it can't be unburied.
+    /// The card with this id isn't set aside on its own, so it can't be put
+    /// back: it never was, or it was put back, or only its deck is set aside.
     case cardNotBuried(Int64)
     /// The card with this id is set aside by these decks, its own or decks
     /// it sits inside, the outermost first, so it can't be answered until
@@ -116,13 +107,10 @@ public enum EngineError: Error, Equatable {
     /// A user type was to be renamed, given an emoji or given to a card, and
     /// it was deleted meanwhile, as on another device, so nothing changed.
     case userTypeNotFound
-    /// The card with this id changed outside the review panel, as a refine
-    /// session can change it, so ⌘Z can't undo what Lucas did with it.
+    /// The card with this id changed outside the review panel, as the Cards
+    /// window or a `ficha` command can change it, so ⌘Z can't undo what Lucas
+    /// did with it.
     case cannotUndo(Int64)
-    /// A follow-up Lucas asked in the review panel about the card with this
-    /// id was approved or discarded outside the panel, as a refine session or
-    /// the Cards window can, so ⌘Z can't take it back. The card didn't change.
-    case cannotUndoFollowUp(Int64)
     /// The review log of the card with this id has an entry the scheduler
     /// can't follow, as `SchedulingError.unexpectedReviewLog` says, so it
     /// isn't known where the card stands. The engine logs it.
@@ -154,28 +142,28 @@ public enum EngineError: Error, Equatable {
     /// expects. The engine logs why.
     case soundConversion
     /// The file with this name, dragged or pasted for a side of a card, or
-    /// given by a refine session, as its image or its sound, couldn't be
+    /// given by a `ficha` command, as its image or its sound, couldn't be
     /// read. The engine logs why.
     case unreadableFileForSide(String)
-    /// A refine session gave a side of a card the file at this path on the
+    /// A `ficha` command gave a side of a card the file at this path on the
     /// Mac, and there's none there.
     case noSuchFile(String)
-    /// A refine session gave a side of a card the file with this name from
+    /// A `ficha` command gave a side of a card the file with this name from
     /// outside the Downloads folder, the only one the `ficha` CLI's sandbox
     /// lets it read (ADR 0018).
     case fileNotInDownloads(String)
-    /// A refine session gave a side of a card the file with this name, or
+    /// A `ficha` command gave a side of a card the file with this name, or
     /// the sound Ficha holds by it, as its image, and it isn't an image the
     /// system can read.
     case fileNotAnImage(String)
-    /// A refine session gave a side of a card the file with this name, or
+    /// A `ficha` command gave a side of a card the file with this name, or
     /// the image Ficha holds by it, as its sound, and it holds no sound the
     /// system can read.
     case fileNotASound(String)
-    /// A refine session gave a side of a card the file with this name to put
+    /// A `ficha` command gave a side of a card the file with this name to put
     /// on it, and it's neither an image nor a sound the system can read.
     case notAnImageOrSound(String)
-    /// A refine session gave a side of a card the image or the sound with
+    /// A `ficha` command gave a side of a card the image or the sound with
     /// this name, and Ficha holds none by it: it was mistyped, or no card
     /// uses it any more.
     case noFileNamed(String)
@@ -187,11 +175,11 @@ public enum EngineError: Error, Equatable {
     /// from the Backups folder or removed, or isn't there. The engine logs
     /// why.
     case soundsFolder
-    /// The file of cards with this name can't be imported, for the reason
-    /// the problem gives, so nothing was read from it.
-    case unreadableFile(String, CardsFileProblem)
-    /// The file with this name couldn't be written, so the cards weren't
-    /// exported to it. The engine logs why.
+    /// The deck's `.ficha` with this name can't come in, for the reason the
+    /// problem gives, so nothing was read from it.
+    case unreadableFile(String, DeckFileProblem)
+    /// The file with this name couldn't be written, so the deck's cards
+    /// weren't exported to it. The engine logs why.
     case unwritableFile(String)
     /// The file of the one of Ficha's decks with this name isn't in the app,
     /// which comes with it, so it can't be added: the copy of the app is
@@ -214,21 +202,6 @@ extension EngineError: LocalizedError {
                 A newer version of Ficha changed the database, and this version won't open it, so as not to \
                 damage your cards. Open it with the version that changed it, or a newer one.
                 """
-            )
-        case .emptyCapture:
-            LocalizedStringResource("The capture is empty: write what you want to remember.")
-        case .captureNotInInbox(let id):
-            LocalizedStringResource(
-                """
-                Capture \(id) isn't in the inbox: it was already approved or discarded, or it doesn't exist. \
-                Check what's in the inbox.
-                """
-            )
-        case .notAnExpansion(let id):
-            LocalizedStringResource("Capture \(id) doesn't expand a card. Approve it into cards, or discard it.")
-        case .noCards:
-            LocalizedStringResource(
-                "A capture is approved into one or more cards. To take it out of the inbox without cards, discard it."
             )
         case .blankSideOnNewCard(let position):
             LocalizedStringResource(
@@ -295,7 +268,7 @@ extension EngineError: LocalizedError {
         case .cardFlagged(let id):
             LocalizedStringResource(
                 """
-                Card \(id) is flagged: it waits in the inbox to be fixed. Close the review panel and open “Review \
+                Card \(id) is flagged: it waits in its deck to be fixed. Close the review panel and open “Review \
                 now” again.
                 """
             )
@@ -303,13 +276,15 @@ extension EngineError: LocalizedError {
             LocalizedStringResource(
                 """
                 Card \(id) isn't flagged, so there's nothing to fix: it was already fixed, or it was never \
-                flagged. Check what's in the inbox.
+                flagged. Check the card's id.
                 """
             )
         case .cardBuried(let id):
-            LocalizedStringResource("Card \(id) is buried. To bring it back, unbury it.")
+            LocalizedStringResource(
+                "Card \(id) is set aside. To bring it back, choose Put Back on it in the Cards window.")
         case .cardNotBuried(let id):
-            LocalizedStringResource("Card \(id) isn't buried, so there's nothing to unbury. Check the card's id.")
+            LocalizedStringResource(
+                "Card \(id) isn't set aside on its own, so there's nothing to put back. Check the card's id.")
         case .cardSetAside(let id, let decks) where decks.count == 1:
             LocalizedStringResource(
                 """
@@ -346,8 +321,8 @@ extension EngineError: LocalizedError {
         case .tagNotPinned(let tag):
             LocalizedStringResource(
                 """
-                “\(TagPath.shown(tag))” isn't pinned to the sidebar, maybe since another of your devices unpinned \
-                it, so nothing moved. Pin it first.
+                “\(TagPath.shown(tag))” isn't pinned, maybe since another of your devices unpinned it, so nothing \
+                moved. Pin it first.
                 """
             )
         case .deckSetAside(let deck):
@@ -428,13 +403,6 @@ extension EngineError: LocalizedError {
                 """
                 Card \(id) changed outside the review panel, so ⌘Z can't undo it. Close the review panel and open \
                 “Review now” again.
-                """
-            )
-        case .cannotUndoFollowUp(let id):
-            LocalizedStringResource(
-                """
-                Your question about card \(id) was approved or discarded outside the review panel, so ⌘Z can't \
-                take it back. If it became cards you don't want, delete them in the Cards window.
                 """
             )
         case .unreadableReviewLog(let id):
@@ -578,80 +546,24 @@ extension EngineError: LocalizedError {
     }
 }
 
-extension CardsFileProblem {
+extension DeckFileProblem {
     /// What happened to the file named `name`, and what to do about it.
     fileprivate func message(forFileNamed name: String) -> LocalizedStringResource {
         switch self {
         case .cannotOpen:
             LocalizedStringResource("Ficha couldn't open “\(name)”. Check that the file is still there, and try again.")
-        case .notUTF8:
+        case .notADeckFile:
             LocalizedStringResource(
                 """
-                “\(name)” isn't UTF-8 text, which is what Ficha reads. Save it again as UTF-8 text, or from a \
-                spreadsheet as “CSV UTF-8”, and import that.
+                Ficha opens a deck's .ficha file, and “\(name)” isn't one. Ask whoever sent it for the deck's \
+                .ficha file, and open that.
                 """
             )
-        case .unknownSeparator(let separator):
+        case .damagedDeckFile:
             LocalizedStringResource(
                 """
-                The #separator line of “\(name)” says “\(separator)”, which Ficha can't separate columns by. Make \
-                it Tab, Comma or Semicolon, or remove it.
-                """
-            )
-        case .unknownHTML(let value):
-            LocalizedStringResource(
-                """
-                The #html line of “\(name)” says “\(value)”: make it true when the file holds HTML, or false when \
-                it doesn't.
-                """
-            )
-        case .unknownColumnNumber(let header, let value):
-            LocalizedStringResource(
-                """
-                The #\(header) line of “\(name)” says “\(value)”, which isn't a column's number. Make it the \
-                number of the column, counting the first one as 1.
-                """
-            )
-        case .missingColumn(let column):
-            LocalizedStringResource(
-                """
-                The #columns line of “\(name)” names no \(column.rawValue) column, which every card needs. Name \
-                its columns Front, Back, Tags, Type and Source, or remove the line.
-                """
-            )
-        case .unreadableZip:
-            LocalizedStringResource(
-                """
-                Ficha couldn't open “\(name)” as a zip: it may be damaged. Zip the text file of cards and its \
-                images and sounds again, and import that.
-                """
-            )
-        case .noTextFileInZip:
-            LocalizedStringResource(
-                """
-                “\(name)” holds no text file of cards: Ficha looks for one ending in .txt, .csv or .tsv beside \
-                the images and sounds. Add it, zip them again, and import that.
-                """
-            )
-        case .severalTextFilesInZip(let files):
-            LocalizedStringResource(
-                """
-                “\(name)” holds several text files of cards, \(quotedList(files)), and Ficha imports one at a \
-                time. Zip each with its images and sounds on its own, and import them one by one.
-                """
-            )
-        case .unreadableAnkiPackage:
-            LocalizedStringResource(
-                """
-                Ficha couldn't read “\(name)” as an Anki package: it may be damaged. Export the deck from Anki \
-                again, and import that.
-                """
-            )
-        case .ankiPackageTooNew:
-            LocalizedStringResource(
-                """
-                “\(name)” was exported by an Anki newer than Ficha knows. In Anki, export the deck again with \
-                “Support older Anki versions” ticked, and import that.
+                Ficha couldn't read the deck in “\(name)”: the file may be damaged. Ask whoever sent it for the \
+                deck again, and open that.
                 """
             )
         }

@@ -1,17 +1,18 @@
 import Foundation
 
-/// The text file of cards Ficha imports, in the shape of Anki's "Notes in
-/// Plain Text": UTF-8 text, one card per line, its columns separated by
-/// tabs, commas or semicolons, with a field in quotes when it holds the
-/// separator, a quote or a line break, and a quote inside it doubled. Its
-/// columns are, in order, the card's front, back, tags, type and source, of
-/// which a line may leave out the last three. The type is one of the four
+/// The text file of cards a deck's `.ficha` holds, as Ficha writes and reads
+/// it, in the shape of Anki's "Notes in Plain Text": UTF-8 text, one card
+/// per line, its columns separated by tabs, commas or semicolons, with a
+/// field in quotes when it holds the separator, a quote or a line break,
+/// and a quote inside it doubled. Its columns are, in order, the card's
+/// front, back, tags, type and source, of which a line may leave out the
+/// last three. The type is one of the four
 /// Ficha comes with, by its raw value, or a user type, by its name, as
 /// `CardType.writtenName` writes it, which an import makes when the user has
 /// none by that name only in a file whose `#columns` header names the Type
 /// column (`ImportReading.typeColumnIsNamed`). A line starting with `#` is a
-/// comment, and so is a blank one. In a zip with the images and the sounds
-/// of its cards, a column for each side and each kind, which the `#columns`
+/// comment, and so is a blank one. In the `.ficha`, with the images and the
+/// sounds of its cards, a column for each side and each kind, which the `#columns`
 /// header names, names its image or its sound. A `Both ways` column, which
 /// the header names too, holds any text for a card that goes both ways, as
 /// Anki's "Add Reverse" field does for a note that makes a reversed card. A
@@ -254,15 +255,9 @@ public enum CardsTextFile {
                 line: line,
                 reason: CardContent.isBlank(front, image: frontImage, sound: frontSound) ? .blankFront : .blankBack)
         }
-        let given: [(Column, CardField)] = [
-            (.tags, .tags), (.type, .type), (.source, .source), (.backImage, .backImage), (.backSound, .backSound),
-            (.bothWays, .bothWays),
-        ]
         return ImportedCard(
-            content: content, typeName: nonBlank(values[.type]),
-            bothWays: nonBlank(values[.bothWays]) != nil,
-            fields: Set(given.filter { values[$0.0] != nil }.map(\.1)), line: line,
-            deck: values[.deck].flatMap(TagPath.normalized))
+            content: content, typeName: nonBlank(values[.type]), bothWays: nonBlank(values[.bothWays]) != nil,
+            line: line, deck: values[.deck].flatMap(TagPath.normalized))
     }
 
     /// The image and the sound a side with `text` gets from what its image
@@ -310,7 +305,9 @@ private struct LeftOut: Error {
     }
 }
 
-/// Why a file of cards can't be read at all, rather than some of its lines.
+/// Why the text file of cards a deck's `.ficha` holds, or the zip itself,
+/// can't be read at all, rather than some of its lines: the engine logs it,
+/// and refuses the file as a damaged deck's file (`DeckFileProblem`).
 public enum CardsFileProblem: Error, Sendable, Equatable {
     /// It couldn't be opened or read, as the engine finds when it opens it.
     case cannotOpen
@@ -333,11 +330,6 @@ public enum CardsFileProblem: Error, Sendable, Equatable {
     /// It's a zip that holds several text files of cards, these, of which
     /// Ficha wouldn't know which to import.
     case severalTextFilesInZip([String])
-    /// It's an Anki package that can't be read: it's damaged, or it doesn't
-    /// hold what Anki writes.
-    case unreadableAnkiPackage
-    /// It's an Anki package in a format newer than any Ficha knows.
-    case ankiPackageTooNew
 }
 
 /// The separators a `#separator` header can name, by the names it takes for

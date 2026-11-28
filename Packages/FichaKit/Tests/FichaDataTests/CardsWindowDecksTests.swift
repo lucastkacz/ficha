@@ -19,11 +19,12 @@ struct CardsWindowDecksTests {
         engine = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
     }
 
-    // Each card met the day before is due, and guernica, buried, counts in
-    // no deck: Música::Tango has no card.
+    // Each card met the day before is due but guernica, set aside on its
+    // own, which Pintura's grid lists and its count holds, though not among
+    // those due (#539). Música::Tango has no card.
     @Test(
-        "the Your Decks section, after Inbox and before Tags, lists every deck as a tree, Default first while it holds cards, each with its due cards, those inside it counted"
-    )
+        "the Your Decks section, first in the sidebar, lists every deck as a tree, Default first while it holds cards, each with its due cards, those inside it counted",
+        .bug(id: 540))
     func theDecksSection() throws {
         let gioconda = try engine.create(card(.concept, front: "La Gioconda", back: "De Leonardo."))
         let guernica = try engine.create(card(.concept, front: "Guernica", back: "De Picasso."))
@@ -40,19 +41,18 @@ struct CardsWindowDecksTests {
 
         let window = openWindow()
 
-        #expect(
-            window.sidebarSections.map(\.id) == [.cardGroups, .inbox, .decks, .tags, .types])
+        #expect(window.sidebarSections.map(\.id) == [.decks])
         #expect(window.deckRows.outline == ["Default 1", "Arte 2", "  Pintura 1", "Música 0", "  Tango 0"])
         #expect(
-            window.sidebarSections[2].items
+            window.sidebarSections[0].items
                 == [Deck.defaultName, "Arte", "Arte::Pintura", "Música", "Música::Tango"].map {
                     .cards(.deck($0))
                 })
     }
 
     @Test(
-        "choosing a deck lists its cards and those of the decks inside it; once Default holds none, the sidebar goes back to All cards"
-    )
+        "choosing a deck lists its cards and those of the decks inside it; once Default holds none, the sidebar goes back to the first deck of the queue new cards come from",
+        .bug(id: 536))
     func choosingADeck() throws {
         let gioconda = try engine.create(card(.concept, front: "La Gioconda", back: "De Leonardo."))
         let pieta = try engine.create(card(.concept, front: "La Piedad", back: "De Miguel Ángel."))
@@ -70,7 +70,7 @@ struct CardsWindowDecksTests {
 
         #expect(arte == [gioconda.id, pieta.id])
         #expect(defaults == [petricor.id])
-        #expect(window.sidebarItem == .cards(.all))
+        #expect(window.sidebarItem == .cards(.deck("Arte")))
         #expect(window.deckRows.map(\.id) == ["Arte", "Lenguaje"])
     }
 
@@ -94,23 +94,15 @@ struct CardsWindowDecksTests {
     func changeDeckIsOffered() throws {
         let petricor = try engine.create(card(.word, front: "petricor", back: "El olor de la lluvia."))
         let ubuntu = try engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
-        try engine.bury(ubuntu.id)
         var window = openWindow()
         let withNone = window.actions
 
         window.select([petricor.id])
         let withOne = window.actions
-        window.choose(.cards(.buried))
-        window.select([ubuntu.id])
-        let withABuriedOne = window.actions
-        window.choose(.cards(.all))
-        try engine.unbury(ubuntu.id)
-        window.read(with: scheduler)
         window.select([petricor.id, ubuntu.id])
 
         #expect(!withNone.contains(.changeDeck))
         #expect(withOne.contains(.changeDeck))
-        #expect(withABuriedOne.contains(.changeDeck))
         #expect(window.actions.contains(.changeDeck))
     }
 
@@ -148,8 +140,10 @@ struct CardsWindowDecksTests {
     func changeDeckWithCardsInSeveralDecks() throws {
         let gioconda = try engine.create(card(.concept, front: "La Gioconda", back: "De Leonardo."))
         let petricor = try engine.create(card(.word, front: "petricor", back: "El olor de la lluvia."))
-        try engine.changeDeck(of: [gioconda.id], to: "Arte")
+        try engine.changeDeck(of: [gioconda.id], to: "Arte::Pintura")
+        try engine.changeDeck(of: [petricor.id], to: "Arte")
         var window = openWindow()
+        window.choose(.cards(.deck("Arte")))
         window.select([gioconda.id, petricor.id])
 
         window.askToChangeDeck()
@@ -321,7 +315,69 @@ struct CardsWindowDecksTests {
         #expect(try engine.decks().isEmpty)
     }
 
-    /// The window as it opens, on All cards, with the cards read.
+    // The window opens on the first deck of the queue new cards come from
+    // that Your Decks lists, the one the user is meeting, as the desktop mock
+    // opens on the first of its Your Decks (`mockups/desktop/index.html`).
+    // While Your Decks lists no deck, as when the user has no cards, it opens
+    // on nothing, here with none of Ficha's decks offered either. Música,
+    // made with no card, puts no deck in the queue, so the window opens on
+    // the first deck Your Decks lists. Then petricor comes into Default, a
+    // minute before Coliseo into Historia, and a minute after it La Gioconda
+    // into Arte, so the queue is Default, Historia and Arte, and the window
+    // opens on Default. Once Arte is put first in the queue, it opens on
+    // Arte, though Your Decks lists Default first, as it does while Default
+    // holds cards.
+    @Test(
+        "the Cards window opens on the first deck of the queue new cards come from that Your Decks lists, Default too when it's first there, listing that deck's cards alone; on the first deck Your Decks lists while none is in the queue; and on nothing while it lists none",
+        .bug(id: 536))
+    func theWindowOpensOnTheFirstDeckOfTheQueue() throws {
+        let empty = openWindow()
+        try engine.makeDeck(named: "Música")
+        let noneInTheQueue = openWindow()
+        let petricor = try engine.create(card(nil, front: "petricor", back: "El olor de la lluvia."))
+        time.advance(by: minutes(1))
+        let coliseo = try engine.create(card(nil, front: "Coliseo", back: "En Roma."), deck: "Historia")
+        time.advance(by: minutes(1))
+        let gioconda = try engine.create(card(nil, front: "La Gioconda", back: "De Leonardo."), deck: "Arte")
+        let defaultFirst = openWindow()
+        try engine.moveInQueue(deck: "Arte", to: .first)
+
+        var window = openWindow()
+        let openedOn = window.selectedDeck
+        let listedOnOpening = window.listedCardIDs
+        window.choose(.cards(.deck("Historia")))
+
+        #expect(empty.selectedDeck == nil)
+        #expect(noneInTheQueue.selectedDeck == "Música")
+        #expect(defaultFirst.selectedDeck == Deck.defaultName)
+        #expect(defaultFirst.listedCardIDs == [petricor.id])
+        #expect(window.deckRows.map(\.id) == [Deck.defaultName, "Arte", "Historia", "Música"])
+        #expect(openedOn == "Arte")
+        #expect(listedOnOpening == [gioconda.id])
+        #expect(window.selectedDeck == "Historia")
+        #expect(window.listedCardIDs == [coliseo.id])
+    }
+
+    // Each group of cards the sidebar offers is a deck: no All cards, New,
+    // Due, Learned, Flagged or Buried, and no tag or type (#538).
+    @Test(
+        "the sidebar offers the decks, and no group of cards by where they stand: All cards, New, Due, Learned, Flagged or Buried",
+        .bug(id: 536))
+    func theSidebarOffersTheDecksAlone() throws {
+        try engine.create(card(nil, front: "Coliseo", back: "En Roma."), deck: "Historia")
+        try engine.create(card(nil, front: "La Gioconda", back: "De Leonardo."), deck: "Arte")
+
+        let window = openWindow()
+
+        let groups = window.sidebarSections.flatMap(\.items).compactMap { item -> CardGroup? in
+            guard case .cards(let group) = item else { return nil }
+            return group
+        }
+        #expect(groups.count == 2)
+        #expect(Set(groups) == [.deck("Historia"), .deck("Arte")])
+    }
+
+    /// The window as it opens, with the cards read.
     private func openWindow() -> CardsWindowState {
         var window = engine.openCardsWindow(with: scheduler)
         window.read(with: scheduler)
@@ -330,8 +386,8 @@ struct CardsWindowDecksTests {
 }
 
 extension CardsWindowState {
-    /// The ids of the cards the table lists, or nil when it lists the inbox
-    /// or couldn't read them.
+    /// The ids of the cards the grid lists, or nil when it couldn't read
+    /// them.
     fileprivate var listedCardIDs: [Int64]? {
         guard case .success(.cards(let rows)) = listing else {
             return nil

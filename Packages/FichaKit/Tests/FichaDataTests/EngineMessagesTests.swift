@@ -12,8 +12,7 @@ import Testing
 struct EngineMessagesTests {
     /// One of each case, with sample values, nested ones included.
     static let samples: [EngineError] = [
-        .migratedByNewerVersion, .emptyCapture, .captureNotInInbox(7), .notAnExpansion(7), .noCards,
-        .blankSideOnNewCard(position: 1), .sideLeftBlank(7),
+        .migratedByNewerVersion, .blankSideOnNewCard(position: 1), .sideLeftBlank(7),
         .noFileOnSide(7, .image, .front), .noFileOnSide(7, .image, .back),
         .noFileOnSide(7, .sound, .front), .noFileOnSide(7, .sound, .back),
         .cardNotFound(7), .cardNotDue(7), .cardNotInAppearance(7), .placementIsNotAnAnswer(7), .cardFlagged(7),
@@ -22,19 +21,14 @@ struct EngineMessagesTests {
         .notOneEmoji, .tagInsideItself("países"), .blankTagName, .tagNotPinned("países"), .deckSetAside("Historia"),
         .blankDeckName, .defaultDeckName("Default"), .deckInsideItself("Historia"), .deckInsideDefault("Historia"),
         .defaultDeckStays, .deckNotFound("Historia"), .blankTypeName, .builtInTypeName("Word"),
-        .typeNameTaken("Ley"), .userTypeNotFound, .cannotUndo(7), .cannotUndoFollowUp(7), .unreadableReviewLog(7),
+        .typeNameTaken("Ley"), .userTypeNotFound, .cannotUndo(7), .unreadableReviewLog(7),
         .schedulerFailed, .storage, .copyNotFound("Ficha 2026-10-14"), .copyMigratedByNewerVersion("Ficha 2026-10-14"),
         .backupsFolder, .notAnImage, .notASound, .soundConversion, .unreadableFileForSide("bandera.png"),
         .noSuchFile("~/bandera.png"), .fileNotInDownloads("bandera.png"), .fileNotAnImage("himno.mp3"),
         .fileNotASound("bandera.png"), .notAnImageOrSound("notas.txt"), .noFileNamed("bandera.png"), .imagesFolder,
-        .soundsFolder, .unreadableFile("cards.txt", .cannotOpen), .unreadableFile("cards.txt", .notUTF8),
-        .unreadableFile("cards.txt", .unknownSeparator("dash")), .unreadableFile("cards.txt", .unknownHTML("maybe")),
-        .unreadableFile("cards.txt", .unknownColumnNumber(header: "tags column", value: "x")),
-        .unreadableFile("cards.txt", .missingColumn(.back)), .unreadableFile("cards.zip", .unreadableZip),
-        .unreadableFile("cards.zip", .noTextFileInZip),
-        .unreadableFile("cards.zip", .severalTextFilesInZip(["a.txt", "b.txt"])),
-        .unreadableFile("deck.apkg", .unreadableAnkiPackage), .unreadableFile("deck.apkg", .ankiPackageTooNew),
-        .unwritableFile("cards.txt"), .fichaDeckMissing("Arte argentino"), .descriptionTooLong,
+        .soundsFolder, .unreadableFile("Capitales.ficha", .cannotOpen),
+        .unreadableFile("Capitales.zip", .notADeckFile), .unreadableFile("Capitales.ficha", .damagedDeckFile),
+        .unwritableFile("Capitales.ficha"), .fichaDeckMissing("Arte argentino"), .descriptionTooLong,
     ]
 
     @Test("the samples hold every case of the engine's errors, nested ones included")
@@ -63,27 +57,21 @@ struct EngineMessagesTests {
 /// default, so a new case doesn't compile until it has a name here, and the
 /// test above fails until `samples` holds one of it.
 private enum ErrorCase: CaseIterable {
-    case migratedByNewerVersion, emptyCapture, captureNotInInbox, notAnExpansion, noCards, blankSideOnNewCard
+    case migratedByNewerVersion, blankSideOnNewCard
     case sideLeftBlank, noImageOnFront, noImageOnBack, noSoundOnFront, noSoundOnBack, cardNotFound, cardNotDue
     case cardNotInAppearance, placementIsNotAnAnswer, cardFlagged, cardNotFlagged, cardBuried, cardNotBuried
     case cardSetAsideByOneDeck, cardSetAsideByDecks, notOneEmoji, tagInsideItself, blankTagName, tagNotPinned
     case deckSetAside, blankDeckName, defaultDeckName, deckInsideItself, deckInsideDefault, defaultDeckStays
     case deckNotFound, blankTypeName, builtInTypeName, typeNameTaken, userTypeNotFound, cannotUndo
-    case cannotUndoFollowUp, unreadableReviewLog, schedulerFailed, storage, copyNotFound, copyMigratedByNewerVersion
+    case unreadableReviewLog, schedulerFailed, storage, copyNotFound, copyMigratedByNewerVersion
     case backupsFolder, notAnImage, notASound, soundConversion, unreadableFileForSide, noSuchFile, fileNotInDownloads
     case fileNotAnImage, fileNotASound, notAnImageOrSound, noFileNamed, imagesFolder, soundsFolder
-    case cannotOpen, notUTF8, unknownSeparator, unknownHTML, unknownColumnNumber, missingColumn, unreadableZip
-    case noTextFileInZip, severalTextFilesInZip, unreadableAnkiPackage, ankiPackageTooNew, unwritableFile
-    case fichaDeckMissing, descriptionTooLong
+    case cannotOpen, notADeckFile, damagedDeckFile, unwritableFile, fichaDeckMissing, descriptionTooLong
 
     init(_ error: EngineError) {
         self =
             switch error {
             case .migratedByNewerVersion: .migratedByNewerVersion
-            case .emptyCapture: .emptyCapture
-            case .captureNotInInbox: .captureNotInInbox
-            case .notAnExpansion: .notAnExpansion
-            case .noCards: .noCards
             case .blankSideOnNewCard: .blankSideOnNewCard
             case .sideLeftBlank: .sideLeftBlank
             case .noFileOnSide(_, .image, .front): .noImageOnFront
@@ -116,7 +104,6 @@ private enum ErrorCase: CaseIterable {
             case .typeNameTaken: .typeNameTaken
             case .userTypeNotFound: .userTypeNotFound
             case .cannotUndo: .cannotUndo
-            case .cannotUndoFollowUp: .cannotUndoFollowUp
             case .unreadableReviewLog: .unreadableReviewLog
             case .schedulerFailed: .schedulerFailed
             case .storage: .storage
@@ -136,16 +123,8 @@ private enum ErrorCase: CaseIterable {
             case .imagesFolder: .imagesFolder
             case .soundsFolder: .soundsFolder
             case .unreadableFile(_, .cannotOpen): .cannotOpen
-            case .unreadableFile(_, .notUTF8): .notUTF8
-            case .unreadableFile(_, .unknownSeparator): .unknownSeparator
-            case .unreadableFile(_, .unknownHTML): .unknownHTML
-            case .unreadableFile(_, .unknownColumnNumber): .unknownColumnNumber
-            case .unreadableFile(_, .missingColumn): .missingColumn
-            case .unreadableFile(_, .unreadableZip): .unreadableZip
-            case .unreadableFile(_, .noTextFileInZip): .noTextFileInZip
-            case .unreadableFile(_, .severalTextFilesInZip): .severalTextFilesInZip
-            case .unreadableFile(_, .unreadableAnkiPackage): .unreadableAnkiPackage
-            case .unreadableFile(_, .ankiPackageTooNew): .ankiPackageTooNew
+            case .unreadableFile(_, .notADeckFile): .notADeckFile
+            case .unreadableFile(_, .damagedDeckFile): .damagedDeckFile
             case .unwritableFile: .unwritableFile
             case .fichaDeckMissing: .fichaDeckMissing
             case .descriptionTooLong: .descriptionTooLong

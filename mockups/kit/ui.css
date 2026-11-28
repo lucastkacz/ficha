@@ -198,6 +198,8 @@
   cursor: default;
 }
 .window .titlebar .title { font-weight: 700; font-size: var(--text-headline); margin-left: 10px; }
+/* A window's toolbar, at the title bar's trailing end, as macOS's unified toolbar. */
+.window .titlebar .toolbar-items { margin-left: auto; display: flex; gap: 8px; align-items: center; }
 .window .titlebar.centered .title { position: absolute; left: 0; right: 0; text-align: center; margin: 0; pointer-events: none; }
 .window.inactive .titlebar .title { color: var(--secondary-label); }
 .traffic { display: flex; gap: 8px; position: relative; z-index: 1; }
@@ -293,7 +295,7 @@
 /* KeyLabel: a title and the key that presses it. */
 .key { color: var(--secondary-label); font-size: var(--text-subheadline); }
 
-/* A capsule: TagCapsule, and the deck and tags of the panel's 'today' face. */
+/* A capsule: the app's badges, as AheadBadge, and the deck and tags of the panel's 'today' face. */
 .capsule {
   display: inline-flex;
   align-items: center;
@@ -310,6 +312,29 @@
 .capsule.tint { color: var(--accent); background: var(--accent-soft); }
 
 .divider { height: 1px; background: var(--separator); border: 0; margin: 0; }
+
+/* DisclosureGroup: a triangle before its label, turned down while it's open. */
+.disclosure > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  list-style: none;
+  cursor: default;
+  user-select: none;
+}
+.disclosure > summary::-webkit-details-marker { display: none; }
+.disclosure > summary::before {
+  content: '';
+  width: 0;
+  height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 6px solid var(--secondary-label);
+  transition: transform 0.15s;
+}
+.disclosure[open] > summary::before { transform: rotate(90deg); }
+.disclosure > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.disclosure-content { padding: 8px 0 0 12px; }
 
 /* .textFieldStyle(.roundedBorder) */
 .field {
@@ -395,6 +420,7 @@
   display: grid; place-items: center; background: var(--fill); color: var(--tertiary-label);
   font-size: calc(var(--text-caption) * var(--card-scale, 1)); letter-spacing: 0.04em;
 }
+.card-picture.real { display: block; object-fit: contain; aspect-ratio: auto; max-height: calc(200px * var(--card-scale, 1)); width: auto; background: none; }
 .panel .lower .source { font-size: calc(var(--text-caption) * var(--card-scale, 1)); color: var(--secondary-label); }
 .panel .flip-row { display: flex; justify-content: flex-end; }
 .panel .ratings { display: grid; grid-template-columns: repeat(var(--count, 4), 1fr); gap: 8px; }

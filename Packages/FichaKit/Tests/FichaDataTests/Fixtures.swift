@@ -2,10 +2,10 @@ import FichaCore
 import FichaData
 import Foundation
 import Testing
+import ZIPFoundation
 
-/// A card for a test to approve a capture into: it always has a front and a
-/// back, and no tags, source, images or sounds unless the test gives them. A
-/// nil type is no type.
+/// A card for a test to make: it always has a front and a back, and no tags,
+/// source, images or sounds unless the test gives them. A nil type is no type.
 func card(
     _ type: CardType?,
     front: String,
@@ -90,27 +90,30 @@ func note(_ text: String) throws -> FlagNote {
     try #require(FlagNote(text))
 }
 
-/// Approves a capture into one word card with this front, the way refining
-/// saves cards, and returns the card: a new card, after the ones approved
-/// before it.
+/// Creates one word card with this front, in Default, as the Cards window's
+/// form does, and returns it: a new card, after the ones before it.
 @discardableResult
-func approveCard(_ front: String, in engine: Engine) throws -> Card {
-    try approve(card(.word, front: front, back: "Lo que quiere decir «\(front)»."), in: engine)
+func newCard(_ front: String, in engine: Engine) throws -> Card {
+    try newCard(card(.word, front: front, back: "Lo que quiere decir «\(front)»."), in: engine)
 }
 
-/// Approves a capture into one card with `content`, the way refining saves
-/// cards, and returns the card: a new card, after the ones approved before it.
+/// Creates one card with `content`, in Default, as the Cards window's form
+/// does, and returns it: a new card, after the ones before it.
 @discardableResult
-func approve(_ content: CardContent, in engine: Engine) throws -> Card {
-    let capture = try engine.newCapture(content.front)
-    return try #require(try engine.approve(capture.id, into: [content]).first)
+func newCard(_ content: CardContent, in engine: Engine) throws -> Card {
+    try engine.create(content)
 }
 
 extension Engine {
-    /// Saves a capture that repeats no card or capture, and returns it.
-    @discardableResult
-    func newCapture(_ text: String, note: String? = nil, source: String? = nil) throws -> Capture {
-        try #require(try capture(text: text, note: note, source: source).saved)
+    /// The flagged cards, which wait in their decks to be fixed, as their
+    /// standing says, the first flagged first: a card set aside on its own,
+    /// flagged or not, stands set aside.
+    func flaggedCards() throws -> [Card] {
+        let flagged = try cards().compactMap { card -> (card: Card, flag: Flag)? in
+            guard case .flagged(let flag) = card.standing else { return nil }
+            return (card, flag)
+        }
+        return flagged.sorted { ($0.flag.flaggedAt, $0.card.id) < ($1.flag.flaggedAt, $1.card.id) }.map(\.card)
     }
 
     /// Records the first review of a card's new way, front first unless the
@@ -253,7 +256,7 @@ struct ShownAppearance: Equatable {
 
 /// The appearances that come in the `dayCount` days from `start`, by
 /// `settings`, in an engine in memory of their own, by `calendar`, with
-/// `newCards` new cards approved at `start`, on a Mac awake all along that
+/// `newCards` new cards created at `start`, on a Mac awake all along that
 /// holds none back: Lucas answers each card of an appearance good a minute
 /// after it shows, and closes it then. The engine is asked for one at the
 /// time an appearance waits for, when it names one, and else every 10
@@ -264,7 +267,7 @@ func appearances(
     let time = ManualTimeSource(now: start)
     let engine = try Engine(location: .inMemory, time: time, ids: CountingIDSource(), calendar: calendar)
     for number in 1...newCards {
-        try approveCard("palabra \(number)", in: engine)
+        try newCard("palabra \(number)", in: engine)
     }
     let end = start + days(dayCount)
     var shown: [ShownAppearance] = []
@@ -302,30 +305,45 @@ func days(_ count: Int) -> TimeInterval {
     TimeInterval(count * 24 * 60 * 60)
 }
 
-extension CaptureResult {
-    /// The capture, when it was saved, or nil when it was a duplicate.
-    var saved: Capture? {
-        guard case .saved(let capture) = self else {
-            return nil
+extension CardsWindowState {
+    /// Opens `file` with Open Deck…, as the app does, and waits for the
+    /// reading, after which How fast? asks for its deck.
+    mutating func openDeckAndWait(_ file: URL) async {
+        if let work = openDeck(file) {
+            finishOpenDeck(await work.run())
         }
-        return capture
     }
 }
 
-extension CardsWindowState {
-    /// Reads `file` for the Import sheet's preview, as the app does, and
-    /// waits for the reading.
-    mutating func previewImportAndWait(of file: URL) async {
-        if let work = previewImport(of: file) {
-            finishImportWork(await work.run())
+/// Writes a deck's `.ficha` to `file`, as another Ficha, or a person by hand,
+/// would: a zip holding `text`, a text file of cards named after the file,
+/// `files` beside it, each a name and what it holds, such as its cards'
+/// images and sounds, and a `deck.json` with no emoji or description.
+func writeDeckFile(at file: URL, text: String, files: [(name: String, data: Data)] = []) throws {
+    try writeDeckFile(at: file, textFile: Data(text.utf8), files: files)
+}
+
+/// Writes a deck's `.ficha` to `file` as `writeDeckFile(at:text:files:)`
+/// does, with `textFile` as its text file's bytes, which needn't be UTF-8.
+func writeDeckFile(at file: URL, textFile: Data, files: [(name: String, data: Data)] = []) throws {
+    let archive = try Archive(url: file, accessMode: .create, pathEncoding: nil)
+    let name = file.deletingPathExtension().lastPathComponent + ".txt"
+    let held = Data(#"{"description": null, "emoji": null}"#.utf8)
+    let all: [(name: String, data: Data)] = [(name, textFile), ("deck.json", held)] + files
+    for (path, data) in all {
+        try archive.addEntry(
+            with: path, type: .file, uncompressedSize: Int64(data.count), compressionMethod: .deflate
+        ) { position, size in
+            data.subdata(in: Int(position)..<Int(position) + size)
         }
     }
+}
 
-    /// Imports the cards the Import sheet previews, as the app does, and
-    /// waits for the import.
-    mutating func importCardsAndWait() async {
-        if let work = importCards() {
-            finishImportWork(await work.run())
-        }
+extension Engine {
+    /// Reads the deck's `.ficha` at `file` and adds its deck, as Open Deck…
+    /// and How fast?'s Start do, and returns what the import did.
+    @discardableResult
+    func addDeck(at file: URL) async throws -> ImportOutcome {
+        try addDeck(try await readDeckFile(at: file))
     }
 }

@@ -39,7 +39,9 @@ struct CardsWindowImageTests {
         #expect(withoutImage.draft.front.image == nil)
     }
 
-    @Test("Add saves the images on the form's sides, which Ficha keeps from then on, and clears them for the next card")
+    @Test(
+        "Add saves the images on the form's sides, which Ficha keeps from then on, and clears them for the next card",
+        .bug(id: 536))
     func addSavesTheImagesOnTheSides() throws {
         var window = openWindow()
         window.openNewCardForm()
@@ -63,7 +65,12 @@ struct CardsWindowImageTests {
         #expect(try pixelSize(of: engine.image(nest)) == (1600, 1067))
         #expect(window.cardForm?.draft.front.image == nil)
         #expect(window.cardForm?.draft.back.image == nil)
-        #expect(window.images[bird] == nil)
+        // The card's tile, on Default, and its detail, as the grid selects
+        // the card added, read both where Ficha keeps them.
+        #expect(try window.tileImages.image(bird)?.get() == shownBird)
+        #expect(window.selection == [added.id])
+        #expect(try window.images[bird]?.get() == shownBird)
+        #expect(try window.images[nest]?.get() == engine.image(nest))
     }
 
     @Test("what isn't an image stays off the side, and the window says why")

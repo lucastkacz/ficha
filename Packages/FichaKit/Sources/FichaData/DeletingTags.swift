@@ -7,11 +7,11 @@ internal import GRDB
 // included, as a change to the tag (`TagChanges.swift`), and its rows go; no
 // card is deleted. Each card records the edit to its tags (ADR 0017), which
 // changes neither the user's reviews nor what syncs, since decks decide both
-// (ADR 0024). Clear Unused Tags deletes the tags no card here carries, which
-// stay listed only for something of their own.
+// (ADR 0024). `ficha tag clear-unused` deletes the tags no card here
+// carries, which stay listed only for something of their own.
 
-/// What deleting some tags does on this device, as Delete…'s question says it
-/// before, and the `ficha` CLI prints it after.
+/// What deleting some tags does on this device, as the `ficha` CLI prints it
+/// after.
 public struct TagDeletion: Sendable, Equatable, Encodable {
     /// The tags deleted, each once, in the order given.
     public let tags: [String]
@@ -24,12 +24,6 @@ public struct TagDeletion: Sendable, Equatable, Encodable {
 }
 
 extension Engine {
-    /// What deleting `tags` would do on this device now, as Delete… asks
-    /// before it deletes them.
-    public func deletion(of tags: [String]) throws(EngineError) -> TagDeletion {
-        try read { db in try TagDeletion(of: tags, in: db) }
-    }
-
     /// Deletes `tags`, each with every tag inside it, in one write: every
     /// card that carries one loses it, and records the edit to its tags,
     /// while every card stays, and their rows of the `tag` table go, with
@@ -49,19 +43,14 @@ extension Engine {
         }
     }
 
-    /// The tags Clear Unused Tags deletes, in the order a tree lists them:
-    /// each with a row of its own that no card on this device carries,
-    /// buried ones included, nor a tag inside it, whatever syncs.
-    public func unusedTags() throws(EngineError) -> [String] {
-        try read(tagsToClear(in:))
-    }
-
-    /// Deletes the tags Clear Unused Tags deletes (`unusedTags()`), in one
-    /// write, and returns them. No card here carries them, so only their rows
-    /// go, their pins, colors and emoji, which sync as a tag's do, and no
-    /// change to the tags reaches another device's cards: under selective
-    /// sync, a card there that carries one, which doesn't sync, keeps it, as
-    /// a tag with nothing of its own.
+    /// Deletes the unused tags, in one write, and returns them, in the order
+    /// a tree lists them: each with a row of its own that no card on this
+    /// device carries, buried ones included, nor a tag inside it, whatever
+    /// syncs. No card here carries them, so only their rows go, their pins,
+    /// colors and emoji, which sync as a tag's do, and no change to the tags
+    /// reaches another device's cards: under selective sync, a card there
+    /// that carries one, which doesn't sync, keeps it, as a tag with nothing
+    /// of its own.
     @discardableResult
     public func clearUnusedTags() throws(EngineError) -> [String] {
         try write { db in
@@ -93,8 +82,7 @@ extension TagDeletion {
     }
 }
 
-/// The tags Clear Unused Tags deletes in `db` now, as `Engine.unusedTags()`
-/// says.
+/// The unused tags `Engine.clearUnusedTags()` deletes in `db` now.
 private func tagsToClear(in db: Database) throws -> [String] {
     let carried = TagPath.lineages(of: try allCards(in: db).flatMap(\.tags))
     return TagPath.sortedAsTree(try OwnTags(in: db).names.filter { !carried.contains($0) })

@@ -11,13 +11,13 @@ extension EnvironmentValues {
 
 /// The styles of the user's text on a card.
 enum CardTextStyle {
-    /// A card's upper side, or a capture's text: its largest.
+    /// A card's upper side: its largest.
     case title
     /// The upper side of the first card of one of Ficha's decks, which the
     /// Cards window shows before the deck comes in: a size below a card's,
     /// as the mock's `.one-card .front` is.
     case title3
-    /// A card's lower side, or a capture's note and source.
+    /// A card's lower side.
     case body
     /// A card's source in the Cards window.
     case callout

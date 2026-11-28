@@ -28,7 +28,7 @@ struct NightHoursTests {
         "with active hours from 20 to 3, an appearance may come at 20:00, 23:59 and 2:59, and none at 3:00 or 19:59",
         .bug(id: 564))
     func appearancesComeFromTwentyToThree() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         let moments = try [at(19, 59), at(20, 0), at(23, 59), at(2, 59, day: 15), at(3, 0, day: 15)]
 
         let decisions = try moments.map { moment in
@@ -44,7 +44,7 @@ struct NightHoursTests {
         "with active hours from 9 to 22, an appearance may come at 9:00 and 21:59, and none at 22:00 or 8:59",
         .bug(id: 564))
     func appearancesComeFromNineToTwentyTwoAsBefore() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         let moments = try [at(9, 0), at(21, 59), at(22, 0), at(8, 59, day: 15)]
 
         let decisions = try moments.map { moment in
@@ -62,7 +62,7 @@ struct NightHoursTests {
         "the iPhone's planned appearances for 20 to 3 cross midnight, with none from 3:00 to 19:59",
         .bug(id: 564))
     func plannedAppearancesCrossMidnight() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         time.move(to: try at(22, 0))
         try engine.meet(serendipia)
 
@@ -98,9 +98,9 @@ struct NightHoursTests {
         "the queue's new cards left today count tonight's active hours: at 23:00 and at 0:30, with 20 to 3, Steady and one met tonight, one is left",
         .bug(id: 564))
     func newCardsLeftTodayCountTonight() throws {
-        let gioconda = try approveInDeck("La Gioconda", deck: "Arte", in: engine)
-        try approveInDeck("Las Meninas", deck: "Arte", in: engine)
-        try approveInDeck("Coliseo", deck: "Historia", in: engine)
+        let gioconda = try newCardInDeck("La Gioconda", deck: "Arte", in: engine)
+        try newCardInDeck("Las Meninas", deck: "Arte", in: engine)
+        try newCardInDeck("Coliseo", deck: "Historia", in: engine)
         time.move(to: try at(22, 0))
         try engine.meet(gioconda)
         time.move(to: try at(23, 0))
@@ -124,7 +124,7 @@ struct NightHoursTests {
         "the queue's new cards left today wait for active hours inside today's Ficha day: with 20 to 3 and none met, a deck's one new card finishes on the 15th or the 16th at 3:30, and on the 15th at 5:00",
         .bug(id: 564))
     func newCardsLeftTodayWaitForTheNextNight() throws {
-        try approveInDeck("Las Meninas", deck: "Arte", in: engine)
+        try newCardInDeck("Las Meninas", deck: "Arte", in: engine)
         time.move(to: try at(3, 30, day: 15))
         let atHalfPastThree = try engine.queue(settings)
         time.move(to: try at(5, 0, day: 15))

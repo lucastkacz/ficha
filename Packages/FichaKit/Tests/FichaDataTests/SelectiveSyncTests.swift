@@ -225,15 +225,12 @@ final class SelectiveSyncTests {
         try mac.engine.setChosenToSync(true, ofDeck: "Idiomas")
         let read = [
             ImportedCard(
-                content: try card(.word, front: "rosa", back: "Rosa, rosae."), fields: [], line: 1,
-                deck: "Idiomas::Latín"),
+                content: try card(.word, front: "rosa", back: "Rosa, rosae."), line: 1, deck: "Idiomas::Latín"),
             ImportedCard(
-                content: try card(nil, front: "¿Qué himno es?", back: "El de la Argentina."), fields: [], line: 2,
-                deck: "Himnos"),
+                content: try card(nil, front: "¿Qué himno es?", back: "El de la Argentina."), line: 2, deck: "Himnos"),
         ]
-        let preview = try mac.engine.preview(
-            ImportReading(cards: read, leftOut: []), of: "Himnos.txt", kind: .cardsFile, images: [:], sounds: [:])
-        try mac.engine.importCards(preview, choosing: ImportChoices())
+        let preview = try mac.engine.preview(ImportReading(cards: read, leftOut: []), of: "Himnos.ficha")
+        try mac.engine.importCards(preview)
         try await syncBoth()
 
         #expect(try mac.engine.card(fronted: "¿Qué himno es?").deck == "Himnos")
@@ -450,22 +447,26 @@ final class SelectiveSyncTests {
         #expect(records(ofType: .card).allSatisfy { !$0.hasLeft && $0.value(of: "front") == .string("ubuntu") })
     }
 
-    @Test("an expansion or a follow-up of a card that doesn't sync stays on its device, and every other capture syncs")
+    // As an older version wrote them: the database keeps them, unread
+    // (#540).
+    @Test(
+        "an expansion or a follow-up of a card that doesn't sync stays on its device, and every other capture syncs",
+        .bug(id: 540))
     func capturesFollowTheirCards() async throws {
-        let ubuntu = try approveInDeck("ubuntu", deck: "Filosofía", in: mac.engine)
-        let petricor = try approveInDeck("petricor", in: mac.engine)
+        let ubuntu = try newCardInDeck("ubuntu", deck: "Filosofía", in: mac.engine)
+        let petricor = try newCardInDeck("petricor", in: mac.engine)
         try mac.engine.syncOnlyChosenDecks(true)
         try mac.engine.setChosenToSync(true, ofDeck: "Filosofía")
-        try mac.engine.newCapture("saudade")
-        try mac.engine.followUp(ubuntu.id, text: "¿Quién lo dijo primero?")
-        try mac.engine.followUp(petricor.id, text: "¿De qué idioma viene?")
-        try mac.engine.expand(text: "petricor", note: "Del griego", source: nil)
+        try mac.engine.olderCapture("saudade")
+        try mac.engine.olderCapture("¿Quién lo dijo primero?", followingUp: ubuntu.id)
+        try mac.engine.olderCapture("¿De qué idioma viene?", followingUp: petricor.id)
+        try mac.engine.olderCapture("petricor", note: "Del griego", expanding: petricor.id)
 
         try await syncBoth()
 
         #expect(
-            try iPhone.engine.inbox().asSeen
-                == InboxAsSeen(captures: ["saudade"], expansions: [], followUps: ["¿Quién lo dijo primero? → ubuntu"]))
+            try iPhone.engine.capturesAsSeen()
+                == CapturesAsSeen(waiting: ["saudade", "¿Quién lo dijo primero?, following up ubuntu"], refined: []))
         #expect(try mac.engine.changesToSend().isEmpty)
     }
 
@@ -613,7 +614,7 @@ final class SelectiveSyncTests {
     // The iPhone holds petricor in Lenguaje, which doesn't sync, and colors
     // its tag palabras, whose row syncs; the Mac holds no card with it.
     @Test(
-        "Clear Unused Tags under selective sync deletes a tag's own row alone, and another device's card that doesn't sync keeps the tag"
+        "clearing the unused tags under selective sync deletes a tag's own row alone, and another device's card that doesn't sync keeps the tag"
     )
     func clearUnusedTagsLeavesOtherDevicesCardsTheirTags() async throws {
         try iPhone.engine.syncOnlyChosenDecks(true)
@@ -622,7 +623,6 @@ final class SelectiveSyncTests {
         try iPhone.engine.setColor(.green, of: "palabras")
         try await syncBoth()
 
-        #expect(try mac.engine.unusedTags() == ["palabras"])
         #expect(try mac.engine.clearUnusedTags() == ["palabras"])
         try await syncBoth()
 

@@ -341,6 +341,15 @@
             mem: null,
             due: null,
             last: null,
+            // When it came in, with its deck, and when its front or back
+            // last changed, as the Cards window's Details say them: null
+            // until its deck is added, and always, since no mock edits a
+            // card.
+            createdAt: null,
+            editedAt: null,
+            // Its review log, oldest first: when it was rated, how, and how
+            // long it waits after, as the Cards window's Details lists it.
+            reviewLog: [],
           }),
         );
       }
@@ -363,8 +372,12 @@
         panel: null,
         lastClosedAt: null,
         introduced: { day: dayKey(now, settings), count: 0 },
-        buried: {},
-        inbox: 0,
+        // The cards set aside on their own, by id, with when: out of the
+        // reviews until they're put back (GLOSSARY.md, Set aside).
+        cardsSetAside: {},
+        // A flagged card's note and when it was flagged, by its id, until
+        // it's fixed: out of the reviews, in its deck with its flag (#540).
+        flagged: {},
         log: [],
         toast: null,
       };
@@ -396,13 +409,22 @@
       return this.state.cards.find((c) => c.id === id);
     }
     activeCards() {
-      // A deck set aside takes all its cards out of the reviews (GLOSSARY.md).
+      // A deck set aside takes all its cards out of the reviews, a card set
+      // aside on its own leaves them too (GLOSSARY.md), and so does a flag,
+      // until the card is fixed.
       const added = new Set(this.state.decks.filter((d) => d.added && !d.setAside).map((d) => d.id));
-      const buriedUntil = this.state.buried;
-      return this.state.cards.filter((c) => added.has(c.deckId) && !(buriedUntil[c.id] > this.state.now));
+      return this.state.cards.filter((c) => added.has(c.deckId) && !this.isSetAside(c.id) && !this.isFlagged(c.id));
     }
     deckCards(id) {
       return this.state.cards.filter((c) => c.deckId === id);
+    }
+    /** Whether the card is set aside on its own, until it's put back. */
+    isSetAside(id) {
+      return this.state.cardsSetAside[id] != null;
+    }
+    /** Whether the card is flagged, waiting in its deck until it's fixed (#540). */
+    isFlagged(id) {
+      return this.state.flagged[id] != null;
     }
     /** A deck's cards not met yet. */
     newLeft(id) {
@@ -601,6 +623,7 @@
       d.added = true;
       d.setAside = false;
       d.addedAt = d.addedAt ?? s.now;
+      for (const c of this.deckCards(id)) c.createdAt = c.createdAt ?? s.now;
       s.queue = [...s.queue.filter((x) => x !== id), id];
       if (first) this.moveFirst(id);
       this.log(`Added ${d.name}, ${first ? 'first' : 'last'} in the queue`, 'deck');
@@ -613,6 +636,22 @@
       const id = `own-${s.decks.length}`;
       s.decks.push({ id, name, emoji: '🗂️', ficha: false, added: false, addedAt: null, metAllAt: null, setAside: false });
       return id;
+    }
+    /**
+     * A card the user adds in the card form, new, last in its deck, as the
+     * app's Add puts it (#538): with no tags, which the form no longer has.
+     */
+    addCard(deckId, { front, back, source = null, bothWays = false }) {
+      const s = this.state;
+      const order = this.deckCards(deckId).length;
+      s.cards = [
+        ...s.cards,
+        { id: `${deckId}-${order}`, deckId, order, front, back, picture: false, source, bothWays, tags: [], state: 'new',
+          step: 0, mem: null, due: null, last: null, createdAt: s.now, editedAt: null, reviewLog: [] },
+      ];
+      this.log(`Added “${front}” to ${this.deck(deckId).name}`, 'deck');
+      this.changed();
+      this.emit();
     }
     /** Puts a deck first in the queue, as `moveFirst` moves it. */
     putFirst(id) {
@@ -752,6 +791,8 @@
         intro.count++;
       }
       Object.assign(card, rate(card, g, now, this.scheduler));
+      // A new array, so that undo's copy keeps the log as it was.
+      card.reviewLog = [...(card.reviewLog || []), { t: now, g, wait: card.due - now }];
       const deck = this.deck(card.deckId);
       if (wasNew && this.newLeft(deck.id) === 0) {
         deck.metAllAt = now;
@@ -784,14 +825,27 @@
       this.touch();
       this.emit();
     }
-    bury() {
+    /** Sets the card the panel shows aside, out of the reviews until it's put back, and moves on. */
+    setCurrentCardAside() {
       const card = this.currentCard();
       if (!card) return;
-      this.state.buried[card.id] = startOfDay(this.state.now, this.settings) + DAY;
-      this.toast('Buried until tomorrow');
+      this.state.cardsSetAside = { ...this.state.cardsSetAside, [card.id]: this.state.now };
+      this.toast('Set aside');
       this.changed();
       this.advance();
       this.touch();
+      this.emit();
+    }
+    /**
+     * Sets a card aside, as the Cards window's Set Aside does, or with
+     * `aside` false puts it back, where it stood: its progress never moved.
+     */
+    setCardAside(id, aside = true) {
+      const card = this.card(id);
+      const { [id]: _, ...others } = this.state.cardsSetAside;
+      this.state.cardsSetAside = aside ? { ...others, [id]: this.state.now } : others;
+      this.log(aside ? `${card.front} set aside` : `${card.front} put back`, 'deck');
+      this.changed();
       this.emit();
     }
     setMode(mode) {
@@ -801,18 +855,29 @@
       this.touch();
       this.emit();
     }
-    saveToInbox(what) {
-      this.state.inbox++;
+    /**
+     * Flags the panel's card with the user's note on what to fix: it leaves
+     * the reviews and waits in its deck, with its flag and its note, until
+     * it's fixed, and the panel goes on to the next card (#540).
+     */
+    flag(note) {
+      const card = this.currentCard();
+      if (!card) return;
+      this.state.flagged[card.id] = { note, at: this.state.now };
       this.state.panel.mode = null;
-      this.toast(what === 'flag' ? 'Flagged. It waits in the inbox.' : 'Your question waits in the inbox.');
+      this.toast("Flagged. It waits in its deck until it's fixed.");
+      this.changed();
+      this.advance();
       this.touch();
       this.emit();
     }
-    capture() {
-      this.state.inbox++;
-      this.log('Captured to the inbox', 'deck');
-      this.toast('Captured. It waits in the inbox.');
-      this.emit();
+    /**
+     * Flags a card from outside the panel, as a mock that opens with one
+     * flagged does.
+     */
+    flagCard(id, note) {
+      this.state.flagged[id] = { note, at: this.state.now };
+      this.changed();
     }
     close(how = 'byHand') {
       const s = this.state;

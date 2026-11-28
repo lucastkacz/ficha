@@ -37,10 +37,10 @@ final class DebugTimeTests {
 
         let cliTime = try DebugTimeSource(savedIn: folder, base: base)
         let cli = try Engine(location: .folder(folder), time: cliTime)
-        let capture = try cli.newCapture("serendipia")
+        let serendipia = try newCard("serendipia", in: cli)
 
         #expect(cliTime.shift == .seconds(86_400))
-        #expect(capture.createdAt == Date(timeIntervalSince1970: 1_760_000_000 + 86_400))
+        #expect(serendipia.createdAt == Date(timeIntervalSince1970: 1_760_000_000 + 86_400))
     }
 
     // Without knowing how far ahead it was, Ficha Dev could stamp what it

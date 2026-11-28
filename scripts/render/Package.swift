@@ -26,9 +26,9 @@ let package = Package(
             // folder SwiftUI looks in, since SwiftPM would put it in a bundle
             // of its own; the App Shortcut's phrases, `AppShortcuts.xcstrings`,
             // which only Siri, Spotlight and the Shortcuts app read, the tool
-            // never draws; the zips of Ficha's decks, `FichaDecks/`, which the
-            // app bundles, the tool reads where they are in the repo, as the
-            // tests do; and the tool runs outside the sandbox. So do the delegate, Ficha
+            // never draws; the `.ficha` files of Ficha's decks, `FichaDecks/`,
+            // which the app bundles, the tool reads where they are in the
+            // repo, as the tests do; and the tool runs outside the sandbox. So do the delegate, Ficha
             // Dev's second device and the app's `main.swift`, the only files
             // that load CloudKit, which the tool never loads (ADR 0017): the
             // App Intents reach a delegate of the tool's own,

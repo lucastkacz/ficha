@@ -22,8 +22,8 @@ struct DeckDescriptionTests {
         "a deck's description is stored and read back with the deck, Default's too, without the spaces around it, and the decks inside it don't take it",
         .bug(id: 556))
     func aDecksDescriptionIsReadBack() throws {
-        try approveInDeck("petricor", in: engine)
-        try approveInDeck("La Gioconda", deck: "Arte::Pintura", in: engine)
+        try newCardInDeck("petricor", in: engine)
+        try newCardInDeck("La Gioconda", deck: "Arte::Pintura", in: engine)
         let before = try engine.decks()
         let arte = "50 pinturas de 15 artistas argentinos, de 1839 a 1930, que están en museos de Buenos Aires."
         let leftOver = "Las tarjetas que no están en otro mazo."
@@ -43,7 +43,7 @@ struct DeckDescriptionTests {
         "giving a deck no description, or a blank one, takes its own away, and leaves its emoji",
         .bug(id: 556), arguments: [nil, "", " \n "])
     func givingNoneTakesItAway(none: String?) throws {
-        try approveInDeck("La Gioconda", deck: "Arte", in: engine)
+        try newCardInDeck("La Gioconda", deck: "Arte", in: engine)
         try engine.setEmoji(Emoji("🎨"), ofDeck: "Arte")
         try engine.setDescription("Pinturas argentinas.", ofDeck: "Arte")
 
@@ -57,7 +57,7 @@ struct DeckDescriptionTests {
         "a description of 160 characters is kept, and one over 160 is refused, naming the limit and changing nothing",
         .bug(id: 556))
     func aDescriptionOver160IsRefused() throws {
-        try approveInDeck("La Gioconda", deck: "Arte", in: engine)
+        try newCardInDeck("La Gioconda", deck: "Arte", in: engine)
         let longest = String(repeating: "a", count: 159) + "🇦🇷"
         try engine.setDescription(longest, ofDeck: "Arte")
 
@@ -68,7 +68,7 @@ struct DeckDescriptionTests {
 
     @Test("a renamed deck keeps its description, and a deck inside it its own", .bug(id: 556))
     func aRenamedDeckKeepsItsDescription() throws {
-        try approveInDeck("La Gioconda", deck: "Arte::Pintura", in: engine)
+        try newCardInDeck("La Gioconda", deck: "Arte::Pintura", in: engine)
         try engine.setDescription("Lo que está en los museos.", ofDeck: "Arte")
         try engine.setDescription("Cuadros.", ofDeck: "Arte::Pintura")
 

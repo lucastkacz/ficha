@@ -17,8 +17,8 @@ struct DeckColorAndEmojiTests {
 
     @Test("a deck's color and emoji are stored and read back, and the decks inside it take them while they have none")
     func aDecksColorAndEmojiAreReadBackAndInherited() throws {
-        try approveInDeck("Gioconda", deck: "Arte::Pintura::Renacimiento", in: engine)
-        try approveInDeck("Coliseo", deck: "Historia", in: engine)
+        try newCardInDeck("Gioconda", deck: "Arte::Pintura::Renacimiento", in: engine)
+        try newCardInDeck("Coliseo", deck: "Historia", in: engine)
 
         try engine.setColor(.orange, ofDeck: "Arte")
         try engine.setEmoji(Emoji("🎨"), ofDeck: "Arte")
@@ -40,7 +40,7 @@ struct DeckColorAndEmojiTests {
 
     @Test("taking a deck's color and emoji away shows its parent's again, and leaves the deck where it was")
     func takingThemAwayShowsTheParentsAgain() throws {
-        try approveInDeck("Gioconda", deck: "Arte::Pintura", in: engine)
+        try newCardInDeck("Gioconda", deck: "Arte::Pintura", in: engine)
         try engine.setColor(.orange, ofDeck: "Arte")
         try engine.setColor(.purple, ofDeck: "Arte::Pintura")
         try engine.setEmoji(Emoji("🖼️"), ofDeck: "Arte::Pintura")
@@ -56,7 +56,7 @@ struct DeckColorAndEmojiTests {
 
     @Test("Default takes a color and an emoji too, which it keeps while its cards come and go")
     func defaultTakesAColorAndAnEmoji() throws {
-        let petricor = try approveInDeck("petricor", in: engine)
+        let petricor = try newCardInDeck("petricor", in: engine)
 
         try engine.setColor(.gray, ofDeck: Deck.defaultName)
         try engine.setEmoji(Emoji("📥"), ofDeck: Deck.defaultName)
@@ -71,7 +71,7 @@ struct DeckColorAndEmojiTests {
 
     @Test("an emoji that isn't one emoji, and a deck's name the engine refuses, are refused, changing nothing")
     func whatIsRefused() throws {
-        try approveInDeck("Gioconda", deck: "Arte", in: engine)
+        try newCardInDeck("Gioconda", deck: "Arte", in: engine)
         try engine.setEmoji(Emoji("🎨"), ofDeck: "Arte")
 
         #expect(throws: EngineError.notOneEmoji) { try engine.setEmoji(Emoji("arte"), ofDeck: "Arte") }
@@ -87,8 +87,8 @@ struct DeckColorAndEmojiTests {
         "the Prioritize submenu's read carries each deck's emoji and color, its own or its parent's, a priority deck's too"
     )
     func thePrioritizeSubmenusReadCarriesEachDecksEmoji() throws {
-        try approveInDeck("Revolución de Mayo", deck: "Historia::Argentina", in: engine)
-        try approveInDeck("petricor", in: engine)
+        try newCardInDeck("Revolución de Mayo", deck: "Historia::Argentina", in: engine)
+        try newCardInDeck("petricor", in: engine)
         try engine.setEmoji(Emoji("📜"), ofDeck: "Historia")
         try engine.setColor(.blue, ofDeck: "Historia")
         try engine.setEmoji(Emoji("🇦🇷"), ofDeck: "Historia::Argentina")

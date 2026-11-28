@@ -1,8 +1,8 @@
 import ArgumentParser
 import FichaData
 
-/// `ficha attach`: puts an image or a sound on a side of any card, as a
-/// refine session does where Lucas asked for it.
+/// `ficha attach`: puts an image or a sound on a side of any card, in a
+/// session where Lucas asked for it (`CLAUDE.md`).
 struct AttachCommand: EngineCommand {
     static let configuration = CommandConfiguration(
         commandName: "attach",
@@ -11,14 +11,14 @@ struct AttachCommand: EngineCommand {
             Give the path of a file on your Mac, or the name of an image or a sound Ficha holds, as `ficha cards` \
             prints it, with --front or --back. Ficha tells an image from a sound by the file, shrinks an image, and \
             converts a sound, a video's too, as it comes in, and puts it in place of the side's own. It works on \
-            any card, flagged, buried or set aside, which stays where it is. The CLI's sandbox lets it read files \
+            any card, flagged or set aside, which stays where it is. The CLI's sandbox lets it read files \
             from your Downloads folder alone. For example:
 
               ficha attach 7 --back ~/Downloads/coloratura.mp3
             """
     )
 
-    @Argument(help: "The card's id, as `ficha cards` or `ficha inbox` shows it.")
+    @Argument(help: "The card's id, as `ficha cards` shows it.")
     var cardID: Int64
 
     @Option(
@@ -64,8 +64,8 @@ struct AttachCommand: EngineCommand {
         """
 }
 
-/// `ficha detach`: takes an image or a sound off a side of any card, as a
-/// refine session does where Lucas asked for it.
+/// `ficha detach`: takes an image or a sound off a side of any card, in a
+/// session where Lucas asked for it (`CLAUDE.md`).
 struct DetachCommand: EngineCommand {
     static let configuration = CommandConfiguration(
         commandName: "detach",
@@ -73,13 +73,13 @@ struct DetachCommand: EngineCommand {
         discussion: """
             Say which side with --front or --back, and what to take off it: image or sound. The side keeps the rest \
             of what it holds, and one that would be left with neither text, an image nor a sound is refused. It \
-            works on any card, flagged, buried or set aside, which stays where it is. For example:
+            works on any card, flagged or set aside, which stays where it is. For example:
 
               ficha detach 7 --back sound
             """
     )
 
-    @Argument(help: "The card's id, as `ficha cards` or `ficha inbox` shows it.")
+    @Argument(help: "The card's id, as `ficha cards` shows it.")
     var cardID: Int64
 
     @Option(help: ArgumentHelp("What to take off the card's front.", valueName: "kind"))

@@ -1,47 +1,22 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "%@ %@…" : {
-      "comment" : "A button in the review panel, once nothing waits in the queue, with the emoji and the name of one of Ficha's decks: it opens the Cards window to add it.",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@ %2$@…"
-          }
-        }
-      }
-    },
-    "%@ (%lld)" : {
-      "comment" : "An item of the Export sheet's menu: the cards that live in a deck, or a deck inside it, with the deck's emoji, when it has one, and its whole name, like “🗣️ Idiomas › Inglés”, and how many.\nAn item of the Export sheet's menu: the cards with a tag, with the tag and how many.\nAn item of the “+N more” menu above the Cards window's card list: a tag of the deck the sidebar chose, with how many of its cards carry it.",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@ (%2$lld)"
-          }
-        }
-      }
-    },
     "%@ can't open your cards" : {
 
     },
     "%@ can't open your cards. Open it to see why." : {
       "comment" : "An error from the app's Review Now action, when the app couldn't open its cards at launch. Opening the app again shows an alert that says why."
     },
-    "%@ couldn't read these settings, as when they're edited by hand: %@. They're at their defaults, and a capture shortcut is off, until you set them again in Settings." : {
+    "%@ couldn't read these settings, as when they're edited by hand: %@. They're at their defaults until you set them again in Settings." : {
       "comment" : "An alert at launch. The names are the settings' names in the app's preferences.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "%1$@ couldn't read these settings, as when they're edited by hand: %2$@. They're at their defaults, and a capture shortcut is off, until you set them again in Settings."
+            "value" : "%1$@ couldn't read these settings, as when they're edited by hand: %2$@. They're at their defaults until you set them again in Settings."
           }
         }
       }
-    },
-    "%@ couldn't turn on its capture shortcut" : {
-
     },
     "%@ lives in the menu bar" : {
       "comment" : "The title of the Welcome page, the first time the app opens on a Mac. The name is the app's."
@@ -144,6 +119,9 @@
     "%@y" : {
       "comment" : "An interval of this many years, a year counted as 365 days, with a decimal, like “2.1y”: short, as Anki's buttons show it, in the Cards window. Anki's own short unit in each language."
     },
+    "%@…" : {
+      "comment" : "A button in the review panel, once nothing waits in the queue, with the emoji, when it has one, and the name of one of Ficha's decks: it opens the Cards window to add it."
+    },
     "%lld cards" : {
       "comment" : "Under the name of one of Ficha's decks in the Cards window's sidebar: how many cards it brings.",
       "localizations" : {
@@ -160,29 +138,6 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld cards"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "%lld cards are Image Occlusion cards, which hide parts of an image." : {
-      "comment" : "In the Import sheet, the cards of an Anki package that make none, with how many.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld card is an Image Occlusion card, which hides parts of an image."
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld cards are Image Occlusion cards, which hide parts of an image."
                 }
               }
             }
@@ -219,8 +174,8 @@
         }
       }
     },
-    "%lld cards have a side with neither text, an image nor a sound once images on the web are left out." : {
-      "comment" : "In the Import sheet, the cards of an Anki package that make none, with how many.",
+    "%lld cards learned" : {
+      "comment" : "The menu's progress line: how many cards Lucas learned.",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -228,372 +183,19 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld card has a side with neither text, an image nor a sound once images on the web are left out."
+                  "value" : "%lld card learned"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld cards have a side with neither text, an image nor a sound once images on the web are left out."
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "%lld cards have a side with only a sound Ficha can't read, such as a damaged file." : {
-      "comment" : "In the Import sheet, the cards of an Anki package that make none, with how many.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld card has a side with only a sound Ficha can't read, such as a damaged file."
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld cards have a side with only a sound Ficha can't read, such as a damaged file."
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "%lld cards have a side with only a sound the package lacks, as when Anki exports a deck without its media." : {
-      "comment" : "In the Import sheet, the cards of an Anki package that make none, with how many.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld card has a side with only a sound the package lacks, as when Anki exports a deck without its media."
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld cards have a side with only a sound the package lacks, as when Anki exports a deck without its media."
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "%lld cards have a side with only an image Ficha can't read, such as a damaged file." : {
-      "comment" : "In the Import sheet, the cards of an Anki package that make none, with how many.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld card has a side with only an image Ficha can't read, such as a damaged file."
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld cards have a side with only an image Ficha can't read, such as a damaged file."
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "%lld cards have a side with only an image the package lacks, as when Anki exports a deck without its media." : {
-      "comment" : "In the Import sheet, the cards of an Anki package that make none, with how many.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld card has a side with only an image the package lacks, as when Anki exports a deck without its media."
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld cards have a side with only an image the package lacks, as when Anki exports a deck without its media."
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "%lld cards have a sound Ficha can't read, such as a damaged file, and come in without it." : {
-      "comment" : "In the Import sheet's preview of an Anki package, with how many of its cards come in without a sound Ficha can't read, since their side holds something else.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld card has a sound Ficha can't read, such as a damaged file, and comes in without it."
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld cards have a sound Ficha can't read, such as a damaged file, and come in without it."
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "%lld cards have a template with a mistake, so Anki shows an error for them too." : {
-      "comment" : "In the Import sheet, the cards of an Anki package that make none, with how many.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld card has a template with a mistake, so Anki shows an error for it too."
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld cards have a template with a mistake, so Anki shows an error for them too."
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "%lld cards have more than one image on a side, and come in with the first." : {
-      "comment" : "In the Import sheet's preview of an Anki package, with how many of its cards have more than one image on a side, of which a Ficha card holds one.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld card has more than one image on a side, and comes in with the first."
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld cards have more than one image on a side, and come in with the first."
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "%lld cards have more than one sound on a side, and come in with the first." : {
-      "comment" : "In the Import sheet's preview of an Anki package, with how many of its cards have more than one sound on a side, of which a Ficha card holds one.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld card has more than one sound on a side, and comes in with the first."
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld cards have more than one sound on a side, and come in with the first."
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "%lld cards have this type. They keep everything else, with no type." : {
-      "comment" : "Under the title of the Cards window's question before it deletes a card type of the user's own, with how many cards have it, buried ones too.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "1 card has this type. It keeps everything else, with no type."
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld cards have this type. They keep everything else, with no type."
+                  "value" : "%lld cards learned"
                 }
               },
               "zero" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "No card has this type."
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "%lld cards learned · %lld in the inbox" : {
-      "comment" : "The menu's progress line: how many cards Lucas learned, and how many captures and flagged cards wait in the inbox.",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%#@learned@ · %#@inbox@"
-          },
-          "substitutions" : {
-            "inbox" : {
-              "argNum" : 2,
-              "formatSpecifier" : "lld",
-              "variations" : {
-                "plural" : {
-                  "one" : {
-                    "stringUnit" : {
-                      "state" : "translated",
-                      "value" : "%arg in the inbox"
-                    }
-                  },
-                  "other" : {
-                    "stringUnit" : {
-                      "state" : "translated",
-                      "value" : "%arg in the inbox"
-                    }
-                  },
-                  "zero" : {
-                    "stringUnit" : {
-                      "state" : "translated",
-                      "value" : "the inbox is empty"
-                    }
-                  }
-                }
-              }
-            },
-            "learned" : {
-              "argNum" : 1,
-              "formatSpecifier" : "lld",
-              "variations" : {
-                "plural" : {
-                  "one" : {
-                    "stringUnit" : {
-                      "state" : "translated",
-                      "value" : "%arg card learned"
-                    }
-                  },
-                  "other" : {
-                    "stringUnit" : {
-                      "state" : "translated",
-                      "value" : "%arg cards learned"
-                    }
-                  },
-                  "zero" : {
-                    "stringUnit" : {
-                      "state" : "translated",
-                      "value" : "No cards learned"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "%lld cards lose it, and keep everything else." : {
-      "comment" : "In the Cards window's question before it deletes a tag: the cards that carry it.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "1 card loses it, and keeps everything else."
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld cards lose it, and keep everything else."
-                }
-              },
-              "zero" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "No card carries it."
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "%lld cards lose them, and keep everything else." : {
-      "comment" : "In the Cards window's question before it deletes several tags: the cards that carry them.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "1 card loses them, and keeps everything else."
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld cards lose them, and keep everything else."
-                }
-              },
-              "zero" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "No card carries them."
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "%lld cards repeat cards you have, by their front:" : {
-      "comment" : "In the Import sheet, above Update and Skip, with how many cards of the file repeat.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld card repeats a card you have, by its front:"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld cards repeat cards you have, by their front:"
+                  "value" : "No cards learned"
                 }
               }
             }
@@ -602,7 +204,7 @@
       }
     },
     "%lld cards selected" : {
-      "comment" : "In the Cards window's detail, when Lucas selected several cards in the table.",
+      "comment" : "In the Cards window's detail, when Lucas selected several cards in the grid.",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -624,36 +226,13 @@
         }
       }
     },
-    "%lld cards stay out:" : {
-      "comment" : "In the Import sheet's preview of an Anki package, above why its cards that stay out do, with how many.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld card stays out:"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld cards stay out:"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "%lld cards · imported from %@" : {
-      "comment" : "In How fast?, under the name of the deck an import made, or the names of the decks: how many cards they hold, and the name of the file they came from.",
+    "%lld cards · from %@" : {
+      "comment" : "In How fast?, under the name of the deck of a deck's .ficha file, which Open Deck… or Finder opened: how many cards it brings, and the file's name.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%#@cards@ · imported from %2$@"
+            "value" : "%#@cards@ · from %2$@"
           },
           "substitutions" : {
             "cards" : {
@@ -736,203 +315,8 @@
         }
       }
     },
-    "%lld lines can't be read, and stay out:" : {
-      "comment" : "In the Import sheet's preview, above the lines of the file it can't read, with how many.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld line can't be read, and stays out:"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld lines can't be read, and stay out:"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "%lld new a day" : {
       "comment" : "In How fast?, beside a pace's name, and in Settings' Pace tab, below it: how many new cards a day it brings."
-    },
-    "%lld new cards came in, %lld cards were updated and %lld were skipped." : {
-      "comment" : "In the Import sheet once it's done, with how many cards came in, were updated and skipped.",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%#@added@, %#@updated@ and %#@skipped@."
-          },
-          "substitutions" : {
-            "added" : {
-              "argNum" : 1,
-              "formatSpecifier" : "lld",
-              "variations" : {
-                "plural" : {
-                  "one" : {
-                    "stringUnit" : {
-                      "state" : "translated",
-                      "value" : "%arg new card came in"
-                    }
-                  },
-                  "other" : {
-                    "stringUnit" : {
-                      "state" : "translated",
-                      "value" : "%arg new cards came in"
-                    }
-                  }
-                }
-              }
-            },
-            "skipped" : {
-              "argNum" : 3,
-              "formatSpecifier" : "lld",
-              "variations" : {
-                "plural" : {
-                  "one" : {
-                    "stringUnit" : {
-                      "state" : "translated",
-                      "value" : "%arg was skipped"
-                    }
-                  },
-                  "other" : {
-                    "stringUnit" : {
-                      "state" : "translated",
-                      "value" : "%arg were skipped"
-                    }
-                  }
-                }
-              }
-            },
-            "updated" : {
-              "argNum" : 2,
-              "formatSpecifier" : "lld",
-              "variations" : {
-                "plural" : {
-                  "one" : {
-                    "stringUnit" : {
-                      "state" : "translated",
-                      "value" : "%arg card was updated"
-                    }
-                  },
-                  "other" : {
-                    "stringUnit" : {
-                      "state" : "translated",
-                      "value" : "%arg cards were updated"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "%lld new cards come in, at your pace, and %lld with their progress and Anki's reviews, due when Anki had them due." : {
-      "comment" : "In the Import sheet's preview of an Anki package, with how many cards come in new and how many with Anki's reviews of them, the interval Anki gave them and the day or moment Anki had them due.",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%#@new@, at your pace, and %#@withProgress@."
-          },
-          "substitutions" : {
-            "new" : {
-              "argNum" : 1,
-              "formatSpecifier" : "lld",
-              "variations" : {
-                "plural" : {
-                  "one" : {
-                    "stringUnit" : {
-                      "state" : "translated",
-                      "value" : "%arg new card comes in"
-                    }
-                  },
-                  "other" : {
-                    "stringUnit" : {
-                      "state" : "translated",
-                      "value" : "%arg new cards come in"
-                    }
-                  }
-                }
-              }
-            },
-            "withProgress" : {
-              "argNum" : 2,
-              "formatSpecifier" : "lld",
-              "variations" : {
-                "plural" : {
-                  "one" : {
-                    "stringUnit" : {
-                      "state" : "translated",
-                      "value" : "%arg with its progress and Anki's reviews, due when Anki had it due"
-                    }
-                  },
-                  "other" : {
-                    "stringUnit" : {
-                      "state" : "translated",
-                      "value" : "%arg with their progress and Anki's reviews, due when Anki had them due"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "%lld new cards come in, at your pace." : {
-      "comment" : "In the Import sheet's preview, with how many new cards the file brings.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld new card comes in, at your pace."
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld new cards come in, at your pace."
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "%lld notes with a reversed card come in as one card each, with Both ways on." : {
-      "comment" : "In the Import sheet's preview of an Anki package, with how many of its notes that make a card and that card turned over come in as one Ficha card, which is also reviewed back first: its back, then its front.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld note with a reversed card comes in as one card, with Both ways on."
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld notes with a reversed card come in as one card each, with Both ways on."
-                }
-              }
-            }
-          }
-        }
-      }
     },
     "%lld of %lld" : {
       "comment" : "Under a deck's name in the Cards window's sidebar: how many of its cards are met.",
@@ -957,7 +341,7 @@
       }
     },
     "%lld reviews" : {
-      "comment" : "For VoiceOver, in the Cards window's Reviews column and its detail's Reviews row: how many times Lucas reviewed the card, either way.",
+      "comment" : "For VoiceOver, in the Cards window's detail's Reviews row: how many times Lucas reviewed the card, either way.",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -979,47 +363,11 @@
         }
       }
     },
-    "%lld tags selected" : {
-      "comment" : "In the Cards window's detail, when Lucas selected several tags in All Tags.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld tag selected"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld tags selected"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "+%lld more" : {
-      "comment" : "A menu above the Cards window's card list, after the tags of the deck the sidebar chose that fit: the tags that don't, with how many."
-    },
     "A book, a podcast…" : {
-      "comment" : "In the Cards window's card form, in the empty source.\nIn the Cards window, in a capture's empty source, while Lucas edits it.\nIn the Cards window, in a card's empty source, while Lucas edits it."
+      "comment" : "In the Cards window's card form, in the empty source.\nIn the Cards window, in a card's empty source, while Lucas edits it."
     },
     "A camera" : {
       "comment" : "A camera whose name the OS doesn't give, in Diagnostics."
-    },
-    "A capture is approved into one or more cards. To take it out of the inbox without cards, discard it." : {
-      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
-      "extractionState" : "manual"
-    },
-    "A capture needs a text." : {
-      "comment" : "In the Cards window, under a capture's text, when Lucas saves it blank."
-    },
-    "A capture shortcut needs two of Control, Option and Command at least, so it doesn't take what you type or another app's shortcut. While you type one, Esc keeps the old one and Delete turns it off." : {
-
     },
     "A card needs a back." : {
       "comment" : "In the Cards window, under a card's back, when Lucas saves it blank."
@@ -1069,11 +417,8 @@
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },
-    "A word, a concept, a quote or a question" : {
-
-    },
     "Actions" : {
-      "comment" : "A menu button of the Cards window, above the card list while the sidebar chose a deck: the deck's menu, as on its row in the sidebar.\nA menu button of the Cards window, beside All Tags: the context menu of the tags selected there."
+      "comment" : "A menu button of the Cards window, above the grid while the sidebar chose a deck: the deck's menu, as on its row in the sidebar."
     },
     "Add" : {
       "comment" : "The button of the Cards window's card form that saves the card."
@@ -1086,9 +431,6 @@
     },
     "Add Step" : {
       "comment" : "Settings, under Advanced: adds a learning or relearning step at the end."
-    },
-    "Added" : {
-      "comment" : "A column of the Cards window's inbox: when Lucas captured it, or flagged the card."
     },
     "Added “%@”" : {
       "comment" : "In the Cards window's card form, after Add, with the front of the card it added."
@@ -1128,15 +470,6 @@
     "Ahead" : {
       "comment" : "A badge on a card the review panel brings before it's due, in a review ahead, and beside such a review in the Cards window's review log."
     },
-    "All Tags…" : {
-      "comment" : "The last item of the Tags section of the Cards window's sidebar: it lists every tag, pinned or not."
-    },
-    "All cards" : {
-      "comment" : "An item of the Cards window's sidebar: every card but the buried ones.\nThe name the Export sheet's save panel proposes for the file of all cards."
-    },
-    "All cards (%lld)" : {
-      "comment" : "An item of the Export sheet's menu: every card, buried ones too, with how many."
-    },
     "Allow it in System Settings, in Login Items." : {
 
     },
@@ -1147,9 +480,6 @@
       "comment" : "Settings: the review panel takes the keyboard as it shows up."
     },
     "An app keeping the display awake" : {
-
-    },
-    "Another app already uses this shortcut. Pick another in Settings, or quit that app, or turn its shortcut off, and try again." : {
 
     },
     "Another card has this front: “%@”." : {
@@ -1163,15 +493,6 @@
     },
     "As each backup is saved, the oldest ones beyond that number go. Copies before an update, a restore or an import stay until you delete them." : {
       "comment" : "Settings, under Backups, below its settings: \"that number\" is the one in Backups to keep, just above."
-    },
-    "Ask" : {
-      "comment" : "The button that saves the question written above it, which waits in the inbox tied to the card."
-    },
-    "Asked about this card" : {
-      "comment" : "In the Cards window's detail of a follow-up, above the card it was asked about in the review panel."
-    },
-    "Ask…" : {
-      "comment" : "An item of the review panel's ⋯ menu, whose key is A: it asks a question about the card the panel shows, which waits in the inbox tied to the card."
     },
     "At least this long apart" : {
       "comment" : "Settings, under Interruptions: the least time between two appearances."
@@ -1191,8 +512,11 @@
     "Back first" : {
       "comment" : "A badge on a card the review panel shows back first, its back on top and its front under it once flipped, and beside a review that went that way in the Cards window's review log.\nIn the key of the Cards window's review log chart: the line of a card that goes both ways, back first."
     },
-    "Back to All Tags (⌘[)" : {
-      "comment" : "The tooltip of the Cards window's Back button."
+    "Back on %@" : {
+      "comment" : "In the Cards window's detail: the card is due again on a later day, by its weekday, month and day, and its year when it isn't this year, like “Back on Tue, Dec 15” or “Back on Fri, Jan 21, 2028”. The day is Ficha's, which starts at 4:00, or the hour the user set, so a card due at 2:00 AM on a Friday is back on Thursday."
+    },
+    "Back today at %@" : {
+      "comment" : "In the Cards window's detail: the card is due again later today, at this time, like “Back today at 3:00 PM”. Today is Ficha's day, which runs until 4:00 the next morning, or the hour the user set, so at 11:00 PM a card due at 2:00 AM is back today."
     },
     "Back up" : {
       "comment" : "Settings, under Backups: how often Ficha backs up on its own."
@@ -1201,10 +525,10 @@
       "comment" : "In the Cards window's detail, for a card that goes both ways: FSRS's difficulty back first, as Anki's Card Info says it, how hard the card is to remember back first, as a percentage."
     },
     "Back-first due" : {
-      "comment" : "A column of the Cards window: when a card that goes both ways is due back first.\nIn the Cards window's detail: when a card that goes both ways is due back first."
+      "comment" : "In the Cards window's detail: when a card that goes both ways is due back first."
     },
     "Back-first interval" : {
-      "comment" : "A column of the Cards window: how long a card that goes both ways waits after its last review back first.\nIn the Cards window's detail: how long a card that goes both ways waits after its last review back first."
+      "comment" : "In the Cards window's detail: how long a card that goes both ways waits after its last review back first."
     },
     "Back-first retrievability" : {
       "comment" : "In the Cards window's detail, for a card that goes both ways: FSRS's retrievability back first, as Anki's Card Info says it, the chance of remembering the card back first now."
@@ -1234,34 +558,13 @@
       "comment" : "Settings, under Backups: a copy's kind, saved before this Mac replaced its cards with those another device restored and synced through iCloud."
     },
     "Blue" : {
-      "comment" : "One of Finder's tag colors, which a tag can have."
-    },
-    "Both sides have a sound" : {
-      "comment" : "The tooltip of the speaker in the Cards window's Media column, when both sides have one."
-    },
-    "Both sides have an image" : {
-      "comment" : "The tooltip of the photo in the Cards window's Media column, when both sides have one."
+      "comment" : "One of Finder's tag colors, which a deck can have."
     },
     "Both ways" : {
-      "comment" : "In the Cards window's detail, after a card's type and tags: it's also reviewed back first, its back, then its front.\nIn the Cards window, the checkbox of a card that is also reviewed back first: its back, then its front."
+      "comment" : "In the Cards window's detail, above a card's front: it's also reviewed back first, its back, then its front.\nIn the Cards window, the checkbox of a card that is also reviewed back first: its back, then its front."
     },
     "Bring along cards due within" : {
       "comment" : "Settings, under Interruptions: the look-ahead, how soon a card due later may come along."
-    },
-    "Bring progress" : {
-      "comment" : "In the Import sheet's preview of an Anki package, the checkbox that keeps Anki's progress."
-    },
-    "Buried" : {
-      "comment" : "The icon beside a buried card, in the Cards window."
-    },
-    "Buried on %@" : {
-      "comment" : "In the Cards window's detail: when Lucas buried the card, like Oct 14, 2026 at 9:00 AM."
-    },
-    "Bury" : {
-      "comment" : "A button of the Cards window that buries the selected cards: they leave Lucas's reviews.\nAn item of the review panel's ⋯ menu, whose key is E: it buries the card the panel shows, which never shows up again."
-    },
-    "Bury (⌘E)" : {
-      "comment" : "The tooltip of the Cards window's button that buries the cards."
     },
     "Camera" : {
       "comment" : "A detector in Diagnostics: the cameras in use."
@@ -1270,29 +573,6 @@
       "comment" : "A detector the OS didn't answer, in Diagnostics."
     },
     "Cancel" : {
-
-    },
-    "Capture" : {
-      "comment" : "The capture window's title."
-    },
-    "Capture %lld doesn't expand a card. Approve it into cards, or discard it." : {
-      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
-      "extractionState" : "manual"
-    },
-    "Capture %lld isn't in the inbox: it was already approved or discarded, or it doesn't exist. Check what's in the inbox." : {
-      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
-      "extractionState" : "manual"
-    },
-    "Capture shortcut" : {
-
-    },
-    "Capture: “%@”\n\nExpand keeps yours next to it, so that refining takes both together. Ignore drops yours." : {
-
-    },
-    "Captured" : {
-      "comment" : "In the Cards window's detail: when Lucas captured it."
-    },
-    "Capture…" : {
 
     },
     "Card %lld can't be placed as an answer: only an import places a card. Nothing was recorded. Report it." : {
@@ -1319,11 +599,7 @@
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },
-    "Card %lld is buried. To bring it back, unbury it." : {
-      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
-      "extractionState" : "manual"
-    },
-    "Card %lld is flagged: it waits in the inbox to be fixed. Close the review panel and open “Review now” again." : {
+    "Card %lld is flagged: it waits in its deck to be fixed. Close the review panel and open “Review now” again." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },
@@ -1335,7 +611,7 @@
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },
-    "Card %lld isn't buried, so there's nothing to unbury. Check the card's id." : {
+    "Card %lld is set aside. To bring it back, choose Put Back on it in the Cards window." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },
@@ -1343,11 +619,15 @@
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },
-    "Card %lld isn't flagged, so there's nothing to fix: it was already fixed, or it was never flagged. Check what's in the inbox." : {
+    "Card %lld isn't flagged, so there's nothing to fix: it was already fixed, or it was never flagged. Check the card's id." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },
     "Card %lld isn't one of the cards its appearance brought, so its answer wasn't recorded. Report it." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual"
+    },
+    "Card %lld isn't set aside on its own, so there's nothing to put back. Check the card's id." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },
@@ -1358,14 +638,14 @@
     "Card size" : {
       "comment" : "A row of Settings that picks how large a card's text and images show, from 80% to 200%."
     },
-    "Card: “%@”\n\nExpand keeps your capture in the inbox, attached to that card, so that refining adds it to the card. Ignore drops it." : {
-
-    },
     "Cards" : {
-      "comment" : "A column of the Cards window's All Tags: how many cards carry the tag, or a tag inside it.\nThe Cards window's title."
+      "comment" : "The Cards window's title."
     },
-    "Cards come in with Anki's reviews of them: those Anki was reviewing keep their interval and due date, those it was learning go on with your learning steps, due when Anki said, and suspended cards come in buried. Unticked, every card comes in new." : {
-      "comment" : "In the Import sheet's preview of an Anki package, under Bring progress: what it does."
+    "Cards in %@" : {
+      "comment" : "What VoiceOver names the Cards window's grid while it lists a deck's cards, those of the decks inside it too, with the deck's whole name, like “Idiomas › Inglés”."
+    },
+    "Cards in Default" : {
+      "comment" : "What VoiceOver names the Cards window's grid while it lists Default's cards, the deck of cards with no other."
     },
     "Cards per appearance" : {
 
@@ -1391,18 +671,6 @@
     "Chill" : {
       "comment" : "A pace in How fast? and in Settings' Pace tab, the slowest: 1 new card a day."
     },
-    "Choose Another File…" : {
-      "comment" : "The Import sheet's button that opens another text file of cards instead."
-    },
-    "Choose File…" : {
-      "comment" : "The Import sheet's button that opens a text file of cards."
-    },
-    "Clear Unused Tags" : {
-      "comment" : "The button that deletes the unused tags the Cards window asks about."
-    },
-    "Clear Unused Tags…" : {
-      "comment" : "A button of the Cards window, beside All Tags: it asks whether to delete the tags no card carries."
-    },
     "Close" : {
       "comment" : "The button that closes the Cards window's card form."
     },
@@ -1416,31 +684,13 @@
       "comment" : "How an appearance closed, in Diagnostics."
     },
     "Color" : {
-      "comment" : "A submenu of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu above the card list: the deck's color, which the decks inside it show while they have none.\nA submenu of a tag's menu in the Cards window's sidebar or its All Tags: the tag's color."
-    },
-    "Concept" : {
-      "comment" : "A card type."
-    },
-    "Concepts" : {
-      "comment" : "An item of the Cards window's sidebar: the concept cards."
+      "comment" : "A submenu of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu above the grid: the deck's color, which the decks inside it show while they have none."
     },
     "Continue" : {
       "comment" : "The only button of the Welcome page when the app already opens at login, which closes the page."
     },
-    "Convert to Card" : {
-      "comment" : "A button of the Cards window that opens the card form from the capture in the detail."
-    },
-    "Convert to Card (⇧⌘N)" : {
-      "comment" : "The tooltip of the Cards window's button that opens the card form from the capture."
-    },
     "Converting the sound…" : {
       "comment" : "In the place for the sound on a side of a card."
-    },
-    "Copies instructions to paste into an AI chat, so that it writes a file of cards Ficha imports (⇧⌘C)" : {
-      "comment" : "The tooltip of the Import sheet's button that copies the instructions for an AI."
-    },
-    "Copy Instructions for an AI" : {
-      "comment" : "The Import sheet's button that copies instructions to paste into an AI chat."
     },
     "Couldn't add the card" : {
       "comment" : "An alert's title over the Cards window's card form."
@@ -1454,40 +704,14 @@
     "Couldn't add “%@”" : {
       "comment" : "An alert's title in the Cards window, after Add Deck… or How fast?'s Start on one of Ficha's decks, with its name."
     },
-    "Couldn't bury %lld cards" : {
-      "comment" : "An alert's title in the Cards window.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Couldn't bury the card"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Couldn't bury the %lld cards"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "Couldn't bury the card" : {
-
-    },
     "Couldn't change the color of “%@”" : {
-      "comment" : "An alert's title in the Cards window, after a color in a deck's menu, with the deck.\nAn alert's title in the Cards window, after a color in a tag's menu, with the tag."
+      "comment" : "An alert's title in the Cards window, after a color in a deck's menu, with the deck."
     },
-    "Couldn't change the emoji of the type “%@”" : {
-      "comment" : "An alert's title in the Cards window's emoji sheet, after OK, with a card type's name."
+    "Couldn't change the description of “%@”" : {
+      "comment" : "An alert's title in the Cards window, after Done in the field of a deck's description, with the deck."
     },
     "Couldn't change the emoji of “%@”" : {
-      "comment" : "An alert's title in the Cards window's emoji sheet, after OK, with the deck.\nAn alert's title in the Cards window's emoji sheet, after OK, with the tag."
+      "comment" : "An alert's title in the Cards window's emoji sheet, after OK, with the deck."
     },
     "Couldn't change the priority decks" : {
 
@@ -1500,12 +724,6 @@
     },
     "Couldn't check whether another card has this front. %@" : {
       "comment" : "In the Cards window's card form, under the front, with why it couldn't be checked."
-    },
-    "Couldn't clear the unused tags" : {
-      "comment" : "An alert's title in the Cards window, after Clear Unused Tags… or its question."
-    },
-    "Couldn't copy the instructions" : {
-      "comment" : "An alert's title in the Import sheet, after Copy Instructions for an AI."
     },
     "Couldn't count your progress" : {
 
@@ -1533,23 +751,11 @@
         }
       }
     },
-    "Couldn't delete the type “%@”" : {
-      "comment" : "An alert's title in the Cards window, after Delete… in a card type's menu, with its name."
-    },
     "Couldn't delete “%@”" : {
-      "comment" : "An alert's title in the Cards window, after Delete… in a deck's menu or its question, with the deck's whole name.\nAn alert's title in the Cards window, after Delete… in a tag's menu or its question, with the tag's whole name, the first when Lucas deletes several."
-    },
-    "Couldn't discard the capture" : {
-      "comment" : "An alert's title in the Cards window."
-    },
-    "Couldn't export the cards" : {
-      "comment" : "An alert's title in the Cards window, after Export… or over its Export sheet."
+      "comment" : "An alert's title in the Cards window, after Delete… in a deck's menu or its question, with the deck's whole name."
     },
     "Couldn't flag the card" : {
 
-    },
-    "Couldn't import the cards" : {
-      "comment" : "An alert's title in the Cards window's Import sheet."
     },
     "Couldn't load the cards" : {
 
@@ -1562,9 +768,6 @@
     },
     "Couldn't make the deck" : {
       "comment" : "An alert's title in the Cards window's New Deck sheet, after New Deck… in the sidebar and OK."
-    },
-    "Couldn't make the type" : {
-      "comment" : "An alert's title in the Cards window's New Type sheet, after OK."
     },
     "Couldn't make “%@” a priority deck" : {
       "comment" : "An alert's title in the Cards window, after Prioritize in a deck's menu, with the deck."
@@ -1616,37 +819,48 @@
       }
     },
     "Couldn't move “%@”" : {
-      "comment" : "An alert's title in the Cards window, after dragging a deck in the sidebar onto another or onto the Your Decks section's title, with the deck's whole name.\nAn alert's title in the Cards window, after dragging a tag in All Tags onto another or between two rows, with the tag's whole name, the first when Lucas drags several."
+      "comment" : "An alert's title in the Cards window, after dragging a deck in the sidebar onto another or onto the Your Decks section's title, with the deck's whole name."
     },
-    "Couldn't move “%@” in the sidebar" : {
-      "comment" : "An alert's title in the Cards window, after dragging a pinned tag to another place among the sidebar's pinned tags, with the tag's whole name."
-    },
-    "Couldn't pin “%@” to the sidebar" : {
-      "comment" : "An alert's title in the Cards window, after Pin to Sidebar in a tag's menu, its Pinned checkbox in All Tags or dragging a tag into the sidebar, with the tag's whole name."
+    "Couldn't open “%@”" : {
+      "comment" : "An alert's title in the Cards window, after Open Deck… or a file opened from Finder, or How fast?'s Start on the deck of a deck's .ficha file, with the file's name."
     },
     "Couldn't put %@ first in the queue" : {
       "comment" : "An alert's title in Settings' Pace tab, with the name of the deck Put it first was for; the alert says why under it."
     },
+    "Couldn't put %lld cards back" : {
+      "comment" : "An alert's title in the Cards window, after Put Back.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Couldn't put the card back"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Couldn't put the %lld cards back"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "Couldn't read Ficha's deck “%@”" : {
       "comment" : "An alert's title in the Cards window as it opens, when the file of one of the decks that come with Ficha couldn't be read, with the deck's name."
-    },
-    "Couldn't read the file" : {
-      "comment" : "An alert's title in the Cards window's Import sheet."
     },
     "Couldn't read your decks" : {
 
     },
-    "Couldn't rename the type “%@”" : {
-      "comment" : "An alert's title in the Cards window's rename sheet, after OK, with a card type's name."
-    },
     "Couldn't rename “%@”" : {
-      "comment" : "An alert's title in the Cards window's rename sheet, after OK, with the deck's whole name.\nAn alert's title in the Cards window's rename sheet, after OK, with the tag's whole name."
+      "comment" : "An alert's title in the Cards window's rename sheet, after OK, with the deck's whole name."
     },
     "Couldn't restore the copy" : {
       "comment" : "An alert's title in Settings, under Backups."
-    },
-    "Couldn't save the capture" : {
-      "comment" : "An alert's title in the Cards window."
     },
     "Couldn't save the card" : {
       "comment" : "An alert's title in the Cards window."
@@ -1660,17 +874,43 @@
     "Couldn't save your answer" : {
 
     },
-    "Couldn't save your question" : {
+    "Couldn't save “%@”" : {
+      "comment" : "An alert's title in the Cards window, after Save to File… in the Share menu of Share Deck… and Save in its save panel, with the file's name."
+    },
+    "Couldn't set %lld cards aside" : {
+      "comment" : "An alert's title in the Cards window, after Set Aside.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Couldn't set the card aside"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Couldn't set the %lld cards aside"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Couldn't set the card aside" : {
 
     },
     "Couldn't set “%@” aside" : {
       "comment" : "An alert's title in the Cards window, after Set Aside in a deck's menu, with the deck."
     },
+    "Couldn't share “%@”" : {
+      "comment" : "An alert's title in the Cards window, after Share Deck… in a deck's menu, with the deck."
+    },
     "Couldn't show this image." : {
       "comment" : "In place of an image on a card's side that can't be read."
-    },
-    "Couldn't take the capture out of the inbox" : {
-      "comment" : "An alert's title in the Cards window, after closing the card form opened from a capture."
     },
     "Couldn't turn off Both ways for %lld cards" : {
       "comment" : "An alert's title in the Cards window, after Turn Off Both Ways on several cards.",
@@ -1718,43 +958,14 @@
         }
       }
     },
-    "Couldn't turn on the capture shortcut" : {
-
-    },
     "Couldn't turn sync off" : {
       "comment" : "An alert's title in Settings' Sync tab."
     },
     "Couldn't turn sync on" : {
       "comment" : "An alert's title in Settings' Sync tab."
     },
-    "Couldn't unbury %lld cards" : {
-      "comment" : "An alert's title in the Cards window.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Couldn't unbury the card"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Couldn't unbury the %lld cards"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "Couldn't undo" : {
 
-    },
-    "Couldn't unpin “%@” from the sidebar" : {
-      "comment" : "An alert's title in the Cards window, after Unpin from Sidebar in a tag's menu or unticking its Pinned checkbox in All Tags, with the tag's whole name."
     },
     "Couldn't untick Prioritize on “%@”" : {
       "comment" : "An alert's title in the Cards window, after choosing a ticked Prioritize in a deck's menu, with the deck."
@@ -1766,7 +977,7 @@
       "comment" : "The button of How fast? after New Deck…: sets the pace for the new deck."
     },
     "Created" : {
-      "comment" : "A column of the Cards window: when Lucas approved the card.\nIn the Cards window's detail: when Lucas approved the card."
+      "comment" : "In the Cards window's detail: when the card was made."
     },
     "Deck" : {
       "comment" : "In the Cards window's card form, the label of the card's deck.\nIn the Cards window, the label of a card's deck, while Lucas edits it.\nThe Import sheet's field for a deck the imported cards come into."
@@ -1782,7 +993,7 @@
       "extractionState" : "manual"
     },
     "Delete" : {
-      "comment" : "The button that deletes the card type the Cards window asks about.\nThe button that deletes the cards the Cards window asks about.\nThe button that deletes the deck the Cards window asks about.\nThe button that deletes the tags the Cards window asks about."
+      "comment" : "The button that deletes the cards the Cards window asks about.\nThe button that deletes the deck the Cards window asks about."
     },
     "Delete %lld cards?" : {
       "comment" : "The title of the Cards window's question before it deletes several cards, with how many.",
@@ -1807,90 +1018,35 @@
         }
       }
     },
-    "Delete %lld tags?" : {
-      "comment" : "The title of the Cards window's question before it deletes several tags, with how many.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Delete %lld tag?"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Delete %lld tags?"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "Delete %lld unused tags?" : {
-      "comment" : "The title of the Cards window's question before Clear Unused Tags… deletes the tags no card carries, with how many.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Delete 1 unused tag?"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Delete %lld unused tags?"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "Delete the deck “%@”?" : {
       "comment" : "The title of the Cards window's question before it deletes a deck, with its whole name."
-    },
-    "Delete the tag “%@”?" : {
-      "comment" : "The title of the Cards window's question before it deletes a tag, with its whole name."
-    },
-    "Delete the type “%@”?" : {
-      "comment" : "The title of the Cards window's question before it deletes a card type of the user's own, with its name."
     },
     "Delete “%@”?" : {
       "comment" : "The title of the Cards window's question before it deletes a card, with its front."
     },
     "Delete…" : {
-      "comment" : "A button of the Cards window that deletes the selected cards for good, asking first.\nA button of the Cards window, beside All Tags, that deletes the selected tags, asking first.\nAn item of a card type's menu in the Cards window's sidebar: it asks whether to delete the type.\nAn item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu above the card list: it asks whether to delete the deck, with the decks inside it and their cards.\nAn item of a tag's menu in the Cards window's sidebar or its All Tags: it asks whether to delete the tag, or the tags selected with it.\nSettings, under Backups: moves the selected copies to the Trash, asking first."
+      "comment" : "A button of the Cards window that deletes the selected cards for good, asking first.\nAn item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu above the grid: it asks whether to delete the deck, with the decks inside it and their cards.\nSettings, under Backups: moves the selected copies to the Trash, asking first."
     },
     "Delete… (⌘⌫)" : {
-      "comment" : "The tooltip of Settings' Backups button that deletes copies.\nThe tooltip of the Cards window's button that deletes the cards.\nThe tooltip of the Cards window's button that deletes the tags."
+      "comment" : "The tooltip of Settings' Backups button that deletes copies.\nThe tooltip of the Cards window's button that deletes the cards."
+    },
+    "Description" : {
+      "comment" : "The field Description… opens above a deck's cards in the Cards window: its label, and what it shows while it's empty."
+    },
+    "Description…" : {
+      "comment" : "An item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu above the grid: it edits the deck's description, one or two lines on what it holds, in place above its cards."
     },
     "Desired retention" : {
       "comment" : "Settings, under Advanced: how likely the user wants to be to remember a card when it's due."
+    },
+    "Details" : {
+      "comment" : "In the Cards window's detail, the disclosure under a card's words that holds its numbers, as Anki's Card Info shows them, and its review log, closed until the user opens it."
     },
     "Diagnostics" : {
       "comment" : "The Diagnostics window's title."
     },
     "Difficulty" : {
       "comment" : "In the Cards window's detail, as Anki's Card Info says it: FSRS's difficulty, how hard the card is to remember, as a percentage."
-    },
-    "Discard" : {
-      "comment" : "The button that discards the capture the Cards window asks about."
-    },
-    "Discard “%@”?" : {
-      "comment" : "The title of the Cards window's question before it discards a capture, with its text."
-    },
-    "Discard…" : {
-      "comment" : "A button of the Cards window that discards the capture, asking first."
-    },
-    "Discard… (⌘⌫)" : {
-      "comment" : "The tooltip of the Cards window's button that discards the capture."
     },
     "Doesn't hold back appearances" : {
       "comment" : "The app's filter in a Focus, with its switch off."
@@ -1899,10 +1055,7 @@
       "comment" : "The button that declines the review panel's offer to flag a card the user forgot often: the card stays in their reviews."
     },
     "Done" : {
-      "comment" : "A button that closes the review panel once every card was gone through.\nThe Import sheet's button that closes it once the cards came in."
-    },
-    "Double-click a tag to see its cards, or right-click it for what you can do with it. Drag tags onto another to move them inside, between two rows to move them to that level, or into the sidebar to pin them." : {
-      "comment" : "In the Cards window's detail, beside All Tags: what Lucas does with a tag there."
+      "comment" : "A button that closes the review panel once every card was gone through.\nThe button under the field of a deck's description in the Cards window, which gives the deck what the field holds."
     },
     "Drop or paste a sound" : {
       "comment" : "In the empty place for the sound on a side of a card."
@@ -1911,7 +1064,10 @@
       "comment" : "In the empty place for the image on a side of a card."
     },
     "Due" : {
-      "comment" : "A column of the Cards window: when the card is due.\nIn the Cards window's detail: when the card is due."
+      "comment" : "In the Cards window's detail: when the card is due."
+    },
+    "Due now" : {
+      "comment" : "In the Cards window's detail: the card is due, front first or back first, as the orange dot on its tile says."
     },
     "Each “Forgot” to a card out of its learning and relearning steps counts, since the card's front or back last changed. If you don't flag it, the panel offers again after half as many more." : {
       "comment" : "Settings, under Advanced: below the offer to flag a card forgotten often, which counts Anki's lapses. “Forgot” is the review panel's button that records Anki's Again, also on key 1."
@@ -1920,16 +1076,16 @@
       "comment" : "A rating, Anki's fourth button, as the Cards window's review log shows it: Lucas knew the card at once. Anki's own name for it, “Fácil” in Spanish."
     },
     "Edit" : {
-      "comment" : "A button of the Cards window that turns the card's or the capture's detail into fields to edit it."
+      "comment" : "A button of the Cards window that turns the card's detail into fields to edit it."
     },
     "Edit (⌘L)" : {
-      "comment" : "The tooltip of the Cards window's button that edits the card or the capture."
+      "comment" : "The tooltip of the Cards window's button that edits the card."
     },
     "Edited" : {
-      "comment" : "A column of the Cards window: when the card's front or back last changed."
+      "comment" : "In the Cards window's detail: when the card's front or back last changed, a side's image or sound included."
     },
     "Emoji" : {
-      "comment" : "The field of the sheet that gives a tag, a deck or a card type an emoji."
+      "comment" : "The field of the sheet that gives a deck an emoji."
     },
     "Emoji & Symbols" : {
       "comment" : "A button beside the emoji field: it opens the Mac's emoji picker."
@@ -1937,14 +1093,11 @@
     "Emoji & Symbols (⌃⌘Space)" : {
       "comment" : "The tooltip of the button beside the emoji field that opens the Mac's emoji picker."
     },
-    "Emoji for the type “%@”" : {
-      "comment" : "The title of the Cards window's sheet that gives a card type of the user's own an emoji, with the type's name."
-    },
     "Emoji for “%@”" : {
-      "comment" : "The title of the Cards window's sheet that gives a deck an emoji, with the deck's whole name.\nThe title of the Cards window's sheet that gives a tag an emoji, with the tag's name."
+      "comment" : "The title of the Cards window's sheet that gives a deck an emoji, with the deck's whole name."
     },
     "Emoji…" : {
-      "comment" : "An item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu above the card list: it asks for the deck's emoji.\nAn item of the menu of a tag, in the Cards window's sidebar or its All Tags, or of a card type in its sidebar: it asks for its emoji."
+      "comment" : "An item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu above the grid: it asks for the deck's emoji."
     },
     "End at" : {
       "comment" : "Settings, under Interruptions: the hour active hours end at."
@@ -1964,24 +1117,6 @@
     "Every week" : {
       "comment" : "Settings, under Backups: Ficha backs up once a week."
     },
-    "Expand" : {
-      "comment" : "A button that keeps a capture that repeats a card or a capture, to add to that card or capture when Lucas refines."
-    },
-    "Expands this card" : {
-      "comment" : "In the Cards window's detail of an expansion, above the card it's attached to."
-    },
-    "Export" : {
-      "comment" : "A hidden button of the Cards window: ⇧⌘E, which opens the Export sheet.\nIn the Export sheet, before the menu of the cards to export."
-    },
-    "Export Cards" : {
-      "comment" : "The title of the Cards window's Export sheet."
-    },
-    "Export…" : {
-      "comment" : "The Cards window's toolbar button that exports cards to a file.\nThe Export sheet's button that opens a save panel for the file."
-    },
-    "Export… (⇧⌘E)" : {
-      "comment" : "The tooltip of the Cards window's toolbar button that exports cards."
-    },
     "Failed: %@" : {
       "comment" : "Settings, under Backups: the last backup failed, and why."
     },
@@ -1989,10 +1124,6 @@
       "comment" : "A pace in How fast? and in Settings' Pace tab, the fastest: 4 new cards a day."
     },
     "Ficha can't make sense of the review log of card %lld, so it doesn't know when the card is due. Your cards are still saved: report it." : {
-      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
-      "extractionState" : "manual"
-    },
-    "Ficha couldn't open “%@” as a zip: it may be damaged. Zip the text file of cards and its images and sounds again, and import that." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },
@@ -2016,7 +1147,7 @@
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },
-    "Ficha couldn't read “%@” as an Anki package: it may be damaged. Export the deck from Anki again, and import that." : {
+    "Ficha couldn't read the deck in “%@”: the file may be damaged. Ask whoever sent it for the deck again, and open that." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },
@@ -2039,22 +1170,17 @@
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },
+    "Ficha opens a deck's .ficha file, and “%@” isn't one. Ask whoever sent it for the deck's .ficha file, and open that." : {
+      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
+      "extractionState" : "manual"
+    },
     "Ficha read the sound but couldn't convert it. Check that the disk has room and try again, and if it keeps happening, report it." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },
-    "Ficha reads a text file with one card per line: its front, back, tags, type and source, separated by tabs, commas or semicolons, as a spreadsheet, an AI or Anki's Notes in Plain Text save it. Cards with images or sounds come in a zip, with the text file and those files. Anki's decks come in from the .apkg files Anki exports." : {
-      "comment" : "Under the title of the Cards window's Import sheet, before a file is chosen."
-    },
     "Ficha reads files only from your Downloads folder, and “%@” isn't in it. Copy the file to Downloads, and give its path there." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
-    },
-    "Ficha saves the cards to a text file that another Ficha imports, and Anki too. It holds what the cards say, never your progress." : {
-      "comment" : "Under the title of the Cards window's Export sheet."
-    },
-    "Ficha saves the cards to a zip, with a text file and their images and sounds, that another Ficha imports. It holds what the cards say, never your progress." : {
-      "comment" : "Under the title of the Cards window's Export sheet, when a card has an image or a sound."
     },
     "Ficha's Decks" : {
       "comment" : "A section of the Cards window's sidebar, after Your Decks: the decks that come with Ficha, which the user hasn't added."
@@ -2150,7 +1276,7 @@
       }
     },
     "Front" : {
-      "comment" : "A column of the Cards window: the card's front.\nIn the Cards window's card form, the label of the card's front.\nIn the Cards window, the label of a card's front, while Lucas edits it."
+      "comment" : "In the Cards window's card form, the label of the card's front.\nIn the Cards window, the label of a card's front, while Lucas edits it."
     },
     "Front first" : {
       "comment" : "In the key of the Cards window's review log chart: the line of the card's usual way, its front first."
@@ -2270,10 +1396,10 @@
       "comment" : "The review panel's button, once a card is turned over, for a card the user remembered: it records Anki's Good. Its keys are Space and 3."
     },
     "Gray" : {
-      "comment" : "One of Finder's tag colors, which a tag can have."
+      "comment" : "One of Finder's tag colors, which a deck can have."
     },
     "Green" : {
-      "comment" : "One of Finder's tag colors, which a tag can have."
+      "comment" : "One of Finder's tag colors, which a deck can have."
     },
     "Hard" : {
       "comment" : "A rating, Anki's second button, as the Cards window's review log shows it: Lucas knew the card with effort. Anki's own name for it, “Difícil” in Spanish."
@@ -2314,26 +1440,11 @@
     "Idle for" : {
       "comment" : "Settings, under Interruptions: how long Lucas must be idle before the review panel takes the keyboard, in the \"Once you're idle\" focus mode."
     },
-    "Ignore" : {
-      "comment" : "A button that drops a capture that repeats a card or a capture."
-    },
     "Image" : {
       "comment" : "The Cards window, in place of a card's front that has an image and no text.\nThe accessibility label of an image on a card's side."
     },
     "Images they share: %@" : {
       "comment" : "Settings, under Backups, below how many copies there are: what the images on their cards weigh, each kept once for all the copies."
-    },
-    "Import" : {
-      "comment" : "A hidden button of the Cards window: ⇧⌘I, which opens the Import sheet.\nThe Import sheet's button that imports the cards as previewed."
-    },
-    "Import Cards" : {
-      "comment" : "The title of the Cards window's Import sheet, before a file is chosen."
-    },
-    "Import Done" : {
-      "comment" : "The title of the Cards window's Import sheet, once the cards came in."
-    },
-    "Import “%@”" : {
-      "comment" : "The title of the Cards window's Import sheet, with the name of the file chosen."
     },
     "Imported" : {
       "comment" : "In the key of the Cards window's review log chart, and for VoiceOver, the name of the chart's point: an import from Anki brought the card in with its progress."
@@ -2341,56 +1452,29 @@
     "Imported, due on %@" : {
       "comment" : "In the Cards window's review log: an import from Anki brought the card in with its progress, due on this day, as Anki had it, like “Imported, due on Oct 20, 2026”."
     },
-    "Importing…" : {
-      "comment" : "In the Import sheet, beside a spinner, while it imports the cards."
-    },
-    "Import…" : {
-      "comment" : "A button in the Cards window while the user has no cards.\nThe Cards window's toolbar button that imports cards from a file."
-    },
-    "Import… (⇧⌘I)" : {
-      "comment" : "The tooltip of the Cards window's toolbar button that imports cards."
-    },
     "In days, up to %@" : {
       "comment" : "Settings, under Advanced: below the longest interval, its unit and the most it can be."
     },
     "In use: %@" : {
       "comment" : "What a detector sees in Diagnostics."
     },
-    "Inbox" : {
-      "comment" : "An item of the Cards window's sidebar: what waits to be refined."
-    },
     "Interruptions" : {
       "comment" : "A tab of the Settings window: when the review panel shows up on its own, what holds it back, and how it behaves once it's up."
     },
     "Interval" : {
-      "comment" : "A column of the Cards window: how long the card waits after its last review.\nFor VoiceOver, the Cards window's chart: how long the card waited after each entry.\nIn the Cards window's detail: how long the card waits after its last review."
+      "comment" : "For VoiceOver, the Cards window's chart: how long the card waited after each entry.\nIn the Cards window's detail: how long the card waits after its last review."
     },
     "Interval %@" : {
       "comment" : "For VoiceOver, a point of the Cards window's chart: how long the card waited after Lucas's answer, like “Interval 5 days”."
     },
-    "It leaves the inbox without becoming cards, and you can't bring it back." : {
-      "comment" : "Under the title of the Cards window's question before it discards a capture."
-    },
     "It shows before the deck's name, and before the names of the decks inside it that have none. Leave the field empty for none." : {
       "comment" : "Under the title of the Cards window's sheet that gives a deck an emoji."
-    },
-    "It shows before the tag's name. Leave the field empty for none." : {
-      "comment" : "Under the title of the Cards window's sheet that gives a tag an emoji."
-    },
-    "It shows before the type's name. Leave the field empty for none." : {
-      "comment" : "Under the title of the Cards window's sheet that gives a card type of the user's own an emoji."
     },
     "It syncs with the ticked deck it sits inside." : {
       "comment" : "Settings, under Sync: the tooltip of a deck's checkbox, ticked and waiting, inside a ticked deck."
     },
-    "It waits in the inbox, out of your reviews, until it's fixed." : {
+    "It waits in its deck, out of your reviews, until it's fixed." : {
       "comment" : "Under the title of the Cards window's sheet that flags a card."
-    },
-    "Its cards keep it, with its new name." : {
-      "comment" : "Under the title of the Cards window's sheet that renames a card type of the user's own."
-    },
-    "Its emoji shows before its name. Leave the emoji empty for none." : {
-      "comment" : "Under the title of the Cards window's sheet that makes a card type of the user's own."
     },
     "Its review log goes too, and you can't bring it back." : {
       "comment" : "Under the title of the Cards window's question before it deletes a card."
@@ -2399,7 +1483,7 @@
       "comment" : "A detector in Diagnostics: the apps keeping the display awake, as a video does."
     },
     "Kind" : {
-      "comment" : "A column of the Cards window's inbox: whether a row is a capture, an expansion, a follow-up or a card.\nSettings, under Backups: the column of each copy's kind."
+      "comment" : "Settings, under Backups: the column of each copy's kind."
     },
     "Kind of" : {
       "comment" : "The review panel's yellow button in the middle, once a card is turned over, a new card's first turn included, for a card the user remembered with effort: it records Anki's Hard. Its key is 2."
@@ -2414,7 +1498,7 @@
       "comment" : "A menu item while the last backup failed, which opens Settings on Backups, in its Advanced tab, where it says why."
     },
     "Last seen" : {
-      "comment" : "A column of the Cards window: when Lucas last reviewed the card.\nIn the Cards window's detail: when Lucas last reviewed the card."
+      "comment" : "In the Cards window's detail: when Lucas last reviewed the card."
     },
     "Last synced %@" : {
       "comment" : "Settings, under Sync: when this Mac last synced, with the date and time."
@@ -2422,96 +1506,11 @@
     "Latest appearances" : {
 
     },
-    "Learned" : {
-      "comment" : "An item of the Cards window's sidebar: the learned cards."
-    },
     "Learning" : {
-      "comment" : "In the Cards window's Interval columns and its detail's Interval rows: a card in its learning steps, the short intervals before it graduates, whatever the step's interval, as Anki's Browse says “(learning)”; or a card an import from Anki brought in while Anki was still learning it."
+      "comment" : "In the Cards window's detail's Interval rows: a card in its learning steps, the short intervals before it graduates, whatever the step's interval, as Anki's Browse says “(learning)”; or a card an import from Anki brought in while Anki was still learning it."
     },
     "Learning steps" : {
       "comment" : "Settings, under Advanced: the header of the learning steps."
-    },
-    "Leave Out “%@”" : {
-      "comment" : "The Import sheet's button that leaves out a tag, which shows a minus, with the tag's whole name, like “Medicina › Anatomía”.\nThe tooltip of the Import sheet's button that leaves out a tag, with the tag's whole name, like “Medicina › Anatomía”."
-    },
-    "Left out" : {
-      "comment" : "The Import sheet's field for a tag of an Anki package, empty: the cards don't get it."
-    },
-    "Line %lld has a quote inside a quoted field that isn't doubled." : {
-      "comment" : "In the Import sheet, a line the file can't read."
-    },
-    "Line %lld has a side with only the image “%@”, which Ficha can't read as an image." : {
-      "comment" : "In the Import sheet, a line of a zip's text file that makes no card, with an image's name.",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Line %1$lld has a side with only the image “%2$@”, which Ficha can't read as an image."
-          }
-        }
-      }
-    },
-    "Line %lld has a side with only the image “%@”, which isn't in the zip." : {
-      "comment" : "In the Import sheet, a line of a zip's text file that makes no card, with an image's name.",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Line %1$lld has a side with only the image “%2$@”, which isn't in the zip."
-          }
-        }
-      }
-    },
-    "Line %lld has a side with only the sound “%@”, which Ficha can't read as a sound." : {
-      "comment" : "In the Import sheet, a line of a zip's text file that makes no card, with a sound's name.",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Line %1$lld has a side with only the sound “%2$@”, which Ficha can't read as a sound."
-          }
-        }
-      }
-    },
-    "Line %lld has a side with only the sound “%@”, which isn't in the zip." : {
-      "comment" : "In the Import sheet, a line of a zip's text file that makes no card, with a sound's name.",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Line %1$lld has a side with only the sound “%2$@”, which isn't in the zip."
-          }
-        }
-      }
-    },
-    "Line %lld has no back." : {
-      "comment" : "In the Import sheet, a line the file can't read."
-    },
-    "Line %lld has no front." : {
-      "comment" : "In the Import sheet, a line the file can't read."
-    },
-    "Line %lld has one column: a front with no back after it." : {
-      "comment" : "In the Import sheet, a line the file can't read."
-    },
-    "Line %lld has the type “%@”, which isn't one of yours, and only a file that names its Type column in a #columns header makes new types." : {
-      "comment" : "In the Import sheet, a line the file can't read, with the type it has, which names no card type the user has, in a file without a #columns header that names its Type column.",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Line %1$lld has the type “%2$@”, which isn't one of yours, and only a file that names its Type column in a #columns header makes new types."
-          }
-        }
-      }
-    },
-    "Line %lld opens a quote that nothing closes." : {
-      "comment" : "In the Import sheet, a line the file can't read."
-    },
-    "List all of the deck's cards again" : {
-      "comment" : "The tooltip of a tag above the Cards window's card list, while it narrows the list to it."
-    },
-    "List only the deck's cards tagged %@" : {
-      "comment" : "The tooltip of a tag above the Cards window's card list, with its whole name: choosing it narrows the deck's cards to those that carry it, or a tag inside it."
     },
     "Longest interval" : {
       "comment" : "Settings, under Advanced: the longest a card can wait after a review, in days."
@@ -2544,11 +1543,11 @@
     "Make Card Smaller" : {
       "comment" : "A hidden button of the review panel and the Cards window: ⌘−, which makes a card's text and images smaller."
     },
-    "Media" : {
-      "comment" : "A column of the Cards window: whether the card's sides have an image or a sound."
-    },
     "Meetings" : {
 
+    },
+    "Met" : {
+      "comment" : "In the Cards window, above the grid of cards, and for VoiceOver, on a card's tile: the user met the card, and it isn't due."
     },
     "Met them all" : {
       "comment" : "Under a deck's name in the Cards window's sidebar: every card of the deck is met."
@@ -2610,7 +1609,7 @@
       "comment" : "A detector in Diagnostics: the microphones in use."
     },
     "More" : {
-      "comment" : "The review panel's ⋯ menu, which asks about the card, flags it or buries it, undoes the last thing the user did, or closes the panel."
+      "comment" : "The review panel's ⋯ menu, which asks about the card, flags it or sets it aside, undoes the last thing the user did, or closes the panel."
     },
     "Move" : {
       "comment" : "The button of the Cards window's Change Deck sheet that moves the cards to the chosen deck."
@@ -2665,10 +1664,7 @@
       "comment" : "The button that moves the copies Settings' Backups asks about to the Trash."
     },
     "Name" : {
-      "comment" : "The field of the Cards window's sheet that names a new deck, or of the Change Deck or Import sheet while it names one.\nThe field of the sheet that makes a card type of the user's own: its name.\nThe field of the sheet that renames a tag or a deck, its whole name, or a card type of the user's own."
-    },
-    "Name the deck" : {
-      "comment" : "The Import sheet's field for a deck the cards come into, empty: Import stays off until it names one."
+      "comment" : "The field of the Cards window's sheet that names a new deck, or of the Change Deck sheet while it names one.\nThe field of the sheet that renames a deck, its whole name."
     },
     "Never" : {
       "comment" : "Settings: the review panel never takes the keyboard on its own."
@@ -2683,25 +1679,25 @@
       "comment" : "The tooltip of the Cards window's toolbar button that opens the card form."
     },
     "New Deck" : {
-      "comment" : "The title of the Cards window's sheet that names a new deck, after New Deck…, or of the Change Deck or Import sheet while it names one."
+      "comment" : "The title of the Cards window's sheet that names a new deck, after New Deck…, or of the Change Deck sheet while it names one."
     },
     "New Deck…" : {
-      "comment" : "A button of the Cards window's Change Deck sheet: it asks for a new deck's name.\nAn item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu above the card list, and of the menu of the Your Decks title in the sidebar: it asks for a new deck's name, and OK makes the deck.\nThe last item of a menu of decks in the Cards window, a card's Deck field or the Import sheet's: it asks for a new deck's name."
+      "comment" : "A button of the Cards window's Change Deck sheet: it asks for a new deck's name.\nAn item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu above the grid, and of the menu of the Your Decks title in the sidebar: it asks for a new deck's name, and OK makes the deck.\nThe last item of a menu of decks in the Cards window, a card's Deck field: it asks for a new deck's name."
     },
     "New Deck… (⌘N)" : {
       "comment" : "The tooltip of the Change Deck sheet's button that asks for a new deck's name."
-    },
-    "New Type" : {
-      "comment" : "The title of the Cards window's sheet that makes a card type of the user's own."
-    },
-    "New Type…" : {
-      "comment" : "An item of the menu of a row of the Types section in the Cards window's sidebar, or of its title: it asks for a new type's name, and OK makes the type.\nThe last item of a card's type picker in the Cards window: it asks for a new type's name."
     },
     "New cards come from the first deck until you've met them all, then from the next. Cards you've met keep coming from every deck." : {
       "comment" : "Settings, under Up next, in the Pace tab: below the queue of decks."
     },
     "New to me" : {
       "comment" : "The review panel's Forgot button on a new card's first turn, for a card the user hadn't met before: it records Anki's Again. Its key is 1."
+    },
+    "New: it waits its turn in the queue." : {
+      "comment" : "In the Cards window's detail, of a card the user hasn't met yet, which waits its turn in the queue of new cards, as the grid's “New: waits its turn” says."
+    },
+    "New: waits its turn" : {
+      "comment" : "In the Cards window, above the grid of cards, and for VoiceOver, on a card's tile: the user hasn't met the card yet, which waits its turn in the queue of new cards."
     },
     "Next in the queue: %@. Its first card comes with the next new one." : {
       "comment" : "In the review panel, under the decks it met in full: the deck new cards come from now, with its emoji and name."
@@ -2765,53 +1761,29 @@
     "Next · on track for %@" : {
       "comment" : "Under the name of a deck that waits its turn in the queue of new cards, in the Cards window's sidebar: when its cards will all be met."
     },
-    "No Type" : {
-      "comment" : "An item of the Cards window's sidebar: the cards that have no type."
-    },
     "No appearance yet." : {
 
-    },
-    "No buried cards" : {
-      "comment" : "In the Cards window: no card is buried."
-    },
-    "No card carries them, so no card changes. What you gave them goes with them, a pin, a color or an emoji, and you can't undo this." : {
-      "comment" : "Under the title of the Cards window's question before Clear Unused Tags… deletes them."
     },
     "No card selected" : {
 
     },
     "No cards" : {
-      "comment" : "In the Cards window: no card that isn't buried."
+      "comment" : "In the Cards window, while it has no deck to show, since the user has no cards."
     },
     "No cards are due right now." : {
 
     },
-    "No cards due" : {
-      "comment" : "In the Cards window: no card is due now."
-    },
     "No cards in %@" : {
-      "comment" : "In the Cards window: no card that isn't buried lives in this deck, or a deck inside it, with the deck's whole name, like “Idiomas › Inglés”."
+      "comment" : "In the Cards window: no card lives in this deck, or a deck inside it, set-aside ones too, with the deck's whole name, like “Idiomas › Inglés”."
     },
     "No cards in Default" : {
-      "comment" : "In the Cards window: no card that isn't buried lives in Default, the deck of cards with no other."
-    },
-    "No cards of the type %@" : {
-      "comment" : "In the Cards window: no card that isn't buried has this type of the user's own, with its name."
-    },
-    "No cards tagged %@" : {
-      "comment" : "In the Cards window: no card that isn't buried has this tag, or a tag inside it, anymore, with the tag's whole name, like “economía › Argentina”."
+      "comment" : "In the Cards window: no card lives in Default, the deck of cards with no other."
     },
     "No cards to review right now." : {
 
     },
-    "No cards without a type" : {
-      "comment" : "In the Cards window: every card that isn't buried has a type."
-    },
     "No cards yet" : {
       "comment" : "Under a deck's name in the Cards window's sidebar, or in How fast?: the deck has no card."
-    },
-    "No concepts" : {
-      "comment" : "In the Cards window: no concept card that isn't buried."
     },
     "No deck waits for new cards." : {
       "comment" : "Settings, under How fast?, in the Pace tab: no deck in the queue has new cards."
@@ -2819,41 +1791,14 @@
     "No deck waits. Add one from the Cards window." : {
       "comment" : "Settings, under Up next, in the Pace tab, while no deck has new cards."
     },
-    "No flagged cards" : {
-      "comment" : "In the Cards window: no card is flagged."
-    },
     "No iCloud account" : {
       "comment" : "Settings, under Sync: this Mac isn't signed into iCloud."
-    },
-    "No learned cards" : {
-      "comment" : "In the Cards window: no card is learned yet."
-    },
-    "No new cards" : {
-      "comment" : "In the Cards window: no card waits for its first review."
-    },
-    "No questions" : {
-      "comment" : "In the Cards window: no question card that isn't buried."
-    },
-    "No quotes" : {
-      "comment" : "In the Cards window: no quote card that isn't buried."
     },
     "No reviews yet" : {
       "comment" : "In the Cards window's detail, in place of the review log of a card not seen yet."
     },
-    "No tag" : {
-      "comment" : "The Import sheet's tag field, empty: the cards get no tag of the file's."
-    },
-    "No tag selected" : {
-      "comment" : "In the Cards window's detail, beside All Tags, when no tag is selected."
-    },
-    "No tags" : {
-      "comment" : "In the Cards window's All Tags, when no card has a tag."
-    },
-    "No words" : {
-      "comment" : "In the Cards window: no word card that isn't buried."
-    },
     "None" : {
-      "comment" : "In the menu's Prioritize submenu: no deck is a priority deck. Choosing it clears them.\nThe empty field of the sheet that gives a tag, a deck or a card type an emoji."
+      "comment" : "In the menu's Prioritize submenu: no deck is a priority deck. Choosing it clears them.\nThe empty field of the sheet that gives a deck an emoji."
     },
     "None yet" : {
       "comment" : "Settings, under Backups: no backup was saved yet."
@@ -2880,16 +1825,7 @@
       "comment" : "Settings, under Sync: sync is on, and this Mac hasn't synced yet, or not since the app's data was deleted from iCloud."
     },
     "Note" : {
-      "comment" : "In the Cards window's detail: what Lucas noted with a capture.\nIn the Cards window, the label of a capture's note, while Lucas edits it."
-    },
-    "Note (optional)" : {
 
-    },
-    "Nothing in the inbox" : {
-      "comment" : "In the Cards window, when the inbox is empty."
-    },
-    "Nothing selected" : {
-      "comment" : "In the Cards window's detail, when nothing in the inbox is selected."
     },
     "Nothing waits in the queue." : {
       "comment" : "In the review panel, under the decks it met in full: no deck has new cards."
@@ -2962,13 +1898,10 @@
     "On its own" : {
       "comment" : "In Diagnostics: the review panel showed up on its own."
     },
-    "Once you close the form, the capture leaves the inbox." : {
-      "comment" : "In the Cards window's card form opened from a capture, once a card was added from it."
-    },
     "Once you're idle" : {
       "comment" : "Settings: the review panel takes the keyboard once Lucas is idle."
     },
-    "One of the %lld cards changed outside this window meanwhile, in the review panel or a refine session, so nothing was saved. The window now shows them as they are: check them and try again." : {
+    "One of the %lld cards changed outside this window meanwhile, in the review panel or through the ficha command, so nothing was saved. The window now shows them as they are: check them and try again." : {
       "comment" : "An alert's message in the Cards window, under what couldn't be done with the selected cards.",
       "localizations" : {
         "en" : {
@@ -2977,13 +1910,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "The card changed outside this window meanwhile, in the review panel or a refine session, so nothing was saved. The window now shows it as it is: check it and try again."
+                  "value" : "The card changed outside this window meanwhile, in the review panel or through the ficha command, so nothing was saved. The window now shows it as it is: check it and try again."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "One of the %lld cards changed outside this window meanwhile, in the review panel or a refine session, so nothing was saved. The window now shows them as they are: check them and try again."
+                  "value" : "One of the %lld cards changed outside this window meanwhile, in the review panel or through the ficha command, so nothing was saved. The window now shows them as they are: check them and try again."
                 }
               }
             }
@@ -3003,6 +1936,9 @@
     "Open %@ when you log in?" : {
       "comment" : "The question on the Welcome page. The name is the app's."
     },
+    "Open Deck…" : {
+      "comment" : "An item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu above the grid, and of the menu of the Your Decks title in the sidebar, and a button of the window while the user has no cards: it opens an open panel for a deck's .ficha file, and asks how fast new cards come before the deck comes in."
+    },
     "Open Diagnostics" : {
       "comment" : "Settings, under Advanced: opens the Diagnostics window."
     },
@@ -3016,19 +1952,16 @@
       "comment" : "What the app's Review Now action does, in the Shortcuts app."
     },
     "Orange" : {
-      "comment" : "One of Finder's tag colors, which a tag can have."
+      "comment" : "One of Finder's tag colors, which a deck can have."
+    },
+    "Out of your reviews" : {
+      "comment" : "In the Cards window's detail, in place of when the card is back: it's out of the user's reviews, and the box above the card says why, so it isn't due until it's back in them."
     },
     "Pace" : {
       "comment" : "A tab of the Settings window: how fast new cards come, and the queue of decks they come from.\nThe name of How fast?'s group of paces, which VoiceOver reads."
     },
     "Paste" : {
       "comment" : "A hidden button of the Cards window: ⌘V in a side's text, which takes a copied image too."
-    },
-    "Pin to Sidebar" : {
-      "comment" : "An item of a tag's menu in the Cards window's All Tags, while the tag isn't pinned: it lists the tag in the sidebar, after the pinned ones."
-    },
-    "Pinned" : {
-      "comment" : "A column of the Cards window's All Tags: a checkbox, ticked while the tag is pinned to the sidebar."
     },
     "Play Sound" : {
       "comment" : "The button that plays the sound on a side of a card.\nThe tooltip of the button that plays the sound on a card's side."
@@ -3040,7 +1973,7 @@
       "comment" : "A hidden button of the review panel: R, which plays the sound of the side that shows, or stops the one that plays."
     },
     "Prioritize" : {
-      "comment" : "A menu-bar submenu that picks the decks whose cards come first, while none is picked.\nAn item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu above the card list, ticked while the deck is a priority deck, and off while it's set aside."
+      "comment" : "A menu-bar submenu that picks the decks whose cards come first, while none is picked.\nAn item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu above the grid, ticked while the deck is a priority deck, and off while it's set aside."
     },
     "Prioritize: %@" : {
       "comment" : "The Prioritize submenu's title while some decks are priority decks, which it lists by name."
@@ -3052,37 +1985,22 @@
       "comment" : "A process with no name, by its id, in Diagnostics: a noun."
     },
     "Purple" : {
-      "comment" : "One of Finder's tag colors, which a tag can have."
+      "comment" : "One of Finder's tag colors, which a deck can have."
     },
-    "Put every card in" : {
-      "comment" : "In the Import sheet, before the menu of the deck every card it imports comes into."
+    "Put Back" : {
+      "comment" : "A button of the Cards window that puts the selected cards back: each goes back where it was."
+    },
+    "Put Back (⌘E)" : {
+      "comment" : "The tooltip of the Cards window's button that puts the cards back."
     },
     "Put it first" : {
       "comment" : "A button of Settings' Pace tab, beside a deck in the queue: its new cards come first.\nA checkbox of How fast?: the deck coming in goes first in the queue."
     },
-    "Question" : {
-      "comment" : "A card type.\nThe label of the field where the user writes a question about the card the review panel shows."
-    },
-    "Questions" : {
-      "comment" : "An item of the Cards window's sidebar: the question cards."
-    },
     "Quit" : {
 
     },
-    "Quote" : {
-      "comment" : "A card type."
-    },
-    "Quotes" : {
-      "comment" : "An item of the Cards window's sidebar: the quote cards."
-    },
-    "Reading “%@”…" : {
-      "comment" : "In the Import sheet, beside a spinner, while it reads the file chosen, with its name."
-    },
-    "Record Shortcut" : {
-      "comment" : "Settings: the capture shortcut's button, while there's none."
-    },
     "Red" : {
-      "comment" : "One of Finder's tag colors, which a tag can have."
+      "comment" : "One of Finder's tag colors, which a deck can have."
     },
     "Relearning steps" : {
       "comment" : "Settings, under Advanced: the header of the relearning steps."
@@ -3102,17 +2020,11 @@
     "Remove Step %lld" : {
       "comment" : "Settings, under Advanced: removes a learning or relearning step."
     },
-    "Rename the type “%@”" : {
-      "comment" : "The title of the Cards window's sheet that renames a card type of the user's own, with its name."
-    },
     "Rename “%@”" : {
-      "comment" : "The title of the Cards window's sheet that renames a deck, with the deck's whole name.\nThe title of the Cards window's sheet that renames a tag, with the tag's whole name."
+      "comment" : "The title of the Cards window's sheet that renames a deck, with the deck's whole name."
     },
     "Rename…" : {
-      "comment" : "An item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu above the card list: it asks for the deck's whole name, which moves it too.\nAn item of the menu of a tag, in the Cards window's sidebar or its All Tags, or of a card type in its sidebar: it asks for its new name."
-    },
-    "Repeated cards" : {
-      "comment" : "In the Import sheet, the name of the Update and Skip choice, unseen."
+      "comment" : "An item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu above the grid: it asks for the deck's whole name, which moves it too."
     },
     "Restore" : {
       "comment" : "The button that restores the copy Settings' Backups asks about."
@@ -3145,13 +2057,16 @@
 
     },
     "Reviews" : {
-      "comment" : "A column of the Cards window: how many times Lucas reviewed the card, either way.\nIn the Cards window's detail: how many times Lucas reviewed the card, either way."
+      "comment" : "In the Cards window's detail: how many times Lucas reviewed the card, either way."
     },
     "Right now" : {
 
     },
     "Save" : {
 
+    },
+    "Save to File…" : {
+      "comment" : "The last item of the Share menu Share Deck… opens in the Cards window: it saves the deck's .ficha file where the user picks."
     },
     "Saved" : {
       "comment" : "Settings, under Backups: the column of when a copy was saved."
@@ -3165,17 +2080,46 @@
     "See more?" : {
 
     },
-    "Selected cards" : {
-      "comment" : "The name the Export sheet's save panel proposes for the file of the selected cards."
-    },
-    "Selected cards (%lld)" : {
-      "comment" : "An item of the Export sheet's menu: the cards selected in the table, with how many."
-    },
-    "Separate tags with commas, and write “::” before a tag inside another, as in “economía::Argentina”." : {
-      "comment" : "In the Cards window's card form, under the tags.\nIn the Cards window, under a card's tags, while Lucas edits it."
+    "Seen %lld times" : {
+      "comment" : "In the Cards window's detail, under when the card is back: how many times the user reviewed it, either way, like “Seen 3 times”. None for a new card out of the user's reviews, and for a card an import from Anki brought in with its progress, which the user hasn't reviewed in Ficha since.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Seen once"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Seen %lld times"
+                }
+              },
+              "zero" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Not seen in Ficha yet"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "Set Aside" : {
-      "comment" : "An item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu above the card list, ticked while the deck is set aside: its cards, and those of the decks inside it, are out of Lucas's reviews for now."
+      "comment" : "A button of the Cards window that sets the selected cards aside, until Lucas puts them back.\nAn item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu above the grid, ticked while the deck is set aside: its cards, and those of the decks inside it, are out of Lucas's reviews for now.\nAn item of the review panel's ⋯ menu, whose key is E: it sets aside the card the panel shows, which shows up no more until the user puts it back in the Cards window."
+    },
+    "Set Aside (⌘E)" : {
+      "comment" : "The tooltip of the Cards window's button that sets the cards aside."
+    },
+    "Set aside" : {
+      "comment" : "In the Cards window, above the grid of cards, and for VoiceOver, on a card's tile: the user set the card aside on its own, out of their reviews until they put it back.\nThe icon beside a card set aside on its own, in the Cards window."
+    },
+    "Set aside on %@" : {
+      "comment" : "In the Cards window's detail: when Lucas set the card aside on its own, like Oct 14, 2026 at 9:00 AM."
     },
     "Set aside with %@" : {
       "comment" : "In the Cards window's detail: the card is out of Lucas's reviews for now, since these decks are set aside, its own or decks it sits inside, outermost first, each by its whole name, like “Set aside with Historia and Historia › Roma”."
@@ -3194,17 +2138,14 @@
     "Settings…" : {
 
     },
+    "Share Deck…" : {
+      "comment" : "An item of a deck's menu in the Cards window, on its row in the sidebar or in the Actions menu above the grid: it opens macOS's Share menu with the deck's .ficha file, which ends in Save to File…."
+    },
     "Show Card" : {
       "comment" : "In the Cards window's card form: closes it and selects the card the front repeats."
     },
     "Show Card (⌘R)" : {
       "comment" : "The tooltip of the card form's button that shows the card the front repeats."
-    },
-    "Show Cards" : {
-      "comment" : "A button of the Cards window, beside All Tags, that lists the selected tag's cards in its place."
-    },
-    "Show Cards (↩)" : {
-      "comment" : "The tooltip of the Cards window's button that lists a tag's cards."
     },
     "Show how many cards are due in the menu bar" : {
 
@@ -3214,9 +2155,6 @@
     },
     "Size" : {
       "comment" : "Settings, under Backups: the column of what each copy weighs."
-    },
-    "Skip them" : {
-      "comment" : "In the Import sheet, the choice that leaves the cards the file repeats."
     },
     "Snoozed" : {
       "comment" : "How an appearance closed, in Diagnostics."
@@ -3234,10 +2172,7 @@
       "comment" : "Settings, under Backups, below how many copies there are: what the sounds on their cards weigh, each kept once for all the copies."
     },
     "Source" : {
-      "comment" : "A column of the Cards window: where Lucas came across the card's content.\nIn the Cards window's card form, the label of the card's source.\nIn the Cards window's detail: where Lucas came across a capture's text.\nIn the Cards window, the label of a capture's source, while Lucas edits it.\nIn the Cards window, the label of a card's source, while Lucas edits it."
-    },
-    "Source (optional): a book, a podcast…" : {
-
+      "comment" : "In the Cards window's card form, the label of the card's source.\nIn the Cards window, the label of a card's source, while Lucas edits it."
     },
     "Stability" : {
       "comment" : "In the Cards window's detail, as Anki's Card Info says it: FSRS's stability, how many days it takes the chance of remembering the card to fall to 90%."
@@ -3269,20 +2204,8 @@
     "Sync with iCloud" : {
       "comment" : "Settings, under Sync: the switch that turns sync on and off."
     },
-    "Tag" : {
-      "comment" : "A column of the Cards window's All Tags: the tag.\nThe Import sheet's field for a tag the imported cards get."
-    },
-    "Tag every card with" : {
-      "comment" : "In the Import sheet, before the field for the tag every card it imports gets."
-    },
-    "Tags" : {
-      "comment" : "A column of the Cards window: the card's tags.\nA section of the Cards window's sidebar: the tags Lucas pinned, then All Tags….\nIn the Cards window's card form, the label of the card's tags.\nIn the Cards window, the label of a card's tags, while Lucas edits it."
-    },
     "Take the keyboard" : {
       "comment" : "Settings, under Interruptions: when the review panel takes the keyboard as it shows up on its own."
-    },
-    "Text" : {
-      "comment" : "A column of the Cards window's inbox: a capture's text, or a flagged card's front.\nIn the Cards window, the label of a capture's text, while Lucas edits it."
     },
     "That holds no sound Ficha can read. Drag or paste a sound or a video with sound instead, such as an MP3, an M4A or a MOV." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
@@ -3301,22 +2224,6 @@
       "extractionState" : "manual"
     },
     "That would leave card %lld with a blank front or back, so nothing changed: give each side text, an image or a sound." : {
-      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
-      "extractionState" : "manual"
-    },
-    "The #%@ line of “%@” says “%@”, which isn't a column's number. Make it the number of the column, counting the first one as 1." : {
-      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
-      "extractionState" : "manual"
-    },
-    "The #columns line of “%@” names no %@ column, which every card needs. Name its columns Front, Back, Tags, Type and Source, or remove the line." : {
-      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
-      "extractionState" : "manual"
-    },
-    "The #html line of “%@” says “%@”: make it true when the file holds HTML, or false when it doesn't." : {
-      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
-      "extractionState" : "manual"
-    },
-    "The #separator line of “%@” says “%@”, which Ficha can't separate columns by. Make it Tab, Comma or Semicolon, or remove it." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },
@@ -3343,101 +2250,18 @@
         }
       }
     },
-    "The %lld tags inside it go with it." : {
-      "comment" : "In the Cards window's question before it deletes a tag: the tags inside it.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "The tag inside it goes with it."
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "The %lld tags inside it go with it."
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "The %lld tags inside them go with them." : {
-      "comment" : "In the Cards window's question before it deletes several tags: the tags inside them.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "The tag inside them goes with them."
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "The %lld tags inside them go with them."
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "The back has a sound" : {
-      "comment" : "The tooltip of the speaker in the Cards window's Media column, when the card's back has one."
-    },
-    "The back has an image" : {
-      "comment" : "The tooltip of the photo in the Cards window's Media column, when the card's back has one."
-    },
     "The camera or the microphone in use" : {
 
     },
-    "The capture is empty: write what you want to remember." : {
-      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
-      "extractionState" : "manual"
-    },
-    "The capture stays in the inbox until you add a card from it." : {
-      "comment" : "In the Cards window's card form opened from a capture, before any card was added."
-    },
-    "The capture this form was opened from left the inbox outside this window meanwhile, approved or discarded in a refine session, so the card wasn't added. To keep what you typed, copy it before you close the form." : {
-      "comment" : "An alert's message over the Cards window's card form, when its capture already left the inbox."
-    },
-    "The cards bring new types: %@." : {
-      "comment" : "In the Import sheet's preview of a text file, with the names of the card types of the user's own the import makes, as a list, since the user has no type by those names."
-    },
-    "The cards come into these decks:" : {
-      "comment" : "In the Import sheet's preview, above the decks its cards come into, an Anki package's or a text file's, each in a field the user renames."
-    },
-    "The cards get these tags, from Anki's notes:" : {
-      "comment" : "In the Import sheet's preview of an Anki package, above the tags its cards get."
-    },
-    "The cards you create with New Card show up here, and the ones you bury, in Buried." : {
-      "comment" : "In the Cards window, when All cards is empty."
+    "The cards you create with New Card show up here, each in its deck." : {
+      "comment" : "In the Cards window, while it has no deck to show, since the user has no cards."
     },
     "The deck “%@” isn't there any more, maybe since another of your devices renamed or deleted it, so nothing changed. Look for it among your decks under its new name, or pick another." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },
-    "The front has a sound" : {
-      "comment" : "The tooltip of the speaker in the Cards window's Media column, when the card's front has one."
-    },
-    "The front has an image" : {
-      "comment" : "The tooltip of the photo in the Cards window's Media column, when the card's front has one."
-    },
     "The review panel" : {
       "comment" : "A heading of Settings' Interruptions tab: over how the review panel behaves when it shows up on its own."
-    },
-    "The tags you write on your cards show up here." : {
-      "comment" : "In the Cards window's All Tags, when no card has a tag."
-    },
-    "Their images and sounds weigh %@, and go up to your iCloud." : {
-      "comment" : "In the Import sheet's preview while sync is on: what the images and sounds the import brings, which go up to the user's iCloud, weigh, said from 100 MB."
     },
     "Their review logs go too, and you can't bring them back." : {
       "comment" : "Under the title of the Cards window's question before it deletes several cards."
@@ -3466,42 +2290,18 @@
     "This build isn't signed with its App Group, whose folder holds its cards. Install Ficha from TestFlight, or build Ficha Dev with make run, with your team's ID in iPhone/Local.xcconfig, as docs/development.md says." : {
       "comment" : "An alert at launch, which only a build made by hand without the developer's team shows. TestFlight is Apple's app, make run a command, iPhone/Local.xcconfig a file and docs/development.md a document, whose names stay as they are."
     },
-    "This capture left the inbox outside this window meanwhile, approved or discarded in a refine session, so nothing was saved. To keep what you typed, copy it before you cancel." : {
-      "comment" : "An alert's message in the Cards window, when the capture Lucas saves already left the inbox."
-    },
-    "This capture left the inbox outside this window meanwhile, approved or discarded in a refine session, so there's nothing to discard. The window now shows the inbox as it is." : {
-      "comment" : "An alert's message in the Cards window, when the capture Lucas discards already left the inbox."
-    },
-    "This capture left the inbox outside this window meanwhile, approved or discarded in a refine session. The cards you added from it are saved." : {
-      "comment" : "An alert's message in the Cards window, after closing the card form, when its capture already left the inbox."
-    },
     "This card was deleted meanwhile, in the Cards window. Close the review panel and open “Review now” again." : {
       "comment" : "An alert's message in the review panel, when the card it shows was deleted meanwhile."
-    },
-    "This copy of Ficha is missing its instructions for an AI. Install Ficha again, or read them in Ficha's repository on GitHub, in docs/instructions-for-an-ai.md." : {
-      "comment" : "An alert's message in the Import sheet, when the app has no instructions for an AI."
     },
     "This copy of Ficha is missing the deck “%@”, so it can't be added. Install Ficha again, then add it." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
-    },
-    "This is already in the inbox" : {
-
-    },
-    "This repeats a card" : {
-
-    },
-    "To undo it, restore the copy saved before it, in Settings › Advanced." : {
-      "comment" : "In the Import sheet once it's done, when Ficha saved a copy before the import."
     },
     "Turn Off Both Ways" : {
       "comment" : "A button of the Cards window that has the selected cards reviewed front first only, no longer back first too."
     },
     "Turn Off Both Ways (⌘B)" : {
       "comment" : "The tooltip of the Cards window's button that turns Both ways off for the cards."
-    },
-    "Turn Off the Capture Shortcut" : {
-
     },
     "Turn On Both Ways" : {
       "comment" : "A button of the Cards window that has the selected cards also reviewed back first: their back, then their front."
@@ -3512,41 +2312,17 @@
     "Turning it on sends %@ of images and sounds to your iCloud." : {
       "comment" : "Settings, under Sync, while sync is off: what the images and sounds turning sync on sends weigh, said from 100 MB."
     },
-    "Type" : {
-      "comment" : "A column of the Cards window: the card's type.\nIn the Cards window's card form, the label of the card's type.\nIn the Cards window, the label of a card's type, while Lucas edits it."
-    },
-    "Type a shortcut…" : {
-      "comment" : "Settings: the capture shortcut, while Lucas types a new one."
-    },
-    "Types" : {
-      "comment" : "A section of the Cards window's sidebar: the card types."
-    },
-    "Unbury" : {
-      "comment" : "A button of the Cards window that unburies the selected cards: each goes back where it was."
-    },
-    "Unbury (⌘E)" : {
-      "comment" : "The tooltip of the Cards window's button that unburies the cards."
-    },
     "Undo" : {
 
     },
     "Unknown version" : {
       "comment" : "Settings, at the foot of General, when the build doesn't say."
     },
-    "Unpin from Sidebar" : {
-      "comment" : "An item of a tag's menu in the Cards window's sidebar or its All Tags, while the tag is pinned: it takes the tag out of the sidebar."
-    },
     "Until you empty the Trash, you can put back what you move there." : {
       "comment" : "Under the title of the question Settings' Backups asks before it moves copies to the Trash."
     },
     "Up next" : {
       "comment" : "A heading of Settings' Pace tab, over the queue of decks new cards come from."
-    },
-    "Update them with Anki's back and tags, keeping their deck and progress" : {
-      "comment" : "In the Import sheet, the choice that updates the cards an Anki package repeats."
-    },
-    "Update them with the file's back, tags, type and source, keeping their deck and progress" : {
-      "comment" : "In the Import sheet, the choice that updates the cards the file repeats."
     },
     "Version %@ (%@)" : {
       "comment" : "Settings, at the foot of General: the release version, then the build number in parentheses.",
@@ -3565,17 +2341,11 @@
     "Way" : {
       "comment" : "For VoiceOver, the Cards window's chart: which way each entry went, front first or back first, which has a line of its own."
     },
-    "What do you want to know?" : {
-      "comment" : "The prompt of the field where the user writes a question about the card the review panel shows."
-    },
     "What each detector sees right now, and the latest appearances." : {
       "comment" : "Settings, under Advanced: below Diagnostics, what its window shows."
     },
     "What needs fixing?" : {
 
-    },
-    "What you capture, and the cards you flag, wait here to be refined." : {
-      "comment" : "In the Cards window, when the inbox is empty."
     },
     "When %@ shows up" : {
       "comment" : "A heading of Settings' Interruptions tab, with the app's name: over the active hours, how often the review panel shows up on its own and with how many cards."
@@ -3586,23 +2356,14 @@
     "With review now" : {
       "comment" : "In Diagnostics: Lucas opened the review panel with Review now, from the menu or the Shortcuts app."
     },
-    "Word" : {
-      "comment" : "A card type."
-    },
-    "Words" : {
-      "comment" : "An item of the Cards window's sidebar: the word cards."
-    },
     "Write “::” between a deck and a deck inside it, as in “Idiomas::Inglés”." : {
-      "comment" : "Under the title of the Cards window's sheet that names a new deck, after New Deck…, or of the Change Deck or Import sheet while it names one."
+      "comment" : "Under the title of the Cards window's sheet that names a new deck, after New Deck…, or of the Change Deck sheet while it names one."
     },
     "Write “::” between a deck and a deck inside it, as in “Idiomas::Inglés”. The decks inside this one move with it, and a name another deck has joins the two." : {
       "comment" : "Under the title of the Cards window's sheet that renames a deck."
     },
-    "Write “::” between a tag and a tag inside it, as in “economía::Argentina”. The tags inside this one move with it, and a name another tag has joins the two." : {
-      "comment" : "Under the title of the Cards window's sheet that renames a tag."
-    },
     "Yellow" : {
-      "comment" : "One of Finder's tag colors, which a tag can have."
+      "comment" : "One of Finder's tag colors, which a deck can have."
     },
     "You already have a type named “%@”, so nothing changed. Pick that type, or write another name." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
@@ -3610,9 +2371,6 @@
     },
     "You can't undo this, but the daily backups, in Settings › Advanced, hold what it deletes." : {
       "comment" : "The last sentence of the Cards window's question before it deletes a deck."
-    },
-    "You can't undo this." : {
-      "comment" : "The last sentence of the Cards window's question before it deletes tags."
     },
     "You restored a copy of your cards. Turning sync on replaces iCloud's copy with this Mac's." : {
       "comment" : "Settings, under Sync, after the user restored a backup, which turned sync off: turning it on replaces the cards in iCloud, and on the user's other devices, with this Mac's."
@@ -3629,30 +2387,14 @@
     "Your Decks" : {
       "comment" : "A section of the Cards window's sidebar: the user's decks, as a tree."
     },
-    "Your cards, their progress and the inbox stay the same on each of your devices, through your own iCloud. Each device keeps its own backups." : {
+    "Your cards and their progress stay the same on each of your devices, through your own iCloud. Each device keeps its own backups." : {
       "comment" : "Settings, under Sync, below the switch: what sync does."
-    },
-    "Your question about card %lld was approved or discarded outside the review panel, so ⌘Z can't take it back. If it became cards you don't want, delete them in the Cards window." : {
-      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
-      "extractionState" : "manual"
     },
     "all met %@" : {
       "comment" : "In How fast?, beside a pace: when the deck's new cards are all met, starting with today."
     },
     "all met by %@" : {
       "comment" : "In How fast?, beside a pace: when the deck's new cards are all met, as a day or a month."
-    },
-    "all-tags.due" : {
-      "comment" : "A column of the Cards window's All Tags: how many of the tag's cards are due now.",
-      "extractionState" : "extracted_with_value",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Due"
-          }
-        }
-      }
     },
     "both-ways.label" : {
       "comment" : "In the Cards window's card form and card editor, the label of the Both ways checkbox's row.",
@@ -3666,20 +2408,8 @@
         }
       }
     },
-    "card-type.none" : {
-      "comment" : "The first item of a card's type picker in the Cards window: no type.",
-      "extractionState" : "extracted_with_value",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "None"
-          }
-        }
-      }
-    },
     "color.none" : {
-      "comment" : "The first item of the Color submenu of a tag's menu or a deck's: no color.",
+      "comment" : "The first item of the Color submenu of a deck's menu: no color.",
       "extractionState" : "extracted_with_value",
       "localizations" : {
         "en" : {
@@ -3691,7 +2421,7 @@
       }
     },
     "deletion.next-sentence" : {
-      "comment" : "A sentence of the Cards window's question before it deletes tags or a deck, after the one before it: with what the language writes between two sentences, a space in English.",
+      "comment" : "A sentence of the Cards window's question before it deletes a deck, after the one before it: with what the language writes between two sentences, a space in English.",
       "extractionState" : "extracted_with_value",
       "localizations" : {
         "en" : {
@@ -3711,59 +2441,23 @@
     "esc" : {
       "comment" : "The Esc key's name, next to the button it presses."
     },
+    "grid.due" : {
+      "comment" : "In the Cards window, above the grid of cards, and for VoiceOver, on a card's tile: the card is due.",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Due"
+          }
+        }
+      }
+    },
     "iCloud is full" : {
       "comment" : "A menu item while iCloud is full, which opens Settings' Sync tab, where it says changes wait until there's room."
     },
     "iCloud is full: your changes wait until you free up space" : {
       "comment" : "Settings, under Sync: iCloud refused what this Mac sent, for lack of room."
-    },
-    "inbox-kind.capture" : {
-      "comment" : "In the Cards window's inbox, the kind of a row: a capture.",
-      "extractionState" : "extracted_with_value",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Capture"
-          }
-        }
-      }
-    },
-    "inbox-kind.expansion" : {
-      "comment" : "In the Cards window's inbox, the kind of a row: a capture attached to the card it repeats.",
-      "extractionState" : "extracted_with_value",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Expansion"
-          }
-        }
-      }
-    },
-    "inbox-kind.flagged" : {
-      "comment" : "In the Cards window's inbox, the kind of a row: a flagged card.",
-      "extractionState" : "extracted_with_value",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Flagged"
-          }
-        }
-      }
-    },
-    "inbox-kind.follow-up" : {
-      "comment" : "In the Cards window's inbox, the kind of a row: a capture asked about a card in the review panel, tied to it.",
-      "extractionState" : "extracted_with_value",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Follow-up"
-          }
-        }
-      }
     },
     "late" : {
       "comment" : "A finish date's start, a month's last third, before “to”."
@@ -3794,9 +2488,6 @@
     "macOS gave no folder for the App Group %@, which holds your cards. Quit the app and open it again, and if it keeps happening, report it." : {
       "comment" : "An alert at launch, and in the widget, under that it can't read the cards. The value is the App Group's identifier, such as ABCDE12345.com.lucastkacz.ficha, which stays as it is."
     },
-    "macOS refused the shortcut (error %d). Restart the app, and if it keeps failing, report it." : {
-
-    },
     "mid" : {
       "comment" : "A finish date's start, as in “mid to late December”."
     },
@@ -3804,58 +2495,10 @@
       "comment" : "A finish date in the days 11 to 20 of a month."
     },
     "now" : {
-      "comment" : "In the Cards window's Due and Back-first due columns: the card is due, front first or back first."
+      "comment" : "In the Cards window's detail's Due and Back-first due rows: the card is due, front first or back first."
     },
     "set aside" : {
-      "comment" : "In the Cards window's Due and Back-first due columns: the card won't show up, since its deck, or a deck it sits inside, is set aside. Lowercase, like “now”."
-    },
-    "sidebar.buried" : {
-      "comment" : "An item of the Cards window's sidebar: the buried cards.",
-      "extractionState" : "extracted_with_value",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Buried"
-          }
-        }
-      }
-    },
-    "sidebar.due" : {
-      "comment" : "An item of the Cards window's sidebar: the cards due now.",
-      "extractionState" : "extracted_with_value",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Due"
-          }
-        }
-      }
-    },
-    "sidebar.flagged" : {
-      "comment" : "An item of the Cards window's sidebar: the flagged cards.",
-      "extractionState" : "extracted_with_value",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Flagged"
-          }
-        }
-      }
-    },
-    "sidebar.new" : {
-      "comment" : "An item of the Cards window's sidebar: the cards not seen yet.",
-      "extractionState" : "extracted_with_value",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "New"
-          }
-        }
-      }
+      "comment" : "In the Cards window's detail's Due and Back-first due rows: the card won't show up, since it's set aside, on its own or with its deck, or a deck it sits inside. Lowercase, like “now”."
     },
     "space" : {
       "comment" : "The Space key's name, next to the button it presses."
@@ -3865,18 +2508,6 @@
     },
     "tomorrow" : {
       "comment" : "A finish date's day, in the Cards window and Settings' Pace tab: “all met by tomorrow”."
-    },
-    "toolbar.back" : {
-      "comment" : "A toolbar button of the Cards window, while it lists a tag's cards: back to All Tags.",
-      "extractionState" : "extracted_with_value",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Back"
-          }
-        }
-      }
     },
     "—" : {
       "comment" : "In the Cards window's review log, in place of the seconds Lucas took, when nothing measured them.",
@@ -3902,14 +2533,6 @@
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },
-    "“%@” holds no text file of cards: Ficha looks for one ending in .txt, .csv or .tsv beside the images and sounds. Add it, zip them again, and import that." : {
-      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
-      "extractionState" : "manual"
-    },
-    "“%@” holds several text files of cards, %@, and Ficha imports one at a time. Zip each with its images and sounds on its own, and import them one by one." : {
-      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
-      "extractionState" : "manual"
-    },
     "“%@” is Default's name, and Default holds the cards no other deck does, so nothing changed. To move cards there, pick Default; to make a deck, write another name." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
@@ -3922,10 +2545,6 @@
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },
-    "“%@” isn't UTF-8 text, which is what Ficha reads. Save it again as UTF-8 text, or from a spreadsheet as “CSV UTF-8”, and import that." : {
-      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
-      "extractionState" : "manual"
-    },
     "“%@” isn't an image Ficha can read. Give a picture as a side's image instead, such as a JPEG or a PNG, and a sound as its sound." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
@@ -3934,11 +2553,7 @@
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },
-    "“%@” isn't pinned to the sidebar, maybe since another of your devices unpinned it, so nothing moved. Pin it first." : {
-      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
-      "extractionState" : "manual"
-    },
-    "“%@” was exported by an Anki newer than Ficha knows. In Anki, export the deck again with “Support older Anki versions” ticked, and import that." : {
+    "“%@” isn't pinned, maybe since another of your devices unpinned it, so nothing moved. Pin it first." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },

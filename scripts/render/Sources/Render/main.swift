@@ -1,7 +1,6 @@
 import AVFoundation
 import AppKit
 import Carbon.HIToolbox
-import CryptoKit
 import FichaCore
 import FichaData
 import SQLite3
@@ -11,34 +10,36 @@ import SwiftUI
 // without showing anything on screen: `make render ARGS="cards --dark"`. The
 // window goes below the desktop picture, where macOS still draws it but nobody
 // sees it and nothing takes the mouse or the keyboard; the tool clicks, presses
-// keys and types in it where it's told, as Lucas would, and captures it with
-// `screencapture`. `docs/development.md` explains how to use it.
+// keys and types in it where it's told, as Lucas would, and takes its picture
+// with `screencapture`. `docs/development.md` explains how to use it.
 //
 // This file shares its module with `App/`'s files, which the target compiles
 // through `Sources/Render/App`, so a top-level name here that `App/` also uses
 // breaks the build, even when `App/`'s is `private`: in #116, a `modifierNames`
-// table here broke `CaptureShortcut.swift`. Give what you add at the top level
-// a name of its own.
+// table here broke the file of a shortcut #540 removed. Give what you add at
+// the top level a name of its own.
 
 /// A window the tool can draw, by the name its arguments give it, which the
 /// usage lists.
 enum Window: String, CaseIterable {
+    /// The Cards window as it opens, on Default, the first deck of the queue
+    /// new cards come from, with its four cards as tiles: petricor, which
+    /// Lucas met, and the three made by hand, the flag's picture first.
     case cards
+    /// The Cards window on the sample's graduated card that waits longest,
+    /// selected in its deck, its detail saying in words when it's back, on a
+    /// later day, and how many times it was seen, with Details closed.
+    case cardsCard = "cards-card"
+    /// The same with Details open and its detail scrolled to its end, below
+    /// its interval, due time, stability, difficulty and retrievability, when
+    /// it was last seen, its reviews and when it was made: its review log, in
+    /// a chart and in full.
+    case cardsCardDetails = "cards-card-details"
     /// The Cards window with no cards at all, as a new user's opens: it
-    /// offers New Card and Import… in plain sight, and its sidebar's Ficha's
-    /// Decks section lists the three, read from the repo's `App/FichaDecks/`.
+    /// offers New Card and Open Deck… in plain sight, and its
+    /// sidebar's Ficha's Decks section lists the three, read from the repo's
+    /// `App/FichaDecks/`.
     case cardsEmpty = "cards-empty"
-    /// The Cards window on ciencia, once the sample's tags sit inside tags
-    /// and five are pinned, in an order of their own, its sidebar scrolled to
-    /// its end, below the decks, so that it shows the pinned tags, one inside
-    /// another named by its whole path, and All Tags… after them.
-    case cardsTags = "cards-tags"
-    /// The Cards window on All Tags, with the same tags and an unused one:
-    /// every tag as a tree, with its counts and its Pinned checkbox, ciencia,
-    /// economía and historia open, each level sorted by Cards, the most
-    /// first, and economía selected, which `--key return` lists the cards
-    /// of, in All Tags' place, and `--key cmd+delete` asks whether to delete.
-    case cardsAllTags = "cards-all-tags"
     /// The Cards window on Idiomas, one of the decks the sample's cards sit in,
     /// with its sidebar's Your Decks section: Default first, then every deck as
     /// a tree, those at the top with cards in the reviews in the order of the
@@ -46,70 +47,66 @@ enum Window: String, CaseIterable {
     /// each with how many of its cards are due, Idiomas and Ciencias with a
     /// color and an emoji, which the decks inside them show too, Ciencias,
     /// Humanidades and Idiomas › Español closed, so that Sociedad shows, set
-    /// aside and grayed; the bar above the card list, with Idiomas's name, its
-    /// Actions menu and its cards' tags; and two of Idiomas's cards selected,
-    /// which `--key cmd+d` asks to move in the Change Deck sheet.
+    /// aside and grayed; the bar above the grid, with Idiomas's name and its
+    /// Actions menu; and two of Idiomas's cards selected, which `--key cmd+d`
+    /// asks to move in the Change Deck sheet.
     case cardsDecks = "cards-decks"
-    /// The same on Idiomas › Español, with historia, one of its
-    /// tags, chosen above the card list, which lists only the deck's cards
-    /// that carry it.
-    case cardsDeckTag = "cards-deck-tag"
     /// The same on Idiomas, with the question Delete… in its menu asks,
     /// which the tool can't open, counting the cards it deletes and the
     /// decks inside it.
     case cardsDeleteDeck = "cards-delete-deck"
     /// The Cards window on Idiomas › Español with the card form on a new
+    /// card, which starts in that deck, the focus in its front: its Deck
+    /// field, front and back, source and Both ways, with no type and no tags
+    /// (#538).
+    case cardsNewCard = "cards-new-card"
+    /// The Cards window on Idiomas › Español with the card form on a new
     /// card, which starts in that deck, and the New Deck sheet that New Deck…
     /// in the form's Deck field opens, which the tool can't open, over it,
     /// the focus in its name field.
     case cardsNewDeck = "cards-new-deck"
-    /// The Cards window on Ley, one of the card types of the user's own the
-    /// tool gives the sample, with its card on Parkinson's law selected, its
-    /// sidebar scrolled to its end so that it shows its Types section.
-    case cardsTypes = "cards-types"
-    /// The Cards window with the card form on a new card, and the New Type
-    /// sheet that New Type… in the form's type picker opens, which the tool
-    /// can't open, over it, the focus in its name field.
-    case cardsNewType = "cards-new-type"
-    /// The Cards window editing a sample card, with the New Type sheet that
-    /// New Type… in the editor's type picker opens over it, the focus in its
-    /// name field.
-    case cardsNewTypeEditor = "cards-new-type-editor"
-    /// The Cards window with its Import sheet showing the preview of a file,
-    /// which the tool can't choose in the open panel.
-    case cardsImport = "cards-import"
-    /// The Cards window with its Import sheet showing the preview of an Anki
-    /// package.
-    case cardsImportAnki = "cards-import-anki"
-    /// The Cards window once that Anki package came in with its progress,
-    /// with a card it brought Anki's interval to selected, and reviewed since.
-    case cardsAnkiImported = "cards-anki-imported"
-    /// The Cards window with its Import sheet showing the preview of a zip
-    /// of cards whose images weigh 240 MB, while sync is on, which says they
-    /// go up to iCloud.
-    case cardsImportHeavy = "cards-import-heavy"
-    /// The Cards window with How fast? over it, once Done closed the Import
-    /// sheet after a file brought three cards into Arte, a deck the sample
-    /// cards don't have, which comes in last, behind the decks they're
-    /// meeting: each pace with when Arte's all met, where it goes in the
-    /// queue, and Put it first.
+    /// The Cards window with How fast? over it, once Open Deck… read a deck's
+    /// `.ficha` with three cards of Arte, a deck the sample cards don't have,
+    /// which would come in last, behind the decks they're meeting: each pace
+    /// with when Arte's all met, where it goes in the queue, and Put it first.
     case cardsHowFast = "cards-how-fast"
     /// The Cards window with How fast? over it, once New Deck… in the
     /// sidebar made Música, a deck the sample cards don't have, with no
     /// cards: "No cards yet", the paces alone, with their new cards a day,
     /// and Create.
     case cardsHowFastNewDeck = "cards-how-fast-new-deck"
+    /// The Cards window with How fast? over it, once Open Deck… read a
+    /// deck's `.ficha` the tool writes in its scratch home, Capitales.ficha,
+    /// as another Ficha shares one, with its emoji and five cards, which the
+    /// tool can't choose in the open panel: "5 cards · from
+    /// Capitales.ficha", the deck coming in last, behind the decks the sample
+    /// cards are meeting, with each pace's finish date, where it goes in the
+    /// queue, and Put it first.
+    case cardsHowFastDeckFile = "cards-how-fast-deck-file"
+    /// A deck's menu in the Cards window, Idiomas's, as its row's context
+    /// menu in the sidebar and the Actions menu above the grid hold it, its
+    /// content drawn in a window, since the tool can't open the menu: New
+    /// Deck… and Open Deck… first, then the deck's own actions, Description…
+    /// and Share Deck… among them.
+    case cardsDeckMenu = "cards-deck-menu"
+    /// The Cards window on Arte argentino, one of Ficha's decks, which the
+    /// tool adds to the sample cards from the repo's `App/FichaDecks/`: its
+    /// description, from its `deck.json`, in the bar above its cards.
+    case cardsDeckDescription = "cards-deck-description"
+    /// The same once Description… in its menu, which the tool can't open,
+    /// opened the field in the description's place, with Cancel and Done.
+    case cardsDescriptionField = "cards-description-field"
     /// The Cards window on Palabras lindas, one of Ficha's decks, which its
     /// sidebar's Ficha's Decks section lists after Your Decks with the other
     /// two, all three read from the repo's `App/FichaDecks/`, its sidebar
     /// scrolled to the deck's row: its emoji, its name and how many cards it
-    /// brings in the table's place, with Add Deck…, which `--key return` asks
+    /// brings in the grid's place, with Add Deck…, which `--key return` asks
     /// How fast? for, and its first card, a word, front and back, in the
     /// detail's.
     case cardsFichaDeckWords = "cards-ficha-deck-words"
-    /// The same on Arte argentino, whose first card's front is a painting,
-    /// and its back the painting's title, painter, year and museum, and its
-    /// credit.
+    /// The same on Arte argentino, with its description under its name,
+    /// whose first card's front is a painting, and its back the painting's
+    /// title, painter, year and museum, and its credit.
     case cardsFichaDeckPicture = "cards-ficha-deck-picture"
     /// The same on Flores de Buenos Aires, whose first card's front is a
     /// photo of a rose alone, with no text, and its back the flower's name, a
@@ -161,8 +158,6 @@ enum Window: String, CaseIterable {
     /// Settings, on its General tab, in Ficha Dev, which never starts at
     /// login, with About at its foot.
     case general
-    /// The capture window, empty.
-    case capture
     /// The Welcome page the real Ficha shows the first time it opens on a
     /// Mac, which asks whether it opens at login.
     case welcome
@@ -193,31 +188,42 @@ enum Window: String, CaseIterable {
     /// which the panel reads from the repo's `App/FichaDecks/`.
     case panelMetThemAllOffer = "panel-met-them-all-offer"
     /// The Cards window with a sample card that goes both ways selected, its
-    /// back-first way rated Again and then Good, its detail scrolled to its
-    /// end, below both ways' interval, due time, stability, difficulty and
-    /// retrievability: its chart, with a line for each way, and its key.
+    /// back-first way rated Again and then Good, its Details open and its
+    /// detail scrolled to its end, below both ways' interval, due time,
+    /// stability, difficulty and retrievability: its chart, with a line for
+    /// each way, and its key.
     case cardsBothWays = "cards-both-ways"
     /// The review panel on a new card in Arabic, which the tool adds to the
     /// sample, as `panel-card` draws it: its text reads, and is aligned, right
     /// to left, in a window that reads left to right. `--key space` flips it.
     case panelArabic = "panel-arabic"
-    /// The Cards window with that card in Arabic first in the table and
-    /// selected, its detail showing it, which `--key cmd+l` edits in the
-    /// detail's fields.
+    /// The Cards window on Default with that card in Arabic selected, the
+    /// last of its tiles, its detail showing it, which `--key cmd+l` edits
+    /// in the detail's fields.
     case cardsArabic = "cards-arabic"
+    /// The Cards window on the deck of the sample's card set aside on its
+    /// own, with that card selected: its tile dimmed, with an eye crossed out
+    /// in its dot's place, the legend above the grid naming it, and its
+    /// detail saying when it was set aside, with Put Back (#539).
+    case cardsSetAside = "cards-set-aside"
+    /// The Cards window on the deck of the sample's flagged card, with that
+    /// card selected: its tile not dimmed, with its flag in its dot's place,
+    /// the legend above the grid naming it, and its detail with Lucas's note
+    /// on top and "Out of your reviews" (#540).
+    case cardsFlagged = "cards-flagged"
 }
 
 /// What the tool was asked to draw.
 struct Request {
     var window: Window?
     var isDark = false
-    /// What to do in the window before the capture, in order.
+    /// What to do in the window before its picture, in order.
     var actions: [Action] = []
     /// Where the PNG goes.
     var output: URL?
 }
 
-/// Something the tool does in the window before the capture, as Lucas would.
+/// Something the tool does in the window before its picture, as Lucas would.
 enum Action: CustomStringConvertible {
     /// A click, with its modifier keys held down.
     case click(MouseClick)
@@ -569,10 +575,10 @@ func request(from arguments: [String]) throws(RenderError) -> Request {
 /// them after twelve days of reviews, starting on 8 October 2026: twenty met
 /// the first day, rated Good, Again or Hard, sixteen of them graduated since
 /// at different paces, two rated Easy and two after a lapse, and four still in
-/// their learning steps, one flagged with a note and one buried, and the
-/// rest new, with a capture waiting in the inbox; and then a new card with a
-/// flag on its front and the Sun of May and a sound on its back, and two new
-/// cards made by hand, with no type and no capture. The time it's on stays
+/// their learning steps, one flagged with a note and one set aside on its
+/// own, and the rest new; and then a new card with a flag on its front and
+/// the Sun of May and a sound on its back, and two new cards made by hand,
+/// with no type. The time it's on stays
 /// where the twelve days left it. FSRS fuzzes each interval by the review
 /// log's IDs, which count up from the same first on every run, so every
 /// run's graduated intervals and due times are the same.
@@ -621,14 +627,6 @@ func sampleEngine(at location: DatabaseLocation) throws -> (engine: Engine, time
     try review(12..<14, .again)
     time.advance(by: hours(5 * 24))
     try review(0..<16, .good)
-    // A capture that waits in the inbox, for Convert to Card: the inbox lists
-    // it after the flagged card, which comes later.
-    let capture = try engine.capture(
-        text: "La paradoja de Teseo: si le cambiás todas las tablas a un barco, ¿sigue siendo el mismo barco?",
-        note: "Una tarjeta para la paradoja y otra para la pregunta", source: "Un video de filosofía")
-    guard case .saved = capture else {
-        throw RenderError(description: "The sample's capture repeats a sample card.")
-    }
     time.advance(by: hours(4 * 24 + 3))
     guard let note = FlagNote("El ejemplo no se entiende: cambiarlo por uno más cotidiano.") else {
         throw RenderError(description: "The sample's flag note is blank.")
@@ -647,8 +645,8 @@ func sampleEngine(at location: DatabaseLocation) throws -> (engine: Engine, time
         throw RenderError(description: "The sample's card with images has a blank side.")
     }
     try engine.create(withImages)
-    // The sample cards all have a type, and cards from a capture: these two
-    // are as someone who doesn't refine with Claude makes them.
+    // The sample cards all have a type: these two are as someone makes them
+    // by hand.
     let madeByHand = [
         ("¿Cuál es la capital de Mongolia?", "Ulán Bator."),
         ("mitocondria", "La parte de la célula que produce su energía."),
@@ -695,76 +693,31 @@ func backupsEngine() throws -> Engine {
     return engine
 }
 
-/// The Cards window's state partway through an import, as the Import sheet
-/// shows it once the user chose a file: the preview of a text file the tool
-/// writes in its scratch home, with words from other languages as someone
-/// might type them in a spreadsheet, two of which the sample cards have, two
-/// lines that can't be read, and a type the sample cards don't have,
-/// "sustantivo", which the import makes. The file goes once it's read.
-func importingState(of model: AppModel) throws -> CardsWindowState {
-    let file = URL.documentsDirectory.appending(path: "Palabras del mundo.txt")
-    let lines = [
-        "#separator:tab",
-        "#html:false",
-        "#columns:Front\tBack\tTags\tType\tSource",
-        "hygge\tPalabra danesa: el bienestar de un rato cálido y sencillo con gente querida.\tdanés\tword\t",
-        "wabi-sabi\tIdea japonesa: la belleza de lo imperfecto, lo pasajero y lo incompleto.\tjaponés\tconcept\t",
-        "lagom\tPalabra sueca: ni mucho ni poco, lo justo.\tsueco\tword\t",
-        "sisu",
-        "ubuntu\tPalabra zulú: soy porque somos.\tzulú\tword\tDesmond Tutu",
-        "Fernweh\tPalabra alemana: las ganas de estar lejos, en lugares que no conocés.\talemán\tword\t",
-        "Kummerspeck\tPalabra alemana: los kilos que se ganan comiendo por tristeza.\talemán\tsustantivo\t",
-        "tsundoku\tPalabra japonesa: comprar libros y dejarlos apilados sin leer.\tjaponés\tword\t",
-        "\tPalabra yagán: la mirada entre dos que esperan que el otro dé el primer paso.\tyagán\tword\t",
-        "mamihlapinatapai\tPalabra yagán: la mirada entre dos que esperan que el otro dé el primer paso.\tyagán\tword\t",
-    ]
-    try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
-    try Data(lines.joined(separator: "\n").utf8).write(to: file)
-    defer { try? FileManager.default.removeItem(at: file) }
-    var state = model.openCardsWindow()
-    state.startImport()
-    try previewImportAtOnce(of: file, in: &state)
-    guard state.importing?.preview != nil else {
-        throw RenderError(
-            description: "The sample file to import has no preview: \(String(describing: state.importing))")
-    }
-    return state
-}
-
-/// Reads `file` for the Import sheet in `state`, as the app does once the
-/// user chose it, and waits for the reading, so that the picture shows its
-/// preview.
-func previewImportAtOnce(of file: URL, in state: inout CardsWindowState) throws {
-    if let work = state.previewImport(of: file) {
-        state.finishImportWork(try waitFor { await work.run() })
-    }
-}
-
-/// The Cards window's state once the Import sheet's Done closed it after a
-/// file the tool writes in its scratch home brought three cards into Arte, a
-/// deck the sample cards don't have, which comes in last, behind the decks
+/// The Cards window's state once Open Deck… read a deck's `.ficha` the tool
+/// writes in its scratch home, Arte.ficha, with three cards of Arte, a deck
+/// the sample cards don't have, which would come in last, behind the decks
 /// they're meeting: How fast? asks about it, with Put it first. The file goes
 /// once it's read.
 func howFastState(of model: AppModel) throws -> CardsWindowState {
-    let file = URL.documentsDirectory.appending(path: "Arte.txt")
-    let lines = [
-        "#separator:tab",
-        "#html:false",
-        "#columns:Front\tBack\tDeck",
-        "La Gioconda\tDe Leonardo da Vinci, en el Louvre.\tArte",
-        "Las Meninas\tDe Diego Velázquez, en el Prado.\tArte",
-        "La noche estrellada\tDe Vincent van Gogh, en el MoMA.\tArte",
+    let paintings = [
+        ("La Gioconda", "De Leonardo da Vinci, en el Louvre."), ("Las Meninas", "De Diego Velázquez, en el Prado."),
+        ("La noche estrellada", "De Vincent van Gogh, en el MoMA."),
     ]
+    let other = try Engine(location: .inMemory, time: SystemTimeSource())
+    for (painting, painter) in paintings {
+        guard let content = CardContent(type: nil, front: painting, back: painter, tags: [], source: nil) else {
+            throw RenderError(description: "A card of Arte.ficha has a blank side: fix howFastState(of:).")
+        }
+        try other.create(content, deck: "Arte")
+    }
+    let file = URL.documentsDirectory.appending(path: "Arte.ficha")
     try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
-    try Data(lines.joined(separator: "\n").utf8).write(to: file)
+    try other.export(.deck("Arte"), to: file)
     defer { try? FileManager.default.removeItem(at: file) }
     var state = model.openCardsWindow()
-    state.startImport()
-    try previewImportAtOnce(of: file, in: &state)
-    if let work = state.importCards() {
-        state.finishImportWork(try waitFor { await work.run() })
+    if let work = state.openDeck(file) {
+        state.finishOpenDeck(try waitFor { await work.run() })
     }
-    state.closeImport()
     guard state.howFast?.offersPutItFirst == true else {
         throw RenderError(
             description: """
@@ -773,6 +726,69 @@ func howFastState(of model: AppModel) throws -> CardsWindowState {
                 """)
     }
     return state
+}
+
+/// The Cards window's state once Open Deck… read a deck's `.ficha` the tool
+/// writes in its scratch home, Capitales.ficha, as another Ficha shares one:
+/// five capitals of South America in Capitales de Sudamérica, a deck the
+/// sample cards don't have, with its emoji and description. How fast? asks
+/// about it, as the app does once the user chose the file in the open panel,
+/// which the tool can't drive. The file goes once it's read.
+func deckFileState(of model: AppModel) throws -> CardsWindowState {
+    let deck = "Capitales de Sudamérica"
+    let capitals = [
+        ("Argentina", "Buenos Aires"), ("Chile", "Santiago"), ("Perú", "Lima"), ("Uruguay", "Montevideo"),
+        ("Paraguay", "Asunción"),
+    ]
+    let other = try Engine(location: .inMemory, time: SystemTimeSource())
+    for (country, capital) in capitals {
+        guard let content = CardContent(type: nil, front: country, back: capital, tags: [], source: nil) else {
+            throw RenderError(description: "A card of Capitales.ficha has a blank side: fix deckFileState(of:).")
+        }
+        try other.create(content, deck: deck)
+    }
+    try other.setEmoji(try Emoji("🌎"), ofDeck: deck)
+    try other.setDescription("Las capitales de los países de América del Sur.", ofDeck: deck)
+    let file = URL.documentsDirectory.appending(path: "Capitales.ficha")
+    try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try other.export(.deck(deck), to: file)
+    defer { try? FileManager.default.removeItem(at: file) }
+    var state = model.openCardsWindow()
+    if let work = state.openDeck(file) {
+        state.finishOpenDeck(try waitFor { await work.run() })
+    }
+    guard case .deckFile? = state.howFast?.subject else {
+        throw RenderError(
+            description: """
+                Open Deck… didn't ask How fast? for Capitales.ficha: it says \(String(describing: state.failure)). \
+                Fix deckFileState(of:).
+                """)
+    }
+    return state
+}
+
+/// The menu of the sample's Idiomas in the Cards window, its content in a
+/// window, as SwiftUI lays it out there, as `menuWindow(model:)` draws the
+/// menu under Ficha's icon: its items as buttons and checkboxes, its Color
+/// submenu as a pop-up button and its separators as lines. AppKit draws a
+/// context menu only while it's open, and opening it takes the mouse: its
+/// content shows which lines the menu has, and in what order, not how it
+/// looks.
+func deckMenuWindow(model: AppModel) throws -> NSWindow {
+    let state = cardsWindow(onSampleDeck: "Idiomas", of: model)
+    guard let menu = state.chosenDeckMenu else {
+        throw RenderError(description: "The Cards window has no menu for Idiomas: fix SampleCards.swift.")
+    }
+    let content = VStack(alignment: .leading) {
+        DeckMenuItems(menu: menu, state: .constant(state))
+    }
+    .padding()
+    .fixedSize()
+    let window = AppWindow(title: "Menu", content: content)
+    if let view = window.contentView {
+        window.setContentSize(view.fittingSize)
+    }
+    return window
 }
 
 /// Ficha's decks as `engine` reads their files in the repo's
@@ -786,59 +802,14 @@ func fichaDecksInTheRepo(readBy engine: Engine) throws -> [FichaDeck: Result<Fic
         .appending(path: "App/FichaDecks", directoryHint: .isDirectory)
     var read: [FichaDeck: Result<FichaDeckFile, EngineError>] = [:]
     for deck in FichaDeck.allCases {
-        let file = folder.appending(path: "\(deck.fileName).zip")
+        let file = folder.appending(path: "\(deck.fileName).ficha")
         guard FileManager.default.fileExists(atPath: file.path(percentEncoded: false)) else {
             throw RenderError(
-                description: "App/FichaDecks/\(deck.fileName).zip isn't in the repo: add the file of \(deck.name).")
+                description: "App/FichaDecks/\(deck.fileName).ficha isn't in the repo: add the file of \(deck.name).")
         }
         read[deck] = .success(try waitFor { try await engine.readFichaDeck(deck, at: file) })
     }
     return read
-}
-
-/// The Cards window's state partway through importing an Anki package, as
-/// the Import sheet shows it once the user chose one: the preview of a deck
-/// of medicine the tool writes in its scratch home, with two subdecks and
-/// Anki tags, two cards Anki had progress on, which Bring progress brings in
-/// due when Anki had them due, the femur with Anki's reviews of it, a card
-/// the sample cards have, a card with two images on its front, of which the
-/// first comes in, and a card whose back is only a sound, one
-/// whose front is only an image the package lacks and an Image Occlusion
-/// note, which stay out. The file goes once it's read.
-func ankiImportingState(of model: AppModel) throws -> CardsWindowState {
-    let file = URL.documentsDirectory.appending(path: "Medicina.apkg")
-    try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
-    try writeSampleAnkiPackage(to: file)
-    defer { try? FileManager.default.removeItem(at: file) }
-    var state = model.openCardsWindow()
-    state.startImport()
-    try previewImportAtOnce(of: file, in: &state)
-    guard state.importing?.preview != nil else {
-        throw RenderError(
-            description: "The sample Anki package has no preview: \(String(describing: state.importing))")
-    }
-    return state
-}
-
-/// The app's model on the sample cards, once the sample Anki package came in
-/// with its progress, and four days later, the card of the femur, which came
-/// in with Anki's five reviews of it, the last setting its 10 days, was
-/// reviewed with Good, once due.
-func ankiImportedModel() throws -> AppModel {
-    let (engine, time) = try sampleEngine(at: .inMemory)
-    let file = URL.documentsDirectory.appending(path: "Medicina.apkg")
-    try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
-    try writeSampleAnkiPackage(to: file)
-    defer { try? FileManager.default.removeItem(at: file) }
-    let settings = ReviewSettings.defaults
-    _ = try engine.importCards(
-        waitFor { try await engine.previewImport(of: file) }, choosing: ImportChoices(progress: .brought))
-    guard let femur = try engine.cards().first(where: { $0.front == "fémur" }) else {
-        throw RenderError(description: "The sample Anki package's card of the femur didn't come in.")
-    }
-    time.advance(by: hours(4 * 24))
-    try engine.record(.review(.good), of: femur.id, responseTime: .seconds(4), trigger: .reviewNow, settings: settings)
-    return try AppModel(engine: engine)
 }
 
 /// The app's model on the sample cards, whose settings that decide progress,
@@ -939,38 +910,6 @@ func syncModel(
     return model
 }
 
-/// Moves some of the sample's tags inside others, as Rename… in the Cards
-/// window does (ADR 0021): estadística and psicología inside ciencia, which
-/// is blue, argentina inside historia, which has an emoji, and trabajo inside
-/// economía.
-func nestSampleTags(in engine: Engine) throws {
-    let moves = [
-        ("estadística", "ciencia::estadística"), ("psicología", "ciencia::psicología"),
-        ("argentina", "historia::argentina"), ("trabajo", "economía::trabajo"),
-    ]
-    for (tag, name) in moves {
-        try engine.renameTag(tag, to: name)
-    }
-    try engine.setColor(.blue, of: "ciencia")
-    try engine.setEmoji(try Emoji("🏛️"), of: "historia")
-}
-
-/// Pins five of the sample's tags, once `nestSampleTags(in:)` moved some
-/// inside others, as Pin to Sidebar in the Cards window does (ADR 0022), in
-/// an order that isn't alphabetical: lenguaje, ciencia, ciencia ›
-/// psicología, historia, and literatura.
-func pinSampleTags(in engine: Engine) throws {
-    for tag in ["lenguaje", "ciencia", "ciencia::psicología", "historia", "literatura"] {
-        try engine.pin(tag)
-    }
-}
-
-/// Gives pendientes, a tag no card carries, the color red, so that All Tags
-/// offers Clear Unused Tags….
-func leaveUnusedSampleTag(in engine: Engine) throws {
-    try engine.setColor(.red, of: "pendientes")
-}
-
 /// Sets Sociedad aside, as Set Aside in a deck's menu does (ADR 0024), so
 /// that the sidebar grays it and Sociedad › Economía, the deck inside it.
 func setSampleDeckAside(in engine: Engine) throws {
@@ -989,8 +928,8 @@ func giveSampleDecksLooks(in engine: Engine) throws {
 
 /// The Cards window of `model` on the sample cards' deck `deck`, its cards
 /// read, with Ciencias, Humanidades and Idiomas › Español closed in the
-/// sidebar, as `cards-decks`, `cards-deck-tag` and `cards-delete-deck`
-/// start, so that Sociedad shows below the top decks' lines.
+/// sidebar, as `cards-decks` and `cards-delete-deck` start, so that
+/// Sociedad shows below the top decks' lines.
 func cardsWindow(onSampleDeck deck: String, of model: AppModel) -> CardsWindowState {
     var state = model.openCardsWindow()
     state.read(with: state.scheduler)
@@ -1001,61 +940,13 @@ func cardsWindow(onSampleDeck deck: String, of model: AppModel) -> CardsWindowSt
     return state
 }
 
-/// Gives the sample card types of the user's own (#365): Ley, with an emoji,
-/// to La ley de Parkinson and El principio de Pareto; Efeméride, with an
-/// emoji, to the Moon landing's question; Sesgo, with none, to the two
-/// biases; and Fórmula, with an emoji, to no card.
-func giveSampleUserTypes(in engine: Engine) throws {
-    let law = try engine.makeUserType(named: "Ley", emoji: try Emoji("📜"))
-    let date = try engine.makeUserType(named: "Efeméride", emoji: try Emoji("📅"))
-    let bias = try engine.makeUserType(named: "Sesgo")
-    try engine.makeUserType(named: "Fórmula", emoji: try Emoji("🧪"))
-    let types = [
-        "La ley de Parkinson": law, "El principio de Pareto": law,
-        "¿En qué año llegó el ser humano a la Luna?": date, "El efecto Dunning-Kruger": bias,
-        "El sesgo de confirmación": bias,
-    ]
-    for card in try engine.cards() {
-        guard let type = types[card.front] else { continue }
-        guard
-            let content = CardContent(
-                type: .user(type), front: card.front, back: card.back, tags: card.tags, source: card.source,
-                frontImage: card.frontImage, backImage: card.backImage, frontSound: card.frontSound,
-                backSound: card.backSound)
-        else {
-            throw RenderError(description: "The sample's card “\(card.front)” has a blank side: fix sampleEngine(at:).")
-        }
-        try engine.edit(card.id, with: content)
-    }
-    guard try engine.cards().count(where: { $0.type?.userType != nil }) == types.count else {
-        throw RenderError(description: "Some of the sample's cards giveSampleUserTypes(in:) types are gone: fix it.")
-    }
-}
-
-/// Chooses the user type named `name` in the sidebar of the Cards window
-/// `state`, and selects its card fronted `front`.
-func chooseUserType(_ name: String, selecting front: String, in state: inout CardsWindowState) throws {
-    state.read(with: state.scheduler)
-    guard let type = state.pickerTypes.first(where: { $0.userType?.name == name }) else {
-        throw RenderError(
-            description: "The Cards window doesn't list the type “\(name)”: fix giveSampleUserTypes(in:).")
-    }
-    state.choose(.cards(.type(type)))
-    guard case .success(.cards(let rows)) = state.listing, let row = rows.first(where: { $0.card.front == front })
-    else {
-        throw RenderError(description: "The type “\(name)” doesn't list “\(front)”: fix giveSampleUserTypes(in:).")
-    }
-    state.select([row.id])
-}
-
 /// Scrolls the sidebar of the Cards window `window`, once it shows, to its
-/// last row, a type's. A click in the sidebar would scroll it as Finder's
+/// last row. A click in the sidebar would scroll it as Finder's
 /// does, but in a window opened on a state of its own, as
 /// `makeContent(opening:)` opens it, the tool's click stops it with an
 /// exception about an observer of the window it can't remove.
 func scrollSidebarToEnd(of window: NSWindow) throws {
-    // The table is an outline view too: the sidebar is the one at the
-    // leading side.
+    // The sidebar is the outline view at the leading side.
     let sidebar = outlineViews(in: window.contentView).min { isNearerLeadingSide($0, than: $1, in: window) }
     guard let sidebar, sidebar.numberOfRows > 0 else {
         throw RenderError(
@@ -1094,10 +985,11 @@ func isNearerLeadingSide(_ view: NSView, than other: NSView, in window: NSWindow
 }
 
 /// Scrolls the detail of the Cards window `window`, once it shows, to its
-/// end, where a card's chart and its key show below the rows of its ways,
-/// for the same reason as `scrollSidebarToEnd(of:)`.
+/// end, where a card's review log, its chart with its key and its entries,
+/// shows below the rows of its ways, for the same reason as
+/// `scrollSidebarToEnd(of:)`.
 func scrollDetailToEnd(of window: NSWindow) throws {
-    // The sidebar and the table scroll too: the detail is the one at the
+    // The sidebar and the grid scroll too: the detail is the one at the
     // trailing side.
     let detail = scrollViews(in: window.contentView).max { isNearerLeadingSide($0, than: $1, in: window) }
     guard let detail, let document = detail.documentView else {
@@ -1165,107 +1057,6 @@ func weighFilesOnCards(_ bytes: Int64, in engine: Engine) throws {
     try handle.truncate(atOffset: flagSize)
 }
 
-/// The Cards window's state partway through importing a zip of cards, as
-/// the Import sheet shows it once the user chose one, while sync is on: the
-/// preview of three maps, a zip the tool writes in its scratch home, each
-/// image the sample flag's as Ficha keeps it, made to weigh 80 MB with zeros
-/// after its end, which a JPEG's readers skip, and named by its content, so
-/// that the import takes it as it is and brings 240 MB that go up to iCloud.
-/// The files go once they're read.
-func heavyImportingState(of model: AppModel) throws -> CardsWindowState {
-    let folder = URL.documentsDirectory.appending(path: "Mapas", directoryHint: .isDirectory)
-    try? FileManager.default.removeItem(at: folder)
-    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-    defer { try? FileManager.default.removeItem(at: folder) }
-    let jpeg = try model.engine.image(sampleFlagImage(of: model.engine))
-    let text = folder.appending(path: "Mapas.txt")
-    var lines = ["#separator:tab", "#html:false", "#columns:Front\tBack\tFront image"]
-    var files = [text]
-    for (index, country) in ["Chile", "Uruguay", "Bolivia"].enumerated() {
-        let padding = 80_000_000 + index - jpeg.count
-        guard padding >= 0 else {
-            throw RenderError(
-                description: """
-                    The sample flag's image weighs \(jpeg.count) bytes, more than the 80 MB each map weighs: weigh \
-                    more in heavyImportingState(of:).
-                    """)
-        }
-        var image = jpeg
-        image.append(Data(count: padding))
-        let name = SHA256.hash(data: image).map { String(format: "%02x", $0) }.joined() + ".jpg"
-        let file = folder.appending(path: name)
-        try image.write(to: file)
-        files.append(file)
-        lines.append("¿Qué país es este?\t\(country).\t\(name)")
-    }
-    try Data(lines.joined(separator: "\n").utf8).write(to: text)
-    let zip = URL.documentsDirectory.appending(path: "Mapas.zip")
-    defer { try? FileManager.default.removeItem(at: zip) }
-    try zipFiles(files, into: zip, describing: "the sample zip of maps")
-    var state = model.openCardsWindow()
-    state.startImport()
-    try previewImportAtOnce(of: zip, in: &state)
-    guard state.importing?.weightGoingUpToICloud != nil else {
-        throw RenderError(
-            description:
-                "The sample zip of maps says nothing of iCloud: \(String(describing: state.importing)). Fix heavyImportingState(of:)."
-        )
-    }
-    return state
-}
-
-/// Zips `files` into `file`, flat, with `zip`, replacing what's there;
-/// `described` names the file, in what the tool says when it fails.
-func zipFiles(_ files: [URL], into file: URL, describing described: String) throws {
-    try? FileManager.default.removeItem(at: file)
-    let zip = Process()
-    zip.executableURL = URL(filePath: "/usr/bin/zip")
-    zip.arguments = ["-q", "-j"] + ([file] + files).map { $0.path(percentEncoded: false) }
-    try zip.run()
-    zip.waitUntilExit()
-    guard zip.terminationStatus == 0 else {
-        throw RenderError(
-            description: "zip couldn't make \(described) (exit \(zip.terminationStatus)). \(whenMacOSRefuses)")
-    }
-}
-
-/// The Cards window's state once the sample Anki package came in, with the
-/// card of the femur selected, so the detail shows its review log.
-func ankiImportedState(of model: AppModel) throws -> CardsWindowState {
-    var state = model.openCardsWindow()
-    state.read(with: state.scheduler)
-    guard case .success(.cards(let rows)) = state.listing, let femur = rows.first(where: { $0.card.front == "fémur" })
-    else {
-        throw RenderError(description: "The Cards window doesn't list the sample Anki package's card of the femur.")
-    }
-    state.select([femur.id])
-    return state
-}
-
-/// Writes the sample Anki package to `file`, as current Anki exports a deck
-/// with "Support older Anki versions" ticked: a zip with `meta` at version
-/// 2, `collection.anki21`, a SQLite database at schema 11 with only what
-/// Ficha reads, and its media, the flag and the Sun of May, in members `0`
-/// and `1`, with the JSON list that names them. The tests'
-/// `AnkiPackages.swift` writes such packages too, from Anki's source.
-func writeSampleAnkiPackage(to file: URL) throws {
-    let folder = file.deletingLastPathComponent().appending(path: "Anki package", directoryHint: .isDirectory)
-    try? FileManager.default.removeItem(at: folder)
-    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-    defer { try? FileManager.default.removeItem(at: folder) }
-    let collection = folder.appending(path: "collection.anki21")
-    try runSQLite(try sampleAnkiCollectionSQL(), in: collection, writing: "the sample Anki package")
-    let meta = folder.appending(path: "meta")
-    try Data([0x08, 0x02]).write(to: meta)
-    let flag = folder.appending(path: "0")
-    try SamplePicture.flag.png().write(to: flag)
-    let sun = folder.appending(path: "1")
-    try SamplePicture.sun.png().write(to: sun)
-    let media = folder.appending(path: "media")
-    try Data(#"{"0":"bandera.png","1":"sol.png"}"#.utf8).write(to: media)
-    try zipFiles([meta, collection, flag, sun, media], into: file, describing: "the sample Anki package")
-}
-
 /// Runs `sql` on the SQLite database at `file`, which it makes if it isn't
 /// there, to write `what`, as its failure says.
 func runSQLite(_ sql: String, in file: URL, writing what: String) throws {
@@ -1282,130 +1073,6 @@ func runSQLite(_ sql: String, in file: URL, writing what: String) throws {
     }
 }
 
-/// The SQL that makes the sample Anki package's collection: Anki's tables at
-/// schema 11 (`rslib/src/storage/schema11.sql`), created on 1 October 2026
-/// at 4 in the morning in Buenos Aires, its Basic, Cloze and Image Occlusion
-/// note types, a deck of medicine with two subdecks, and the notes, with
-/// their cards: the femur's in review, every 10 days, due on Anki's day 22,
-/// 23 October, with Anki's reviews of it; the systole's relearning, due on
-/// day 20, 21 October, with none; and the
-/// rest new, among them one in Default whose front shows the flag and the
-/// Sun of May, of which the first comes in, and one whose front is only an
-/// image the package lacks.
-func sampleAnkiCollectionSQL() throws -> String {
-    let basicAnswer = "{{FrontSide}}\n\n<hr id=answer>\n\n{{Back}}"
-    let noteTypes: [String: Any] = [
-        "1": [
-            "id": 1, "name": "Basic", "type": 0, "originalStockKind": 1,
-            "flds": [["name": "Front"], ["name": "Back"]],
-            "tmpls": [["name": "Card 1", "qfmt": "{{Front}}", "afmt": basicAnswer]],
-        ],
-        "2": [
-            "id": 2, "name": "Cloze", "type": 1, "originalStockKind": 5,
-            "flds": [["name": "Text"], ["name": "Back Extra"]],
-            "tmpls": [["name": "Cloze", "qfmt": "{{cloze:Text}}", "afmt": "{{cloze:Text}}<br>\n{{Back Extra}}"]],
-        ],
-        "3": [
-            "id": 3, "name": "Image Occlusion", "type": 1, "originalStockKind": 6,
-            "flds": [["name": "Occlusion"], ["name": "Image"], ["name": "Header"], ["name": "Back Extra"]],
-            "tmpls": [
-                [
-                    "name": "Image Occlusion", "qfmt": "{{cloze:Occlusion}}{{Image}}",
-                    "afmt": "{{cloze:Occlusion}}{{Image}}<br>{{Back Extra}}",
-                ]
-            ],
-        ],
-    ]
-    let decks: [String: Any] = [
-        "1": ["id": 1, "name": "Default"], "2": ["id": 2, "name": "Medicina"],
-        "3": ["id": 3, "name": "Medicina::Anatomía"], "4": ["id": 4, "name": "Medicina::Fisiología"],
-    ]
-    // Each note: its note type, its deck, its tags, its fields, and its
-    // cards' template indexes.
-    let notes: [(type: Int, deck: Int, tags: String, fields: [String], cards: [Int])] = [
-        (1, 3, "huesos", ["fémur", "El hueso del muslo, el más largo del cuerpo."], [0]),
-        (2, 4, "repaso", ["El {{c1::corazón}} bombea la sangre por las {{c2::arterias::unos vasos}}.", ""], [0, 1]),
-        (1, 4, "", ["mitocondria", "La parte de la célula que produce su energía."], [0]),
-        (1, 4, "", ["latido", "[sound:latido.mp3]"], [0]),
-        (
-            3, 3, "huesos",
-            ["{{c1::image-occlusion:rect:left=.2:top=.3:width=.1:height=.1}}", "<img src=\"pie.png\">", "", ""],
-            [0]
-        ),
-        (1, 4, "corazón leech", ["sístole", "La contracción del corazón, que empuja la sangre."], [0]),
-        (1, 1, "", ["<img src=\"bandera.png\"><img src=\"sol.png\">", "La bandera de la Argentina."], [0]),
-        (1, 3, "huesos", ["<img src=\"tibia.png\">", "La tibia."], [0]),
-    ]
-    // The `type`, `queue`, `due` and `ivl` of the cards of the notes not new,
-    // by the notes' places above: in review, and relearning across days.
-    let progress: [Int: (type: Int, queue: Int, due: Int, interval: Int)] = [0: (2, 2, 22, 10), 5: (3, 3, 20, 1)]
-    // Anki's reviews of the cards, by the notes' places above, each its
-    // seconds after the collection's creation, its button, its `ivl` and its
-    // `type`: the femur's two learning steps on 2 October, and its reviews
-    // since, the last on 13 October, which set its 10 days.
-    let revlog: [Int: [(after: Int, button: Int, interval: Int, type: Int)]] = [
-        0: [
-            (30 * 3_600, 3, -600, 0), (30 * 3_600 + 600, 3, 1, 0), (54 * 3_600, 3, 3, 1), (126 * 3_600, 3, 7, 1),
-            (294 * 3_600, 3, 10, 1),
-        ]
-    ]
-    var sql = """
-        CREATE TABLE col (id integer PRIMARY KEY, crt integer NOT NULL, mod integer NOT NULL, scm integer NOT NULL,
-          ver integer NOT NULL, dty integer NOT NULL, usn integer NOT NULL, ls integer NOT NULL, conf text NOT NULL,
-          models text NOT NULL, decks text NOT NULL, dconf text NOT NULL, tags text NOT NULL);
-        CREATE TABLE notes (id integer PRIMARY KEY, guid text NOT NULL, mid integer NOT NULL, mod integer NOT NULL,
-          usn integer NOT NULL, tags text NOT NULL, flds text NOT NULL, sfld integer NOT NULL, csum integer NOT NULL,
-          flags integer NOT NULL, data text NOT NULL);
-        CREATE TABLE cards (id integer PRIMARY KEY, nid integer NOT NULL, did integer NOT NULL, ord integer NOT NULL,
-          mod integer NOT NULL, usn integer NOT NULL, type integer NOT NULL, queue integer NOT NULL,
-          due integer NOT NULL, ivl integer NOT NULL, factor integer NOT NULL, reps integer NOT NULL,
-          lapses integer NOT NULL, left integer NOT NULL, odue integer NOT NULL, odid integer NOT NULL,
-          flags integer NOT NULL, data text NOT NULL);
-        CREATE TABLE revlog (id integer PRIMARY KEY, cid integer NOT NULL, usn integer NOT NULL, ease integer NOT NULL,
-          ivl integer NOT NULL, lastIvl integer NOT NULL, factor integer NOT NULL, time integer NOT NULL,
-          type integer NOT NULL);
-        INSERT INTO col VALUES (1, 1790838000, 0, 0, 11, 0, 0, 0, '{"schedVer":2,"creationOffset":180}', \
-        \(sqlText(try jsonText(noteTypes))), \(sqlText(try jsonText(decks))), '{}', '{}');
-
-        """
-    for (index, note) in notes.enumerated() {
-        let noteID = 1_700_000_000_000 + index
-        let tags = note.tags.isEmpty ? "" : " \(note.tags) "
-        sql += """
-            INSERT INTO notes VALUES (\(noteID), 'n\(index)', \(note.type), 0, 0, \(sqlText(tags)), \
-            \(sqlText(note.fields.joined(separator: "\u{1F}"))), '', 0, 0, '');
-
-            """
-        // A new card's due is its position.
-        let (type, queue, due, interval) = progress[index] ?? (0, 0, index + 1, 0)
-        for ordinal in note.cards {
-            sql += """
-                INSERT INTO cards VALUES (\(noteID * 10 + ordinal), \(noteID), \(note.deck), \(ordinal), 0, 0, \
-                \(type), \(queue), \(due), \(interval), 2500, 0, 0, 0, 0, 0, 0, '');
-
-                """
-            for entry in revlog[index] ?? [] {
-                sql += """
-                    INSERT INTO revlog VALUES (\((1_790_838_000 + entry.after) * 1_000), \(noteID * 10 + ordinal), 0, \
-                    \(entry.button), \(entry.interval), 0, 2500, 5000, \(entry.type));
-
-                    """
-            }
-        }
-    }
-    return sql
-}
-
-/// `object` as JSON text.
-func jsonText(_ object: Any) throws -> String {
-    String(decoding: try JSONSerialization.data(withJSONObject: object), as: UTF8.self)
-}
-
-/// `text` as a string literal of SQL.
-func sqlText(_ text: String) -> String {
-    "'\(text.replacingOccurrences(of: "'", with: "''"))'"
-}
-
 /// A span of whole hours, in seconds.
 func hours(_ count: Int) -> TimeInterval {
     TimeInterval(count * 60 * 60)
@@ -1417,13 +1084,14 @@ func hours(_ count: Int) -> TimeInterval {
 /// `renderDataFolder`, with copies to list, and files to weigh.
 func model(for name: Window) throws -> AppModel {
     switch name {
-    case .cards, .cardsNewDeck, .cardsImport, .cardsImportAnki, .cardsHowFast, .cardsHowFastNewDeck,
-        .cardsFichaDeckWords, .cardsFichaDeckPicture, .cardsFichaDeckFlower, .general, .pace, .interruptions,
-        .capture, .welcome, .welcomeOneButton, .panelCard, .panelMetThemAll:
+    case .cards, .cardsCard, .cardsCardDetails, .cardsNewCard, .cardsNewDeck, .cardsHowFast,
+        .cardsHowFastNewDeck, .cardsHowFastDeckFile, .cardsDeckMenu, .cardsFichaDeckWords,
+        .cardsFichaDeckPicture, .cardsFichaDeckFlower,
+        .general, .pace, .interruptions, .welcome, .welcomeOneButton, .panelCard, .panelMetThemAll:
         return try AppModel(engine: try sampleEngine(at: .inMemory).engine)
     case .cardsEmpty, .panelMetThemAllOffer:
         return try AppModel(engine: try Engine(location: .inMemory, time: SystemTimeSource()))
-    case .cardsDecks, .cardsDeckTag, .cardsDeleteDeck:
+    case .cardsDecks, .cardsDeleteDeck:
         let engine = try sampleEngine(at: .inMemory).engine
         try setSampleDeckAside(in: engine)
         try giveSampleDecksLooks(in: engine)
@@ -1433,27 +1101,18 @@ func model(for name: Window) throws -> AppModel {
         let due = try longestWaitingSampleCard(in: engine).due
         time.advance(by: due.timeIntervalSince(time.now))
         return try AppModel(engine: engine)
+    case .cardsDeckDescription, .cardsDescriptionField:
+        let engine = try sampleEngine(at: .inMemory).engine
+        guard case .success(let arte)? = try fichaDecksInTheRepo(readBy: engine)[.arteArgentino] else {
+            throw RenderError(description: "Arte argentino's file couldn't be read: fix App/FichaDecks/.")
+        }
+        try engine.addFichaDeck(arte)
+        return try AppModel(engine: engine)
     case .cardsBothWays: return try bothWaysModel()
+    case .cardsSetAside, .cardsFlagged: return try AppModel(engine: try sampleEngine(at: .inMemory).engine)
     case .panelArabic, .cardsArabic:
         let engine = try sampleEngine(at: .inMemory).engine
         try addSampleArabicCard(in: engine)
-        return try AppModel(engine: engine)
-    case .cardsTags, .cardsAllTags:
-        let engine = try sampleEngine(at: .inMemory).engine
-        try nestSampleTags(in: engine)
-        try pinSampleTags(in: engine)
-        if name == .cardsAllTags {
-            try leaveUnusedSampleTag(in: engine)
-        }
-        return try AppModel(engine: engine)
-    case .cardsTypes, .cardsNewType, .cardsNewTypeEditor:
-        let engine = try sampleEngine(at: .inMemory).engine
-        try giveSampleUserTypes(in: engine)
-        return try AppModel(engine: engine)
-    case .cardsAnkiImported: return try ankiImportedModel()
-    case .cardsImportHeavy:
-        let engine = try sampleEngine(at: .inMemory).engine
-        try Sync(engine: engine, zones: .ficha).noteAccount(signedIn: true)
         return try AppModel(engine: engine)
     case .sync:
         return try syncModel(showing: "when the Mac last synced") { _, sync in
@@ -1538,27 +1197,19 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         let window = CardsWindow(model: model)
         window.makeContent()
         return window
+    case .cardsCard, .cardsCardDetails:
+        let longest = try longestWaitingSampleCard(in: model.engine).row
+        return try cardsWindow(
+            of: model, selectingFirst: { $0.id == longest.id }, openingDetails: name == .cardsCardDetails,
+            orElse: """
+                The Cards window doesn't list the sample's graduated card that waits longest: fix \
+                sampleEngine(at:).
+                """)
     case .cardsEmpty:
         var state = model.openCardsWindow()
         state.offerFichaDecks(try fichaDecksInTheRepo(readBy: model.engine))
         let window = CardsWindow(model: model)
         window.makeContent(opening: state)
-        return window
-    case .cardsImport:
-        let window = CardsWindow(model: model)
-        window.makeContent(opening: try importingState(of: model))
-        return window
-    case .cardsImportAnki:
-        let window = CardsWindow(model: model)
-        window.makeContent(opening: try ankiImportingState(of: model))
-        return window
-    case .cardsAnkiImported:
-        let window = CardsWindow(model: model)
-        window.makeContent(opening: try ankiImportedState(of: model))
-        return window
-    case .cardsImportHeavy:
-        let window = CardsWindow(model: model)
-        window.makeContent(opening: try heavyImportingState(of: model))
         return window
     case .cardsHowFast:
         let window = CardsWindow(model: model)
@@ -1574,6 +1225,27 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
                     New Deck… didn't ask How fast? about Música: it says \(String(describing: state.howFast)). Fix \
                     the window's case in window(_:model:), with a name no deck of the sample cards has at the top.
                     """)
+        }
+        let window = CardsWindow(model: model)
+        window.makeContent(opening: state)
+        return window
+    case .cardsHowFastDeckFile:
+        let window = CardsWindow(model: model)
+        window.makeContent(opening: try deckFileState(of: model))
+        return window
+    case .cardsDeckMenu:
+        return try deckMenuWindow(model: model)
+    case .cardsDeckDescription, .cardsDescriptionField:
+        let deck = FichaDeck.arteArgentino.name
+        var state = model.openCardsWindow()
+        state.read(with: state.scheduler)
+        state.choose(.cards(.deck(deck)))
+        if name == .cardsDescriptionField {
+            state.askForDescription(onDeck: deck)
+        }
+        guard state.chosenDeckDescription != nil || state.describedDeck?.description != nil else {
+            throw RenderError(
+                description: "The Cards window shows no description for \(deck): fix CardsWindowDeckDescription.swift.")
         }
         let window = CardsWindow(model: model)
         window.makeContent(opening: state)
@@ -1594,39 +1266,12 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         let window = CardsWindow(model: model)
         window.makeContent(opening: state)
         return window
-    case .cardsTags:
-        var state = model.openCardsWindow()
-        state.choose(.cards(.tag("ciencia")))
-        let window = CardsWindow(model: model)
-        window.makeContent(opening: state)
-        return window
-    case .cardsAllTags:
-        var state = model.openCardsWindow()
-        state.choose(.allTags)
-        for tag in ["ciencia", "economía", "historia"] {
-            state.setOpen(true, tag)
-        }
-        state.sortAllTags(by: .cards, ascending: false)
-        state.selectTags(["economía"])
-        let window = CardsWindow(model: model)
-        window.makeContent(opening: state)
-        return window
     case .cardsDecks:
         var state = cardsWindow(onSampleDeck: "Idiomas", of: model)
         guard case .success(.cards(let rows)) = state.listing else {
             throw RenderError(description: "The Cards window lists no cards in Idiomas: fix SampleCards.swift.")
         }
         state.select(Set(rows.filter { ["serendipia", "hygge"].contains($0.card.front) }.map(\.id)))
-        let window = CardsWindow(model: model)
-        window.makeContent(opening: state)
-        return window
-    case .cardsDeckTag:
-        var state = cardsWindow(onSampleDeck: "Idiomas::Español", of: model)
-        state.chooseDeckTag("historia")
-        guard state.chosenDeckTag == "historia" else {
-            throw RenderError(
-                description: "No card of Idiomas › Español carries historia: fix SampleCards.swift.")
-        }
         let window = CardsWindow(model: model)
         window.makeContent(opening: state)
         return window
@@ -1639,34 +1284,14 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         let window = CardsWindow(model: model)
         window.makeContent(opening: state)
         return window
-    case .cardsNewDeck:
+    case .cardsNewCard, .cardsNewDeck:
         var state = model.openCardsWindow()
         state.read(with: state.scheduler)
         state.choose(.cards(.deck("Idiomas::Español")))
         state.openNewCardForm()
-        state.askForNewDeck(in: .form)
-        let window = CardsWindow(model: model)
-        window.makeContent(opening: state)
-        return window
-    case .cardsTypes:
-        var state = model.openCardsWindow()
-        try chooseUserType("Ley", selecting: "La ley de Parkinson", in: &state)
-        let window = CardsWindow(model: model)
-        window.makeContent(opening: state)
-        return window
-    case .cardsNewType:
-        var state = model.openCardsWindow()
-        state.read(with: state.scheduler)
-        state.openNewCardForm()
-        state.askForNewType(in: .form)
-        let window = CardsWindow(model: model)
-        window.makeContent(opening: state)
-        return window
-    case .cardsNewTypeEditor:
-        var state = model.openCardsWindow()
-        try chooseUserType("Ley", selecting: "La ley de Parkinson", in: &state)
-        state.startEditing()
-        state.askForNewType(in: .editor)
+        if name == .cardsNewDeck {
+            state.askForNewDeck(in: .form)
+        }
         let window = CardsWindow(model: model)
         window.makeContent(opening: state)
         return window
@@ -1679,12 +1304,6 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
     case .interruptions: return settingsTabWindow(model: model, openingOn: .interruptions)
     case .advanced: return settingsTabWindow(model: model, openingOn: .advanced)
     case .advancedFoot: return settingsTabWindow(model: model, openingOn: .advanced, at: .diagnostics)
-    case .capture:
-        let window = CaptureWindow(model: model)
-        if let view = window.contentView {
-            window.setContentSize(view.fittingSize)
-        }
-        return window
     // For the real Ficha, the only one that shows it on its own. A button's
     // keyboard shortcut prints what it answered, as the app would take it.
     case .welcome: return WelcomeWindow(app: .real, asks: true) { print("The Welcome page answered \($0).") }
@@ -1702,32 +1321,81 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
     case .panelMetThemAllOffer: return try metThemAllPanelWindow(model: model, offersFichaDeck: true)
     case .cardsBothWays:
         return try cardsWindow(
-            of: model, selectingFirst: { $0.backFirst != nil },
+            of: model, selectingFirst: { $0.backFirst != nil }, openingDetails: true,
             orElse: "No sample card goes both ways: fix bothWaysModel().")
     case .panelArabic: return try panelWindow(model: model, on: sampleArabicFront)
     case .cardsArabic:
         return try cardsWindow(
             of: model, selectingFirst: { $0.card.front == sampleArabicFront },
             orElse: "The Cards window doesn't list the card in Arabic: fix addSampleArabicCard(in:).")
+    case .cardsSetAside:
+        return try markedCardWindow(
+            of: model, .setAside, choosing: { $0.buriedAt != nil }, named: "card set aside on its own")
+    case .cardsFlagged:
+        return try markedCardWindow(
+            of: model, .flagged, choosing: { $0.flag != nil && $0.buriedAt == nil }, named: "flagged card")
     }
 }
 
-/// The Cards window of `model` on every card, its cards read, with the first
-/// row `isWanted` picks selected, its detail showing it, as
-/// `cards-both-ways` and `cards-arabic` open; `missing`, a failure that
-/// says what to fix, when no row is.
-func cardsWindow(
-    of model: AppModel, selectingFirst isWanted: (CardRow) -> Bool, orElse missing: String
+/// The Cards window of `model`, its cards read, on the deck of its first
+/// card `isWanted` picks, set aside on its own or flagged, with the first
+/// tile marked `mark` selected, as `cards-set-aside` and `cards-flagged` open
+/// it; `name` names the card in the failure that says what to fix. All Cards
+/// leaves such a card out, so it finds it among the cards, and its tile in
+/// its deck's grid.
+func markedCardWindow(
+    of model: AppModel, _ mark: CardsWindowState.Tile.Mark, choosing isWanted: (Card) -> Bool, named name: String
 ) throws -> NSWindow {
     var state = model.openCardsWindow()
     state.read(with: state.scheduler)
-    guard case .success(.cards(let rows)) = state.listing, let wanted = rows.first(where: isWanted) else {
-        throw RenderError(description: missing)
+    guard let deck = try model.engine.cards().first(where: isWanted)?.deck else {
+        throw RenderError(description: "No sample card is a \(name): fix sampleEngine(at:).")
     }
-    state.select([wanted.id])
+    state.choose(.cards(.deck(deck)))
+    guard let tile = state.tiles.first(where: { $0.mark == mark }) else {
+        throw RenderError(
+            description: "The Cards window's grid doesn't mark the sample's \(name): fix CardsWindowState.Tile.")
+    }
+    state.select([tile.id])
     let window = CardsWindow(model: model)
     window.makeContent(opening: state)
     return window
+}
+
+/// The Cards window of `model`, its cards read, on the deck of the first
+/// card `isWanted` picks among all of them, with that card selected, its
+/// detail showing it, with Details open when `openingDetails` says so, as
+/// `cards-card`, `cards-card-details`, `cards-both-ways` and `cards-arabic`
+/// open; `missing`, a failure that says what to fix, when no card is.
+func cardsWindow(
+    of model: AppModel, selectingFirst isWanted: (CardRow) -> Bool, openingDetails: Bool = false,
+    orElse missing: String
+) throws -> NSWindow {
+    var state = try cardsState(of: model, selectingFirst: isWanted, orElse: missing)
+    state.setDetailsOpen(openingDetails)
+    let window = CardsWindow(model: model)
+    window.makeContent(opening: state)
+    return window
+}
+
+/// The Cards window's state on the deck of the first card of `model`
+/// `isWanted` picks, with that card selected, as
+/// `cardsWindow(of:selectingFirst:orElse:)` opens it; `missing`, a failure that says what to fix, when no card is, or
+/// its deck's grid doesn't list it.
+func cardsState(
+    of model: AppModel, selectingFirst isWanted: (CardRow) -> Bool, orElse missing: String
+) throws -> CardsWindowState {
+    var state = model.openCardsWindow()
+    state.read(with: state.scheduler)
+    guard let wanted = try model.engine.cardRows(in: .all, with: state.scheduler).first(where: isWanted) else {
+        throw RenderError(description: missing)
+    }
+    state.choose(.cards(.deck(wanted.card.deck)))
+    guard case .success(.cards(let rows)) = state.listing, rows.contains(where: { $0.id == wanted.id }) else {
+        throw RenderError(description: missing)
+    }
+    state.select([wanted.id])
+    return state
 }
 
 /// The front of the card in Arabic `addSampleArabicCard(in:)` adds: the
@@ -1735,9 +1403,9 @@ func cardsWindow(
 let sampleArabicFront = "أثر الفراشة"
 
 /// Adds a card in Arabic to the sample cards, made by hand, as two in
-/// Spanish are, so that the newest, it comes first in the Cards window. Its
-/// back holds a name in Latin letters and a year, which read left to right
-/// inside its Arabic.
+/// Spanish are, so that it lives in Default with them, the last to come in.
+/// Its back holds a name in Latin letters and a year, which read left to
+/// right inside its Arabic.
 func addSampleArabicCard(in engine: Engine) throws {
     guard
         let content = CardContent(
@@ -1762,8 +1430,8 @@ func longestWaitingSampleCard(in engine: Engine) throws -> (row: CardRow, due: D
     let graduated = rows.filter { $0.frontFirst.standing.stage == .graduated }.compactMap { row in
         row.frontFirst.due.map { (row: row, due: $0) }
     }
-    guard let longest = graduated.max(by: { $0.row.frontFirst.intervalColumn < $1.row.frontFirst.intervalColumn })
-    else {
+    let interval = { (way: WayProgress) in way.standing.interval ?? .zero }
+    guard let longest = graduated.max(by: { interval($0.row.frontFirst) < interval($1.row.frontFirst) }) else {
         throw RenderError(description: "No sample card graduated: fix sampleEngine(at:).")
     }
     return longest
@@ -1882,9 +1550,8 @@ func metThemAllPanelWindow(model: AppModel, offersFichaDeck: Bool = false) throw
 func menuWindow(model: AppModel) -> NSWindow {
     let content = VStack(alignment: .leading) {
         MenuContent(
-            model: model, openCapture: {}, captureShortcut: CaptureShortcutRegistration(), openReviewPanel: {},
-            openCards: {}, openDiagnostics: {}, openSettings: {}, openBackupSettings: {},
-            openSyncSettings: {},
+            model: model, openReviewPanel: {}, openCards: {}, openDiagnostics: {}, openSettings: {},
+            openBackupSettings: {}, openSyncSettings: {},
             checkAppearance: { nil }, timeMoved: {},
             secondDevice: SecondDeviceActions(openCards: {}, reviewNow: {}, syncNow: {}), showWelcomePage: {})
     }
@@ -1907,8 +1574,7 @@ func settingsTabWindow(model: AppModel, openingOn tab: SettingsTab, at section: 
     }
     let window = AppWindow(
         tabs: SettingsTabViewController(
-            model: model, captureShortcut: CaptureShortcutRegistration(), closeReviewPanel: {}, openDiagnostics: {},
-            openingOn: tab, at: section))
+            model: model, closeReviewPanel: {}, openDiagnostics: {}, openingOn: tab, at: section))
     if let content = window.contentView {
         window.setContentSize(content.fittingSize)
     }
@@ -2196,9 +1862,9 @@ func wait(_ seconds: TimeInterval) throws(RenderError) {
 }
 
 /// Saves the window as a PNG at `output`, as the screen draws it, without
-/// its shadow. On macOS 26, `screencapture -l` captures a window with the
+/// its shadow. On macOS 26, `screencapture -l` takes a window with the
 /// sheet it has open, over it where macOS puts it.
-func capture(_ window: NSWindow, to output: URL) throws {
+func savePicture(of window: NSWindow, to output: URL) throws {
     try FileManager.default.createDirectory(at: output.deletingLastPathComponent(), withIntermediateDirectories: true)
     let screencapture = Process()
     screencapture.executableURL = URL(filePath: "/usr/sbin/screencapture")
@@ -2208,8 +1874,9 @@ func capture(_ window: NSWindow, to output: URL) throws {
     guard screencapture.terminationStatus == 0 else {
         throw RenderError(
             description: """
-                screencapture couldn't capture the window (exit \(screencapture.terminationStatus)). Check that the \
-                terminal running the tool has Screen & System Audio Recording in System Settings › Privacy & Security.
+                screencapture couldn't take the window's picture (exit \(screencapture.terminationStatus)). Check \
+                that the terminal running the tool has Screen & System Audio Recording in System Settings › Privacy \
+                & Security.
                 """)
     }
 }
@@ -2285,7 +1952,7 @@ do {
         throw RenderError(description: "Run the tool through make render, which gives it a scratch home.\n\(usage)")
     }
     // Its preferences don't: macOS keeps the tool's, such as the window's
-    // frame and the Cards window's columns and order, in your home's
+    // frame and the deck the last card was added to, in your home's
     // Library/Preferences/Render.plist, whatever CFFIXED_USER_HOME says. The
     // tool empties them as it starts, so the window opens as it does the first
     // time, and as it ends, so none is left there.
@@ -2320,19 +1987,16 @@ do {
     try makeKeyWindowOfApp(window)
     window.orderFrontRegardless()
     try wait(1.5)
-    // Its sidebar's pinned tags, or its Types section, below the decks,
-    // which a click in the sidebar can't reach there.
-    if [.cardsTags, .cardsTypes].contains(name) {
-        try scrollSidebarToEnd(of: window)
-        try wait(0.5)
-    }
     // The chosen one of Ficha's decks, in its sidebar's Ficha's Decks
     // section, below Your Decks.
     if [.cardsFichaDeckWords, .cardsFichaDeckPicture, .cardsFichaDeckFlower].contains(name) {
         try scrollSidebarToSelection(of: window)
         try wait(0.5)
     }
-    if name == .cardsBothWays {
+    // The card's review log, which Details puts below its numbers, past
+    // what the window shows at its first size once the card has a few
+    // reviews.
+    if [.cardsCardDetails, .cardsBothWays].contains(name) {
         try scrollDetailToEnd(of: window)
         try wait(0.5)
     }
@@ -2354,7 +2018,7 @@ do {
     }
     let output =
         request.output ?? URL(filePath: ".build/render/\(name.rawValue)-\(request.isDark ? "dark" : "light").png")
-    try capture(window, to: output)
+    try savePicture(of: window, to: output)
     print(
         "\(output.path(percentEncoded: false)): a \(Int(window.frame.width)) × \(Int(window.frame.height)) pt window"
     )

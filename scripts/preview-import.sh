@@ -1,5 +1,5 @@
 #!/bin/bash
-# Runs the import-preview tool, scripts/import-preview, on files of cards, for
+# Runs the import-preview tool, scripts/import-preview, on decks' .ficha files, for
 # `make preview-import`: "An import's numbers" in docs/development.md explains
 # it. It builds the tool for release, and runs it once per file, so each file's
 # peak memory footprint is its own, under scripts/watch-for-hang.sh.

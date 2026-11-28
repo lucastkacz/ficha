@@ -14,7 +14,7 @@ You don't sit down to study. When some of your cards are due, or a new one is wa
 
 It doesn't catch what you're typing: it waits until you stop for a moment, or until you click it. If now isn't a good time, press Esc, and the cards wait for the next one. Left alone, it closes after ten minutes.
 
-You can also open it yourself, whenever you like, with "Review now" in Ficha's menu, which says how many cards are due, or from the Shortcuts app, Spotlight or a keyboard shortcut you set there. The menu also shows how many cards you've learned and how many wait in the inbox.
+You can also open it yourself, whenever you like, with "Review now" in Ficha's menu, which says how many cards are due, or from the Shortcuts app, Spotlight or a keyboard shortcut you set there. The menu also shows how many cards you've learned.
 
 <p align="center">
   <img src="docs/images/menu.png" width="364" alt="Ficha's menu, with the items Capture…, Review now (3 due), a line saying 8 cards learned · 2 in the inbox, Diagnostics, Settings… and Quit.">
@@ -35,7 +35,7 @@ A card can also go both ways, as a word and its translation do. Once you've met 
 
 A side with a sound shows a ▶ under it. A sound never plays on its own: press R to hear the card's, the lower side's once you've turned it over, or the upper side's when the lower one has none, or click a side's ▶. Press R or the ■ again to stop it. It keeps playing as you turn the card over, and stops as you answer the card, write about it or leave it, and as the panel closes.
 
-When a card is wrong or unclear, press M and write what to fix: it leaves your reviews until it's fixed, and then comes back where it was. A card you keep forgetting is often a badly written one, so the eighth time you answer "Forgot" to it once it has graduated, outside its learning and relearning steps, Ficha offers to flag it, its note already saying so: press Enter to flag it, or Esc to keep it. Settings changes that number, or turns the offer off. When you no longer want a card, press E to bury it, and it won't show up again. When a card makes you wonder something, press A and write your question: it waits in the inbox as a follow-up, tied to the card, to become new cards, and the card stays in front of you. The ⋯ menu at the top of the panel offers the same three, with Undo and Close. ⌘Z undoes the last thing you did, and then the one before. ⌘+ and ⌘− make a card's text and images larger or smaller, here and in the Cards window, and ⌘0 returns them to their normal size.
+When a card is wrong or unclear, press M and write what to fix: it leaves your reviews until it's fixed, waiting in its deck with its flag, and then comes back where it was. A card you keep forgetting is often a badly written one, so the eighth time you answer "Forgot" to it once it has graduated, outside its learning and relearning steps, Ficha offers to flag it, its note already saying so: press Enter to flag it, or Esc to keep it. Settings changes that number, or turns the offer off. When you want a card out of the way, press E to set it aside: it won't show up until you put it back in the Cards window, where its deck still lists it, dimmed. The ⋯ menu at the top of the panel offers the same two, with Undo and Close. ⌘Z undoes the last thing you did, and then the one before. ⌘+ and ⌘− make a card's text and images larger or smaller, here and in the Cards window, and ⌘0 returns them to their normal size.
 
 ## Why each card waits its own time
 
@@ -55,13 +55,13 @@ The steps, how sure you want to be to remember a card, and the longest it may wa
 
 ## Your cards
 
-Ficha's Cards window lists all your cards, and it's where you add, import and export them; an AI agent can also add them from a terminal.
+Ficha's Cards window shows your decks, and each deck's cards as cards, with their front's picture or text and a dot for the ones you've met and the ones due, and it's where you add them, and open a deck someone shares; an AI agent can also add them from a terminal. A card you select says when it's back, such as "Back on Tue, Dec 15", and how many times you've seen it, with FSRS's numbers, when it was created and last edited, and its reviews under Details.
 
-**New Card.** Write a card yourself: its front and back, the deck it goes in, and if you like its tags, a type, where it comes from, and Both ways, so that it comes back first too. As in Anki's Add window, the deck starts as the one you're looking at in the sidebar, or else the one you last added a card to on this Mac, and New Deck… there makes another. Right-click a deck or a type in the sidebar, or the Your Decks or Types title, to make a new one before it has any card. The form stays open for the next card, and tells you when a front repeats one of your cards. Editing a card can move it to another deck too.
+**New Card.** Write a card yourself: its front and back, the deck it goes in, and if you like where it comes from, and Both ways, so that it comes back first too. As in Anki's Add window, the deck starts as the one you're looking at in the sidebar, or else the one you last added a card to on this Mac, and New Deck… there makes another. Right-click a deck in the sidebar, or the Your Decks title, to make a new one before it has any card. The form stays open for the next card, and tells you when a front repeats one of your cards. Editing a card can move it to another deck too.
 
-**Import.** Bring in cards you made elsewhere: a text file with one card per line, which a spreadsheet saves, Anki exports as "Notes in Plain Text", or an AI writes, zipped with its images and sounds when its cards have any. You choose the deck its cards come into, or a "Deck" column puts each card in its own, as in the file Anki exports with "Include deck name" ticked. A "Both ways" column with any text in it makes its card go both ways, as Anki's "Add Reverse" field does. The Import sheet copies [instructions for an AI](docs/instructions-for-an-ai.md) to paste into yours, so that it writes the file for you. It also takes a deck Anki exports as a package (`.apkg`), its cards in Anki's decks and with its notes' tags, which you can rename before they come in, a deck with the decks inside it, with its images and sounds, a video's sound included, and, if you like, its progress: each card you had studied comes in with Anki's reviews of it, so FSRS knows it as Anki did, and with the interval Anki had given it, due when Anki had it due, one Anki was still learning goes on with your learning steps, and the ones you had suspended come in buried. A note of Anki's "Basic (and reversed card)", or of its "Basic (optional reversed card)" with text in "Add Reverse", comes in as one card that goes both ways, each way with its own Anki card's progress; with its progress, it comes in with Both ways off when you had suspended only its reversed card. Before anything comes in, Ficha shows how many cards the file holds, which repeat yours, and which lines it couldn't read, and it saves a copy of your cards, so restoring it undoes the import.
+**Open Deck.** Someone sends you a deck as a `.ficha` file, its cards with their pictures and sounds, its emoji and its description: double-click it in Finder, or choose Open Deck… in the Cards window, by right-clicking a deck or the Your Decks title, or with ⌘O. Ficha asks how fast its new cards come before it comes in, and Start brings it in with its emoji and description. When you already have a deck by its name, yours keeps its own emoji and description, and takes only the cards it lacks: your cards and your progress stay as they were. Ficha opens a deck's `.ficha` file alone. Ficha's own decks come the same way.
 
-**Export.** Save the selected cards, a deck's cards, with those of the decks inside it, a tag's cards, with those of the tags inside it, or all of them to that same kind of file, to pass them on: another Ficha imports it, and Anki too. When a card has an image or a sound, the file goes in a zip with the images and sounds, which another Ficha imports whole. It holds what the cards say, the deck each one lives in, in a "Deck" column Anki reads too, and which ones go both ways, in a "Both ways" column that Anki can take as its "Add Reverse" field, but never your progress.
+**Share Deck.** A deck says what it holds in a line or two above its cards, its description, which Description… in its menu writes or changes right there. Choose Share Deck… on any deck you've added, Ficha's too, by right-clicking it or from the Actions menu above its cards, to pass it on through macOS's Share menu, by AirDrop, Messages or Mail, or to save it with Save to File… at the menu's end: a `.ficha` named after the deck, with its cards, their pictures and sounds, its emoji and its description, never your progress, which another Ficha opens as Open Deck says.
 
 **From a terminal.** An AI agent that runs commands on your Mac, such as Claude Code, can make you a deck in a session you start: give it the path of the command-line tool inside Ficha, `/Applications/Ficha.app/Contents/Helpers/ficha`, and it adds the cards straight into their decks with `ficha add`, with an image or a sound from your Downloads folder on a side if you like. [The `ficha` command](docs/development.md#the-ficha-command) says more.
 
@@ -71,21 +71,16 @@ Many cards come from what you come across: a word in a book, a line in a podcast
 
 ```mermaid
 flowchart LR
-    capture["You capture<br/>something"] --> inbox["Inbox"]
-    inbox -- "Convert to Card" --> new["New card"]
-    new -- "You meet it" --> reviews["Your reviews"]
-    reviews -- "Flag" --> inbox
-    inbox -- "Fix" --> reviews
-    reviews -- "Bury" --> buried["Buried"]
+    new["New card"] -- "You meet it" --> reviews["Your reviews"]
+    reviews -- "Flag" --> flagged["Flagged,<br/>in its deck"]
+    flagged -- "Fix" --> reviews
+    reviews -- "Set aside" --> aside["Set aside"]
+    aside -- "Put back" --> reviews
 ```
 
-**Capture.** When something catches your eye, jot it down with "Capture…" in the menu, or with a keyboard shortcut from any app. Just the text, with a note or where you found it if you like. It waits in the inbox, and you go back to what you were doing. If it repeats a card you already have, Ficha asks whether to add it to that card.
+**New Card.** When you have a moment, open the Cards window and add it with New Card, in the deck you choose: a front, a back, and where you found it if you like. If its front repeats a card you already have, the form says so, and shows you that card.
 
-<p align="center">
-  <img src="docs/images/capture-window.png" width="564" alt="The Capture window, with three fields: “A word, a concept, a quote or a question”, “Note (optional)” and “Source (optional): a book, a podcast…”, and the buttons Cancel and Save.">
-</p>
-
-**Convert to Card.** When you have a moment, pick a capture in the Cards window's inbox and convert it: the card form opens beside what you jotted down, for one card or several, each in the deck you choose there, and the capture leaves the inbox once you close the form. A follow-up, what you asked about a card in the review panel, shows with its card, and its new cards start in that card's deck, with its tags, so they land beside it.
+**Flag and fix.** A card that needs fixing, flagged in the review panel or in the Cards window, stays in its deck with its flag, and your note in its detail, out of your reviews until you fix it.
 
 ## Your cards stay yours
 

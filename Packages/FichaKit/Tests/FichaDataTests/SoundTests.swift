@@ -156,40 +156,25 @@ final class SoundTests {
         #expect(try engine.keptSounds() == [mi, sol])
     }
 
-    // A content alone, as from a refine session's draft that leaves the
-    // sounds out. Drafts that put or take them off are in
-    // RefiningWithFilesTests.
-    @Test("fixing or expanding a card with a content alone, or updating it from an import, keeps its sounds")
-    func refiningAndImportingKeepACardsSounds() async throws {
+    // A content alone, as from `ficha fix`'s draft that leaves the sounds
+    // out. Drafts that put or take them off are in DraftedCardsTests.
+    @Test("fixing a card with a content alone keeps its sounds", .bug(id: 540))
+    func fixingKeepsACardsSounds() async throws {
         let engine = try Engine(location: .inMemory, time: time)
         let la = try await addTone(440, to: engine)
         let mi = try await addTone(330, to: engine)
-        let flagged = try engine.create(card(.word, front: "coloratura", back: "Un ornamento.", backSound: la))
-        let expanded = try engine.create(
-            card(.word, front: "aria", back: "Una canción.", frontSound: mi, backSound: la))
-        let imported = try engine.create(card(.word, front: "tenor", back: "Una voz.", frontSound: la, backSound: mi))
+        let flagged = try engine.create(
+            card(.word, front: "coloratura", back: "Un ornamento.", frontSound: mi, backSound: la))
         try engine.flag(flagged.id, note: note("Decir que es de la ópera"))
-        let expansion = try engine.expand(text: "aria", note: "De una ópera", source: nil)
-        #expect(expansion.expandsCardID == expanded.id)
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let file = folder.appending(path: "ópera.txt")
-        try Data("tenor\tLa voz masculina más aguda.\n".utf8).write(to: file)
 
         let fixed = try engine.fix(
             flagged.id, with: card(.word, front: "coloratura", back: "Los ornamentos rápidos del canto de ópera."))
-        let approved = try engine.approveExpansion(
-            expansion.id, into: card(.word, front: "aria", back: "Una canción de una ópera."))
-        try await engine.importCards(engine.previewImport(of: file), choosing: ImportChoices())
 
-        #expect(fixed.backSound == la)
-        #expect(approved.frontSound == mi && approved.backSound == la)
-        let updated = try #require(try engine.cards().first { $0.id == imported.id })
-        #expect(updated.back == "La voz masculina más aguda.")
-        #expect(updated.frontSound == la && updated.backSound == mi)
+        #expect(fixed.frontSound == mi && fixed.backSound == la)
         #expect(try engine.keptSounds() == [la, mi])
     }
 
-    // As `ficha cards` prints a card, so a refine session knows it has one.
+    // As `ficha cards` prints a card, so an agent knows it has one.
     @Test("a card's encoding has frontSound and backSound only when set, by name")
     func aCardsEncodingNamesItsSounds() async throws {
         let engine = try Engine(location: .inMemory, time: time)
@@ -255,23 +240,6 @@ final class SoundTests {
 
         #expect(names.count == 1)
     }
-
-    @Test("the sounds a zip names come in side by side, each once, and one it holds nothing by is missing")
-    func theSoundsAZipNamesComeInSideBySide() async throws {
-        var sounds = FilesInZip<CardSound>(contents: { name in name == "falta.mp3" ? nil : Data(name.utf8) })
-        let bringing = Bringing()
-
-        let answers = await sounds.lookUp(["la.mp3", "mi.mp3", "la.mp3", "falta.mp3"]) {
-            name, data async throws(EngineError) in
-            try await bringing.bring(name, data)
-        }
-
-        let la = try #require(soundName(of: Data("la.mp3".utf8)))
-        let mi = try #require(soundName(of: Data("mi.mp3".utf8)))
-        #expect(answers == ["la.mp3": .found(la), "mi.mp3": .found(mi), "falta.mp3": .missing])
-        #expect(await bringing.brought.sorted() == ["la.mp3", "mi.mp3"])
-        #expect(await bringing.mostAtOnce == 2)
-    }
 }
 
 /// Whether, where a sound converts, on a `SoundConversion` queue, holding
@@ -296,39 +264,6 @@ private func onTheExecutor<Value>(_ body: () -> Value) async -> Value {
 private func waits(for other: DispatchSemaphore, signalling own: DispatchSemaphore) -> Bool {
     own.signal()
     return other.wait(timeout: .now() + 5) == .success
-}
-
-/// What a test's zip brings in its sounds with, as a sound's conversion
-/// would but without converting: each sound named by its data's SHA-256, as
-/// Ficha names a kept sound, after a while waiting for another to start
-/// beside it, as a long sound's conversion lasts. It keeps the names it
-/// brought, and the most it brought at once.
-private actor Bringing {
-    private(set) var brought: [String] = []
-    private(set) var mostAtOnce = 0
-    private var atOnce = 0
-
-    func bring(_ name: String, _ data: Data) async throws(EngineError) -> CardSound {
-        brought.append(name)
-        atOnce += 1
-        mostAtOnce = max(mostAtOnce, atOnce)
-        defer { atOnce -= 1 }
-        // One at a time, none ever starts beside it.
-        let deadline = ContinuousClock.now + .seconds(5)
-        while mostAtOnce < 2, ContinuousClock.now < deadline {
-            try? await Task.sleep(for: .milliseconds(10))
-        }
-        guard let keptName = soundName(of: data) else {
-            throw .soundConversion
-        }
-        return CardSound(name: keptName, data: data)
-    }
-}
-
-/// The name Ficha would keep a sound by if `data` were the sound as it
-/// keeps it: its SHA-256, in lowercase hex, and `m4a`.
-private func soundName(of data: Data) -> SoundName? {
-    SoundName(rawValue: SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined() + ".m4a")
 }
 
 /// Adds a mono tone of `hertz` lasting a second to `engine`'s sounds, and

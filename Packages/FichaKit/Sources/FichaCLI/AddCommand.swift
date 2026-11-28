@@ -2,11 +2,10 @@ import ArgumentParser
 import FichaData
 import Foundation
 
-/// `ficha add`: adds cards straight into their decks, with no capture, so any
-/// agent that runs commands on the Mac can make the user a deck (ADR 0043).
-/// It reads them as JSON from standard input, where an agent can pass any
-/// text in a quoted heredoc without escaping it, as `ficha approve` does,
-/// and makes them as approving a capture does.
+/// `ficha add`: adds cards straight into their decks, so any agent that runs
+/// commands on the Mac can make the user a deck (ADR 0043). It reads them as
+/// JSON from standard input, where an agent can pass any text in a quoted
+/// heredoc without escaping it, as `ficha fix` does.
 struct AddCommand: EngineCommand {
     static let configuration = CommandConfiguration(
         commandName: "add",

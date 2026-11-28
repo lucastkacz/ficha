@@ -13,8 +13,6 @@ import SwiftUI
 struct SettingsTabContent: View {
     let tab: SettingsTab
     @Bindable var model: AppModel
-    /// The shortcut that opens "Capture…" from any app, which General changes.
-    let captureShortcut: CaptureShortcutRegistration
     /// How wide the tab is, as wide as Settings, which Advanced's table of
     /// copies fits.
     let width: CGFloat
@@ -33,9 +31,7 @@ struct SettingsTabContent: View {
     var body: some View {
         Form {
             ForEach(tab.sections, id: \.self) { section in
-                SettingsSectionView(
-                    section: section, model: model, captureShortcut: captureShortcut, width: width,
-                    openDiagnostics: openDiagnostics)
+                SettingsSectionView(section: section, model: model, width: width, openDiagnostics: openDiagnostics)
             }
         }
         .formStyle(.grouped)
@@ -147,23 +143,11 @@ private func putItFirstFailure(of model: AppModel) -> Binding<Failure?> {
 private struct SettingsSectionView: View {
     let section: SettingsSection
     @Bindable var model: AppModel
-    let captureShortcut: CaptureShortcutRegistration
     let width: CGFloat
     let openDiagnostics: () -> Void
 
     var body: some View {
         switch section {
-        case .general:
-            Section {
-                rows
-            } footer: {
-                Text(
-                    """
-                    A capture shortcut needs two of Control, Option and Command at least, so it doesn't take what \
-                    you type or another app's shortcut. While you type one, Esc keeps the old one and Delete turns \
-                    it off.
-                    """)
-            }
         case .cardSize:
             Section {
                 rows
@@ -174,7 +158,7 @@ private struct SettingsSectionView: View {
                         "Under the Card size row of Settings: the keys that change it. ⌘+, ⌘− and ⌘0 stay as they are."
                 )
             }
-        case .about, .diagnostics:
+        case .general, .about, .diagnostics:
             Section {
                 rows
             }
@@ -321,9 +305,7 @@ private struct SettingsSectionView: View {
     /// The section's rows, in their order.
     private var rows: some View {
         ForEach(section.rows, id: \.self) { row in
-            SettingsRowView(
-                row: row, model: model, captureShortcut: captureShortcut, width: width,
-                openDiagnostics: openDiagnostics)
+            SettingsRowView(row: row, model: model, width: width, openDiagnostics: openDiagnostics)
         }
     }
 }
@@ -335,7 +317,6 @@ private struct SettingsSectionView: View {
 private struct SettingsRowView: View {
     let row: SettingsRow
     @Bindable var model: AppModel
-    let captureShortcut: CaptureShortcutRegistration
     let width: CGFloat
     let openDiagnostics: () -> Void
 
@@ -345,10 +326,6 @@ private struct SettingsRowView: View {
             StartAtLoginRow()
         case .dueCountInMenuBar:
             Toggle("Show how many cards are due in the menu bar", isOn: $model.showsDueCount)
-        case .captureShortcut:
-            LabeledContent("Capture shortcut") {
-                CaptureShortcutRecorder(registration: captureShortcut)
-            }
         case .cardSize:
             cardSize
         case .version:

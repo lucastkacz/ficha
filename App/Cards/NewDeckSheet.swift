@@ -46,9 +46,7 @@ extension View {
 /// where OK puts the deck in the field, for Add or Save to make it; in the
 /// New Deck sheet the sidebar opens, where OK makes the deck; in the
 /// Change Deck sheet, in its tree's place, where OK lists the deck there,
-/// chosen, for Move to make it; and in the Import sheet, in its preview's
-/// place, where OK chooses the deck in its menu of decks, for Import to make
-/// it. Return chooses OK, and Escape Cancel. OK stays off while the name is
+/// chosen, for Move to make it. Return chooses OK, and Escape Cancel. OK stays off while the name is
 /// blank, and refuses one whose top level is Default's, which it says under
 /// the field. `CardsWindowState` decides what OK takes
 /// (`CardsWindowDecks.swift`).
@@ -70,7 +68,7 @@ struct NewDeckName: View {
                     "New Deck",
                     comment: """
                         The title of the Cards window's sheet that names a new deck, after New Deck…, or of the Change \
-                        Deck or Import sheet while it names one.
+                        Deck sheet while it names one.
                         """
                 )
                 .font(.headline)
@@ -78,7 +76,7 @@ struct NewDeckName: View {
                     "Write “::” between a deck and a deck inside it, as in “Idiomas::Inglés”.",
                     comment: """
                         Under the title of the Cards window's sheet that names a new deck, after New Deck…, or of the \
-                        Change Deck or Import sheet while it names one.
+                        Change Deck sheet while it names one.
                         """
                 )
                 .foregroundStyle(.secondary)
@@ -88,7 +86,7 @@ struct NewDeckName: View {
                 String(
                     localized: "Name",
                     comment:
-                        "The field of the Cards window's sheet that names a new deck, or of the Change Deck or Import sheet while it names one."
+                        "The field of the Cards window's sheet that names a new deck, or of the Change Deck sheet while it names one."
                 ),
                 text: $name
             )
@@ -98,7 +96,7 @@ struct NewDeckName: View {
             // button.
             .onSubmit(submit)
             // Once the view is up, after the update that showed it, as the
-            // New Type sheet's field takes it.
+            // Change Deck sheet's tree takes it.
             .task {
                 isNameFocused = true
             }

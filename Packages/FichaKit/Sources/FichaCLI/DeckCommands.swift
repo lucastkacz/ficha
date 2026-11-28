@@ -7,7 +7,8 @@ import Foundation
 // deck, as the Sync tab lists them to choose from, Default included, and
 // each of `ficha deck`'s commands, and `ficha change-deck`, makes one change
 // through the engine's actions, as the Cards window does, so it syncs, and
-// prints what it changed. None asks first: the refine session asks Lucas.
+// prints what it changed. None asks first: an agent runs it only in a session
+// where Lucas asked for it (`CLAUDE.md`).
 
 /// `ficha decks`: lists every deck.
 struct DecksCommand: EngineCommand {
@@ -18,7 +19,7 @@ struct DecksCommand: EngineCommand {
             Decks come in the order a tree lists them, Default first, each deck inside another right after it. \
             Each says its whole name in "name", with "::" between a deck and a deck inside it, as in \
             "Idiomas::Inglés", or "" for Default, where a card lives when it has no other deck; in "cards", how \
-            many cards live in it or in a deck inside it, buried ones left out; in "due", how many of those are \
+            many cards live in it or in a deck inside it, set-aside ones too; in "due", how many of those are \
             due now and in your reviews, which those of a set-aside deck never are; in "setAside" and "priority" \
             its own switch, which a deck inside it doesn't show; its own "color" and "emoji", left out when it \
             has none; and in "chosenToSync" whether you chose it to sync. `ficha queue` prints its place in the \
@@ -108,13 +109,13 @@ struct DeleteDeckCommand: EngineCommand {
         commandName: "delete",
         abstract: "Delete a deck, with every deck inside it and every card in them, and print what it did.",
         discussion: """
-            Every card in it, or in a deck inside it, buried ones too, is deleted with its review log, on every \
-            device, whether or not it syncs, as in Anki; its expansions and follow-ups stay in the inbox. A card \
-            another device holds in it that wasn't in it here, and that doesn't sync, moves to Default there. The \
-            decks' switches, colors, emoji, descriptions, choices to sync and places in the queue go too. Nothing \
-            undoes it, but the daily backups keep what it deleted, and `ficha restore` brings one back. Default is \
-            never deleted: to keep a deck's cards, move them first with `ficha change-deck`. It prints the deck in \
-            "deck", the decks inside it that went with it in "decksInside", and how many cards it deleted in "cards".
+            Every card in it, or in a deck inside it, set-aside ones too, is deleted with its review log, on every \
+            device, whether or not it syncs, as in Anki. A card another device holds in it that wasn't in it here, \
+            and that doesn't sync, moves to Default there. The decks' switches, colors, emoji, descriptions, choices \
+            to sync and places in the queue go too. Nothing undoes it, but the daily backups keep what it deleted, \
+            and `ficha restore` brings one back. Default is never deleted: to keep a deck's cards, move them first \
+            with `ficha change-deck`. It prints the deck in "deck", the decks inside it that went with it in \
+            "decksInside", and how many cards it deleted in "cards".
             """
     )
 

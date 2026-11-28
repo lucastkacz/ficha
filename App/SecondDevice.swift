@@ -6,8 +6,8 @@ import FichaICloud
 /// a folder of its own, which syncs through iCloud's Development environment
 /// as another device would, so Lucas watches a change made on one reach the
 /// other. Ficha Dev's debug menu opens it, its Cards window and its review
-/// now; it never shows up on its own, and has no capture, Settings or
-/// backups of its own. Like the debug menu, it's Ficha Dev's alone, and its
+/// now; it never shows up on its own, and has no Settings or backups of its
+/// own. Like the debug menu, it's Ficha Dev's alone, and its
 /// texts are verbatim, never translated (ADR 0009).
 ///
 /// iCloud doesn't push a change to the device that made it, and both devices

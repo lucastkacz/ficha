@@ -2,14 +2,14 @@ import AppKit
 import FichaData
 import SwiftUI
 
-/// The Cards window: Lucas's cards and his inbox in three panes, as Mail lays
+/// The Cards window: Lucas's decks and their cards in three panes, as Mail lays
 /// out its own. There's one, which he can resize down to what fits the three
 /// panes, and which opens where he left it. While it's open, the app shows in
 /// the Dock and in ⌘Tab, so he can switch back to it as to any app; once it
 /// closes, the app lives in the menu bar only again.
 final class CardsWindow: NSWindow {
     /// The least the window's content can be below its toolbar: enough for
-    /// the sidebar, the table and the detail side by side.
+    /// the sidebar, the grid and the detail side by side.
     static let minimumSize = NSSize(width: 880, height: 440)
     /// The window's content the first time it opens.
     private static let firstSize = NSSize(width: 1120, height: 640)
@@ -56,11 +56,10 @@ final class CardsWindow: NSWindow {
 
     /// Gives the window its content, with Lucas's cards as they are now, as
     /// it opens: the app opens it on screen, and `make render` offscreen. The
-    /// content is made each time the window opens, so it starts on All cards,
-    /// with nothing selected or searched, its table with the columns Lucas
-    /// showed and the order he sorted it by, and stops reading the cards once
-    /// it closes. `make render` may give it a
-    /// state to open with instead, partway through an import.
+    /// content is made each time the window opens, so it starts on the first
+    /// deck of the queue new cards come from, with nothing selected or
+    /// searched, and stops reading the cards once it closes. `make render`
+    /// may give it a state to open with instead, partway through an import.
     func makeContent(opening state: CardsWindowState? = nil) {
         // Once SwiftUI lays it out, a window's hosting view sets the window's
         // minimum whatever contentMinSize says: from its content's least size
@@ -69,8 +68,7 @@ final class CardsWindow: NSWindow {
         let content = NSHostingView(
             rootView: CardsView(model: model, state: state)
                 .frame(minWidth: Self.minimumSize.width, minHeight: Self.minimumSize.height))
-        // The toolbar, and the title, which names the tag whose cards the
-        // window lists in All Tags' place.
+        // The toolbar, and the title, as the content names it.
         content.sceneBridgingOptions = [.toolbars, .title]
         content.sizingOptions = [.minSize]
         contentView = content

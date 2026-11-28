@@ -7,13 +7,13 @@ import ImageIO
 import UniformTypeIdentifiers
 internal import ZIPFoundation
 
-// A zip of cards, as Ficha exports cards with images or sounds and imports
-// them: a text file of cards, as `CardsTextFile` reads and writes it, with
-// the image and sound files its lines name beside it. ZIPFoundation reads and
-// writes the zip (ADR 0014).
+// A zip of cards, as a deck's `.ficha` is one (`DeckFile.swift`): a text
+// file of cards, as `CardsTextFile` reads and writes it, with the image and
+// sound files its lines name beside it. ZIPFoundation reads and writes the
+// zip (ADR 0014).
 
-/// The extensions of the text file of cards a zip of cards holds, as the
-/// Import sheet opens one: plain text, or a spreadsheet's CSV or TSV.
+/// The extensions of the text file of cards a zip of cards holds: plain
+/// text, or a spreadsheet's CSV or TSV, as a `.ficha` made by hand may hold.
 private let textFileExtensions: Set = ["txt", "csv", "tsv"]
 
 /// Whether `data` is a zip: it starts as every zip does, with an entry's
@@ -31,7 +31,7 @@ func zipArchive(at file: URL) throws(CardsFileProblem) -> Archive? {
     do {
         return try Archive(url: file, accessMode: .read, pathEncoding: nil)
     } catch {
-        logger.error("Couldn't open a zip to import: \(String(describing: error), privacy: .public)")
+        logger.error("Couldn't open a deck's file as a zip: \(String(describing: error), privacy: .public)")
         throw .unreadableZip
     }
 }
@@ -52,17 +52,21 @@ func fileContents(of file: URL, upTo count: Int? = nil) throws(CardsFileProblem)
     }
 }
 
-/// A zip that holds `text`, a text file of cards named `textFileName`, and
-/// `images` and `sounds` beside it, each in a file named as Ficha keeps it,
-/// which the text's image and sound columns name, every file dated `date`.
-/// The text is compressed, and the images and sounds aren't, as zip tools
-/// leave a JPEG, a PNG or an M4A, which is compressed already.
-func zipOfCards(text: String, named textFileName: String, images: [CardImage], sounds: [CardSound], at date: Date)
-    throws -> Data
-{
+/// A zip that holds `text`, a text file of cards named `textFileName`, the
+/// files `besideText` right after it, each a name and what it holds, such as
+/// a deck's `deck.json`, and `images` and `sounds` beside them, each in a
+/// file named as Ficha keeps it, which the text's image and sound columns
+/// name, every file dated `date`. The text and the files beside it are
+/// compressed, and the images and sounds aren't, as zip tools leave a JPEG,
+/// a PNG or an M4A, which is compressed already.
+func zipOfCards(
+    text: String, named textFileName: String, beside besideText: [(name: String, data: Data)] = [],
+    images: [CardImage], sounds: [CardSound], at date: Date
+) throws -> Data {
     let archive = try Archive(data: Data(), accessMode: .create, pathEncoding: nil)
     let files =
         [(textFileName, Data(text.utf8), CompressionMethod.deflate)]
+        + besideText.map { ($0.name, $0.data, CompressionMethod.deflate) }
         + images.map { ($0.name.rawValue, $0.data, CompressionMethod.none) }
         + sounds.map { ($0.name.rawValue, $0.data, CompressionMethod.none) }
     for (path, data, compression) in files {

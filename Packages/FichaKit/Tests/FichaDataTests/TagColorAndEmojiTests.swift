@@ -3,12 +3,12 @@ import FichaData
 import Foundation
 import Testing
 
-/// Tests on a tag's color and emoji, which Lucas picks so that subjects
-/// stand apart at a glance (#206), each optional, and which the Cards
-/// window shows wherever the tag shows.
+/// Tests on the tags the database keeps, listed as `ficha tags` lists them,
+/// and on a tag's color and emoji, which Lucas picked so that subjects stood
+/// apart at a glance (#206), each optional: the database keeps them, and the
+/// `ficha` CLI sets and lists them, since tags left the app's face (#538).
 struct TagColorAndEmojiTests {
     let engine: Engine
-    let scheduler = ReviewSettings.defaults.scheduler
 
     init() throws {
         let calendar = try buenosAiresCalendar()
@@ -16,10 +16,23 @@ struct TagColorAndEmojiTests {
             location: .inMemory, time: ManualTimeSource(now: try morning(of: 14, in: calendar)), calendar: calendar)
     }
 
-    @Test("a tag's color and emoji are stored and read back with All Tags' tags and the table's rows")
+    // `ficha tags` lists the tags of `countedTags(with:)`, which are those
+    // `allTags()` lists.
+    @Test("every tag of the cards is listed, buried ones too, once each, alphabetically")
+    func everyTagOfTheCardsIsListed() throws {
+        try addCard("Ubuntu", tags: ["lenguaje", "filosofía"])
+        try addCard("Eudaimonía", tags: ["ética", "filosofía"])
+        let mercantilismo = try addCard("Mercantilismo", tags: ["economía", "historia"])
+        try engine.bury(mercantilismo.id)
+        try addCard("serendipia", tags: [])
+
+        #expect(try engine.allTags().map(\.name) == ["economía", "ética", "filosofía", "historia", "lenguaje"])
+    }
+
+    @Test("a tag's color and emoji are stored and read back with every tag")
     func aTagsColorAndEmojiAreStoredAndReadBack() throws {
-        try approveCard("Revolución de Mayo", tags: ["historia", "argentina"])
-        try approveCard("fotosíntesis", tags: ["ciencia", "lenguaje"])
+        try addCard("Revolución de Mayo", tags: ["historia", "argentina"])
+        try addCard("fotosíntesis", tags: ["ciencia", "lenguaje"])
 
         try engine.setColor(.green, of: "ciencia")
         try engine.setEmoji(Emoji("🇦🇷"), of: "argentina")
@@ -31,17 +44,13 @@ struct TagColorAndEmojiTests {
         let historia = CardTag(name: "historia", color: .blue, emoji: "📜")
         let lenguaje = CardTag(name: "lenguaje")
         #expect(try engine.allTags() == [argentina, ciencia, historia, lenguaje])
-        #expect(
-            try engine.cardRows(in: .all, with: scheduler).map(\.tags) == [
-                [historia, argentina], [ciencia, lenguaje],
-            ])
     }
 
     // The `tag` table refuses a row with nothing in it, so removing both
     // fails unless the row goes.
     @Test("removing both from a tag with nothing else deletes its row, and removing one keeps the other")
     func removingBothFromATagWithNothingElseDeletesItsRow() throws {
-        try approveCard("fotosíntesis", tags: ["ciencia"])
+        try addCard("fotosíntesis", tags: ["ciencia"])
         try engine.setColor(.green, of: "ciencia")
         try engine.setEmoji(Emoji("🔬"), of: "ciencia")
 
@@ -57,7 +66,7 @@ struct TagColorAndEmojiTests {
         "an emoji that isn't one emoji, such as a word, two emoji or a letter, is refused",
         arguments: ["argentina", "🇦🇷🇺🇾", "a", "7", "❤", "", " "])
     func anEmojiThatIsntOneEmojiIsRefused(_ emoji: String) throws {
-        try approveCard("Revolución de Mayo", tags: ["argentina"])
+        try addCard("Revolución de Mayo", tags: ["argentina"])
         try engine.setEmoji(Emoji("🇦🇷"), of: "argentina")
 
         #expect(throws: EngineError.notOneEmoji) {
@@ -77,7 +86,7 @@ struct TagColorAndEmojiTests {
             ("\u{270C}\u{1F3FE}", "\u{270C}\u{1F3FE}"), ("👍🏽", "👍🏽"), (" 📜\n", "📜"),
         ])
     func oneEmojiIsTakenHoweverManyScalarsItHas(_ emoji: String, _ stored: String) throws {
-        try approveCard("Revolución de Mayo", tags: ["argentina"])
+        try addCard("Revolución de Mayo", tags: ["argentina"])
 
         try engine.setEmoji(Emoji(emoji), of: "argentina")
 
@@ -85,11 +94,11 @@ struct TagColorAndEmojiTests {
     }
 
     @Test(
-        "a colored tag that loses its last card stays in All Tags with its color and emoji, which a card that gets it again shows"
+        "a colored tag that loses its last card stays listed with its color and emoji, which it keeps once a card gets it again"
     )
     func aColoredTagThatLosesItsLastCardKeepsItsColorAndEmoji() throws {
-        let mayo = try approveCard("Revolución de Mayo", tags: ["argentina"])
-        try approveCard("serendipia", tags: [])
+        let mayo = try addCard("Revolución de Mayo", tags: ["argentina"])
+        try addCard("serendipia", tags: [])
         try engine.setColor(.blue, of: "argentina")
         try engine.setEmoji(Emoji("🇦🇷"), of: "argentina")
         let argentina = CardTag(name: "argentina", color: .blue, emoji: "🇦🇷")
@@ -97,15 +106,15 @@ struct TagColorAndEmojiTests {
         try engine.delete([mayo.id])
         #expect(try engine.allTags() == [argentina])
 
-        let martin = try approveCard("San Martín", tags: ["argentina"])
-        #expect(try engine.cardRows(in: .tag("argentina"), with: scheduler).map(\.tags) == [[argentina]])
-        #expect(try engine.cardRows(in: .tag("argentina"), with: scheduler).map(\.id) == [martin.id])
+        let martin = try addCard("San Martín", tags: ["argentina"])
+        #expect(try engine.allTags() == [argentina])
+        #expect(try engine.cards().filter { $0.tags == ["argentina"] }.map(\.id) == [martin.id])
     }
 
-    /// Approves a capture into one word card with this front and these
-    /// tags, the way refining saves cards, and returns the card.
+    /// Makes one word card with this front and these tags, and returns the
+    /// card.
     @discardableResult
-    private func approveCard(_ front: String, tags: [String]) throws -> Card {
-        try approve(card(.word, front: front, back: "Lo que quiere decir «\(front)».", tags: tags), in: engine)
+    private func addCard(_ front: String, tags: [String]) throws -> Card {
+        try newCard(card(.word, front: front, back: "Lo que quiere decir «\(front)».", tags: tags), in: engine)
     }
 }

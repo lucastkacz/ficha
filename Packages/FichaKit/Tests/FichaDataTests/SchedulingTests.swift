@@ -24,7 +24,7 @@ struct SchedulingTests {
         "a new card's first review takes any rating, keeps the interval its preview gave, and the card waits it from then",
         arguments: Rating.allCases)
     func aNewCardsFirstReviewKeepsItsPreviewsInterval(rating: Rating) throws {
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         #expect(try engine.standing(of: serendipia.id, with: scheduler) == .new)
         time.advance(by: 60)
         let preview = try scheduler.preview(
@@ -47,8 +47,8 @@ struct SchedulingTests {
 
     @Test("a new card's first review rated again waits the first learning step, an hour, and good the second, 4 hours")
     func theFirstReviewWaitsTheLearningSteps() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
-        let ubuntu = try approveCard("ubuntu", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
 
         try engine.meet(serendipia)
         try engine.review(ubuntu, .good)
@@ -63,7 +63,7 @@ struct SchedulingTests {
 
     @Test("taking back a new card's first review leaves it new, with nothing in its review log")
     func takingBackTheFirstReviewLeavesTheCardNew() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         try engine.review(serendipia, .good)
 
         try engine.takeBackAnswer(of: serendipia.id, way: .frontFirst)
@@ -78,7 +78,7 @@ struct SchedulingTests {
         "every review goes into the review log, with its time, trigger, response time, rating and interval, answering the entry before it"
     )
     func reviewsGoIntoTheReviewLog() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         let metAt = time.now
         try engine.record(
             .review(.again), of: serendipia.id, responseTime: .milliseconds(8_250), trigger: .reviewNow,
@@ -105,7 +105,7 @@ struct SchedulingTests {
 
     @Test("good on the last learning step graduates a card, to wait whole days, and again then relearns it, an hour")
     func goodGraduatesAndAgainRelearns() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         try engine.climb(serendipia, goods: 2, movingForward: time)
 
         let graduated = try engine.standing(of: serendipia.id, with: scheduler)
@@ -123,7 +123,7 @@ struct SchedulingTests {
 
     @Test("each way of a card that goes both ways is spaced on its own, and the review log says which way each went")
     func eachWayIsSpacedOnItsOwn() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         try engine.setBothWays(true, of: [serendipia.id])
         try engine.meet(serendipia)
         time.advance(by: minutes(10))
@@ -143,14 +143,13 @@ struct SchedulingTests {
     }
 
     @Test(
-        "the progress counts say how many cards are due, how many are learned, graduated for 21 days or more, and how many captures wait"
-    )
-    func progressCountsDueAndLearnedCardsAndTheInbox() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
-        let ubuntu = try approveCard("ubuntu", in: engine)
-        let petricor = try approveCard("petricor", in: engine)
-        try approveCard("Schadenfreude", in: engine)
-        try engine.newCapture("algo para refinar")
+        "the progress counts say how many cards are due, and how many are learned, graduated for 21 days or more",
+        .bug(id: 540))
+    func progressCountsDueAndLearnedCards() throws {
+        let serendipia = try newCard("serendipia", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
+        let petricor = try newCard("petricor", in: engine)
+        try newCard("Schadenfreude", in: engine)
         // serendipia gets an interval of 21 days, from which a card is
         // learned, and ubuntu graduates with a shorter one.
         try engine.climbUntilLearned(serendipia, movingForward: time)
@@ -162,13 +161,12 @@ struct SchedulingTests {
         let progress = try engine.progress(.defaults)
         #expect(progress.due == 1)
         #expect(progress.learned == 1)
-        #expect(progress.inInbox == 1)
     }
 
     @Test("the progress counts count each due way, and learned cards by their front-first way alone")
     func progressCountsDueWaysAndLearnedCardsByTheirFrontFirstWay() throws {
-        let ubuntu = try approveCard("ubuntu", in: engine)
-        let serendipia = try approveCard("serendipia", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         try engine.setBothWays(true, of: [ubuntu.id, serendipia.id])
         try engine.meet(ubuntu)
         // ubuntu is learned back first only.
@@ -187,8 +185,8 @@ struct SchedulingTests {
     // Lucas asks for more, which reviews it ahead.
     @Test("a card that isn't due takes no answer, but for a review ahead Lucas asked for, and a placement is no answer")
     func onlyNewAndDueCardsAreReviewed() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
-        let ubuntu = try approveCard("ubuntu", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
         try engine.meet(serendipia)
 
         #expect(throws: EngineError.cardNotDue(serendipia.id)) {
@@ -211,7 +209,7 @@ struct SchedulingTests {
 
     @Test("a new way takes its first review, and only a due way a review, whatever the card's other way did")
     func eachWayIsCheckedOnItsOwn() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         try engine.setBothWays(true, of: [serendipia.id])
         try engine.meet(serendipia)
 
@@ -231,7 +229,7 @@ struct SchedulingTests {
         "a review ahead counts as any review, keeps the interval its preview gave then, and is marked ahead",
         arguments: [Rating.hard, .good])
     func aReviewAheadCounts(rating: Rating) throws {
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         try engine.climb(serendipia, goods: 2, movingForward: time)
         time.advance(by: hours(3))
         let log = try engine.reviewLog()
@@ -256,7 +254,7 @@ struct SchedulingTests {
     // the settings change.
     @Test("a review answers the entry the scheduler replays last, not the last one written, once the clock went back")
     func aReviewAnswersTheEntryReplayedLast() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         try engine.climb(serendipia, goods: 1, movingForward: time)
         let good = try #require(try engine.reviewLog().last?.uuid)
         time.advance(by: -minutes(30))
@@ -276,8 +274,8 @@ struct SchedulingTests {
 
     @Test("a change to the scheduling settings leaves each card due as it was, until its next review")
     func aChangeToTheSettingsKeepsTheDueTimes() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
-        let ubuntu = try approveCard("ubuntu", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
         try engine.climb(serendipia, goods: 3, movingForward: time)
         try engine.review(ubuntu, .hard)
         let longerSteps = try #require(

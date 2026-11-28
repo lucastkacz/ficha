@@ -3,8 +3,8 @@ import Foundation
 
 // Renaming, moving and deleting decks in the Cards window (ADR 0024), as the
 // engine does them (`RenamingDecks.swift`, `DeletingDecks.swift`). A deck's
-// menu, in the sidebar and in the Actions menu above the card list, which is
-// its keyboard path, offers Rename…, which asks for the deck's whole name in
+// menu, in the sidebar and in the Actions menu above the grid, which is its
+// keyboard path, offers Rename…, which asks for the deck's whole name in
 // the rename sheet, so that a name with other levels moves it, as a drop
 // does, and Delete…, which asks first, saying how many cards and decks it
 // deletes; Default's offers neither. In the sidebar, cards dropped on a deck
@@ -12,7 +12,7 @@ import Foundation
 // inside it, or to the top when it's dropped on the Your Decks section's title.
 // The window follows a deck it holds by name to its new one: the deck the
 // sidebar chose, the decks it closed, the deck the card form and the editor
-// hold, and the one the last card was added to; and lets go of one deleted.
+// hold, the one Description… edits, and the one the last card was added to; and lets go of one deleted.
 // It does so as it reads the cards again, after each change to decks this
 // device applied since it last read them (`DeckChangesSince`), whoever made
 // it: the window itself, the `ficha` CLI on the same database, or another
@@ -99,9 +99,9 @@ extension CardsWindowState {
         askForTheFichaDeckAskedToAdd()
     }
 
-    /// What Lucas drags onto the sidebar's decks: a card of the card list, by
-    /// its id, each of the selected ones when he drags one of them, or a
-    /// deck's row, by its whole name.
+    /// What Lucas drags onto the sidebar's decks: a card of the grid, by its
+    /// id, each of the selected ones when he drags one of them, or a deck's
+    /// row, by its whole name.
     public enum Dragged: Sendable, Hashable, Codable {
         case card(CardRow.ID)
         case deck(String)
@@ -158,8 +158,8 @@ extension CardsWindowState {
     }
 
     /// Drops the cards with the ids `cardIDs`, which Lucas drags from the
-    /// card list, on the sidebar's deck `deck`, Default too: those the table
-    /// lists move there, as Change Deck moves them, in one go, and the window
+    /// grid, on the sidebar's deck `deck`, Default too: those the grid lists
+    /// move there, as Change Deck moves them, in one go, and the window
     /// reads the cards again. Whether it took the drop: not while he edits a
     /// card, nor when none of them would move, nor when the engine couldn't
     /// move them, which it records.
@@ -232,18 +232,21 @@ extension CardsWindowState {
     /// cards, whoever made them, as it reads them, once it read the decks
     /// (`DeckChangesSince.name(of:)`): the deck the sidebar chose, the decks
     /// it closed, the deck the card form holds, and the one Show Card set
-    /// aside, the editor's, and the one the last card was added to. A deck
-    /// deleted lets go: the sidebar goes back to All cards, the forms' decks
-    /// to the deck a new card starts in, and the editor's and the one the
-    /// last card was added to, to Default.
+    /// aside, the editor's, the one Description… edits, and the one the last
+    /// card was added to. A deck deleted lets go: the sidebar chooses
+    /// nothing, until the read chooses the deck the window opens on
+    /// (`deckToOpenOn`), Description…'s edit ends, the forms' decks go to
+    /// the deck a new card starts in, and the editor's and the one the last
+    /// card was added to, to Default.
     mutating func follow(_ changes: DeckChangesSince) {
         lastDeckChangeFollowed = changes.last
         guard !changes.new.isEmpty else { return }
         if case .cards(.deck(let chosen)) = sidebarItem {
-            sidebarItem = changes.name(of: chosen).map { .cards(.deck($0)) } ?? .cards(.all)
+            sidebarItem = changes.name(of: chosen).map { SidebarItem.cards(.deck($0)) }
         }
         closedDecks = Set(closedDecks.compactMap(changes.name(of:)))
         editedDeck = changes.name(of: editedDeck) ?? Deck.defaultName
+        describedDeckName = describedDeckName.flatMap(changes.name(of:))
         lastDeckAddedTo = changes.name(of: lastDeckAddedTo) ?? Deck.defaultName
         let startingDeck = deckANewCardStartsIn
         if let formsDeck = cardForm?.draft.deck {

@@ -3,13 +3,13 @@ import FichaCore
 import FichaData
 import SwiftUI
 
-/// A card's review log in the Cards window's detail, under where the card
-/// stands: a chart of the interval it waited after each review, and after
-/// each placement an import gave it (ADR 0013), where Anki's reviews of it
-/// start, or after them, each the interval of the entry's way, a line for
-/// each way, with a key, and every entry under it, the latest first, each
-/// back-first one marked, with the interval it set. A new card says it has
-/// no reviews yet instead.
+/// A card's review log in the Cards window's detail, under Details, below
+/// where the card stands: a chart of the interval it waited after each
+/// review, and after each placement an import gave it (ADR 0013), where
+/// Anki's reviews of it start, or after them, each the interval of the
+/// entry's way, a line for each way, with a key, and every entry under it,
+/// the latest first, each back-first one marked, with the interval it set. A
+/// new card says it has no reviews yet instead.
 struct ReviewLogView: View {
     /// The card's review log, oldest first, each entry with the interval its
     /// way waited after it.
@@ -286,7 +286,7 @@ private struct ChartKey: View {
 }
 
 /// The interval a review set, in the review log's list, short, as the
-/// Interval column shows it, and in words for VoiceOver. A placement, whose
+/// detail's Interval row shows it, and in words for VoiceOver. A placement, whose
 /// due date its name says, has nothing there.
 private struct EntryInterval: View {
     let row: ReviewLogRow

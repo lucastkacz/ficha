@@ -31,25 +31,27 @@ final class DataMoveTests {
     func aMoveWaitsUntilItRan() throws {
         #expect(DataMove(waitingFrom: source, to: target) == nil)
         let engine = try Engine(location: .folder(source), time: time)
-        try engine.newCapture("serendipia")
+        try newCard("serendipia", in: engine)
 
         try #require(DataMove(waitingFrom: source, to: target)).run()
 
         #expect(DataMove(waitingFrom: source, to: target) == nil)
     }
 
-    @Test("a data move brings the cards, their review logs, images, sounds and backups, as they were")
+    @Test(
+        "a data move brings the cards, their review logs, images, sounds and backups, and the captures the database keeps, as they were",
+        .bug(id: 540))
     func theMoveBringsEverything() async throws {
         let engine = try Engine(location: .folder(source), time: time)
         let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))
         let la = try await addTone(440, to: engine)
-        let hornero = try approve(
+        let hornero = try newCard(
             card(
                 .word, front: "hornero", back: "Un pájaro que hace su nido de barro.", frontImage: bird, backSound: la),
             in: engine)
         try engine.climb(hornero, goods: 2, movingForward: time)
-        try approveCard("serendipia", in: engine)
-        try engine.newCapture("¿Por qué el cielo es azul?", source: "Una charla")
+        try newCard("serendipia", in: engine)
+        try engine.olderCapture("¿Por qué el cielo es azul?", source: "Una charla")
         let backup = try engine.backUpNow(.defaults)
         let before = try filesAsTheyAre(in: source)
 
@@ -58,32 +60,33 @@ final class DataMoveTests {
         let moved = try Engine(location: .folder(target), time: time)
         #expect(try moved.cards() == engine.cards())
         #expect(try moved.reviewLog() == engine.reviewLog())
-        #expect(try moved.inbox().captures == engine.inbox().captures)
+        #expect(try moved.olderCaptures().map(\.capture) == engine.olderCaptures().map(\.capture))
         #expect(try moved.image(bird) == engine.image(bird))
         #expect(try moved.sound(la) == engine.sound(la))
         #expect(try moved.copies() == [backup])
         #expect(try filesAsTheyAre(in: source) == before)
     }
 
-    // As the CLI may, in a refine session, while the app launches and moves.
+    // As the CLI may, run by an agent, while the app launches and moves.
     @Test(
         """
         a move made while another engine writes holds together, but fails rather than miss a write, and the next \
-        one brings every capture
-        """)
+        one brings every card
+        """,
+        .bug(id: 540))
     func aMoveWhileAnotherEngineWrites() async throws {
         let engine = try Engine(location: .folder(source), time: time)
         for word in ["serendipia", "ojalá", "sobremesa"] {
-            try engine.newCapture(word)
+            try newCard(word, in: engine)
         }
-        // Each capture the writer saves, as it saves it, to a reader waiting
-        // for one: one saved while none waits is dropped.
+        // Each card the writer saves, as it saves it, to a reader waiting for
+        // one: one saved while none waits is dropped.
         let (saves, saved) = AsyncStream.makeStream(of: Void.self, bufferingPolicy: .bufferingNewest(0))
         let writing = Task.detached {
             defer { saved.finish() }
             var count = 0
             while !Task.isCancelled {
-                try engine.newCapture("palabra \(count)")
+                try newCard("palabra \(count)", in: engine)
                 count += 1
                 saved.yield()
             }
@@ -93,21 +96,21 @@ final class DataMoveTests {
         await nextSave.next()
 
         let staged = try #require(DataMove(waitingFrom: source, to: target)).stage()
-        // A capture saved once the move copied the database, before it gives
-        // the new folder its name.
+        // A card saved once the move copied the database, before it gives the
+        // new folder its name.
         await nextSave.next()
         writing.cancel()
         let savedWhileMoving = try await writing.value
 
-        #expect(try #require(staged.moved.rows["capture"]) > 3)
+        #expect(try #require(staged.moved.rows["card"]) > 3)
         #expect(throws: DataMoveError.sourceChanged(source)) {
             try staged.finish()
         }
         #expect(try inGroupFolder() == [])
         try #require(DataMove(waitingFrom: source, to: target)).run()
-        let captures = try Engine(location: .folder(target), time: time).inbox().captures.map(\.text)
-        #expect(try captures == engine.inbox().captures.map(\.text))
-        #expect(captures.count == 3 + savedWhileMoving)
+        let fronts = try Engine(location: .folder(target), time: time).cards().map(\.front)
+        #expect(try fronts == engine.cards().map(\.front))
+        #expect(fronts.count == 3 + savedWhileMoving)
     }
 
     @Test(
@@ -117,7 +120,7 @@ final class DataMoveTests {
         do {
             let engine = try Engine(location: .folder(source), time: time)
             let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))
-            try approve(card(.word, front: "hornero", back: "Un pájaro.", frontImage: bird), in: engine)
+            try newCard(card(.word, front: "hornero", back: "Un pájaro.", frontImage: bird), in: engine)
         }
         try broken.breakIt(in: source)
         let before = try filesAsTheyAre(in: source)
@@ -142,7 +145,7 @@ final class DataMoveTests {
     @Test("a move first removes the hidden folder that a move the app was killed in left")
     func aMoveRemovesWhatAKilledOneLeft() throws {
         let engine = try Engine(location: .folder(source), time: time)
-        try engine.newCapture("serendipia")
+        try newCard("serendipia", in: engine)
         // Killed before the move gave its hidden folder the new folder's name.
         _ = try #require(DataMove(waitingFrom: source, to: target)).stage()
 
@@ -281,9 +284,11 @@ enum BrokenFile {
 /// includes the three that decided a card's progress, which versions before
 /// #315 kept there: the app moves the new cards a day and the offer to flag
 /// a card forgotten often into the database from its preferences while the
-/// database holds none, and reads the ladder's minutes no more (#407). A
-/// dictionary of any values
-/// isn't `Sendable`, so each use makes its own.
+/// database holds none, and reads the ladder's minutes no more (#407); and
+/// the Cards window's table's order and columns, which versions before #536
+/// kept there, and Capture's shortcut, which versions before #540 kept, both
+/// of which the app reads no more. A dictionary of any values isn't
+/// `Sendable`, so each use makes its own.
 var everySetting: [String: Any] {
     [
         "LadderMinutes": [10, 1_440, 4_320, 10_080],

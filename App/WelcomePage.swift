@@ -27,9 +27,8 @@ final class WelcomeWindow: NSWindow {
         titlebarAppearsTransparent = true
         // The menu's Cards… can open while the page is open, and appearances
         // wait for the page: under that window, nobody would know. The review
-        // panel and the capture window float too, so either, which comes only
-        // when asked for and closes soon, still shows over the page, where the
-        // keyboard goes.
+        // panel floats too, so it, which comes only when asked for and closes
+        // soon, still shows over the page, where the keyboard goes.
         level = .floating
         // A window that can't close or minimize shows these grayed instead.
         for button in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {

@@ -1,7 +1,7 @@
 import Foundation
 
 /// What a card holds, and the one check of what a valid card is, wherever it
-/// comes from: approving a capture or an expansion, fixing or editing a card,
+/// comes from: adding cards with `ficha add`, fixing or editing a card,
 /// creating one, and the sample cards. A new way in, such as a form or an
 /// import, builds one too, and never writes a card's content around it, so
 /// that no way in lets in a card another refuses. Each side, the front and
@@ -75,25 +75,6 @@ public struct CardContent: Sendable, Equatable {
         isBlank(text) && image == nil && sound == nil
     }
 
-    /// The tags a Tags field holds, `text`, separated by commas, as they come
-    /// in: `init` cleans them up as it does wherever a card comes from. The
-    /// comma each keyboard types separates them: `,`, Arabic's
-    /// U+060C, Chinese's full-width U+FF0C, and U+3001, Japanese's and that of
-    /// Chinese lists. A field that still holds what `tagsField(of:)` writes
-    /// for the tags it started with, `tags`, holds those tags as they are, so
-    /// that one with a comma in its name, which can come in from Anki, a text
-    /// file, the CLI or a rename, stays whole until the user changes the field.
-    public static func tags(inField text: String, startedWith tags: [String]) -> [String] {
-        guard text != tagsField(of: tags) else { return tags }
-        return text.split { ",\u{060C}\u{FF0C}\u{3001}".contains($0) }.map(String.init)
-    }
-
-    /// What a Tags field holds for `tags` when it starts with them, as when
-    /// the user edits a card: separated by commas, each after a space.
-    public static func tagsField(of tags: [String]) -> String {
-        tags.joined(separator: ", ")
-    }
-
     /// The images on its sides, each once.
     public var images: Set<ImageName> {
         Set([frontImage, backImage].compactMap(\.self))
@@ -105,8 +86,8 @@ public struct CardContent: Sendable, Equatable {
     }
 
     /// This content with the images and sounds given in place of its own,
-    /// where they aren't nil: as a card fixed or expanded with a content
-    /// alone keeps its own images and sounds. Each side keeps its text, so
+    /// where they aren't nil: as a card fixed with a content alone keeps its
+    /// own images and sounds. Each side keeps its text, so
     /// it's never blank.
     public func keepingFiles(
         frontImage: ImageName?, backImage: ImageName?, frontSound: SoundName?, backSound: SoundName?

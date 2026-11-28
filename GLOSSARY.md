@@ -11,7 +11,7 @@ One small thing the user wants to remember, with a front and a back. Each side h
 _Avoid_: flashcard, note, item
 
 **Card type**:
-What a card holds, if it has one: a word, a concept, a quote or a question, the four Ficha comes with, or one the user makes, with a name and an emoji of their choice.
+What a card holds, if it has one: a word, a concept, a quote or a question, the four Ficha comes with, or one the user makes, with a name and an emoji of their choice. The database keeps a card's type, which a file or the `ficha` CLI gives it, and the app no longer shows it anywhere: a card shows its deck alone.
 _Avoid_: kind, category, note type
 
 **Front**:
@@ -34,7 +34,7 @@ What the user hears on one side of a card, from a file they added or imported, s
 _Avoid_: audio, clip, recording
 
 **Card size**:
-How large the user chooses to see a card's text and images in the review panel, and the card or capture selected in the Cards window, one size for both. Each Mac keeps its own, and the iPhone follows the system's text size.
+How large the user chooses to see a card's text and images in the review panel, and the card selected in the Cards window, one size for both. Each Mac keeps its own, and the iPhone follows the system's text size.
 _Avoid_: zoom, text size, scale
 
 **Deck**:
@@ -42,7 +42,7 @@ The subject a card lives in, like "historia" or "Great Works of Art"; each card 
 _Avoid_: folder, collection, category, nested deck
 
 **Default**:
-The deck a card lives in when it has no other: a card the user didn't put in a deck, or one an Anki package had in Anki's own Default. It can't be renamed or deleted.
+The deck a card lives in when it has no other: a card the user didn't put in a deck, or one that came in with none. It can't be renamed or deleted.
 _Avoid_: no deck, unsorted, inbox
 
 **Ficha's decks**:
@@ -50,7 +50,7 @@ The three small decks Ficha comes with, in Spanish for now, which the user picks
 _Avoid_: sample cards, starter deck, preset
 
 **Description**:
-One or two lines a deck has on what it holds, such as which years Arte argentino spans, which the user sees as they choose a deck and above its cards. Any deck can have one, Ficha's or the user's, and the user writes or changes it as they give a deck its emoji.
+One or two lines a deck has on what it holds, such as which years Arte argentino spans, which the user sees as they choose a deck and above its cards. Any deck can have one, Ficha's or the user's, and the user writes or changes it in place, with Description… among the deck's actions, as they give a deck its emoji with Emoji….
 _Avoid_: blurb, about, summary, subtitle
 
 **Deck's file**:
@@ -58,60 +58,20 @@ A deck as one file, named after it with `.ficha`: its cards, their images and so
 _Avoid_: package, zip, bundle
 
 **Tag**:
-A label a card carries, which can cross decks, like "Renaissance" or "inflación"; a card can have several, or none. A tag can sit inside another, its parent, as "Argentina" does in "países › Argentina".
-_Avoid_: topic, category, deck, subtag, nested tag
+A label a card carries, which can cross decks, like "Renaissance" or "inflación"; a card can have several, or none. The database keeps a card's tags, which a file or the `ficha` CLI gives it, and the app no longer shows them anywhere: a card shows its deck alone.
+_Avoid_: topic, category, deck
 
 **Priority deck**:
 A deck the user chose so that its cards, and those of every deck inside it, come first when cards show up, as while preparing for an exam. It changes which cards come first, never when a card is due.
 _Avoid_: focus, exam mode, filter, priority tag
 
 **Set aside**:
-Taking every card of a deck, and of every deck inside it, out of the user's reviews for now, also those that move in later, as when they're done with a subject, without burying them. Once the deck is no longer set aside, its cards stand where they would without it.
-_Avoid_: pause, suspend, archive, hide, inactive
-
-**Pinned tag**:
-A tag the user chose to keep in the Cards window's sidebar, in an order of their own, so the labels they use most are always at hand. Which tags are pinned, and in what order, is one choice for all their devices.
-_Avoid_: favorite tag, starred tag, sidebar tag
+Taking a card out of the user's reviews for now, flagged or not, as when they no longer want to see it; or every card of a deck, and of every deck inside it, also those that move in later, as when they're done with a subject. Nothing is deleted: a card keeps its progress and its review log, and its deck still lists it, a card set aside on its own dimmed. Putting it back, in the Cards window or through the `ficha` CLI, puts each card where it would stand without it, so a card stays set aside while it, or its deck, still is.
+_Avoid_: bury, pause, suspend, archive, hide, inactive
 
 **Source**:
-Where the user came across what a capture or a card holds, like a book or a podcast.
+Where the user came across what a card holds, like a book or a podcast.
 _Avoid_: origin, reference, citation
-
-### Capturing
-
-**Capture**:
-Something the user jots down to turn into cards later: the raw text, with an optional note and source.
-_Avoid_: draft, idea, raw card
-
-**Inbox**:
-What waits to be turned into cards or fixed: captures, including expansions and follow-ups, and flagged cards.
-_Avoid_: queue, backlog
-
-**Duplicate**:
-A capture whose text matches a card's front, the capture a card was approved from, or another capture in the inbox, or a card created or imported whose front matches another card's, or a card added with `ficha add` whose front matches another card's or that of a card before it in its list, ignoring case, accents, superscripts and subscripts: "H₂O" matches "H2O", and a minus sign, "−", matches "-". The ñ isn't an accent: "año" doesn't match "ano". An imported card's front counts its image too: two fronts that each have an image match only when it's the same image, so a front with only an image matches one with only that image. Otherwise a front without text, with only an image or a sound, matches none.
-
-**Expand**:
-Keeping a duplicate in the inbox anyway: attached to the card it repeats, as an expansion, so that approving it adds to that card; or next to the capture it repeats, to be turned into cards with it.
-_Avoid_: merge, append
-
-**Expansion**:
-A capture in the inbox attached to the card it repeats. Approving it gives that card new content, and the card keeps its progress.
-
-**Follow-up**:
-A capture the user jots down in the review panel about the card in front of them, tied to that card, such as a question it raised. Approving it creates new cards, as any capture does, and leaves that card as it is.
-_Avoid_: question, expansion
-
-**Approve**:
-Turning a capture into the cards the user accepted for it, in the Cards window or through the `ficha` CLI, which takes it out of the inbox. Approving an expansion gives its card the content the user accepted instead.
-_Avoid_: accept, save
-
-**Discard**:
-Taking a capture out of the inbox without turning it into cards.
-_Avoid_: delete, reject
-
-**Fix**:
-Editing a flagged card, as its note asks, in the Cards window or through the `ficha` CLI, which takes it out of the inbox, back to the user's reviews unless it's set aside.
-_Avoid_: correct
 
 ### Reviewing
 
@@ -132,7 +92,7 @@ How well the user says they knew a card in a review, kept as one of Anki's four:
 _Avoid_: grade, score, ease
 
 **Review log**:
-Every review, with when the user answered, whether an appearance or a review now brought the card, which way it went, their rating, the interval it set, and how long they took, except from a card notification; and an import's reviews from Anki, with the interval and due time the import gave a card where they fall short of how Anki had it: before them, when Anki kept none of the card's first reviews; after them, as after Anki's Set Due Date; or alone, when none came. A card's progress and due time are worked out from it.
+Every review, with when the user answered, whether an appearance or a review now brought the card, which way it went, their rating, the interval it set, and how long they took, except from a card notification; and the reviews from Anki an import brought before Anki's packages stopped coming in (ADR 0041), with the interval and due time the import gave a card where they fall short of how Anki had it: before them, when Anki kept none of the card's first reviews; after them, as after Anki's Set Due Date; or alone, when none came. A card's progress and due time are worked out from it.
 _Avoid_: history, review history
 
 **Review now**:
@@ -148,46 +108,49 @@ A review of a card that isn't due yet, which the user asks for.
 _Avoid_: cram, study ahead, extra practice
 
 **Flag**:
-Sending a card back to the inbox with a note on what to fix. It stays out of reviews until it's fixed.
+Marking a card with a note on what to fix. It stays out of reviews until it's fixed, and its deck still lists it, with its flag, and its note in its detail.
 _Avoid_: mark, report
+
+**Fix**:
+Editing a flagged card, as its note asks, in the Cards window or through the `ficha` CLI, which takes its flag off and brings it back to the user's reviews unless it's set aside.
+_Avoid_: correct
 
 **Forgotten often**:
 A card with eight lapses, or as many as the user set, since its front or back last changed, counting each way apart. The review panel offers to flag it, so it gets fixed, unless the user turned that off.
 _Avoid_: leech, hard card
 
-**Bury**:
-Taking a card the user no longer wants out of reviews for good, and out of the inbox if it's flagged, without deleting it. Unburying it, in the Cards window or through the `ficha` CLI, puts it back where it would be without the burial.
-_Avoid_: archive, suspend
-
 **Standing**:
-Where a card stands, the first of these that holds: buried; waiting in the inbox to be fixed; set aside with its deck; or in the user's reviews: new, in its learning or relearning steps, or graduated, until it's due. Out of their reviews, a card keeps its progress, or stays new, and returns to them that way.
+Where a card stands, the first of these that holds: set aside on its own; flagged, waiting to be fixed; set aside with its deck; or in the user's reviews: new, in its learning or relearning steps, or graduated, until it's due. Out of their reviews, a card keeps its progress, or stays new, and returns to them that way.
 _Avoid_: status, state
 
 ### Managing cards
 
 **Cards window**:
-The window where the user sees all their cards and everything in the inbox, creates cards, and acts on them.
+The window where the user sees their decks, each deck's cards as cards, with their fronts, flagged ones with their flag, creates cards, and acts on them.
 _Avoid_: browser, card list
 
-**All Tags**:
-The place in the Cards window that holds every tag, pinned or not, as a tree.
-_Avoid_: tags page, tag manager, tag browser
-
 **Edit**:
-Changing the content of a card or a capture. A card keeps its progress and its review log.
+Changing the content of a card. It keeps its progress and its review log.
 _Avoid_: modify, update
 
 **Delete**:
-Taking a card out of Ficha for good, with its review log, which burying keeps. An expansion attached to it, or a follow-up tied to it, stays in the inbox as a capture. Deleting a deck deletes every card in it and in the decks inside it, as Anki does. Deleting a tag, or a card type, deletes no card: it only comes off the cards that carry it, a tag with every tag inside it.
+Taking a card out of Ficha for good, with its review log, which setting it aside keeps. Deleting a deck deletes every card in it and in the decks inside it, as Anki does. Deleting a tag, or a card type, which the `ficha` CLI does, deletes no card: it only comes off the cards that carry it, a tag with every tag inside it.
 _Avoid_: remove, erase
 
 **Import**:
-Bringing cards into Ficha from a file: a text file with one card per line, zipped with its images and sounds if it has any, which another Ficha exported or someone wrote, maybe with an AI; or a package exported from Anki, its cards in Anki's decks and with Anki's tags, and with their progress and Anki's reviews of them unless the user leaves them out.
+Bringing a deck's cards into Ficha from its `.ficha` file, after Open Deck…, a double-click in Finder or Add Deck… on one of Ficha's decks: those that repeat none of the user's come in as new, and the rest are skipped. Text files, zips and Anki's packages don't come in (ADR 0041).
 _Avoid_: load, refine
 
+**Duplicate**:
+A card created or imported whose front matches another card's, or a card added with `ficha add` whose front matches another card's or that of a card before it in its list, ignoring case, accents, superscripts and subscripts: "H₂O" matches "H2O", and a minus sign, "−", matches "-". The ñ isn't an accent: "año" doesn't match "ano". An imported card's front counts its image too: two fronts that each have an image match only when it's the same image, so a front with only an image matches one with only that image. Otherwise a front without text, with only an image or a sound, matches none.
+
 **Export**:
-Saving cards to a text file with one card per line, zipped with their images and sounds if they have any, which another Ficha can import, and Anki too when it's text alone. It holds what the cards say, their decks and tags, and which go both ways, never the user's progress.
+Writing a deck's cards to its `.ficha` file, with those of the decks inside it, as Share Deck… does: what the cards say, their tags, and which go both ways, with their images and sounds and the deck's emoji and description, never the user's progress. Cards don't go out as text files or zips (ADR 0041).
 _Avoid_: backup, share
+
+**Share**:
+Passing a deck on to someone as its deck's file, with Share Deck… among the deck's actions, which opens macOS's Share menu, such as AirDrop, Messages or Mail, and ends in Save to File…, which saves the file where the user picks. Any deck the user has added can be shared, Ficha's too, and the file never holds their progress.
+_Avoid_: export, send, publish
 
 ### Spacing
 
@@ -326,7 +289,7 @@ _Avoid_: revert, roll back
 ### Sync
 
 **Sync**:
-Keeping the user's cards and their progress, every card or those in the decks they choose, along with the inbox and the settings that decide progress, the same on each of their devices, through their own iCloud. Each device keeps working without a connection and catches up later; it isn't a backup, since deleting a card that syncs deletes it on every device.
+Keeping the user's cards and their progress, every card or those in the decks they choose, along with the settings that decide progress, the same on each of their devices, through their own iCloud. Each device keeps working without a connection and catches up later; it isn't a backup, since deleting a card that syncs deletes it on every device.
 _Avoid_: cloud, mirror, upload
 
 **Selective sync**:

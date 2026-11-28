@@ -85,16 +85,16 @@ final class SettingsTabViewController: NSTabViewController {
     /// Where a tab scrolls to, as Settings is asked to show a section.
     private let scroll = SettingsScroll()
 
-    /// The tabs of every default Lucas can change in `model`, and of the
-    /// capture shortcut, `captureShortcut`, with the Sync tab in an app that
-    /// syncs: Advanced closes the review panel with `closeReviewPanel` before
-    /// a restore, and opens the Diagnostics window with `openDiagnostics`.
+    /// The tabs of every default Lucas can change in `model`, with the Sync
+    /// tab in an app that syncs: Advanced closes the review panel with
+    /// `closeReviewPanel` before a restore, and opens the Diagnostics window
+    /// with `openDiagnostics`.
     /// It opens on `tab`, scrolled to its foot when `section` is one of the
     /// tab's (`SettingsScroll`), or on the tab Lucas left it on last, when
     /// the window has it.
     convenience init(
-        model: AppModel, captureShortcut: CaptureShortcutRegistration, closeReviewPanel: @escaping () -> Void,
-        openDiagnostics: @escaping () -> Void, openingOn tab: SettingsTab? = nil, at section: SettingsSection? = nil
+        model: AppModel, closeReviewPanel: @escaping () -> Void, openDiagnostics: @escaping () -> Void,
+        openingOn tab: SettingsTab? = nil, at section: SettingsSection? = nil
     ) {
         self.init(nibName: nil, bundle: nil)
         // Read before adding the tabs, since adding the first one selects it.
@@ -106,8 +106,8 @@ final class SettingsTabViewController: NSTabViewController {
             add(
                 shown,
                 content: SettingsTabContent(
-                    tab: shown, model: model, captureShortcut: captureShortcut, width: width,
-                    closeReviewPanel: closeReviewPanel, openDiagnostics: openDiagnostics, scroll: scroll))
+                    tab: shown, model: model, width: width, closeReviewPanel: closeReviewPanel,
+                    openDiagnostics: openDiagnostics, scroll: scroll))
         }
         select(firstTab, at: section)
     }

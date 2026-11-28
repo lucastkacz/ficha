@@ -88,7 +88,8 @@ struct DecksTests {
     }
 
     // Artes starts as Arte does, and sits inside no deck.
-    @Test("a parent lists its cards and those of every deck inside it, but not the buried ones")
+    @Test(
+        "a parent lists its cards and those of every deck inside it, those set aside on their own too", .bug(id: 539))
     func aParentListsTheCardsOfTheDecksInsideIt() throws {
         let gioconda = try engine.create(card(.concept, front: "La Gioconda", back: "De Leonardo."))
         let pieta = try engine.create(card(.concept, front: "La Piedad", back: "De Miguel Ángel."))
@@ -100,8 +101,13 @@ struct DecksTests {
         try engine.bury(guernica.id)
 
         #expect(
-            try engine.cardRows(in: .deck("Arte"), with: scheduler).map(\.card.front) == ["La Gioconda", "La Piedad"])
-        #expect(try engine.cardRows(in: .deck("Arte::Pintura"), with: scheduler).map(\.card.front) == ["La Gioconda"])
+            try engine.cardRows(in: .deck("Arte"), with: scheduler).map(\.card.front) == [
+                "La Gioconda", "La Piedad", "Guernica",
+            ])
+        #expect(
+            try engine.cardRows(in: .deck("Arte::Pintura"), with: scheduler).map(\.card.front) == [
+                "La Gioconda", "Guernica",
+            ])
         #expect(try engine.cardRows(in: .deck("Artes"), with: scheduler).map(\.card.front) == ["fuga"])
     }
 
@@ -130,5 +136,28 @@ struct DecksTests {
                 DeckCounts(cards: 1, due: 1), DeckCounts(cards: 3, due: 2), DeckCounts(cards: 0, due: 0),
                 DeckCounts(cards: 2, due: 1), DeckCounts(cards: 1, due: 0),
             ])
+    }
+
+    // A deck's grid lists the cards set aside on their own too, dimmed, so
+    // its count says as many cards as its grid shows, and those due leave
+    // them out, as they won't show up (#539).
+    @Test(
+        "a deck counts the cards set aside on their own, as its grid lists them, though never among those due",
+        .bug(id: 539))
+    func aDeckCountsItsSetAsideCards() throws {
+        let pintura = "Arte::Pintura"
+        let gioconda = try engine.create(card(.concept, front: "La Gioconda", back: "De Leonardo."), deck: pintura)
+        let guernica = try engine.create(card(.concept, front: "Guernica", back: "De Picasso."), deck: pintura)
+        try engine.meet(gioconda)
+        try engine.meet(guernica)
+        try engine.bury(guernica.id)
+        time.advance(by: days(1))
+
+        let counted = try engine.countedDecks(with: scheduler)
+        let listed = try engine.cardRows(in: .deck("Arte"), with: scheduler)
+
+        #expect(counted.map(\.deck.name) == ["Arte", "Arte::Pintura"])
+        #expect(counted.map(\.counts) == [DeckCounts(cards: 2, due: 1), DeckCounts(cards: 2, due: 1)])
+        #expect(listed.map(\.card.front) == ["La Gioconda", "Guernica"])
     }
 }

@@ -1,40 +1,38 @@
 import FichaCore
 import Foundation
 
-// The Cards window's decks (ADR 0024): the sidebar's Your Decks section, after
-// Inbox and before Tags, lists every deck as a tree, Default first while it
-// holds cards or has a switch on, where it always was, then the decks at the
-// top of the tree with cards in the user's reviews, in the order of the
-// queue new cards come from, a deck listed first for its priority cards
-// alone first, and a deck met in full at its place among them, as the mock's
-// Your Decks lists them, then the others in alphabetical order, and those
-// set aside last, each with the decks inside it in alphabetical order, and
-// each with how many of its cards are due, those of the decks inside it
-// counted, and each at the top of the tree, Default too, with a line under
-// its title that says how far it is and when it's all met, from the queue
-// new cards come from (ADR 0034, #491). Each parent starts open, as in
-// Anki's deck list, and the window remembers the ones Lucas closes while
-// it's open. Choosing a deck lists its cards and those of every deck inside
-// it. A deck's menu,
-// Default's too, the same in its row's context menu and in the Actions menu
-// above the card list while the sidebar chose it, which is its keyboard
-// path, sets it aside or prioritizes it (`DeckSwitches.swift`), and gives it
-// a color or an emoji (`DeckColorAndEmoji.swift`), which its row shows, as
-// the decks inside it that have none do; a set-aside deck is grayed, with
-// the decks inside it, last when it's at the top of the tree and in its
-// place inside another. Every deck's but Default's also renames it and deletes
-// it, and in the sidebar cards and decks dropped on a deck move there
-// (`CardsWindowDeckEdits.swift`). Every deck's menu and the Your Decks title's
-// have New Deck…, whose OK makes a deck with no card, where its name says, and
-// then asks How fast? for a new deck at the top of the tree (`HowFast.swift`).
-// A chosen deck's tags line up above its cards (`CardsWindowDeckTags.swift`).
-// Change Deck… moves the selected cards to the deck Lucas picks in its sheet,
-// from the same tree with Default always in it, or to one he names there with
-// New Deck…, which the move makes. The Deck field, in the card form and the
-// editor (`CardsWindowDeckField.swift`), offers that tree too, and its New
-// Deck… names a deck in the New Deck sheet with the same name field and the
-// same checks, for the field to hold; and so does the Import sheet's choice of
-// deck (`CardsWindowImport.swift`), which names one in its preview's place.
+// The Cards window's decks (ADR 0024): the sidebar's Your Decks section
+// lists every deck as a tree, Default first while it holds cards
+// or has a switch on, where it always was, then the decks at the top of the
+// tree with cards in the user's reviews, in the order of the queue new cards
+// come from, a deck listed first for its priority cards alone first, and a
+// deck met in full at its place among them, as the mock's Your Decks lists
+// them, then the others in alphabetical order, and those set aside last, each
+// with the decks inside it in alphabetical order, and each with how many of
+// its cards are due, those of the decks inside it counted, and each at the
+// top of the tree, Default too, with a line under its title that says how far
+// it is and when it's all met, from the queue new cards come from (ADR 0034,
+// #491). Each parent starts open, as in Anki's deck list, and the window
+// remembers the ones Lucas closes while it's open. Choosing a deck lists its
+// cards and those of every deck inside it. A deck's menu, Default's too, the
+// same in its row's context menu and in the Actions menu above the grid while
+// the sidebar chose it, which is its keyboard path, sets it aside or
+// prioritizes it (`DeckSwitches.swift`), and gives it a color or an emoji
+// (`DeckColorAndEmoji.swift`), which its row shows, as the decks inside it
+// that have none do, edits its description (`CardsWindowDeckDescription.swift`)
+// and shares its `.ficha` (`CardsWindowShareDeck.swift`); a set-aside deck is grayed, with the decks inside it,
+// last when it's at the top of the tree and in its place inside another.
+// Every deck's but Default's also renames it and deletes it, and in the
+// sidebar cards and decks dropped on a deck move there
+// (`CardsWindowDeckEdits.swift`). Every deck's menu and the Your Decks
+// title's have New Deck…, whose OK makes a deck with no card, where its name
+// says, and then asks How fast? for a new deck at the top of the tree
+// (`HowFast.swift`). Change Deck… moves the selected cards to the deck Lucas
+// picks in its sheet, from the same tree with Default always in it, or to one
+// he names there with New Deck…, which the move makes. The Deck field, in the
+// card form and the editor (`CardsWindowDeckField.swift`), offers that tree
+// too, and its New Deck… names a deck in the New Deck sheet with the same
+// name field and the same checks, for the field to hold.
 
 extension CardsWindowState {
     /// A deck in the sidebar's tree, or in the Change Deck sheet's, with the
@@ -70,9 +68,10 @@ extension CardsWindowState {
         /// with no card says so, and a deck set aside so, before anything
         /// else; a deck met in full says so exactly when the review panel
         /// would say "You've met them all" of it, by the same rule, also with
-        /// a buried card still to meet; a deck in the queue says where it
-        /// is, also when its cards are all met but some of their back-first
-        /// ways are still to come; and any other, how far it is.
+        /// a card set aside on its own still to meet; a deck in the queue
+        /// says where it is, also when its cards are all met but some of
+        /// their back-first ways are still to come; and any other, how far it
+        /// is.
         public enum Line: Sendable, Equatable {
             /// "No cards yet": the deck, with the decks inside it, has no
             /// card.
@@ -96,7 +95,7 @@ extension CardsWindowState {
             case next(finish: FinishDate.Wording)
             /// "9 of 14": how far the deck is, with no finish date, as when
             /// the pace brings no new card, or none of its cards is in the
-            /// user's reviews, as when they're all buried.
+            /// user's reviews, as when they're all set aside on their own.
             case progress(met: Int, of: Int)
         }
 
@@ -114,7 +113,7 @@ extension CardsWindowState {
     /// What Change Deck… asks, in its sheet, while it asks: which deck the
     /// selected cards move to.
     public struct DeckChange: Sendable, Equatable {
-        /// The cards it moves, as the table listed them when Lucas chose
+        /// The cards it moves, as the grid listed them when Lucas chose
         /// Change Deck….
         public let cards: [CardRow]
         /// The deck the sheet has chosen, which Move moves the cards to: the
@@ -132,12 +131,13 @@ extension CardsWindowState {
     }
 
     /// What a deck's menu offers, Default's too: in the sidebar, as its row's
-    /// context menu, and above the card list while the sidebar chose it, as
-    /// the Actions menu, which is how the keyboard reaches it. The same menu
+    /// context menu, and above the grid while the sidebar chose it, as the
+    /// Actions menu, which is how the keyboard reaches it. The same menu
     /// in both places, which acts on the one deck: Set Aside, Prioritize,
-    /// Color and Emoji…, and Rename… and Delete… while it offers them
-    /// (`offersRenameAndDelete`). New Deck…, always above them, acts on no
-    /// deck (`askToMakeDeck()`).
+    /// Color, Emoji… and Description… (`CardsWindowDeckDescription.swift`),
+    /// Share Deck… (`CardsWindowShareDeck.swift`), and Rename… and Delete…
+    /// while it offers them (`offersRenameAndDelete`). New Deck…, always
+    /// above them, acts on no deck (`askToMakeDeck()`).
     public struct DeckMenu: Sendable, Equatable {
         /// The deck it acts on, with what it has of its own and takes from
         /// the decks it sits inside.
@@ -151,6 +151,10 @@ extension CardsWindowState {
         /// has none of its own, whatever it takes from the decks it sits
         /// inside.
         public let colorItems: [ColorItem]
+        /// Whether Share Deck… is on: while the deck, with the decks inside
+        /// it, holds a card, set-aside ones too, since a deck's file with no
+        /// card is no deck another Ficha opens.
+        public let canShare: Bool
 
         /// Whether Set Aside is ticked: the deck is set aside on its own, and
         /// choosing it again undoes it.
@@ -166,9 +170,7 @@ extension CardsWindowState {
     }
 
     /// What OK makes of what a deck's name field holds: the Change Deck
-    /// sheet's, the New Deck sheet's, whichever New Deck… opened it, or the
-    /// Import sheet's, after New Deck…, or one of the Import sheet's deck
-    /// fields.
+    /// sheet's, or the New Deck sheet's, whichever New Deck… opened it.
     public enum NewDeckEntry: Sendable, Equatable {
         /// The deck's whole name, its levels cleaned up.
         case name(String)
@@ -221,6 +223,19 @@ extension CardsWindowState {
         return rows.indices.sorted { rank(of: $0) < rank(of: $1) }.map { rows[$0] }
     }
 
+    /// The deck the window opens on, and goes back to once what the sidebar
+    /// chose is gone, as the desktop mock opens on the first of its Your
+    /// Decks: the first deck of the queue new cards come from that Your
+    /// Decks lists, the one the user is meeting, in the order
+    /// `CardsInReviews.topDecksInQueueOrder` gives, Default too when it's
+    /// first there; or else, while no deck holds cards in the user's
+    /// reviews, the first deck Your Decks lists; or nil while it lists none.
+    var deckToOpenOn: DeckRow? {
+        let rows = deckRows
+        let inQueue = placedTopDecks.lazy.compactMap { deck in rows.first { $0.deck.name == deck } }
+        return inQueue.first ?? rows.first
+    }
+
     /// Whether the sidebar's deck `deck` is open, showing the decks inside
     /// it. Each starts open.
     public func isDeckOpen(_ deck: String) -> Bool {
@@ -240,10 +255,11 @@ extension CardsWindowState {
     /// Default's by `Deck.defaultName`, while the sidebar lists it; nil
     /// otherwise.
     public func menu(forDeck deck: String) -> DeckMenu? {
-        guard let listed = listedDeck(deck) else { return nil }
+        guard let counted = decks.first(where: { $0.deck.name == deck }) else { return nil }
+        let listed = counted.deck
         return DeckMenu(
             deck: listed, canPrioritize: listed.canBePrioritized(amongSetAside: decks.map(\.deck).setAsideNames),
-            colorItems: ColorItem.items(forOwn: [listed.color]))
+            colorItems: ColorItem.items(forOwn: [listed.color]), canShare: counted.counts.cards > 0)
     }
 
     /// The deck `deck`, by its whole name, or Default by
@@ -255,9 +271,9 @@ extension CardsWindowState {
     }
 
     /// The menu of the deck the sidebar chose, which the Actions menu above
-    /// the card list offers, the keyboard's way to a deck's menu: nil while
-    /// the sidebar chose something else. While Lucas edits a card, it stays,
-    /// waiting with the card list, so the list doesn't move.
+    /// the grid offers, the keyboard's way to a deck's menu: nil while the
+    /// sidebar chose something else. While Lucas edits a card, it stays,
+    /// waiting with the grid, so the grid doesn't move.
     public var chosenDeckMenu: DeckMenu? {
         guard case .cards(.deck(let deck)) = sidebarItem else { return nil }
         return menu(forDeck: deck)
@@ -357,12 +373,12 @@ extension CardsWindowState {
     /// The decks a pop-up of decks offers while it holds `held`, before New
     /// Deck…, in the order a tree lists them, as `decksToChoose(adding:)`
     /// lists them with `held`, which New Deck… may have named: a card's Deck
-    /// field's, and the Import sheet's choice of deck.
+    /// field's.
     func decksToPick(holding held: String) -> [Deck] {
         decksToChoose(adding: [held]).flatMap(\.flattened).map(\.deck)
     }
 
-    /// Asks which deck the selected cards the table lists move to, in the
+    /// Asks which deck the selected cards the grid lists move to, in the
     /// Change Deck sheet, which starts on the deck they all live in, while
     /// Change Deck… is offered.
     public mutating func askToChangeDeck() {
@@ -393,9 +409,8 @@ extension CardsWindowState {
     }
 
     /// What OK makes of `text`, what the name field holds after New Deck…,
-    /// in the Change Deck sheet, in the New Deck sheet a Deck field opens
-    /// (`CardsWindowDeckField.swift`) or the sidebar does, or in the Import
-    /// sheet's preview's place (`CardsWindowImport.swift`): the deck's whole
+    /// in the Change Deck sheet, or in the New Deck sheet a Deck field opens
+    /// (`CardsWindowDeckField.swift`) or the sidebar does: the deck's whole
     /// name, its levels cleaned up; a blank name, as the field starts, which
     /// keeps OK off; or a refusal of a name whose top level is one of
     /// Default's, as the engine refuses it. Nil while the window asks for no
@@ -404,7 +419,7 @@ extension CardsWindowState {
         switch question {
         case .changeDeck(let change): guard change.isNamingNewDeck else { return nil }
         case .newDeck, .makeDeck: break
-        default: guard importing?.isNamingNewDeck == true else { return nil }
+        default: return nil
         }
         return NewDeckEntry(checking: text)
     }
@@ -422,9 +437,7 @@ extension CardsWindowState {
     /// chooses it, for Move to make it as it moves the cards there; in the
     /// New Deck sheet, the Deck field it was asked from holds the deck
     /// (`CardsWindowDeckField.swift`), or, when the sidebar asked, the deck
-    /// is made at once (`makeDeck(named:)`); and in the Import sheet, its
-    /// choice of deck holds it, for Import to make it as the cards come into
-    /// it, and the sheet shows the preview again. A deck already listed is
+    /// is made at once (`makeDeck(named:)`). A deck already listed is
     /// chosen. While OK doesn't take `text`, as `newDeckEntry(_:)` says, it
     /// does nothing, and the sheet says why.
     public mutating func chooseNewDeck(_ text: String) {
@@ -443,8 +456,7 @@ extension CardsWindowState {
             change.isNamingNewDeck = false
             question = .changeDeck(change)
         default:
-            importing?.chosenDeck = name
-            importing?.isNamingNewDeck = false
+            return
         }
         askForTheFichaDeckAskedToAdd()
     }
@@ -469,19 +481,16 @@ extension CardsWindowState {
         closedDecks.subtract(TagPath.ancestors(of: name))
         readAgain()
         if isNewAtTheTop {
-            askHowFast(about: [top], cameInFrom: .newDeck)
+            askHowFast(about: top)
         }
     }
 
     /// Goes back from the name New Deck… asked for, which Lucas cancelled,
-    /// to the Change Deck sheet's tree, or to the Import sheet's preview.
+    /// to the Change Deck sheet's tree.
     public mutating func cancelNewDeck() {
-        if case .changeDeck(var change) = question {
-            change.isNamingNewDeck = false
-            question = .changeDeck(change)
-        } else {
-            importing?.isNamingNewDeck = false
-        }
+        guard case .changeDeck(var change) = question else { return }
+        change.isNamingNewDeck = false
+        question = .changeDeck(change)
     }
 
     /// Chooses Move in the Change Deck sheet: moves the cards it asks about
@@ -505,12 +514,14 @@ extension CardsWindowState {
     /// lists says under its title, as last read, from where it stands now and
     /// the queue new cards come from, with the pace the database holds and
     /// the window's active hours, and the decks' order in it, which the
-    /// sidebar lists them in.
+    /// sidebar lists them in; and the hour Ficha's day starts at, among the
+    /// same settings, which the detail's words count days by.
     mutating func readDeckLines() throws(EngineError) {
         let settings = try engine.cardsWindowQueueSettings(activeHours: activeHours)
         let lines = try engine.deckLines(of: listedTopDecks, with: settings)
         deckLines = lines.lines
         placedTopDecks = lines.places
+        dayStartsAtHour = settings.dayStartsAtHour
     }
 
     /// The decks at the top of the tree the sidebar lists, as last read, in

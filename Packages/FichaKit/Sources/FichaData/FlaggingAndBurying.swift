@@ -9,36 +9,36 @@ internal import GRDB
 /// and clears a card's flag and its burial, as `CODING_STANDARDS.md` says.
 extension Engine {
     /// Flags a card in Lucas's reviews, or set aside, with his note on what
-    /// to fix: it waits in the inbox until it's fixed, in a refine session or
-    /// in the Cards window. Returns the card.
+    /// to fix: it leaves his reviews and waits in its deck until it's fixed,
+    /// in the Cards window or with `ficha fix`. Returns the card.
     @discardableResult
     public func flag(_ cardID: Int64, note: FlagNote) throws(EngineError) -> Card {
         let flaggedAt = time.now
         return try write { db in
             switch try existingCard(cardID, in: db).standing {
             case .inReviews, .setAside: break
-            case .inInbox: throw EngineError.cardFlagged(cardID)
+            case .flagged: throw EngineError.cardFlagged(cardID)
             case .buried: throw EngineError.cardBuried(cardID)
             }
             return try updateCard(cardID, setting: "flagNote = ?, flaggedAt = ?", to: [note.text, flaggedAt], in: db)
         }
     }
 
-    /// Fixes a flagged card in the inbox with `content`, as a refine session
-    /// drafted it and Lucas approved it: the card leaves the inbox and goes
-    /// back to his reviews, where its review log puts it, unless its deck, or
-    /// a deck it sits inside, is set aside. It keeps its images and sounds, as a draft
-    /// that leaves them out does (`fix(_:with:)` with a `CardDraft`); a new
-    /// front or back keeps when it changed. Returns the card.
+    /// Fixes a flagged card with `content`, as `ficha fix` gives it: its flag
+    /// goes, and it goes back to Lucas's reviews, where its review log puts it,
+    /// unless its deck, or a deck it sits inside, is set aside. It keeps its
+    /// images and sounds, as a draft that leaves them out does (`fix(_:with:)`
+    /// with a `CardDraft`); a new front or back keeps when it changed. Returns
+    /// the card.
     @discardableResult
     public func fix(_ cardID: Int64, with content: CardContent) throws(EngineError) -> Card {
         try fix(cardID) { card, _ in content.keepingFiles(of: card) }.fixed
     }
 
-    /// Fixes a flagged card in the inbox, as `fix(_:with:)` does, with the
-    /// content `newContent` makes of the card as it is, in the write that
-    /// saves it, or nothing when it throws: as a refine session's draft finds
-    /// or makes the user type it names in that write (`CardTypesByName`).
+    /// Fixes a flagged card, as `fix(_:with:)` does, with the content
+    /// `newContent` makes of the card as it is, in the write that saves it,
+    /// or nothing when it throws: as `ficha fix`'s draft finds or makes the
+    /// user type it names in that write (`CardTypesByName`).
     /// `deck` moves it to that deck, as `edit(_:with:deck:bothWays:)` does,
     /// and nil leaves it where it lives. `bothWays` turns Both ways on or
     /// off, as `setBothWays(_:of:)` does, and nil leaves it as it was.
@@ -56,7 +56,7 @@ extension Engine {
         }
     }
 
-    /// Unflags a flagged card in the inbox: its flag goes and its content
+    /// Unflags a flagged card: its flag goes and its content
     /// stays, and it goes back to Lucas's reviews, where its review log puts
     /// it, unless its deck, or a deck it sits inside, is set aside.
     /// The review panel's ⌘Z unflags a card Lucas flagged there. Returns the
@@ -68,8 +68,8 @@ extension Engine {
         }
     }
 
-    /// Buries a card: it leaves Lucas's reviews for good, and the inbox if
-    /// it's flagged, without deleting it or its review log. Returns the card.
+    /// Buries a card: it leaves Lucas's reviews for good, flagged or not,
+    /// without deleting it or its review log. Returns the card.
     @discardableResult
     public func bury(_ cardID: Int64) throws(EngineError) -> Card {
         let buriedAt = time.now
@@ -80,7 +80,7 @@ extension Engine {
 
     /// Buries the cards with these ids in one write, each as burying one card
     /// does, or none of them when one is already buried or doesn't exist.
-    /// Returns the cards, in the order Lucas approved them.
+    /// Returns the cards, in the order they came in.
     @discardableResult
     public func bury(_ cardIDs: Set<Int64>) throws(EngineError) -> [Card] {
         let buriedAt = time.now
@@ -90,8 +90,8 @@ extension Engine {
     }
 
     /// Unburies a card: it goes back to where it was before Lucas buried it,
-    /// his reviews or the inbox, where its review log puts it, or it's set
-    /// aside when its deck, or a deck its deck sits inside, is.
+    /// his reviews, where its review log puts it, or flagged in its deck, or
+    /// it's set aside when its deck, or a deck its deck sits inside, is.
     /// Returns the card.
     @discardableResult
     public func unbury(_ cardID: Int64) throws(EngineError) -> Card {
@@ -102,7 +102,7 @@ extension Engine {
 
     /// Unburies the cards with these ids in one write, each as unburying one
     /// card does, or none of them when one isn't buried or doesn't exist.
-    /// Returns the cards, in the order Lucas approved them.
+    /// Returns the cards, in the order they came in.
     @discardableResult
     public func unbury(_ cardIDs: Set<Int64>) throws(EngineError) -> [Card] {
         try write { db in
@@ -111,10 +111,10 @@ extension Engine {
     }
 
     /// Unflags the card with this id, and returns it, or throws when it isn't
-    /// flagged in the inbox, as a buried card isn't, or doesn't exist.
+    /// flagged, as a buried card isn't, or doesn't exist.
     private func unflag(_ cardID: Int64, in db: Database) throws -> Card {
         switch try existingCard(cardID, in: db).standing {
-        case .inInbox: break
+        case .flagged: break
         case .inReviews, .setAside: throw EngineError.cardNotFlagged(cardID)
         case .buried: throw EngineError.cardBuried(cardID)
         }
@@ -126,7 +126,7 @@ extension Engine {
     /// here a card that was suspended in the app it comes from.
     func bury(_ cardID: Int64, at buriedAt: Date, in db: Database) throws -> Card {
         switch try existingCard(cardID, in: db).standing {
-        case .inReviews, .inInbox, .setAside: break
+        case .inReviews, .flagged, .setAside: break
         case .buried: throw EngineError.cardBuried(cardID)
         }
         return try updateCard(cardID, setting: "buriedAt = ?", to: [buriedAt], in: db)
@@ -137,7 +137,7 @@ extension Engine {
     private func unbury(_ cardID: Int64, in db: Database) throws -> Card {
         switch try existingCard(cardID, in: db).standing {
         case .buried: break
-        case .inReviews, .inInbox, .setAside: throw EngineError.cardNotBuried(cardID)
+        case .inReviews, .flagged, .setAside: throw EngineError.cardNotBuried(cardID)
         }
         return try updateCard(cardID, setting: "buriedAt = NULL", in: db)
     }

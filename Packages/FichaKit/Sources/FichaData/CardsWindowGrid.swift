@@ -1,0 +1,300 @@
+import FichaCore
+import Foundation
+
+// The Cards window's grid (#536), where its table was: the chosen deck's
+// cards as tiles, in the order they came in, which is the order its new
+// cards wait their turn in, each its front's picture, or else its front's
+// text, with a dot for where it stands, as the desktop mock draws it (ADR
+// 0041): green once the user met the card, orange while it's due, and none
+// while it's new, whose tile is dimmed; a card set aside on its own, out of
+// the reviews until it's put back, dimmed with a mark of its own in the
+// dot's place (#539); and a flagged card, out of the reviews until it's
+// fixed, with its flag in the dot's place (#540). What a tile shows is the
+// window's
+// decision, so FichaData works it out here, and the app's grid
+// (`App/Cards/CardGrid.swift`) draws it, reading each tile's picture as the
+// tile appears (`TileImages`). Lucas selects tiles as in Photos and the
+// Finder: a click selects one, a ⌘-click adds one or takes it out, a
+// Shift-click selects the run from the last one clicked, a click between the
+// tiles selects none, the arrow keys move the selection, Shift extending the
+// run with them, and Select All selects every tile. Dragging a tile drags it
+// with the other selected ones when it's one of them.
+
+extension CardsWindowState {
+    /// A card as a tile of the grid shows it.
+    public struct Tile: Sendable, Equatable, Identifiable {
+        /// What fills a tile.
+        public enum Face: Sendable, Equatable {
+            /// The front's picture, the image named this, which fills the
+            /// tile.
+            case picture(ImageName)
+            /// The front's text, as the user wrote it.
+            case text(String)
+            /// A front that holds a sound alone, which the tile names with a
+            /// word.
+            case sound
+        }
+
+        /// Where a tile's card stands, which its dot, or its mark, says.
+        public enum Mark: Sendable, Hashable {
+            /// The user met the card, and it isn't due: a green dot.
+            case met
+            /// The card is in the user's reviews, and a way of it is due: an
+            /// orange dot.
+            case due
+            /// The user hasn't met the card yet, which waits its turn in the
+            /// queue: no dot, and the tile dimmed.
+            case new
+            /// The card is set aside on its own, out of the user's reviews
+            /// until it's put back, whether or not they met it: a mark of its
+            /// own in the dot's place, and the tile dimmed (#539). A card whose
+            /// deck is set aside, the card not on its own, keeps its dot,
+            /// never due, since the deck's row says the deck is set aside.
+            case setAside
+            /// The card is flagged, out of the user's reviews until it's
+            /// fixed, whether or not they met it: its flag in the dot's place,
+            /// and the tile not dimmed, since it waits for them to fix it
+            /// (#540). Its note is in the detail. A flagged card set aside on
+            /// its own is marked set aside, as it stands.
+            case flagged
+        }
+
+        /// The card's.
+        public let id: CardRow.ID
+        /// What fills the tile.
+        public let face: Face
+        /// Where the card stands.
+        public let mark: Mark
+        /// The front's text, empty when it has none, which names the tile
+        /// for VoiceOver, a picture's too.
+        public let front: String
+
+        /// The tile of the card in `row`, which stands at `now`, marked in the
+        /// order the card's standing is decided (`CardStanding`): a card set
+        /// aside on its own, which the engine keeps as its burial, is marked
+        /// so, first, flagged or not; then a flagged card, also in a deck set
+        /// aside. Else a card is met once its front-first way has an entry,
+        /// as a deck's row counts the cards met (`CardsInReviews.metCards(in:)`),
+        /// whether or not it goes back first too.
+        init(_ row: CardRow, at now: Date) {
+            id = row.id
+            let card = row.card
+            front = card.front
+            if let image = card.frontImage {
+                face = .picture(image)
+            } else if card.front.isEmpty, card.frontSound != nil {
+                face = .sound
+            } else {
+                face = .text(card.front)
+            }
+            switch row.cardStanding {
+            case .buried:
+                mark = .setAside
+            case .flagged:
+                mark = .flagged
+            case .inReviews, .setAside:
+                if row.isDue(at: now) {
+                    mark = .due
+                } else if case .new = row.frontFirst.standing {
+                    mark = .new
+                } else {
+                    mark = .met
+                }
+            }
+        }
+    }
+
+    /// Where an arrow key moves the grid's selection: to the tile before
+    /// the selected one or after it, in the order the grid lists them, or to
+    /// the one above it or below it. The app takes the arrow that points
+    /// backward or forward from its layout's direction.
+    public enum TileMove: Sendable, Equatable {
+        case backward
+        case forward
+        case up
+        case down
+    }
+
+    /// How a click selects a tile, as the keys held down while clicking say.
+    public enum TileClick: Sendable, Equatable {
+        /// A click alone, which selects the tile alone.
+        case alone
+        /// A ⌘-click, which adds the tile to the selection, or takes it out
+        /// when it's in.
+        case adding
+        /// A Shift-click, which selects the run of tiles from the last one
+        /// clicked to this one.
+        case extending
+    }
+
+    /// What reads the pictures of the grid's tiles, one image at a time, as
+    /// each tile appears: the app reads them away from the main actor, and
+    /// keeps a thumbnail of each in a cache of its own, which lets go of
+    /// those it doesn't need (`App/Cards/CardGrid.swift`). So the window
+    /// reads none of them as it lists the cards or as Lucas selects one,
+    /// which, for a deck of photos, would read them all at their full size
+    /// on the main actor each time. Which image a tile shows is its face's
+    /// (`Tile.Face.picture`).
+    public struct TileImages: Sendable {
+        let engine: Engine
+
+        /// The image named `name`, as Ficha keeps it, or why it couldn't be
+        /// read, or nil while it's on its way from another device, which the
+        /// tile shows without, with no error, until it's read again once the
+        /// window reads the cards again.
+        public func image(_ name: ImageName) -> Result<Data, EngineError>? {
+            engine.imageToShow(name)
+        }
+    }
+
+    /// The tiles of the cards the grid lists, in its order: none while the
+    /// window lists no deck's cards.
+    public var tiles: [Tile] {
+        guard case .success(.cards(let rows))? = listing else {
+            return []
+        }
+        return rows.map { Tile($0, at: now) }
+    }
+
+    /// The marks the legend above the grid names, in its order: met, due
+    /// and new, always, as the desktop mock's legend has them, then flagged
+    /// while the grid lists a flagged card, and set aside while it lists a
+    /// card set aside on its own.
+    public var legendMarks: [Tile.Mark] {
+        let marks = Set(tiles.map(\.mark))
+        return [.met, .due, .new] + [Tile.Mark.flagged, .setAside].filter(marks.contains)
+    }
+
+    /// What reads the pictures of the grid's tiles.
+    public var tileImages: TileImages {
+        TileImages(engine: engine)
+    }
+
+    /// The ids of the cards the grid lists, in its order.
+    var gridCardIDs: [CardRow.ID] {
+        guard case .success(.cards(let rows))? = listing else {
+            return []
+        }
+        return rows.map(\.id)
+    }
+
+    /// Selects the tile of the card `id` as a click does, as `click` says:
+    /// alone, adding it or taking it out, or the run from the last tile
+    /// clicked, or selected alone, to it, which a Shift-click selects alone
+    /// while there's none listed.
+    public mutating func clickTile(_ id: CardRow.ID, _ click: TileClick) {
+        let listed = gridCardIDs
+        guard listed.contains(id) else { return }
+        switch click {
+        case .alone:
+            anchorCard = id
+            setSelection([id])
+        case .adding:
+            anchorCard = id
+            setSelection(selection.contains(id) ? selection.subtracting([id]) : selection.union([id]))
+        case .extending:
+            guard let anchor = anchorCard, let run = Self.run(from: anchor, to: id, in: listed) else {
+                anchorCard = id
+                setSelection([id])
+                break
+            }
+            setSelection(run)
+        }
+        currentCard = id
+    }
+
+    /// Selects no tile, as a click between the tiles does, as in the Finder,
+    /// so that a Shift-click or an arrow key after it has nothing to go from,
+    /// as `select(_:)` says.
+    public mutating func clickBetweenTiles() {
+        select([])
+    }
+
+    /// Moves the grid's selection as an arrow key does, as `move` says, in a
+    /// grid of `tilesPerRow` tiles a row, as the app lays it out, to the next
+    /// tile that way, which the grid scrolls to, selected alone, or with
+    /// Shift, when `extending` says so, the run from the last tile clicked to
+    /// it. It moves from the last tile clicked or moved to, though a ⌘-click
+    /// took that one out of the selection, or else from the first selected
+    /// tile the grid lists. While the grid lists no selected tile, any arrow,
+    /// with Shift or not, selects the first alone. At an edge it stays where
+    /// it is.
+    public mutating func moveSelection(_ move: TileMove, tilesPerRow: Int, extending: Bool) {
+        let listed = gridCardIDs
+        guard let first = listed.first else { return }
+        guard let firstSelected = listed.firstIndex(where: { selection.contains($0) }) else {
+            anchorCard = first
+            setSelection([first])
+            currentCard = first
+            cardToReveal = first
+            return
+        }
+        let from = currentCard.flatMap { listed.firstIndex(of: $0) } ?? firstSelected
+        let target = listed[Self.index(after: move, from: from, among: listed.count, perRow: max(tilesPerRow, 1))]
+        if extending, let anchor = anchorCard, let run = Self.run(from: anchor, to: target, in: listed) {
+            setSelection(run)
+        } else {
+            anchorCard = target
+            setSelection([target])
+        }
+        currentCard = target
+        cardToReveal = target
+    }
+
+    /// Selects every tile the grid lists, as Select All, ⌘A, does.
+    public mutating func selectAllTiles() {
+        let listed = gridCardIDs
+        guard !listed.isEmpty else { return }
+        setSelection(Set(listed))
+    }
+
+    /// What dragging the tile of the card `id` onto a deck in the sidebar
+    /// drags, all in one drag, as in the Finder: every selected tile the
+    /// grid lists, in its order, when it's one of them, or else that tile
+    /// alone, which leaves the selection as it is.
+    public func draggedCards(from id: CardRow.ID) -> [Dragged] {
+        guard selection.contains(id) else {
+            return [.card(id)]
+        }
+        return gridCardIDs.filter { selection.contains($0) }.map { .card($0) }
+    }
+
+    /// Selects `selection`, reading the review log of the card the detail
+    /// then shows.
+    private mutating func setSelection(_ selection: Set<CardRow.ID>) {
+        let anchor = anchorCard
+        let current = currentCard
+        select(selection)
+        // A tile selected alone by a click or a key is already where the
+        // next ones go from; a run keeps where it started.
+        anchorCard = anchor
+        currentCard = current
+    }
+
+    /// The ids of the tiles from `start` to `end`, both in, in `listed`'s
+    /// order, or nil when it lists either no longer.
+    private static func run(from start: CardRow.ID, to end: CardRow.ID, in listed: [CardRow.ID]) -> Set<CardRow.ID>? {
+        guard let first = listed.firstIndex(of: start), let last = listed.firstIndex(of: end) else {
+            return nil
+        }
+        return Set(listed[min(first, last)...max(first, last)])
+    }
+
+    /// The index of the tile `move` goes to from the one at `index`, among
+    /// `count` tiles laid out `perRow` a row: the same one at an edge. Down
+    /// from a tile with none right below it, in the row before the last,
+    /// goes to the last tile, as in the Finder.
+    private static func index(after move: TileMove, from index: Int, among count: Int, perRow: Int) -> Int {
+        switch move {
+        case .backward:
+            return max(index - 1, 0)
+        case .forward:
+            return min(index + 1, count - 1)
+        case .up:
+            return index >= perRow ? index - perRow : index
+        case .down:
+            let lastRow = (count - 1) / perRow
+            return index / perRow < lastRow ? min(index + perRow, count - 1) : index
+        }
+    }
+}

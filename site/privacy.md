@@ -13,7 +13,7 @@ Ficha doesn't collect, share or sell any data about you or your cards. It has no
 
 ## Your cards stay on your devices
 
-Your cards, with their images and sounds, your reviews, the inbox and your settings, stay on your devices.
+Your cards, with their images and sounds, your reviews and your settings, stay on your devices.
 
 When you turn on sync, your cards, or only those in the decks you choose, also go to your private iCloud, in your own Apple Account, so each of your devices has the same ones. A card you stop syncing leaves iCloud, all but the name of its deck, which tells your other devices why it left, and stays on each device that has it. Apple's iCloud keeps them under Apple's privacy policy, and the developer can't see them. Ficha's backups stay on the device that saved them.
 

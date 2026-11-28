@@ -5,12 +5,12 @@ import SwiftUI
 
 /// Ficha Dev's debug menu, in the menu under its icon, so Lucas and agents can
 /// try a change in minutes: it loads sample cards, moves Ficha Dev's time
-/// forward, checks for an appearance right away, turns on a capture shortcut
-/// of Ficha Dev's own, opens a second device that syncs through iCloud with
-/// this one, and shows the Welcome page, which Ficha Dev never shows on its
-/// own. The real Ficha has none (`AppVariant.hasDebugMenu`). Its
-/// texts are in English and verbatim, so they stay out of the String Catalog:
-/// the debug menu isn't translated (ADR 0009).
+/// forward, checks for an appearance right away, opens a second device that
+/// syncs through iCloud with this one, and shows the Welcome page, which
+/// Ficha Dev never shows on its own. The real Ficha has none
+/// (`AppVariant.hasDebugMenu`). Its texts are in English and verbatim, so
+/// they stay out of the String Catalog: the debug menu isn't translated
+/// (ADR 0009).
 struct DebugMenu: View {
     let tools: DebugTools
     /// The settings the engine decides with, to say why there's no
@@ -20,9 +20,6 @@ struct DebugMenu: View {
     let timeMoved: () -> Void
     /// Asks right away whether the review panel shows up on its own.
     let checkAppearance: () -> AppearanceCheck?
-    /// The shortcut that opens "Capture…" from any app, which the menu turns
-    /// on and off.
-    let captureShortcut: CaptureShortcutRegistration
     /// What the menu does with the second device and with sync.
     let secondDevice: SecondDeviceActions
     /// Shows the Welcome page as the real Ficha asks it.
@@ -51,12 +48,6 @@ struct DebugMenu: View {
             Divider()
             Button(action: checkForAppearance) {
                 Text(verbatim: "Check for an appearance now")
-            }
-            Divider()
-            Toggle(
-                isOn: Binding(get: { captureShortcut.shortcut == .fichaDev }, set: { turnCaptureShortcut(on: $0) })
-            ) {
-                Text(verbatim: "Capture shortcut \(CaptureShortcut.fichaDev.symbols)")
             }
             Divider()
             Menu {
@@ -157,16 +148,6 @@ struct DebugMenu: View {
     /// How long until `time`, by Ficha Dev's time, in words, to the second.
     private func timeLeft(_ time: Date) -> String {
         inWords(.seconds(time.timeIntervalSince(tools.engine.now)), units: [.hours, .minutes, .seconds])
-    }
-
-    /// Turns Ficha Dev's capture shortcut on, in place of the one that's on,
-    /// or turns the shortcut off, as Settings does, which keeps it for the
-    /// next launches. It's not the real Ficha's, so both apps can run side by
-    /// side.
-    private func turnCaptureShortcut(on: Bool) {
-        attempt("Couldn't turn on the capture shortcut") {
-            try captureShortcut.change(to: on ? .fichaDev : nil, fallback: captureShortcut.shortcut)
-        }
     }
 
     /// Does `action`, and when it fails, says why in an alert headed by

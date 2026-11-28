@@ -1,18 +1,12 @@
 import Foundation
 
-/// Whether a capture's text repeats `text`, which is another capture's text or
-/// a card's front: they're the same once their surrounding spaces and line
-/// breaks are trimmed, ignoring case, accents, superscripts and subscripts, so
-/// “H2O” repeats “H₂O”. In Spanish, ñ is a letter of its own and not an n
-/// with an accent, so “año” doesn't repeat “ano”.
-public func repeats(_ captureText: String, _ text: String) -> Bool {
-    comparable(captureText) == comparable(text)
-}
-
-/// `text`, another capture's text, a card's front or one of an imported
-/// card's tags, as `repeats` compares it, for finding the duplicates among
-/// many at once: two texts repeat each other when their keys are the same,
-/// as “banderas” and “Banderas” do (#229).
+/// `text`, a card's front or one of an imported card's tags, as the duplicate
+/// rule compares it, for finding the duplicates among many at once: two
+/// texts repeat each other when their keys are the same, once their
+/// surrounding spaces and line breaks are trimmed, ignoring case, accents,
+/// superscripts and subscripts, so “H2O” repeats “H₂O” and “banderas”
+/// repeats “Banderas” (#229). In Spanish, ñ is a letter of its own and not an
+/// n with an accent, so “año” doesn't repeat “ano”.
 public func duplicateKey(_ text: String) -> String {
     comparable(text)
 }

@@ -1,10 +1,10 @@
 import FichaCore
 import SwiftUI
 
-/// A text the user wrote, a card's side or source, or a capture's text, note
-/// or source, on as many lines as it needs, unless a line limit says
-/// otherwise, and aligned at the side it starts reading from, as
-/// `alignedAsItReads(_:)` says. It takes the width it's offered.
+/// A text the user wrote, a card's side, source or flag's note, on as many
+/// lines as it needs, unless a line limit says otherwise, and aligned at the
+/// side it starts reading from, as `alignedAsItReads(_:)` says. It takes the
+/// width it's offered.
 struct TextAsItReads: View {
     let text: String
 

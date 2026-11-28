@@ -25,9 +25,9 @@ struct RenamingDecksTests {
         "renaming a deck moves it with the decks inside it and their cards, each card keeping its progress, its review log and its tags"
     )
     func renamingADeck() throws {
-        let gioconda = try approveInDeck("La Gioconda", deck: "Arte::Pintura", tags: ["italia"], in: engine)
-        try approveInDeck("La Piedad", deck: "Arte", in: engine)
-        try approveInDeck("Coliseo", deck: "Historia", in: engine)
+        let gioconda = try newCardInDeck("La Gioconda", deck: "Arte::Pintura", tags: ["italia"], in: engine)
+        try newCardInDeck("La Piedad", deck: "Arte", in: engine)
+        try newCardInDeck("Coliseo", deck: "Historia", in: engine)
         try engine.makeDeck(named: "Arte::Escultura")
         try engine.climb(gioconda, goods: 2, movingForward: time)
         let log = try engine.reviewLog()
@@ -55,9 +55,9 @@ struct RenamingDecksTests {
         "renaming a deck onto one that exists joins them, the deck there keeping what it has of its own, its switch and its choice to sync too, and so for each deck inside it"
     )
     func renamingADeckOntoOneThatExists() throws {
-        try approveInDeck("La Gioconda", deck: "Pinturas::Óleo", in: engine)
-        try approveInDeck("Guernica", deck: "Pinturas", in: engine)
-        try approveInDeck("La Piedad", deck: "Arte::Escultura", in: engine)
+        try newCardInDeck("La Gioconda", deck: "Pinturas::Óleo", in: engine)
+        try newCardInDeck("Guernica", deck: "Pinturas", in: engine)
+        try newCardInDeck("La Piedad", deck: "Arte::Escultura", in: engine)
         try engine.makeDeck(named: "Arte::Pintura")
         try engine.setColor(.purple, ofDeck: "Arte::Pintura")
         try engine.setAside(deck: "Arte::Pintura")
@@ -86,8 +86,8 @@ struct RenamingDecksTests {
         "a deck moves inside another, onto the deck it sits inside, and to the top, and one already there stays as it is"
     )
     func movingADeck() throws {
-        try approveInDeck("La Gioconda", deck: "Arte::Pintura::Óleo", in: engine)
-        try approveInDeck("Coliseo", deck: "Historia", in: engine)
+        try newCardInDeck("La Gioconda", deck: "Arte::Pintura::Óleo", in: engine)
+        try newCardInDeck("Coliseo", deck: "Historia", in: engine)
 
         #expect(try engine.moveDeck("Arte::Pintura", into: "Historia") == "Historia::Pintura")
         #expect(try engine.moveDeck("Historia::Pintura", into: nil) == "Pintura")
@@ -103,8 +103,8 @@ struct RenamingDecksTests {
         "a rename is refused for Default, a deck that isn't there, a blank name, Default's name, the deck inside itself or a deck inside it, and a move inside Default"
     )
     func renamingRefuses() throws {
-        try approveInDeck("petricor", in: engine)
-        try approveInDeck("La Gioconda", deck: "Arte::Pintura", in: engine)
+        try newCardInDeck("petricor", in: engine)
+        try newCardInDeck("La Gioconda", deck: "Arte::Pintura", in: engine)
         let decks = try engine.decks()
 
         #expect(throws: EngineError.defaultDeckStays) { try engine.renameDeck(Deck.defaultName, to: "Varios") }

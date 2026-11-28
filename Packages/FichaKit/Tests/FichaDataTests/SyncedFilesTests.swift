@@ -115,6 +115,7 @@ final class SyncedFilesTests {
         #expect(panel.images[bird] == nil)
         #expect(panel.sounds[song] == nil)
         #expect(window.images[bird] == nil)
+        #expect(window.tileImages.image(bird) == nil)
         #expect(window.sounds[song] == nil)
 
         try await iPhone.syncNow()
@@ -123,12 +124,13 @@ final class SyncedFilesTests {
             .reviewNow, with: iPhone.engine.reviewNow(.defaults), settings: .defaults)
 
         #expect(try window.images[bird]?.get() == mac.engine.image(bird))
+        #expect(try window.tileImages.image(bird)?.get() == mac.engine.image(bird))
         #expect(try window.sounds[song]?.get().data == mac.engine.sound(song))
         #expect(try panelOnceThere.images[bird]?.get() == mac.engine.image(bird))
         #expect(try panelOnceThere.sounds[song]?.get().data == mac.engine.sound(song))
     }
 
-    // A capture comes in on the Mac while it fetches, so a change waits to
+    // A card comes in on the Mac while it fetches, so a change waits to
     // go up when the fetch ends. Once that one goes too, the next fetch ends
     // in sync, and the next send deletes the image.
     @Test(
@@ -144,7 +146,7 @@ final class SyncedFilesTests {
 
         try mac.sync.sendWhatChanged(to: mac.iCloud)
         try await mac.iCloud.sendChanges()
-        try mac.engine.newCapture("petricor")
+        try mac.engine.create(card(.word, front: "petricor", back: "El olor de la lluvia."))
         try await mac.iCloud.fetchChanges()
         try await mac.iCloud.sendChanges()
 

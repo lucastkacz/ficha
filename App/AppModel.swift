@@ -83,6 +83,11 @@ final class AppModel {
     /// there (`CardsWindowState.askToAddFichaDeck(_:)`, #458): nil while
     /// none waits.
     var fichaDeckToAdd: FichaDeck?
+    /// The deck's `.ficha` Finder opened Ficha with, which opens the Cards
+    /// window, until the window takes it, at once, for its state to read it
+    /// and ask How fast? for its deck as soon as nothing's open there
+    /// (`CardsWindowState.openDeck(_:)`, #554): nil while none waits.
+    var deckFileToOpen: URL?
     /// Whether `readFichaDecks()` reads Ficha's decks from the app's
     /// resources: always in the app. `make render`, whose app has no bundle
     /// of its own, turns it off, and gives a picture's windows the decks
@@ -122,7 +127,7 @@ final class AppModel {
                 // So a check can tell, from the log, how soon the menu shows
                 // what the CLI changed.
                 if let progress {
-                    logger.debug("Counted again after a change: \(progress.inInbox) in the inbox")
+                    logger.debug("Counted again after a change: \(progress.due) due")
                 }
             }
         }
@@ -141,20 +146,6 @@ final class AppModel {
                 sync?.read()
             }
         }
-    }
-
-    /// Saves a capture in the inbox, as the capture window's fields hold it,
-    /// unless it repeats a card or a capture: then the result says what it
-    /// repeats, for Lucas to expand or ignore it. The menu counts it when the
-    /// engine says the database changed.
-    func capture(text: String, note: String, source: String) throws(EngineError) -> CaptureResult {
-        try engine.capture(text: text, note: note, source: source)
-    }
-
-    /// Saves a capture that repeats a card or a capture, which Lucas chose to
-    /// expand: attached to the card, or next to the capture.
-    func expand(text: String, note: String, source: String) throws(EngineError) {
-        try engine.expand(text: text, note: note, source: source)
     }
 
     /// Starts a review now: the cards it brings, for the review panel to go
@@ -202,10 +193,10 @@ final class AppModel {
     /// scheduling settings and the active hours he set, remembering the deck
     /// he last added a card to, as this Mac's preferences keep it: what he
     /// does in it goes through the state. It reads them before the window's
-    /// first layout, so the table is there for it: the split view opens the
-    /// table's pane at its ideal width only then, and at its least otherwise
-    /// (#391). The window reads them again as it starts listening for
-    /// changes.
+    /// first layout, so the opening deck's grid is there for it: the split view
+    /// opens the middle pane at its ideal width only then, and at its least
+    /// otherwise (#391). The window reads them again as it starts listening
+    /// for changes.
     func openCardsWindow() -> CardsWindowState {
         var state = engine.openCardsWindow(
             with: settings.scheduler, activeHours: settings.activeHours, lastDeckAddedTo: Preferences.lastDeckAddedTo)
@@ -236,8 +227,9 @@ final class AppModel {
     /// puts every file of `App/` without its folders; or, when they lack it,
     /// where it would be, for the engine to say it's missing.
     private static func fileOfFichaDeck(_ deck: FichaDeck) -> URL {
-        Bundle.main.url(forResource: deck.fileName, withExtension: "zip")
-            ?? (Bundle.main.resourceURL ?? Bundle.main.bundleURL).appending(path: "\(deck.fileName).zip")
+        let name = "\(deck.fileName).\(DeckFile.fileExtension)"
+        return Bundle.main.url(forResource: name, withExtension: nil)
+            ?? (Bundle.main.resourceURL ?? Bundle.main.bundleURL).appending(path: name)
     }
 
     /// The engine's time: the system's, or, in Ficha Dev, the time its debug

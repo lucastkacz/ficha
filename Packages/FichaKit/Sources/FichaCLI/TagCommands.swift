@@ -3,27 +3,28 @@ import FichaCore
 import FichaData
 import Foundation
 
-// The `ficha` CLI's control of tags (ADR 0022): `ficha tags` lists every tag
-// as All Tags does, and each of `ficha tag`'s commands makes one change
-// through the engine's actions, as the Cards window does, so it syncs, and
-// prints what it changed. None asks first: the refine session asks Lucas. A
-// tag only labels its cards (ADR 0024): setting aside and prioritizing are a
-// deck's, and `ficha tag convert-to-decks` turns the tags that said where
-// Lucas's cards lived before decks into decks, once (`TagsIntoDecks.swift`).
+// The `ficha` CLI's control of tags (ADR 0022), which the database keeps and
+// the apps no longer show (#538): `ficha tags` lists every tag, and each of
+// `ficha tag`'s commands makes one change through the engine's actions, so
+// it syncs, and prints what it changed. None asks first: an agent runs it
+// only in a session where Lucas asked for it (`CLAUDE.md`). A tag only labels
+// its cards (ADR 0024): setting aside and prioritizing are a deck's, and
+// `ficha tag convert-to-decks` turns the tags that said where Lucas's cards
+// lived before decks into decks, once (`TagsIntoDecks.swift`).
 
 /// `ficha tags`: lists every tag.
 struct TagsCommand: EngineCommand {
     static let configuration = CommandConfiguration(
         commandName: "tags",
-        abstract: "List every tag, as All Tags in the Cards window does, with its counts and what it has of its own.",
+        abstract: "List every tag, with its counts and what it has of its own.",
         discussion: """
             Tags come in the order a tree lists them, each tag inside another right after it. Each says its whole \
             name in "name", with "::" between a tag and a tag inside it, as in "economía::Argentina"; in "cards", \
-            how many cards it lists when you choose it, those with a tag inside it too, buried ones left out; in \
+            how many cards carry it, those with a tag inside it too, those set aside on their own left out; in \
             "due", how many of those are due now and in your reviews, which those of a set-aside deck never are; \
-            in "pinned" whether it's pinned to the sidebar, and in "pinPlace" its place among the pinned tags, \
-            counted from 0, left out while it isn't; and its own "color" and "emoji", left out when it has none. \
-            `ficha tag` changes them.
+            in "pinned" whether it's pinned, and in "pinPlace" its place among the pinned tags, counted from 0, \
+            left out while it isn't; and its own "color" and "emoji", left out when it has none. `ficha tag` \
+            changes them.
             """
     )
 
@@ -39,7 +40,7 @@ struct TagCommand: ParsableCommand {
         abstract: "Change your tags, one change a command, and print what changed.",
         discussion: """
             Name a tag by its whole name, as `ficha tags` prints it, with "::" between a tag and a tag inside it. \
-            Each change syncs to your other devices, as the Cards window's does, and none asks first.
+            Each change syncs to your other devices, and none asks first.
             """,
         subcommands: [
             RenameTagCommand.self, DeleteTagsCommand.self, ClearUnusedTagsCommand.self, PinTagsCommand.self,
@@ -114,11 +115,11 @@ struct ClearUnusedTagsCommand: EngineCommand {
     }
 }
 
-/// `ficha tag pin`: pins tags to the sidebar.
+/// `ficha tag pin`: pins tags.
 struct PinTagsCommand: EngineCommand {
     static let configuration = CommandConfiguration(
         commandName: "pin",
-        abstract: "Pin tags to the Cards window's sidebar, and print the pinned tags in their order.",
+        abstract: "Pin tags, in an order of their own, and print the pinned tags in their order.",
         discussion: """
             They go next to each other, in the order given: after the pinned tags, where those already pinned stay, \
             or with --at, at that place among the other pinned tags, counted from 0, where those already pinned \
@@ -145,12 +146,12 @@ struct PinTagsCommand: EngineCommand {
     }
 }
 
-/// `ficha tag unpin`: unpins a tag from the sidebar.
+/// `ficha tag unpin`: unpins a tag.
 struct UnpinTagCommand: EngineCommand {
     static let configuration = CommandConfiguration(
         commandName: "unpin",
-        abstract: "Unpin a tag from the Cards window's sidebar, and print the pinned tags in their order.",
-        discussion: "It stays in All Tags, with its cards."
+        abstract: "Unpin a tag, and print the pinned tags in their order.",
+        discussion: "It stays in `ficha tags`, with its cards."
     )
 
     @Argument(help: "The tag's whole name, as `ficha tags` prints it.")

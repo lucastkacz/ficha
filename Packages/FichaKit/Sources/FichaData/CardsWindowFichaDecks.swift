@@ -4,7 +4,7 @@ import Foundation
 // The Cards window's Ficha's Decks (#458): a sidebar section after Your Decks
 // lists the decks of Ficha's the user hasn't added (`FichaDecks.swift`), each
 // with its emoji, name and how many cards it holds, until all are added.
-// Choosing one shows it in the table's and the detail's place: its emoji,
+// Choosing one shows it in the grid's and the detail's place: its emoji,
 // name and "40 cards · one of Ficha's decks", its first card, front and
 // back, and Add Deck…, which asks How fast? for it before it comes in
 // (`HowFast.swift`). Start adds it, sets the pace and its place, and the
@@ -33,7 +33,7 @@ extension CardsWindowState {
     }
 
     /// The one of Ficha's decks the sidebar chose, as its file holds it,
-    /// which the window shows in the table's and the detail's place, with its
+    /// which the window shows in the grid's and the detail's place, with its
     /// first card's images among the images it shows (`images`): nil while
     /// the sidebar chose something else.
     public var shownFichaDeck: FichaDeckFile? {
@@ -52,13 +52,13 @@ extension CardsWindowState {
     public mutating func askToAddFichaDeck() {
         guard let file = shownFichaDeck else { return }
         do throws(EngineError) {
-            let cards = try engine.cardsForHowFast(adding: file)
+            let cards = try engine.cardsForHowFast(adding: file.file)
             let settings = try engine.cardsWindowQueueSettings(activeHours: activeHours)
             question = .howFast(
                 HowFast(
-                    about: [file.deck.name], fichaDeck: file.deck, line: .fichaDeck(cardCount: cards.cardCount),
-                    amongTopDecks: listedTopDecks, cards: cards.inReviews, settings: settings, now: engine.now,
-                    calendar: engine.calendar))
+                    about: [file.deck.name], fromFile: .fichaDeck(file.deck), emoji: file.emoji,
+                    line: .fichaDeck(cardCount: cards.cardCount), amongTopDecks: listedTopDecks,
+                    cards: cards.inReviews, settings: settings, now: engine.now, calendar: engine.calendar))
         } catch {
             record(error, for: .addFichaDeck(file.deck))
         }
@@ -78,10 +78,13 @@ extension CardsWindowState {
         askForTheFichaDeckAskedToAdd()
     }
 
-    /// Asks How fast? for the one of Ficha's decks the review panel asked
-    /// for (`askToAddFichaDeck(_:)`), as soon as the window can: once the
-    /// app gave it the deck's file, and while it asks nothing else, Lucas
-    /// edits nothing, and no sheet of its own is open. The app's read of the
+    /// Asks How fast? for the deck of the `.ficha` Open Deck… or Finder
+    /// opened meanwhile, as soon as the window can
+    /// (`askForTheDeckFileOpened()`), and else for the one of Ficha's decks
+    /// the review panel asked for (`askToAddFichaDeck(_:)`): once the app
+    /// gave it the deck's file, and while it asks nothing else, Lucas edits
+    /// nothing, a deck's description included, and no sheet of its own is
+    /// open. The app's read of the
     /// cards calls it (`read(with:)`), and so does the end of each way out
     /// of a question, an edit, the card form or a sheet, once it's over,
     /// never a read partway through one (`readAgain()`), so the sidebar stays
@@ -90,8 +93,9 @@ extension CardsWindowState {
     /// read asks. It forgets the deck once it asks, or once the user has
     /// added it meanwhile.
     mutating func askForTheFichaDeckAskedToAdd() {
+        askForTheDeckFileOpened()
         guard let deck = fichaDeckAskedToAdd, fichaDeckFiles.contains(where: { $0.deck == deck }),
-            question == nil, editing == nil, cardForm == nil, importing == nil, exporting == nil
+            question == nil, editing == nil, describedDeckName == nil, cardForm == nil
         else { return }
         fichaDeckAskedToAdd = nil
         guard fichaDecksNotAdded.contains(where: { $0.deck == deck }) else { return }
@@ -112,24 +116,22 @@ extension CardsWindowState {
             return false
         }
         sidebarItem = .cards(.deck(deck.name))
-        tagShownFromAllTags = nil
-        chosenDeckTag = nil
         return true
     }
 }
 
 extension Engine {
-    /// What How fast? reads of the cards for `file`, one of Ficha's decks,
-    /// before it comes in, in one read: those in the user's reviews, as the
-    /// planners take them, with the file's cards as they'd come in now, as
-    /// `addFichaDeck(_:)` imports them, but for those that repeat one of the
-    /// user's, which it skips; and how many come in.
-    fileprivate func cardsForHowFast(adding file: FichaDeckFile) throws(EngineError)
+    /// What How fast? reads of the cards for `file`, a deck's `.ficha`, one
+    /// of Ficha's decks or another, before it comes in, in one read: those in
+    /// the user's reviews, as the planners take them, with the file's cards
+    /// as they'd come in now, as `addDeck(_:)` imports them, but for those
+    /// that repeat one of the user's, which it skips; and how many come in.
+    func cardsForHowFast(adding file: DeckFile) throws(EngineError)
         -> (inReviews: CardsInReviews, cardCount: Int)
     {
         let now = time.now
         return try read { db in
-            let coming = try cardsComingIn(file.preview, choosing: file.importChoices, at: now, in: db)
+            let coming = try cardsComingIn(file.preview, at: now, in: db)
             return (inReviews: try cardsThatShowUp(in: db, adding: coming).inReviews, cardCount: coming.count)
         }
     }

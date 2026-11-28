@@ -49,12 +49,17 @@ settings:
     # `FICHA_URL_SCHEME` is the scheme of the links that open each app, as a
     # click on its widget does, which its Info.plist claims, and which the
     # app and the widget read from their Info.plists (`WidgetHandover`).
+    # `FICHA_DECK_HANDLER_RANK` is how each app claims a deck's `.ficha`,
+    # which both open, as their shared Info.plist declares (ADR 0044): the
+    # real Ficha owns it, so a double-click in Finder opens it, and Ficha Dev
+    # is an alternate, which Finder's Open With offers.
     Debug:
       SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG FICHA_DEV
       FICHA_APP_GROUP: $(TeamIdentifierPrefix)com.lucastkacz.ficha.dev
       FICHA_ICLOUD_ENVIRONMENT: Development
       FICHA_PUSH_ENVIRONMENT: development
       FICHA_URL_SCHEME: ficha-dev
+      FICHA_DECK_HANDLER_RANK: Alternate
     # The real Ficha: `make upload` sends it to TestFlight, which installs it
     # in /Applications. Its app, its CLI and its widget run in their
     # sandboxes, sign with the team and share its App Group's folder, where
@@ -66,25 +71,11 @@ settings:
       FICHA_ICLOUD_ENVIRONMENT: Production
       FICHA_PUSH_ENVIRONMENT: production
       FICHA_URL_SCHEME: ficha
+      FICHA_DECK_HANDLER_RANK: Owner
 
 packages:
   FichaKit:
     path: Packages/FichaKit
-
-# zstd's configuration macros, for each target that links FichaData, whose
-# Swift loads zstd's module: FichaKit's `Package.swift` says why, and passes
-# the same ones to its own targets (ADR 0015).
-settingGroups:
-  zstd:
-    GCC_PREPROCESSOR_DEFINITIONS:
-      - $(inherited)
-      - ZSTDLIB_VISIBLE=
-      - ZSTDLIB_HIDDEN=
-      - ZDICTLIB_VISIBLE=
-      - ZDICTLIB_HIDDEN=
-      - ZSTDERRORLIB_VISIBLE=
-      - ZSTDERRORLIB_HIDDEN=
-      - ZSTD_CLEVEL_DEFAULT=3
 
 targets:
   Ficha:
@@ -95,10 +86,6 @@ targets:
         # Its Info.plist goes in through its settings.
         excludes:
           - Info.plist
-      # The instructions for an AI, which the Import sheet copies: the app
-      # bundles the repo's own page, so the two are always the same.
-      - path: docs/instructions-for-an-ai.md
-        buildPhase: resources
     dependencies:
       - package: FichaKit
         product: FichaCore
@@ -129,7 +116,6 @@ targets:
       Debug: Signing.xcconfig
       Release: Signing.xcconfig
     settings:
-      groups: [zstd]
       base:
         # One module name for both apps below, so the code behaves the same in each.
         PRODUCT_MODULE_NAME: Ficha
@@ -207,7 +193,6 @@ targets:
       Debug: Signing.xcconfig
       Release: Signing.xcconfig
     settings:
-      groups: [zstd]
       # Each app's CLI runs in a sandbox of its own, not its app's, which a
       # terminal can't start (ADR 0018): it needs an Info.plist in its binary,
       # with a bundle identifier, the app's with `.cli`. Its entitlements give
@@ -300,7 +285,6 @@ targets:
       Debug: Signing.xcconfig
       Release: Signing.xcconfig
     settings:
-      groups: [zstd]
       base:
         PRODUCT_NAME: FichaWidget
         # Xcode's Info.plist, with Widget/Info.plist's extension point.
@@ -347,7 +331,6 @@ targets:
       - package: FichaKit
         product: FichaData
     settings:
-      groups: [zstd]
       base:
         # One module name, whatever the app's name, as the Mac app's.
         PRODUCT_MODULE_NAME: FichaPhone

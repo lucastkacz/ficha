@@ -1,18 +1,19 @@
 import Foundation
 
-/// Where a card stands: in Lucas's reviews, waiting in the inbox to be fixed,
-/// buried, or set aside with its deck, or a deck its deck sits inside (ADR
-/// 0024). Out of his reviews, each of its ways keeps its `WayStanding`, so it
-/// comes back as it was when it's fixed, unburied, or its deck is no longer
-/// set aside.
+/// Where a card stands: in Lucas's reviews, flagged and waiting in its deck to
+/// be fixed, buried, or set aside with its deck, or a deck its deck sits
+/// inside (ADR 0024). Out of his reviews, each of its ways keeps its
+/// `WayStanding`, so it comes back as it was when it's fixed, unburied, or its
+/// deck is no longer set aside.
 public enum CardStanding: Sendable, Equatable {
     /// In Lucas's reviews: new, or waiting its interval until it's due.
     case inReviews
-    /// Waiting in the inbox to be fixed, as Lucas's flag says.
-    case inInbox(Flag)
-    /// Buried since `at`: out of Lucas's reviews for good, and out of the
-    /// inbox. With the flag it had, if any, since unburying it brings it back
-    /// to the inbox.
+    /// Flagged: out of Lucas's reviews, waiting in its deck to be fixed, as
+    /// his flag says.
+    case flagged(Flag)
+    /// Buried since `at`: out of Lucas's reviews for good, and no longer
+    /// waiting to be fixed. With the flag it had, if any, since unburying it
+    /// brings it back flagged.
     case buried(at: Date, flag: Flag?)
     /// Set aside by these decks, the card's own or decks it sits inside, as
     /// the user set them aside, the outermost first: out of Lucas's reviews
@@ -23,15 +24,15 @@ public enum CardStanding: Sendable, Equatable {
 extension CardStanding {
     /// Where a card with this flag, burial date and set-aside decks, as
     /// `setAsideDecks(of:among:)` picks them, stands, the first of these that
-    /// holds: buried, waiting in the inbox, set aside, or in Lucas's reviews.
-    /// A burial wins over a flag: a flagged card Lucas buries leaves the
-    /// inbox. Both win over set aside, which never hides a card Lucas needs to
+    /// holds: buried, flagged, set aside, or in Lucas's reviews. A burial
+    /// wins over a flag: a flagged card Lucas buries no longer waits to be
+    /// fixed. Both win over set aside, which never hides a card Lucas needs to
     /// fix or brings back one he buried.
     public init(flag: Flag?, buriedAt: Date?, setAsideBy setAsideDecks: [String]) {
         if let buriedAt {
             self = .buried(at: buriedAt, flag: flag)
         } else if let flag {
-            self = .inInbox(flag)
+            self = .flagged(flag)
         } else if !setAsideDecks.isEmpty {
             self = .setAside(by: setAsideDecks)
         } else {

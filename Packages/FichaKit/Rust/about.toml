@@ -7,9 +7,9 @@
 # The licenses Ficha takes, in the order cargo-about picks one from a crate
 # that offers several: MIT first, the shortest, as most crates offer it or
 # Apache-2.0. priority-queue, which fsrs-rs pins, offers LGPL-3.0-or-later or
-# MPL-2.0: Ficha takes MPL-2.0, which an App Store app can link statically, as
-# it takes zstd's BSD license (ADR 0015). LGPL stays out of the list, so a
-# crate that offers only it fails the generation.
+# MPL-2.0: Ficha takes MPL-2.0, which an App Store app can link statically.
+# LGPL stays out of the list, so a crate that offers only it fails the
+# generation.
 accepted = [
     "MIT",
     "BSD-3-Clause",

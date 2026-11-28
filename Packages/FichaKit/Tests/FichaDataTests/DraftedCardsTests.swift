@@ -1,0 +1,475 @@
+import AVFoundation
+import FichaCore
+import Foundation
+import Testing
+
+// For the images and sounds the engine keeps, as ImageTests and SoundTests
+// read them.
+@testable import FichaData
+
+/// Tests on the images and sounds an agent puts on cards through the `ficha`
+/// CLI: adding and fixing cards with a file for a side, given by its path or
+/// by the name Ficha holds it by, and putting one on, or taking one off, a
+/// side of any card.
+final class DraftedCardsTests {
+    let time = ManualTimeSource(now: Date(timeIntervalSince1970: 1_760_000_000))
+    /// A folder of the test's own, for the files it gives by their path.
+    let folder = URL.temporaryDirectory.appending(
+        path: "FichaDraftedCardsTests-\(UUID().uuidString)", directoryHint: .isDirectory)
+
+    init() throws {
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    }
+
+    deinit {
+        try? FileManager.default.removeItem(at: folder)
+    }
+
+    @Test(
+        "adding cards puts on each side the image or the sound a file holds, shrunk or converted", .bug(id: 540))
+    func addingPutsFilesFromTheirPaths() async throws {
+        let engine = try Engine(location: .inMemory, time: time)
+        let photo = try file("soprano.png", holding: picture(width: 2400, height: 1200, red: 0.8))
+        let excerpt = try file("coloratura.wav", holding: tone(seconds: 1, hertz: 440))
+
+        let result = try await engine.add([
+            draft(
+                .word, front: "coloratura", back: "Los ornamentos rápidos del canto.",
+                frontImage: .put(.file(photo)), backSound: .put(.file(excerpt))),
+            draft(.concept, front: "aria", back: "Una canción de una ópera."),
+        ])
+
+        let cards = try engine.cards()
+        #expect(result == .added(cards))
+        #expect(cards.map(\.front) == ["coloratura", "aria"])
+        let image = try #require(cards[0].frontImage)
+        let sound = try #require(cards[0].backSound)
+        #expect(cards[0].backImage == nil && cards[0].frontSound == nil)
+        #expect(cards[1].images.isEmpty && cards[1].sounds.isEmpty)
+        let size = try pixelSize(of: engine.image(image))
+        #expect(size.width == 1600 && size.height == 800)
+        #expect(try soundFormat(of: engine.sound(sound)).id == kAudioFormatMPEG4AAC)
+        #expect(try engine.keptImages() == [image])
+        #expect(try engine.keptSounds() == [sound])
+    }
+
+    // As an agent copies a card from `ficha cards`, which names its files.
+    @Test(
+        "adding a card puts on a side an image or a sound Ficha holds, by its name, and refuses one it doesn't",
+        .bug(id: 540))
+    func addingPutsFilesByTheirNames() async throws {
+        let engine = try Engine(location: .inMemory, time: time)
+        let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))
+        let la = try await addTone(440, to: engine)
+        let unknown = try #require(SoundName(rawValue: String(repeating: "a", count: 64) + ".m4a"))
+
+        await #expect(throws: EngineError.noFileNamed(unknown.rawValue)) {
+            try await engine.add([
+                draft(
+                    nil, front: "", back: "Un hornero.", frontImage: .put(.image(bird)),
+                    backSound: .put(.sound(unknown)))
+            ])
+        }
+        let result = try await engine.add([
+            draft(nil, front: "", back: "Un hornero.", frontImage: .put(.image(bird)), backSound: .put(.sound(la)))
+        ])
+
+        let cards = try engine.cards()
+        #expect(result == .added(cards))
+        #expect(cards.map(\.front) == [""])
+        #expect(cards.map(\.frontImage) == [bird])
+        #expect(cards.map(\.backSound) == [la])
+    }
+
+    @Test(
+        "fixing a card keeps the images and sounds it leaves out, takes off those it gives as null, and puts those it gives"
+    )
+    func fixingChangesTheFilesItGives() async throws {
+        let engine = try Engine(location: .inMemory, time: time)
+        let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))
+        let nest = try engine.addImage(picture(width: 800, height: 600, red: 0.3))
+        let la = try await addTone(440, to: engine)
+        let mi = try await addTone(330, to: engine)
+        let hornero = try engine.create(
+            card(
+                .word, front: "hornero", back: "Un pájaro.", frontImage: bird, backImage: nest, frontSound: la,
+                backSound: mi))
+        try engine.flag(hornero.id, note: note("Poner su canto"))
+        let song = try file("canto.wav", holding: tone(seconds: 1, hertz: 523))
+        time.advance(by: 60)
+
+        let fixed = try await engine.fix(
+            hornero.id,
+            with: draft(
+                .word, front: "hornero", back: "Un pájaro que hace su nido de barro.", backImage: .remove,
+                backSound: .put(.file(song))))
+
+        #expect(fixed.back == "Un pájaro que hace su nido de barro.")
+        #expect(fixed.frontImage == bird && fixed.backImage == nil)
+        #expect(fixed.frontSound == la)
+        let canto = try #require(fixed.backSound)
+        #expect(![la, mi].contains(canto))
+        #expect(fixed.flag == nil)
+        #expect(fixed.editedAt == time.now)
+        #expect(try engine.keptImages() == [bird])
+        #expect(try engine.keptSounds() == [la, canto])
+    }
+
+    // `ficha cards` names a card's files, and a side with only a file has an
+    // empty text.
+    @Test("fixing a card copied with its files' names keeps them, and a side with only an image keeps its empty text")
+    func fixingACopiedCardKeepsItsFiles() async throws {
+        let engine = try Engine(location: .inMemory, time: time)
+        let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))
+        let la = try await addTone(440, to: engine)
+        let hornero = try engine.create(card(nil, front: "", back: "Un hornero.", frontImage: bird, backSound: la))
+        try engine.flag(hornero.id, note: note("Ponerle una etiqueta"))
+        time.advance(by: 60)
+
+        let fixed = try await engine.fix(
+            hornero.id,
+            with: draft(
+                nil, front: "", back: "Un hornero.", tags: ["aves"], frontImage: .put(.image(bird)),
+                backSound: .put(.sound(la))))
+
+        #expect(fixed.tags == ["aves"])
+        #expect(fixed.frontImage == bird && fixed.backSound == la)
+        #expect(fixed.editedAt == nil)
+        #expect(try engine.keptImages() == [bird])
+        #expect(try engine.keptSounds() == [la])
+    }
+
+    @Test("putting a file on a side of a card tells an image from a sound, a video's too, and replaces the side's own")
+    func puttingAFileOnASideTellsItsKind() async throws {
+        let engine = try Engine(location: .inMemory, time: time)
+        let nest = try engine.addImage(picture(width: 800, height: 600, red: 0.3))
+        let hornero = try engine.create(card(.word, front: "hornero", back: "Un pájaro.", backImage: nest))
+        try engine.flag(hornero.id, note: note("Poner su canto"))
+        let photo = try file("hornero.png", holding: picture(width: 1200, height: 900, red: 0.8))
+        let song = try file("canto.mov", holding: await video(seconds: 2, withSoundOf: 523))
+        time.advance(by: 60)
+
+        let withPhoto = try await engine.attach(.file(photo), to: .back, of: hornero.id)
+        let withSong = try await engine.attach(.file(song), to: .front, of: hornero.id)
+
+        let photoName = try #require(withPhoto.backImage)
+        let songName = try #require(withSong.frontSound)
+        #expect(photoName != nest)
+        #expect(withSong.backImage == photoName)
+        #expect(withSong.frontImage == nil && withSong.backSound == nil)
+        #expect(withSong.back == "Un pájaro.")
+        #expect(withSong.flag?.note == "Poner su canto")
+        #expect(withSong.editedAt == time.now)
+        #expect(try soundFormat(of: engine.sound(songName)).id == kAudioFormatMPEG4AAC)
+        #expect(try engine.keptImages() == [photoName])
+        #expect(try engine.keptSounds() == [songName])
+    }
+
+    @Test("putting an image or a sound Ficha holds on a side, by its name, works on a buried card, which stays buried")
+    func puttingAFileByItsNameOnABuriedCard() async throws {
+        let engine = try Engine(location: .inMemory, time: time)
+        let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))
+        let la = try await addTone(440, to: engine)
+        let hornero = try engine.create(card(.word, front: "hornero", back: "Un pájaro."))
+        try engine.bury(hornero.id)
+
+        try await engine.attach(.image(bird), to: .front, of: hornero.id)
+        let buried = try await engine.attach(.sound(la), to: .back, of: hornero.id)
+
+        #expect(buried.frontImage == bird && buried.backSound == la)
+        #expect(buried.buriedAt != nil)
+    }
+
+    @Test("taking a side's image or sound off a card keeps the rest of it, and the file goes once no card uses it")
+    func takingAFileOffASide() async throws {
+        let engine = try Engine(location: .inMemory, time: time)
+        let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))
+        let la = try await addTone(440, to: engine)
+        let hornero = try engine.create(
+            card(.word, front: "hornero", back: "Un pájaro.", frontImage: bird, backSound: la))
+        try engine.create(card(nil, front: "¿Qué pájaro canta así?", back: "El hornero.", frontSound: la))
+        time.advance(by: 60)
+
+        let withoutImage = try engine.detach(.image, from: .front, of: hornero.id)
+        let withoutSound = try engine.detach(.sound, from: .back, of: hornero.id)
+
+        #expect(withoutImage.frontImage == nil && withoutImage.backSound == la)
+        #expect(withoutSound.images.isEmpty && withoutSound.sounds.isEmpty)
+        #expect(withoutSound.front == "hornero" && withoutSound.back == "Un pájaro.")
+        #expect(withoutSound.editedAt == time.now)
+        #expect(try engine.keptImages().isEmpty)
+        #expect(try engine.keptSounds() == [la])
+    }
+
+    @Test("taking off a file a side doesn't have, or all a side holds, is refused, and the card stays as it was")
+    func takingOffWhatIsntThereOrAllASideHolds() async throws {
+        let engine = try Engine(location: .inMemory, time: time)
+        let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))
+        let hornero = try engine.create(card(nil, front: "", back: "Un hornero.", frontImage: bird))
+
+        #expect(throws: EngineError.noFileOnSide(hornero.id, .sound, .front)) {
+            try engine.detach(.sound, from: .front, of: hornero.id)
+        }
+        #expect(throws: EngineError.noFileOnSide(hornero.id, .image, .back)) {
+            try engine.detach(.image, from: .back, of: hornero.id)
+        }
+        #expect(throws: EngineError.sideLeftBlank(hornero.id)) {
+            try engine.detach(.image, from: .front, of: hornero.id)
+        }
+        #expect(throws: EngineError.cardNotFound(99)) {
+            try engine.detach(.image, from: .front, of: 99)
+        }
+        #expect(try engine.cards() == [hornero])
+        #expect(try engine.keptImages() == [bird])
+    }
+
+    @Test(
+        "a file that isn't the image or the sound its side's field asks for, or isn't there, is refused, and adds no card",
+        .bug(id: 540))
+    func aFileOfTheWrongKindOrMissingIsRefused() async throws {
+        let engine = try Engine(location: .inMemory, time: time)
+        let la = try await addTone(440, to: engine)
+        let song = try file("canto.wav", holding: tone(seconds: 1, hertz: 523))
+        let photo = try file("hornero.png", holding: picture(width: 800, height: 600, red: 0.8))
+        let missing = folder.appending(path: "nido.jpg")
+        let hornero = { (frontImage: FileChange, backSound: FileChange) in
+            [draft(.word, front: "hornero", back: "Un pájaro.", frontImage: frontImage, backSound: backSound)]
+        }
+
+        await #expect(throws: EngineError.fileNotAnImage("canto.wav")) {
+            try await engine.add(hornero(.put(.file(song)), .keep))
+        }
+        await #expect(throws: EngineError.fileNotAnImage(la.rawValue)) {
+            try await engine.add(hornero(.put(.sound(la)), .keep))
+        }
+        await #expect(throws: EngineError.fileNotASound("hornero.png")) {
+            try await engine.add(hornero(.keep, .put(.file(photo))))
+        }
+        await #expect(throws: EngineError.noSuchFile(missing.path(percentEncoded: false))) {
+            try await engine.add(hornero(.put(.file(missing)), .keep))
+        }
+        await #expect(throws: EngineError.noSuchFile(missing.path(percentEncoded: false))) {
+            try await engine.add(hornero(.keep, .put(.file(missing))))
+        }
+        #expect(try engine.cards().isEmpty)
+        #expect(try engine.keptImages().isEmpty)
+        #expect(try engine.keptSounds() == [la])
+    }
+
+    @Test(
+        "putting a file that's neither an image nor a sound, or isn't there, or on a card that doesn't exist, is refused"
+    )
+    func puttingAFileIsRefused() async throws {
+        let engine = try Engine(location: .inMemory, time: time)
+        let hornero = try engine.create(card(.word, front: "hornero", back: "Un pájaro."))
+        let notes = try file("notas.txt", holding: Data("Hace su nido de barro.".utf8))
+        let photo = try file("hornero.png", holding: picture(width: 800, height: 600, red: 0.8))
+        let missing = folder.appending(path: "nido.jpg")
+
+        await #expect(throws: EngineError.notAnImageOrSound("notas.txt")) {
+            try await engine.attach(.file(notes), to: .front, of: hornero.id)
+        }
+        await #expect(throws: EngineError.noSuchFile(missing.path(percentEncoded: false))) {
+            try await engine.attach(.file(missing), to: .front, of: hornero.id)
+        }
+        await #expect(throws: EngineError.cardNotFound(99)) {
+            try await engine.attach(.file(photo), to: .front, of: 99)
+        }
+        #expect(try engine.cards() == [hornero])
+        #expect(try engine.keptImages().isEmpty)
+    }
+
+    // As in the CLI's sandbox, which lets it read files from the Downloads
+    // folder alone (ADR 0018), and reaches it through a link in its own
+    // container, where `~` leads.
+    @Test(
+        "an engine that takes files from Downloads alone refuses one from elsewhere, and takes one there, through a link too",
+        .bug(id: 540))
+    func filesFromDownloadsAlone() async throws {
+        let downloads = folder.appending(path: "Downloads", directoryHint: .isDirectory)
+        let desktop = folder.appending(path: "Desktop", directoryHint: .isDirectory)
+        let container = folder.appending(path: "Container", directoryHint: .isDirectory)
+        for created in [downloads, desktop, container] {
+            try FileManager.default.createDirectory(at: created, withIntermediateDirectories: true)
+        }
+        try FileManager.default.createSymbolicLink(
+            at: container.appending(path: "Downloads"), withDestinationURL: downloads)
+        let photo = try picture(width: 800, height: 600, red: 0.8)
+        try photo.write(to: desktop.appending(path: "hornero.png"))
+        try photo.write(to: downloads.appending(path: "hornero.png"))
+        let engine = try Engine(location: .inMemory, time: time, cardFilesOnlyIn: downloads)
+        let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.2))
+        let hornero = try engine.create(card(.word, front: "hornero", back: "Un pájaro."))
+
+        await #expect(throws: EngineError.fileNotInDownloads("hornero.png")) {
+            try await engine.attach(.file(desktop.appending(path: "hornero.png")), to: .front, of: hornero.id)
+        }
+        await #expect(throws: EngineError.fileNotInDownloads("hornero.png")) {
+            try await engine.attach(
+                .file(downloads.appending(path: "../Desktop/hornero.png")), to: .front, of: hornero.id)
+        }
+        await #expect(throws: EngineError.fileNotInDownloads("hornero.png")) {
+            try await engine.add([
+                draft(
+                    .word, front: "nido", back: "Lo hace el hornero.",
+                    frontImage: .put(.file(desktop.appending(path: "hornero.png"))))
+            ])
+        }
+        #expect(try engine.cards() == [hornero])
+        #expect(try engine.keptImages() == [bird])
+
+        let fromDownloads = try await engine.attach(
+            .file(downloads.appending(path: "hornero.png")), to: .front, of: hornero.id)
+        let throughTheLink = try await engine.attach(
+            .file(container.appending(path: "Downloads/hornero.png")), to: .back, of: hornero.id)
+        let byItsName = try await engine.add([
+            draft(.word, front: "nido", back: "Lo hace el hornero.", frontImage: .put(.image(bird)))
+        ])
+        let nido = try #require(try engine.cards().last)
+        #expect(fromDownloads.frontImage != nil)
+        #expect(throughTheLink.backImage == fromDownloads.frontImage)
+        #expect(byItsName == .added([nido]))
+        #expect(nido.frontImage == bird)
+    }
+
+    // An add refused is in aRefusedAddKeepsNoneOfItsFiles.
+    @Test("a refused fix keeps none of the files it brought in, and changes nothing", .bug(id: 540))
+    func aRefusedFixKeepsNoneOfItsFiles() async throws {
+        let engine = try Engine(location: .inMemory, time: time)
+        let hornero = try engine.create(card(.word, front: "hornero", back: "Un pájaro."))
+        let photo = try file("hornero.png", holding: picture(width: 800, height: 600, red: 0.8))
+        let withPhoto = draft(.word, front: "hornero", back: "Un pájaro.", frontImage: .put(.file(photo)))
+
+        await #expect(throws: EngineError.cardNotFlagged(hornero.id)) {
+            try await engine.fix(hornero.id, with: withPhoto)
+        }
+        await #expect(throws: EngineError.cardNotFound(99)) {
+            try await engine.fix(99, with: withPhoto)
+        }
+        #expect(try engine.cards() == [hornero])
+        #expect(try engine.keptImages().isEmpty)
+    }
+
+    // " Hornero " repeats hornero by the duplicate rule, and NIDO the nido
+    // before it in the list; barro's back is left blank.
+    @Test(
+        "an add refused for a duplicate front or a blank side adds no card, and keeps none of the files it brought in",
+        .bug(id: 534))
+    func aRefusedAddKeepsNoneOfItsFiles() async throws {
+        let engine = try Engine(location: .inMemory, time: time)
+        let hornero = try engine.create(card(.word, front: "hornero", back: "Un pájaro."))
+        let photo = try file("nido.png", holding: picture(width: 800, height: 600, red: 0.8))
+        let song = try file("canto.wav", holding: tone(seconds: 1, hertz: 440))
+        let nido = draft(
+            .word, front: "nido", back: "Lo hace el hornero.", frontImage: .put(.file(photo)),
+            backSound: .put(.file(song)))
+
+        let repeatsACard = try await engine.add([nido, draft(.word, front: " Hornero ", back: "Otro pájaro.")])
+        let repeatsTheList = try await engine.add([nido, draft(nil, front: "NIDO", back: "Otro nido.")])
+        let imagesAfterDuplicates = try engine.keptImages()
+        let soundsAfterDuplicates = try engine.keptSounds()
+        await #expect(throws: EngineError.blankSideOnNewCard(position: 1)) {
+            try await engine.add([nido, draft(.word, front: "barro", back: " ")])
+        }
+
+        #expect(repeatsACard == .duplicate(position: 1, of: .card(hornero)))
+        #expect(repeatsTheList == .duplicate(position: 1, of: .cardInList(position: 0)))
+        #expect(imagesAfterDuplicates.isEmpty && soundsAfterDuplicates.isEmpty)
+        #expect(try engine.cards() == [hornero])
+        #expect(try engine.keptImages().isEmpty)
+        #expect(try engine.keptSounds().isEmpty)
+    }
+
+    // hornero has the photo and the song, which the refused adds bring in
+    // again from their files, or name by the names Ficha holds them by.
+    @Test(
+        "an add refused for a duplicate front leaves the files a card has, brought in again or named",
+        .bug(id: 534), .bug(id: 540))
+    func aRefusedAddLeavesACardsFiles() async throws {
+        let engine = try Engine(location: .inMemory, time: time)
+        let photo = try file("hornero.png", holding: picture(width: 800, height: 600, red: 0.8))
+        let song = try file("canto.wav", holding: tone(seconds: 1, hertz: 440))
+        let added = try await engine.add([
+            draft(
+                .word, front: "hornero", back: "Un pájaro.", frontImage: .put(.file(photo)),
+                backSound: .put(.file(song)))
+        ])
+        let hornero = try #require(try engine.cards().first)
+        #expect(added == .added([hornero]))
+        let image = try #require(hornero.frontImage)
+        let sound = try #require(hornero.backSound)
+
+        let fromFiles = try await engine.add([
+            draft(
+                .word, front: "Hornero", back: "Otro pájaro.", frontImage: .put(.file(photo)),
+                backSound: .put(.file(song)))
+        ])
+        let byName = try await engine.add([
+            draft(
+                .word, front: "hornero ", back: "Otro pájaro.", frontImage: .put(.image(image)),
+                backSound: .put(.sound(sound)))
+        ])
+
+        #expect(fromFiles == .duplicate(position: 0, of: .card(hornero)))
+        #expect(byName == .duplicate(position: 0, of: .card(hornero)))
+        #expect(try engine.cards() == [hornero])
+        #expect(try engine.keptImages() == [image])
+        #expect(try engine.keptSounds() == [sound])
+    }
+
+    @Test(
+        "a side's file, as an agent writes it, is a name Ficha holds when it reads as one, and a path otherwise",
+        .bug(id: 540))
+    func aFilesTextIsANameOrAPath() throws {
+        let image = try #require(ImageName(rawValue: String(repeating: "a", count: 64) + ".jpg"))
+        let sound = try #require(SoundName(rawValue: String(repeating: "b", count: 64) + ".m4a"))
+
+        #expect(FileForSide(image.rawValue) == .image(image))
+        #expect(FileForSide(sound.rawValue) == .sound(sound))
+        #expect(path(of: FileForSide("/Users/lucas/Música/canto.mp3")) == "/Users/lucas/Música/canto.mp3")
+        #expect(
+            path(of: FileForSide("~/Música/canto.mp3"))
+                == URL.homeDirectory.appending(path: "Música/canto.mp3").path(percentEncoded: false))
+        #expect(
+            path(of: FileForSide("Música/canto.mp3"))
+                == URL.currentDirectory().appending(path: "Música/canto.mp3").path(percentEncoded: false))
+        #expect(path(of: FileForSide("\(image.rawValue).png")) != nil)
+        #expect(FileForSide(" ") == nil)
+    }
+
+    /// The path of the file on the Mac `file` gives, or nil when it gives
+    /// none, or a name.
+    private func path(of file: FileForSide?) -> String? {
+        guard case .file(let url) = file else { return nil }
+        return url.path(percentEncoded: false)
+    }
+
+    /// Writes `data` to a file named `name` in the test's folder, and returns
+    /// where it is, to give a file by its path.
+    private func file(_ name: String, holding data: Data) throws -> URL {
+        let file = folder.appending(path: name)
+        try data.write(to: file)
+        return file
+    }
+}
+
+/// A card for a test to add or fix, as the `ficha` CLI reads it: it always
+/// has a front and a back, and no tags or source unless the test gives them,
+/// and changes no side's image or sound, nor Both ways, unless the test says
+/// so. Its type is named as the CLI reads it.
+func draft(
+    _ type: CardType?,
+    front: String,
+    back: String,
+    tags: [String] = [],
+    source: String? = nil,
+    frontImage: FileChange = .keep,
+    backImage: FileChange = .keep,
+    frontSound: FileChange = .keep,
+    backSound: FileChange = .keep,
+    bothWays: Bool? = nil
+) -> CardDraft {
+    CardDraft(
+        type: type?.writtenName, front: front, back: back, tags: tags, source: source, frontImage: frontImage,
+        backImage: backImage, frontSound: frontSound, backSound: backSound, bothWays: bothWays)
+}

@@ -28,7 +28,7 @@ struct CardNotificationTests {
     )
     func answersFromCardNotificationsGoIntoTheReviewLog() throws {
         let serendipia = try meetCard("serendipia", dueAt: try at(10, 0))
-        let ubuntu = try approveCard("ubuntu", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
         time.move(to: try at(10, 0))
         let appearance = try nextAppearance()
 
@@ -275,12 +275,12 @@ struct CardNotificationTests {
         NotifiedAppearance(try #require(try engine.upcomingAppearances(settings).first))
     }
 
-    /// Approves a card with this front and meets it, an hour before `due`, so
+    /// Makes a card with this front and meets it, an hour before `due`, so
     /// that it's due then, after the first step's wait. Each card is met after
     /// the ones before it, so they come due in order.
     @discardableResult
     private func meetCard(_ front: String, dueAt due: Date) throws -> Card {
-        let card = try approveCard(front, in: engine)
+        let card = try newCard(front, in: engine)
         time.move(to: due - hours(1))
         try engine.meet(card)
         return card

@@ -5,7 +5,7 @@ import Testing
 
 /// Tests on a deck's color and emoji in the Cards window (ADR 0024): Color
 /// and Emoji… in a deck's menu, Default's too, the same in the sidebar and in
-/// the Actions menu above the card list, and the sidebar's decks showing
+/// the Actions menu above the grid, and the sidebar's decks showing
 /// them, their own or the nearest parent's, on the default scheduler.
 struct CardsWindowDeckLooksTests {
     let engine: Engine
@@ -21,8 +21,8 @@ struct CardsWindowDeckLooksTests {
         "a deck's Color submenu, Default's too, offers None and Finder's seven colors, ticks the deck's own, and gives it to the deck, whose decks inside take it"
     )
     func aDecksColorSubmenu() throws {
-        try approveInDeck("petricor", in: engine)
-        try approveInDeck("La Gioconda", deck: "Arte::Pintura", in: engine)
+        try newCardInDeck("petricor", in: engine)
+        try newCardInDeck("La Gioconda", deck: "Arte::Pintura", in: engine)
         var window = openWindow()
         let colors: [TagColor?] = [nil, .red, .orange, .yellow, .green, .blue, .purple, .gray]
         #expect(window.menu(forDeck: "Arte")?.colorItems.map(\.color) == colors)
@@ -42,12 +42,13 @@ struct CardsWindowDeckLooksTests {
         #expect(window.failure == nil)
     }
 
-    // The sheet says why while OK refuses, so nothing fails.
+    // The sheet says why while OK refuses, so nothing fails. Two flags are two
+    // emoji, though each is two of Unicode's regional indicators.
     @Test(
-        "Emoji… on a deck asks in the emoji sheet, which starts with the deck's own, refuses what isn't one emoji, and takes an empty field as none"
+        "Emoji… on a deck asks in the emoji sheet, which starts with the deck's own, refuses what isn't one emoji, two flags too, and takes an empty field, or one of spaces, as none"
     )
     func emojiOnADeck() throws {
-        try approveInDeck("La Gioconda", deck: "Arte::Pintura", in: engine)
+        try newCardInDeck("La Gioconda", deck: "Arte::Pintura", in: engine)
         var window = openWindow()
         window.askForEmoji(onDeck: "Arte")
         #expect(window.question == .deckEmoji(Deck(name: "Arte")))
@@ -55,24 +56,27 @@ struct CardsWindowDeckLooksTests {
         window.chooseEmoji("arte")
         #expect(window.question == .deckEmoji(Deck(name: "Arte")))
         #expect(window.emojiEntry("arte") == .refused(.notOneEmoji))
+        #expect(window.emojiEntry("🇦🇷🇺🇾") == .refused(.notOneEmoji))
+        #expect(window.emojiEntry("") == .removal)
+        #expect(window.emojiEntry(" ") == .removal)
         window.chooseEmoji("🎨")
         #expect(window.question == nil)
         #expect(window.deckRows.everyRow.map(\.deck.shownEmoji) == ["🎨", "🎨"])
 
         window.askForEmoji(onDeck: "Arte")
         #expect(window.question == .deckEmoji(Deck(name: "Arte", emoji: "🎨")))
-        window.chooseEmoji("")
+        window.chooseEmoji(" ")
         #expect(window.deckRows.everyRow.map(\.deck.shownEmoji) == [nil, nil])
         window.askForEmoji(onDeck: "Música")
         #expect(window.question == nil)
         #expect(window.failure == nil)
     }
 
-    // The Actions menu above the card list is the keyboard's way to a deck's
-    // menu, so it offers the same Color submenu.
-    @Test("the deck the sidebar chose offers the same menu above the card list, with its color ticked")
+    // The Actions menu above the grid is the keyboard's way to a deck's menu,
+    // so it offers the same Color submenu.
+    @Test("the deck the sidebar chose offers the same menu above the grid, with its color ticked")
     func theChosenDecksMenuHasItsColor() throws {
-        try approveInDeck("La Gioconda", deck: "Arte", in: engine)
+        try newCardInDeck("La Gioconda", deck: "Arte", in: engine)
         try engine.setColor(.purple, ofDeck: "Arte")
         var window = openWindow()
 

@@ -121,20 +121,24 @@ final class DeletionWinsTests {
         #expect(iCloud.records.isEmpty)
     }
 
-    // The iPhone expands the card and follows it up offline, while the Mac
-    // deletes it: the iPhone's reach iCloud tied to a card that's gone.
-    @Test("a deleted card's expansions and follow-ups stay in both inboxes as captures, those made meanwhile too")
+    // An older version on the iPhone expands the card and follows it up
+    // offline, while the Mac deletes it: the iPhone's reach iCloud tied to a
+    // card that's gone. The database keeps the captures, unread (#540).
+    @Test(
+        "a deleted card's expansions and follow-ups, as an older version wrote them, stay on both devices as plain captures, those written meanwhile too",
+        .bug(id: 540))
     func aDeletedCardsExpansionsAndFollowUpsStayAsCaptures() async throws {
-        let ubuntu = try approve(card(.concept, front: "ubuntu", back: "Soy porque somos."), in: mac.engine)
-        try mac.engine.expand(text: "ubuntu", note: "En zulú", source: nil)
-        try mac.engine.followUp(ubuntu.id, text: "¿Quién lo dijo primero?")
+        let ubuntu = try newCard(card(.concept, front: "ubuntu", back: "Soy porque somos."), in: mac.engine)
+        try mac.engine.olderCapture("ubuntu", note: "En zulú", expanding: ubuntu.id)
+        try mac.engine.olderCapture("¿Quién lo dijo primero?", followingUp: ubuntu.id)
         try await mac.syncNow()
         try await iPhone.syncNow()
 
         iPhone.iCloud.isOffline = true
         time.advance(by: minutes(1))
-        try iPhone.engine.expand(text: "Ubuntu", note: "Lo decía Mandela", source: nil)
-        try iPhone.engine.followUp(iPhone.engine.card(fronted: "ubuntu").id, text: "¿De qué idioma viene?")
+        let ubuntuOnIPhone = try iPhone.engine.card(fronted: "ubuntu").id
+        try iPhone.engine.olderCapture("Ubuntu", note: "Lo decía Mandela", expanding: ubuntuOnIPhone)
+        try iPhone.engine.olderCapture("¿De qué idioma viene?", followingUp: ubuntuOnIPhone)
         try mac.engine.delete([ubuntu.id])
         try await mac.syncNow()
         iPhone.iCloud.isOffline = false
@@ -143,44 +147,46 @@ final class DeletionWinsTests {
         try await mac.syncNow()
 
         for device in [mac, iPhone] {
-            let inbox = try device.engine.inbox()
-            #expect(inbox.expansions.isEmpty)
-            #expect(inbox.followUps.isEmpty)
+            let captures = try device.engine.olderCaptures().map(\.capture)
+            #expect(captures.allSatisfy { $0.expandsCardID == nil && $0.followsUpCardID == nil })
             #expect(
-                inbox.captures.map(\.text).sorted()
+                captures.map(\.text).sorted()
                     == ["ubuntu", "Ubuntu", "¿Quién lo dijo primero?", "¿De qué idioma viene?"].sorted())
-            #expect(inbox.captures.compactMap(\.note).sorted() == ["En zulú", "Lo decía Mandela"])
+            #expect(captures.compactMap(\.note).sorted() == ["En zulú", "Lo decía Mandela"])
         }
     }
 
-    // petricor is discarded first and approved later, saudade the other way.
-    @Test("a capture discarded on one device and approved on the other leaves both inboxes, and its cards stay on both")
+    // An older version on each device: petricor is discarded first and
+    // approved later, saudade the other way.
+    @Test(
+        "a capture an older version discarded on one device and approved on the other is out of its inbox on both, and its cards stay on both",
+        .bug(id: 540))
     func aCaptureDiscardedAndApprovedLeavesTheInbox() async throws {
-        try mac.engine.newCapture("petricor")
-        try mac.engine.newCapture("saudade")
+        let petricor = try mac.engine.olderCapture("petricor")
+        let saudade = try mac.engine.olderCapture("saudade")
         try await mac.syncNow()
         try await iPhone.syncNow()
-        let onIPhone = try iPhone.engine.inbox().captures
+        let onIPhone = try iPhone.engine.olderCaptures().map(\.capture)
 
         time.advance(by: minutes(1))
-        try mac.engine.discard(try #require(try mac.engine.inbox().captures.first { $0.text == "petricor" }).id)
-        try iPhone.engine.approve(
+        try mac.engine.refineOlderCapture(petricor.id)
+        try iPhone.engine.approveOlderCapture(
             try #require(onIPhone.first { $0.text == "saudade" }).id,
             into: [
                 card(.word, front: "saudade", back: "Nostalgia de lo que no volverá."),
                 card(.question, front: "¿De qué idioma viene «saudade»?", back: "Del portugués."),
             ])
         time.advance(by: minutes(1))
-        try iPhone.engine.approve(
+        try iPhone.engine.approveOlderCapture(
             try #require(onIPhone.first { $0.text == "petricor" }).id,
             into: [card(.word, front: "petricor", back: "El olor de la lluvia.")])
-        try mac.engine.discard(try #require(try mac.engine.inbox().captures.first { $0.text == "saudade" }).id)
+        try mac.engine.refineOlderCapture(saudade.id)
         try await mac.syncNow()
         try await iPhone.syncNow()
         try await mac.syncNow()
 
         for device in [mac, iPhone] {
-            #expect(try device.engine.inbox().captures.isEmpty)
+            #expect(try device.engine.capturesAsSeen() == CapturesAsSeen(waiting: [], refined: ["petricor", "saudade"]))
             #expect(
                 try device.engine.cards().map(\.front).sorted()
                     == ["petricor", "saudade", "¿De qué idioma viene «saudade»?"])
@@ -188,24 +194,25 @@ final class DeletionWinsTests {
         #expect(try iPhone.cardsAsSeen() == mac.cardsAsSeen())
     }
 
-    // The review panel's ⌘Z deletes a follow-up outright, as one undone never
-    // was: the iPhone approves the second meanwhile. The deletion wins, so
-    // the card approved from it is from no capture.
+    // An older version's review panel's ⌘Z deleted a follow-up outright, as
+    // one undone never was: the iPhone's older version approves the second
+    // meanwhile. The deletion wins, so the card approved from it is from no
+    // capture.
     @Test(
-        "a follow-up taken back on one device leaves the other's inbox, and one approved there meanwhile leaves its cards on both"
-    )
+        "a follow-up an older version took back on one device is gone from the other, and one approved there meanwhile leaves its cards on both",
+        .bug(id: 540))
     func aFollowUpTakenBackLeavesTheOtherInbox() async throws {
         let ubuntu = try mac.engine.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
-        let first = try mac.engine.followUp(ubuntu.id, text: "¿De qué idioma viene?")
-        let second = try mac.engine.followUp(ubuntu.id, text: "¿Quién lo dijo primero?")
+        let first = try mac.engine.olderCapture("¿De qué idioma viene?", followingUp: ubuntu.id)
+        let second = try mac.engine.olderCapture("¿Quién lo dijo primero?", followingUp: ubuntu.id)
         try await mac.syncNow()
         try await iPhone.syncNow()
 
-        try mac.engine.takeBackFollowUp(second.id, of: ubuntu.id)
-        try mac.engine.takeBackFollowUp(first.id, of: ubuntu.id)
+        try mac.engine.takeBackOlderCapture(second.id)
+        try mac.engine.takeBackOlderCapture(first.id)
         time.advance(by: minutes(1))
-        try iPhone.engine.approve(
-            try #require(try iPhone.engine.inbox().followUps.first { $0.capture.text == second.text }).capture.id,
+        try iPhone.engine.approveOlderCapture(
+            try #require(try iPhone.engine.olderCaptures().first { $0.capture.text == second.text }).capture.id,
             into: [card(.question, front: "¿Quién dijo «ubuntu» primero?", back: "Nadie: es un proverbio zulú.")])
         try await mac.syncNow()
         try await iPhone.syncNow()
@@ -213,9 +220,9 @@ final class DeletionWinsTests {
         try await mac.syncNow()
 
         for device in [mac, iPhone] {
-            #expect(try device.engine.inbox().asSeen == InboxAsSeen(captures: [], expansions: [], followUps: []))
+            #expect(try device.engine.olderCaptures().isEmpty)
             #expect(try device.engine.cards().map(\.front).sorted() == ["ubuntu", "¿Quién dijo «ubuntu» primero?"])
-            #expect(try device.engine.cards().map(\.captureID) == [nil, nil])
+            #expect(try device.engine.capturesCardsCameFrom() == [nil, nil])
         }
         #expect(try iPhone.cardsAsSeen() == mac.cardsAsSeen())
     }

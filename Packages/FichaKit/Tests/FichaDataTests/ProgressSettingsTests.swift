@@ -63,7 +63,7 @@ final class ProgressSettingsTests {
         try saveDatabaseBeforeProgressSettings(at: folder.appending(path: "Ficha.sqlite"))
         if first == .cli {
             let cli = try Engine(location: .folder(folder), time: time)
-            try cli.newCapture("serendipia")
+            try newCard("serendipia", in: cli)
         }
 
         let kept = try customProgressSettings()

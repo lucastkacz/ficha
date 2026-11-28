@@ -3,14 +3,14 @@ import Foundation
 internal import GRDB
 
 // Renaming a tag (ADR 0021), which moves it too, as its name carries the tags
-// it sits inside: the Cards window's Rename… and its drops, and the `ficha`
-// CLI. A tag's name is how cards carry it and the `tag` table's key, so
-// renaming one changes every card that carries it or a tag inside it, and
-// moves their rows: an old row is deleted and a new one written, which sync
-// as a tag's rows do, and each card records an edit to its tags, whose latest
-// change wins (ADR 0017). The rename is also recorded as a change to the tag,
-// which reaches the cards the user's other devices hold that don't sync
-// (`TagChanges.swift`), as a deletion is (`DeletingTags.swift`).
+// it sits inside, as `ficha tag rename` does. A tag's name is how cards carry
+// it and the `tag` table's key, so renaming one changes every card that
+// carries it or a tag inside it, and moves their rows: an old row is deleted
+// and a new one written, which sync as a tag's rows do, and each card records
+// an edit to its tags, whose latest change wins (ADR 0017). The rename is
+// also recorded as a change to the tag, which reaches the cards the user's
+// other devices hold that don't sync (`TagChanges.swift`), as a deletion is
+// (`DeletingTags.swift`).
 
 extension Engine {
     /// Renames the tag `tag` to `newName`, its levels cleaned up as a card's
@@ -40,15 +40,14 @@ extension Engine {
         return name
     }
 
-    /// Moves `tags` inside `parent`, or to the top when it's nil, as
-    /// dropping them in the Cards window's All Tags does, in one write: each
-    /// is renamed `<parent>::<its last level>`, or its last level at the top,
-    /// as `renameTag(_:to:)` renames it, with every tag inside it, joining a
-    /// tag of that name if there's one. A tag inside another of `tags` moves
-    /// along with it, and one already right inside `parent`, or at the top,
-    /// stays. Refuses moving a tag inside itself, as when `parent` is one of
-    /// `tags` or sits inside one, and then moves none. Returns the renames it
-    /// made, in the order of `tags`.
+    /// Moves `tags` inside `parent`, or to the top when it's nil, in one
+    /// write: each is renamed `<parent>::<its last level>`, or its last level
+    /// at the top, as `renameTag(_:to:)` renames it, with every tag inside
+    /// it, joining a tag of that name if there's one. A tag inside another of
+    /// `tags` moves along with it, and one already right inside `parent`, or
+    /// at the top, stays. Refuses moving a tag inside itself, as when
+    /// `parent` is one of `tags` or sits inside one, and then moves none.
+    /// Returns the renames it made, in the order of `tags`.
     @discardableResult
     public func moveTags(_ tags: [String], into parent: String?) throws(EngineError) -> [TagEdit] {
         let moves = try tagMoves(of: tags, into: parent)

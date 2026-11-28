@@ -144,18 +144,20 @@ final class BackupTests {
         #expect(try engine.copies() == [second, first])
     }
 
-    @Test("a restore saves a copy before a restore, and the database then holds the copy's cards, review log and inbox")
+    @Test(
+        "a restore saves a copy before a restore, and the database then holds the copy's cards, review log and captures",
+        .bug(id: 540))
     func restoreBringsBackTheCopy() async throws {
         let engine = try openEngine()
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         try engine.meet(serendipia)
-        try engine.newCapture("efímero")
+        try engine.olderCapture("efímero")
         let backup = try engine.backUpNow(.defaults)
         let before = try Snapshot(of: engine)
         time.advance(by: hours(1))
         try engine.review(serendipia, .good)
-        try approveCard("ubicuo", in: engine)
-        try engine.newCapture("¿Por qué el cielo es azul?")
+        try newCard("ubicuo", in: engine)
+        try engine.olderCapture("¿Por qué el cielo es azul?")
         let after = try Snapshot(of: engine)
 
         let restoration = try engine.restore(backup.name)
@@ -181,9 +183,9 @@ final class BackupTests {
     func anotherEngineReadsTheRestoredCards() async throws {
         let app = try openEngine()
         let cli = try openEngine()
-        try approveCard("serendipia", in: app)
+        try newCard("serendipia", in: app)
         let backup = try app.backUpNow(.defaults)
-        try approveCard("ubicuo", in: app)
+        try newCard("ubicuo", in: app)
         var changes = cli.changes().makeAsyncIterator()
 
         try app.restore(backup.name)
@@ -226,12 +228,12 @@ final class BackupTests {
     @Test("a copy that a newer version of Ficha migrated is refused, and nothing changes")
     func copyFromANewerVersionIsRefused() throws {
         let engine = try openEngine()
-        try approveCard("serendipia", in: engine)
+        try newCard("serendipia", in: engine)
         let backup = try engine.backUpNow(.defaults)
         var newerFicha = DatabaseMigrator()
         newerFicha.registerMigration("a migration from a newer Ficha") { _ in }
         try newerFicha.migrate(DatabaseQueue(path: try path(of: backup, in: engine)))
-        try approveCard("ubicuo", in: engine)
+        try newCard("ubicuo", in: engine)
 
         #expect(throws: EngineError.copyMigratedByNewerVersion(backup.name)) {
             try engine.restore(backup.name)
@@ -243,7 +245,7 @@ final class BackupTests {
     @Test("a copy from an older version of Ficha is restored and migrated, with its copy before an update")
     func copyFromAnOlderVersionIsMigrated() throws {
         let engine = try openEngine()
-        try approveCard("ubicuo", in: engine)
+        try newCard("ubicuo", in: engine)
         let backups = try #require(engine.backupsFolder)
         try FileManager.default.createDirectory(at: backups, withIntermediateDirectories: true)
         let name = "Backup 2026-01-02T120000Z.sqlite"
@@ -251,7 +253,7 @@ final class BackupTests {
 
         try engine.restore(name)
 
-        #expect(try engine.inbox().captures.map(\.text) == ["serendipia"])
+        #expect(try engine.olderCaptures().map(\.capture.text) == ["serendipia"])
         #expect(try engine.cards().isEmpty)
         // The copy before the restore and the one before the update are
         // saved in the same second.
@@ -272,7 +274,7 @@ final class BackupTests {
 
         #expect(
             try engine.cards().map(\.standing) == [
-                .inReviews, .inInbox(Flag(note: "Falta un ejemplo", flaggedAt: time.now)),
+                .inReviews, .flagged(Flag(note: "Falta un ejemplo", flaggedAt: time.now)),
                 .buried(at: time.now, flag: nil),
             ])
         #expect(try engine.decks().filter(\.isSetAside).isEmpty)
@@ -510,15 +512,17 @@ final class BackupTests {
         #expect(try engine.image(nest) == images.1)
     }
 
-    @Test("a copy before an import keeps the images too, so restoring it brings a card deleted since back whole")
+    @Test(
+        "a copy before a deck's .ficha comes in keeps the images too, so restoring it brings a card deleted since back whole",
+        .bug(id: 542))
     func copyBeforeAnImportKeepsTheImages() async throws {
         let engine = try openEngine()
         let (bird, _) = try twoImages(in: engine)
         let hornero = try engine.create(card(nil, front: "¿Qué pájaro es?", back: "Un hornero.", frontImage: bird))
         let image = try engine.image(bird)
-        let file = folder.appending(path: "pájaros.txt")
-        try Data("benteveo\tUn pájaro que dice su nombre.\n".utf8).write(to: file)
-        let outcome = try await engine.importCards(engine.previewImport(of: file), choosing: ImportChoices())
+        let file = folder.appending(path: "pájaros.ficha")
+        try writeDeckFile(at: file, text: "benteveo\tUn pájaro que dice su nombre.\n")
+        let outcome = try await engine.addDeck(at: file)
         let copy = try #require(outcome.copyBeforeImport)
         try engine.delete([hornero.id])
 
@@ -609,15 +613,17 @@ final class BackupTests {
         #expect(try engine.sound(la) == sound)
     }
 
-    @Test("a copy before an import keeps the sounds too, so restoring it brings a card deleted since back whole")
+    @Test(
+        "a copy before a deck's .ficha comes in keeps the sounds too, so restoring it brings a card deleted since back whole",
+        .bug(id: 542))
     func copyBeforeAnImportKeepsTheSounds() async throws {
         let engine = try openEngine()
         let la = try await addTone(440, to: engine)
         let nota = try engine.create(card(nil, front: "¿Qué nota es?", back: "La.", frontSound: la))
         let sound = try engine.sound(la)
-        let file = folder.appending(path: "notas.txt")
-        try Data("do\tLa primera nota de la escala.\n".utf8).write(to: file)
-        let outcome = try await engine.importCards(engine.previewImport(of: file), choosing: ImportChoices())
+        let file = folder.appending(path: "notas.ficha")
+        try writeDeckFile(at: file, text: "do\tLa primera nota de la escala.\n")
+        let outcome = try await engine.addDeck(at: file)
         let copy = try #require(outcome.copyBeforeImport)
         try engine.delete([nota.id])
 
@@ -651,7 +657,7 @@ final class BackupTests {
     @Test("a copy from an older version, in write-ahead logging with no log beside it, is restored and migrated")
     func olderCopyInWriteAheadLoggingIsMigrated() throws {
         let engine = try openEngine()
-        try approveCard("ubicuo", in: engine)
+        try newCard("ubicuo", in: engine)
         let backups = try #require(engine.backupsFolder)
         try FileManager.default.createDirectory(at: backups, withIntermediateDirectories: true)
         let file = backups.appending(path: "Before update 2026-10-22T033656Z.sqlite")
@@ -660,7 +666,7 @@ final class BackupTests {
 
         try engine.restore(file.lastPathComponent)
 
-        #expect(try engine.inbox().captures.map(\.text) == ["serendipia"])
+        #expect(try engine.olderCaptures().map(\.capture.text) == ["serendipia"])
         let mode = try DatabaseQueue(path: folder.appending(path: "Ficha.sqlite").path(percentEncoded: false))
             .read { db in try String.fetchOne(db, sql: "PRAGMA journal_mode") }
         #expect(mode == "wal")
@@ -1071,15 +1077,16 @@ final class BackupTests {
     }
 }
 
-/// What a restore brings back: the cards, the review log and the inbox.
+/// What a restore brings back: the cards, the review log and the captures
+/// the database keeps unread.
 private struct Snapshot: Equatable {
     let cards: [Card]
     let reviewLog: [ReviewLogEntry]
-    let inbox: [Capture]
+    let captures: [Capture]
 
     init(of engine: Engine) throws {
         cards = try engine.cards()
         reviewLog = try engine.reviewLog()
-        inbox = try engine.inbox().captures
+        captures = try engine.olderCaptures().map(\.capture)
     }
 }

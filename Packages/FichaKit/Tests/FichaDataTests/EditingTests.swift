@@ -1,11 +1,16 @@
 import FichaCore
-import FichaData
 import Foundation
+import GRDB
 import Testing
 
+// For `Engine.edit(_:with:deck:bothWays:)`, an edit with a card's whole
+// content, which only the tests make, and for a card's type column, which a
+// test writes and reads as another device's card can leave it.
+@testable import FichaData
+
 /// Tests on editing in the Cards window: a card changes its content and keeps
-/// its progress, and is fixed when it's flagged; a capture in the
-/// inbox changes its text, note and source, and stays in the inbox.
+/// its progress, and is fixed when it's flagged, and the window's save leaves
+/// its type and its tags as they are.
 struct EditingTests {
     let calendar: Calendar
     let time: ManualTimeSource
@@ -22,7 +27,7 @@ struct EditingTests {
     func anEditKeepsTheCardsProgress() throws {
         // serendipia graduates with two goods, due a day later, and Lucas
         // edits it before it's due.
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         try engine.climb(serendipia, goods: 2, movingForward: time)
         let standing = try engine.standing(of: serendipia.id, with: settings.scheduler)
         let log = try engine.reviewLog()
@@ -41,7 +46,6 @@ struct EditingTests {
         #expect(edited.tags == ["lenguaje"])
         #expect(edited.source == "Un podcast de etimología")
         #expect(edited.createdAt == serendipia.createdAt)
-        #expect(edited.captureID == serendipia.captureID)
         #expect(try engine.cards() == [edited])
         #expect(try engine.reviewLog() == log)
         #expect(try engine.standing(of: serendipia.id, with: settings.scheduler) == standing)
@@ -56,7 +60,7 @@ struct EditingTests {
     func editingAFlaggedCardFixesIt() throws {
         // serendipia climbs to the second step, 4 hours, and Lucas flags it
         // before it's due.
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         try engine.climb(serendipia, goods: 1, movingForward: time)
         let standing = try engine.standing(of: serendipia.id, with: settings.scheduler)
         try engine.flag(serendipia.id, note: note("Falta decir de dónde viene"))
@@ -70,8 +74,7 @@ struct EditingTests {
         )
 
         #expect(edited == serendipia)
-        #expect(try engine.inbox().flaggedCards.isEmpty)
-        #expect(try engine.progress(settings).inInbox == 0)
+        #expect(try engine.flaggedCards().isEmpty)
         #expect(try engine.standing(of: serendipia.id, with: settings.scheduler) == standing)
         time.move(to: try #require(standing.due))
         #expect(try engine.reviewNow(settings) == [.review(edited)])
@@ -82,8 +85,8 @@ struct EditingTests {
     func anEditedBuriedCardStaysBuried() throws {
         // serendipia and ubuntu are due on the first step, and ubuntu was
         // flagged before Lucas buried it.
-        let serendipia = try approveCard("serendipia", in: engine)
-        let ubuntu = try approveCard("ubuntu", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
         try engine.meet(serendipia)
         try engine.meet(ubuntu)
         try engine.flag(ubuntu.id, note: note("Falta un ejemplo"))
@@ -101,78 +104,42 @@ struct EditingTests {
         #expect(edited.map(\.buriedAt) == buried.map(\.buriedAt))
         #expect(edited.map(\.flag) == [nil, nil])
         #expect(try engine.reviewNow(settings).isEmpty)
-        #expect(try engine.inbox().flaggedCards.isEmpty)
+        #expect(try engine.flaggedCards().isEmpty)
         try engine.unbury([serendipia.id, ubuntu.id])
         #expect(try engine.reviewNow(settings).map(\.card.front) == ["serendipia", "ubuntu"])
-        #expect(try engine.inbox().flaggedCards.isEmpty)
+        #expect(try engine.flaggedCards().isEmpty)
     }
 
-    // The Cards window passes what each field holds, as the capture window
-    // does, so a field left empty arrives as a blank string.
+    // iCloud's engine sends in batches, so a card's record can reach the Mac
+    // before the record of its user type, "Ley", made on the iPhone: until it
+    // comes, the card reads as one with no type. The window shows no types
+    // or tags (#538), and its save writes neither, whatever its content says.
     @Test(
-        "editing a capture replaces its text, note and source, cleaned up as capturing does, and keeps when it was captured"
-    )
-    func editingACaptureReplacesItsContent() throws {
-        let capture = try engine.newCapture("navaja de okham", note: "Algo de filosofía", source: "Un podcast")
-        time.advance(by: hours(1))
-
-        let edited = try engine.editCapture(
-            capture.id, text: "  Navaja de Ockham\n", note: "La explicación más simple suele ser la mejor.",
-            source: "  ")
-
-        #expect(edited.id == capture.id)
-        #expect(edited.text == "Navaja de Ockham")
-        #expect(edited.note == "La explicación más simple suele ser la mejor.")
-        #expect(edited.source == nil)
-        #expect(edited.createdAt == capture.createdAt)
-        #expect(try engine.inbox().captures == [edited])
-    }
-
-    // A refine session can approve or discard a capture while Lucas edits it
-    // in the Cards window.
-    @Test("only a capture in the inbox can be edited: one approved, discarded or that doesn't exist is refused")
-    func onlyACaptureInTheInboxCanBeEdited() throws {
-        let approved = try engine.newCapture("serendipia")
-        try engine.approve(
-            approved.id, into: [card(.word, front: "serendipia", back: "Un hallazgo valioso por casualidad.")])
-        let discarded = try engine.newCapture("algo que ya no me interesa")
-        try engine.discard(discarded.id)
-
-        #expect(throws: EngineError.captureNotInInbox(approved.id)) {
-            try engine.editCapture(approved.id, text: "serendipia", note: "Otra acepción", source: nil)
+        "saving an edit in the Cards window leaves the card's type and tags as the database holds them, a user type this device doesn't hold yet included",
+        .bug(id: 538))
+    func savingAnEditLeavesATypeThisDeviceDoesntHold() throws {
+        let ley = try #require(UUID(uuidString: "6F1A0E2C-3B7D-4C55-9E8A-2D4F1B7C9A10"))
+        let mayo = try engine.create(
+            card(nil, front: "Revolución de Mayo", back: "1810.", tags: ["historia::Argentina", "política"]))
+        try engine.write { db in
+            try db.execute(sql: "UPDATE card SET type = ? WHERE id = ?", arguments: [ley.uuidString, mayo.id])
         }
-        #expect(throws: EngineError.captureNotInInbox(discarded.id)) {
-            try engine.editCapture(discarded.id, text: "algo que sí me interesa", note: nil, source: nil)
+        var window = engine.openCardsWindow(with: settings.scheduler)
+        window.read(with: settings.scheduler)
+        window.select([mayo.id])
+
+        window.startEditing()
+        window.saveCard(
+            try card(.concept, front: "Revolución de Mayo", back: "El 25 de mayo de 1810.", tags: ["efemérides"]))
+
+        let saved = try #require(try engine.cards().first { $0.id == mayo.id })
+        let typeColumn = try engine.read { db in
+            try String.fetchOne(db, sql: "SELECT type FROM card WHERE id = ?", arguments: [mayo.id])
         }
-        #expect(throws: EngineError.captureNotInInbox(99)) {
-            try engine.editCapture(99, text: "ubuntu", note: nil, source: nil)
-        }
-    }
-
-    // Editing doesn't check for duplicates, as capturing does: an expansion
-    // waits attached to the card it repeated when Lucas expanded it.
-    @Test("an edited expansion stays attached to its card, even when its text now repeats another card's front")
-    func anEditedExpansionStaysAttachedToItsCard() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
-        try approveCard("ubuntu", in: engine)
-        let expansion = try engine.expand(text: "Serendipia", note: "También es una película", source: nil)
-
-        let edited = try engine.editCapture(expansion.id, text: "ubuntu", note: "Otra acepción", source: "Una charla")
-
-        #expect(edited.expandsCardID == serendipia.id)
-        let inbox = try engine.inbox()
-        #expect(inbox.captures.isEmpty)
-        #expect(inbox.expansions.map(\.capture) == [edited])
-        #expect(inbox.expansions.map(\.card) == [serendipia])
-    }
-
-    @Test("editing a capture with a blank text is refused, and the capture stays as it was")
-    func editingACaptureWithABlankTextIsRefused() throws {
-        let capture = try engine.newCapture("serendipia", note: "Lo opuesto a buscar algo")
-
-        #expect(throws: EngineError.emptyCapture) {
-            try engine.editCapture(capture.id, text: " \n", note: "Una nota sin texto", source: nil)
-        }
-        #expect(try engine.inbox().captures == [capture])
+        #expect(window.failure == nil)
+        #expect(saved.back == "El 25 de mayo de 1810.")
+        #expect(saved.type == nil)
+        #expect(saved.tags == ["historia::Argentina", "política"])
+        #expect(typeColumn == ley.uuidString)
     }
 }

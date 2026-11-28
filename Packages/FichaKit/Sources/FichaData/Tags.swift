@@ -48,9 +48,8 @@ public struct CardTag: Sendable, Hashable {
     /// 0024): kept for the conversion of Lucas's tags into decks, and
     /// deciding nothing else, since selective sync chooses decks.
     public var chosenToSync: Bool
-    /// Its place among the tags the user pinned to the Cards window's
-    /// sidebar, or nil while it isn't pinned. A tag isn't, until the user
-    /// pins it.
+    /// Its place among the tags the user pinned, or nil while it isn't
+    /// pinned. A tag isn't, until the user pins it.
     public var pin: PinPosition?
     /// The color of the nearest tag it sits inside that has one, or nil when
     /// none does: never its own, and never stored.
@@ -74,7 +73,7 @@ public struct CardTag: Sendable, Hashable {
         self.inheritedEmoji = inheritedEmoji
     }
 
-    /// Whether the user pinned it to the Cards window's sidebar.
+    /// Whether the user pinned it.
     public var isPinned: Bool {
         pin != nil
     }
@@ -109,11 +108,11 @@ public struct CardTag: Sendable, Hashable {
 }
 
 extension Engine {
-    /// Every tag, as All Tags lists it in the Cards window, each with what it
-    /// has of its own and what it takes from the tags it sits inside, in the
-    /// order a tree lists them: every tag a card carries, buried cards too,
-    /// every tag with something of its own, which stays listed while no card
-    /// carries it, so that Lucas can undo it, and every tag those sit inside.
+    /// Every tag, as `ficha tags` lists it, each with what it has of its own
+    /// and what it takes from the tags it sits inside, in the order a tree
+    /// lists them: every tag a card carries, buried cards too, every tag with
+    /// something of its own, which stays listed while no card carries it, so
+    /// that Lucas can undo it, and every tag those sit inside.
     public func allTags() throws(EngineError) -> [CardTag] {
         try read { db in
             let own = try OwnTags(in: db)

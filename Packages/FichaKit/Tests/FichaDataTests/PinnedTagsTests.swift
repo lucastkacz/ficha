@@ -3,10 +3,9 @@ import FichaData
 import Foundation
 import Testing
 
-/// Tests on pinned tags (ADR 0022): the tags the user keeps in the Cards
-/// window's sidebar, in an order of their own, which they pin, unpin and
-/// move, and which keep their pin and their place when they're renamed,
-/// moved or merged.
+/// Tests on pinned tags (ADR 0022): the tags the user pinned, in an order of
+/// their own, which `ficha tag` pins, unpins and moves, and which keep their
+/// pin and their place when they're renamed, moved or merged.
 struct PinnedTagsTests {
     let engine: Engine
 
@@ -21,8 +20,8 @@ struct PinnedTagsTests {
         "nothing is pinned at first, and pinned tags list in the order they were pinned, each with what it takes from the tags it sits inside"
     )
     func pinningAtTheEnd() throws {
-        try approveCard("cepo", tags: ["economía::Argentina"])
-        try approveCard("petricor", tags: ["lenguaje"])
+        try addCard("cepo", tags: ["economía::Argentina"])
+        try addCard("petricor", tags: ["lenguaje"])
         try engine.setColor(.green, of: "economía")
         #expect(try engine.pinnedTags().isEmpty)
 
@@ -100,7 +99,7 @@ struct PinnedTagsTests {
     // while it's pinned.
     @Test("unpinning a tag takes it out of the pinned tags, and a pinned tag no card carries stays listed until then")
     func unpinning() throws {
-        try approveCard("petricor", tags: ["lenguaje"])
+        try addCard("petricor", tags: ["lenguaje"])
         try engine.setColor(.blue, of: "lenguaje")
         try engine.pin("lenguaje")
         try engine.pin("historia")
@@ -136,8 +135,8 @@ struct PinnedTagsTests {
 
     @Test("a renamed or moved tag keeps its pin and its place, and so does a pinned tag inside it")
     func aRenameKeepsThePin() throws {
-        try approveCard("cepo", tags: ["economía::Argentina"])
-        try approveCard("petricor", tags: ["lenguaje"])
+        try addCard("cepo", tags: ["economía::Argentina"])
+        try addCard("petricor", tags: ["lenguaje"])
         for tag in ["lenguaje", "economía::Argentina", "historia"] {
             try engine.pin(tag)
         }
@@ -156,10 +155,10 @@ struct PinnedTagsTests {
         "when two tags merge, the tag is pinned if either was, in the place of the one already there when it was pinned, and of the moved one otherwise"
     )
     func aMergeKeepsAPin() throws {
-        try approveCard("cepo", tags: ["economía::Argentina"])
-        try approveCard("tango", tags: ["Argentina"])
-        try approveCard("Coliseo", tags: ["historia::Roma"])
-        try approveCard("Trastevere", tags: ["Roma"])
+        try addCard("cepo", tags: ["economía::Argentina"])
+        try addCard("tango", tags: ["Argentina"])
+        try addCard("Coliseo", tags: ["historia::Roma"])
+        try addCard("Trastevere", tags: ["Roma"])
         for tag in ["arte", "economía::Argentina", "Argentina", "historia::Roma", "ciencia"] {
             try engine.pin(tag)
         }
@@ -170,10 +169,10 @@ struct PinnedTagsTests {
         #expect(try engine.pinnedTags().map(\.name) == ["arte", "Argentina", "Roma", "ciencia"])
     }
 
-    /// Approves a capture into one word card with this front and these
-    /// tags, the way refining saves cards, and returns the card.
+    /// Makes one word card with this front and these tags, and returns the
+    /// card.
     @discardableResult
-    private func approveCard(_ front: String, tags: [String]) throws -> Card {
-        try approve(card(.word, front: front, back: "Lo que quiere decir «\(front)».", tags: tags), in: engine)
+    private func addCard(_ front: String, tags: [String]) throws -> Card {
+        try newCard(card(.word, front: front, back: "Lo que quiere decir «\(front)».", tags: tags), in: engine)
     }
 }

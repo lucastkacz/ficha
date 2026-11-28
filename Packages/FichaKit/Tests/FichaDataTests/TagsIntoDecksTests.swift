@@ -30,10 +30,10 @@ struct TagsIntoDecksTests {
         "a tag and each tag inside it become decks of the same whole names, and each card in Default that carries one moves to the deepest one's deck and loses the tags its deck now says"
     )
     func tagsBecomeDecks() throws {
-        try approveInDeck("Coliseo", tags: ["historia::Roma", "lenguaje"], in: engine)
-        try approveInDeck("Partenón", tags: ["historia::Grecia", "historia"], in: engine)
-        try approveInDeck("acrópolis", tags: ["historia::Grecia::Atenas", "historia::Grecia"], in: engine)
-        try approveInDeck("petricor", tags: ["lenguaje"], in: engine)
+        try newCardInDeck("Coliseo", tags: ["historia::Roma", "lenguaje"], in: engine)
+        try newCardInDeck("Partenón", tags: ["historia::Grecia", "historia"], in: engine)
+        try newCardInDeck("acrópolis", tags: ["historia::Grecia::Atenas", "historia::Grecia"], in: engine)
+        try newCardInDeck("petricor", tags: ["lenguaje"], in: engine)
 
         try engine.convertTagsToDecks(["historia"])
 
@@ -52,7 +52,7 @@ struct TagsIntoDecksTests {
     // historia isn't in the list, so the Coliseo keeps it, and it stays a tag.
     @Test("a card loses the listed tag and the tags inside it it carries, never one above the listed tag")
     func aTagAboveTheListedOneStays() throws {
-        try approveInDeck("Coliseo", tags: ["historia", "historia::Roma"], in: engine)
+        try newCardInDeck("Coliseo", tags: ["historia", "historia::Roma"], in: engine)
 
         try engine.convertTagsToDecks(["historia::Roma"])
 
@@ -68,10 +68,10 @@ struct TagsIntoDecksTests {
         "a card an earlier tag of the list moved out of Default keeps a later one as a tag, as does a card in another deck, and one with two tags of one tag goes to the first in tree order",
         arguments: [["literatura", "historia", "economía"], ["historia", "literatura", "economía"]])
     func theListsOrderDecides(list: [String]) throws {
-        try approveInDeck("Martín Fierro", tags: ["literatura::poesía", "historia"], in: engine)
-        try approveInDeck("Facundo", deck: "Libros", tags: ["historia", "literatura"], in: engine)
-        try approveInDeck("cepo", tags: ["economía::Brasil", "economía::Argentina"], in: engine)
-        try approveInDeck("Rosas", tags: ["historia"], in: engine)
+        try newCardInDeck("Martín Fierro", tags: ["literatura::poesía", "historia"], in: engine)
+        try newCardInDeck("Facundo", deck: "Libros", tags: ["historia", "literatura"], in: engine)
+        try newCardInDeck("cepo", tags: ["economía::Brasil", "economía::Argentina"], in: engine)
+        try newCardInDeck("Rosas", tags: ["historia"], in: engine)
 
         try engine.convertTagsToDecks(list)
 
@@ -96,10 +96,10 @@ struct TagsIntoDecksTests {
         "the preview lists the decks the conversion would make, how many cards each gets, and the cards with two tags that become decks, with the deck each goes to, changing nothing"
     )
     func thePreviewChangesNothing() throws {
-        let fierro = try approveInDeck("Martín Fierro", tags: ["literatura::poesía", "historia"], in: engine)
-        let facundo = try approveInDeck("Facundo", tags: ["historia", "literatura"], in: engine)
-        try approveInDeck("Rosas", tags: ["historia"], in: engine)
-        let cepo = try approveInDeck("cepo", tags: ["economía::Brasil", "economía::Argentina"], in: engine)
+        let fierro = try newCardInDeck("Martín Fierro", tags: ["literatura::poesía", "historia"], in: engine)
+        let facundo = try newCardInDeck("Facundo", tags: ["historia", "literatura"], in: engine)
+        try newCardInDeck("Rosas", tags: ["historia"], in: engine)
+        let cepo = try newCardInDeck("cepo", tags: ["economía::Brasil", "economía::Argentina"], in: engine)
         try engine.setColor(.green, of: "historia")
         let cards = try engine.cards()
         let tags = try engine.allTags()
@@ -177,8 +177,8 @@ struct TagsIntoDecksTests {
     // historia comes first and would convert alone, but the write is one.
     @Test("a tag whose deck would take Default's name is refused, in the preview too, and nothing changes")
     func aTagNamedLikeDefaultIsRefused() throws {
-        try approveInDeck("Coliseo", tags: ["historia"], in: engine)
-        try approveInDeck("pendientes", tags: ["default::pendientes"], in: engine)
+        try newCardInDeck("Coliseo", tags: ["historia"], in: engine)
+        try newCardInDeck("pendientes", tags: ["default::pendientes"], in: engine)
 
         #expect(throws: EngineError.defaultDeckName("default")) {
             try engine.conversion(ofTags: ["historia", "default"])

@@ -134,36 +134,41 @@ final class SyncTests {
         #expect(forgotten == nil)
     }
 
-    @Test("captures, expansions and follow-ups travel, and what's refined on one device leaves the inbox on both")
-    func theInboxTravels() async throws {
-        let ubuntu = try approve(card(.concept, front: "ubuntu", back: "Soy porque somos."), in: mac.engine)
-        try mac.engine.newCapture("petricor", note: "Lo leí en un libro", source: "Borges")
-        try mac.engine.expand(text: "ubuntu", note: "En zulú", source: nil)
-        try mac.engine.followUp(ubuntu.id, text: "¿Quién lo dijo primero?")
+    // Ficha no longer captures (#540), but the database keeps the captures,
+    // which travel as before, since an older version on another device may
+    // still write them.
+    @Test(
+        "captures, expansions and follow-ups an older version wrote travel, and one it took out of its inbox on one device is out on both",
+        .bug(id: 540))
+    func capturesTravel() async throws {
+        let ubuntu = try newCard(card(.concept, front: "ubuntu", back: "Soy porque somos."), in: mac.engine)
+        try mac.engine.olderCapture("petricor", note: "Lo leí en un libro", source: "Borges")
+        try mac.engine.olderCapture("ubuntu", note: "En zulú", expanding: ubuntu.id)
+        try mac.engine.olderCapture("¿Quién lo dijo primero?", followingUp: ubuntu.id)
         try await mac.syncNow()
         try await iPhone.syncNow()
 
-        let inboxOnIPhone = try iPhone.engine.inbox()
-        #expect(try inboxOnIPhone.asSeen == mac.engine.inbox().asSeen)
+        let onIPhone = try iPhone.engine.capturesAsSeen()
+        #expect(try onIPhone == mac.engine.capturesAsSeen())
         #expect(
-            inboxOnIPhone.asSeen
-                == InboxAsSeen(
-                    captures: ["petricor"], expansions: ["ubuntu → ubuntu"],
-                    followUps: ["¿Quién lo dijo primero? → ubuntu"]))
+            onIPhone
+                == CapturesAsSeen(
+                    waiting: ["petricor", "ubuntu, expanding ubuntu", "¿Quién lo dijo primero?, following up ubuntu"],
+                    refined: []))
+        #expect(
+            try iPhone.engine.olderCaptures().compactMap(\.capture.note).sorted() == ["En zulú", "Lo leí en un libro"])
         time.advance(by: minutes(1))
-        try iPhone.engine.approveExpansion(
-            try #require(inboxOnIPhone.expansions.only).capture.id,
-            into: card(.concept, front: "ubuntu", back: "Soy porque somos, en zulú."))
-        try iPhone.engine.approve(
-            try #require(inboxOnIPhone.captures.only).id,
-            into: [card(.word, front: "petricor", back: "El olor de la lluvia.", source: "Borges")])
+        let petricor = try #require(try iPhone.engine.olderCaptures().first { $0.capture.text == "petricor" })
+        try iPhone.engine.refineOlderCapture(petricor.capture.id)
         try await iPhone.syncNow()
         try await mac.syncNow()
 
         #expect(
-            try mac.engine.inbox().asSeen
-                == InboxAsSeen(captures: [], expansions: [], followUps: ["¿Quién lo dijo primero? → ubuntu"]))
-        #expect(try mac.cardsAsSeen().map(\.content?.back) == ["El olor de la lluvia.", "Soy porque somos, en zulú."])
+            try mac.engine.capturesAsSeen()
+                == CapturesAsSeen(
+                    waiting: ["ubuntu, expanding ubuntu", "¿Quién lo dijo primero?, following up ubuntu"],
+                    refined: ["petricor"]))
+        #expect(try mac.engine.capturesAsSeen() == iPhone.engine.capturesAsSeen())
         #expect(try mac.cardsAsSeen() == iPhone.cardsAsSeen())
     }
 
@@ -447,12 +452,13 @@ final class SyncTests {
             log.map(\.interval) == [.seconds(hours(1)), .seconds(hours(2) + minutes(30)), .seconds(hours(4))])
     }
 
-    // An import that brings Anki's progress places a card Anki was reviewing
-    // every 10 days with that interval, Anki's due date and its ease.
+    // An import that brought Anki's progress, before #542, placed a card
+    // Anki was reviewing every 10 days with that interval, Anki's due date
+    // and its ease.
     @Test("a placement reaches the other device with its interval, due time and ease")
     func aPlacementReachesTheOtherDevice() async throws {
-        try await importOnTheMac([
-            AnkiNote(type: .basic, fields: ["corazón", "heart"], progress: .review(due: 30, interval: 10))
+        try placeOnTheMac([
+            ("corazón", Placement(interval: .seconds(days(10)), due: try october(31, at: 4), ease: 2.5))
         ])
 
         try await mac.syncNow()
@@ -473,9 +479,9 @@ final class SyncTests {
     // hours, and pulmón on the fourth, of 5 days.
     @Test("a placement on a step of the ladder, from an older Ficha, is carried over as it arrives")
     func aPlacementFromAnOlderFichaIsCarriedOverOnArrival() async throws {
-        try await importOnTheMac([
-            AnkiNote(type: .basic, fields: ["corazón", "heart"], progress: .review(due: 30, interval: 10)),
-            AnkiNote(type: .basic, fields: ["pulmón", "lung"], progress: .review(due: 25, interval: 400)),
+        try placeOnTheMac([
+            ("corazón", Placement(interval: .seconds(days(10)), due: try october(31, at: 4), ease: 2.5)),
+            ("pulmón", Placement(interval: .seconds(days(400)), due: try october(26, at: 4), ease: 2.5)),
         ])
         try await mac.syncNow()
         for entry in iCloud.records where entry.type == SyncedRow.RecordType.reviewLogEntry.rawValue {
@@ -511,9 +517,9 @@ final class SyncTests {
     // The ladder's steps counted from 0, as its table's check kept them.
     @Test("a placement on a step below the ladder's first, from an older Ficha, waits, as the ladder refused it")
     func aPlacementBelowTheLaddersFirstStepWaits() async throws {
-        try await importOnTheMac([
-            AnkiNote(type: .basic, fields: ["corazón", "heart"], progress: .review(due: 30, interval: 10)),
-            AnkiNote(type: .basic, fields: ["pulmón", "lung"], progress: .review(due: 25, interval: 400)),
+        try placeOnTheMac([
+            ("corazón", Placement(interval: .seconds(days(10)), due: try october(31, at: 4), ease: 2.5)),
+            ("pulmón", Placement(interval: .seconds(days(400)), due: try october(26, at: 4), ease: 2.5)),
         ])
         try await mac.syncNow()
         for entry in iCloud.records where entry.type == SyncedRow.RecordType.reviewLogEntry.rawValue {
@@ -538,15 +544,18 @@ final class SyncTests {
             ])
     }
 
-    /// Imports on the Mac an Anki package with `notes`, bringing their
-    /// progress. The package's collection was created on 1 October 2026 at 4
-    /// in the morning, so Anki's day 30 is 31 October.
-    private func importOnTheMac(_ notes: [AnkiNote]) async throws {
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let file = folder.appending(path: "Mazo.apkg")
-        try AnkiPackage(notes: notes).write(to: file)
-        try await mac.engine.importCards(
-            mac.engine.previewImport(of: file), choosing: ImportChoices(progress: .brought))
+    /// Makes on the Mac a card for each of `placements`, by its front, and
+    /// gives its front-first way the placement, now: as an import of an Anki
+    /// package that brought progress did before #542, and as the review logs
+    /// of the devices that took one still hold it.
+    private func placeOnTheMac(_ placements: [(front: String, placement: Placement)]) throws {
+        for (front, placement) in placements {
+            let placed = try mac.engine.create(card(nil, front: front, back: "\(front)."))
+            try mac.engine.write { db in
+                try insert(
+                    ReviewLogEntry(placing: placed.id, on: placement, at: time.now), ids: mac.engine.ids, in: db)
+            }
+        }
     }
 
     /// `hour` o'clock on `day` October 2026, in Buenos Aires.
@@ -627,17 +636,17 @@ final class SyncTests {
 
     @Test("what each device had before they first synced joins on both, and nothing is lost")
     func theFirstSyncJoinsWhatEachDeviceHad() async throws {
-        let ubuntu = try approve(
+        let ubuntu = try newCard(
             card(.concept, front: "ubuntu", back: "Soy porque somos.", tags: ["filosofía"]), in: mac.engine)
         try mac.engine.setColor(.blue, of: "filosofía")
         try mac.engine.meet(ubuntu)
-        try mac.engine.newCapture("petricor")
+        try mac.engine.olderCapture("petricor")
         time.advance(by: minutes(1))
-        let serendipia = try approve(
+        let serendipia = try newCard(
             card(.word, front: "serendipia", back: "Un hallazgo por azar.", tags: ["filosofía"]), in: iPhone.engine)
         try iPhone.engine.setEmoji(Emoji("🦉"), of: "filosofía")
         try iPhone.engine.climb(serendipia, goods: 1, movingForward: time)
-        try iPhone.engine.newCapture("saudade", note: "De una canción")
+        try iPhone.engine.olderCapture("saudade", note: "De una canción")
 
         try await mac.syncNow()
         try await iPhone.syncNow()
@@ -645,8 +654,8 @@ final class SyncTests {
 
         #expect(try mac.cardsAsSeen().map(\.content?.front) == ["serendipia", "ubuntu"])
         #expect(try iPhone.cardsAsSeen() == mac.cardsAsSeen())
-        #expect(try mac.engine.inbox().captures.map(\.text).sorted() == ["petricor", "saudade"])
-        #expect(try iPhone.engine.inbox().captures.map(\.text).sorted() == ["petricor", "saudade"])
+        #expect(try mac.engine.olderCaptures().map(\.capture.text).sorted() == ["petricor", "saudade"])
+        #expect(try iPhone.engine.olderCaptures().map(\.capture.text).sorted() == ["petricor", "saudade"])
         #expect(try mac.logAsSeen().count == 3)
         #expect(try iPhone.logAsSeen() == mac.logAsSeen())
         let filosofia = CardTag(name: "filosofía", switchedOn: nil, color: .blue, emoji: "🦉")
@@ -712,11 +721,11 @@ final class SyncTests {
 
     @Test("what a device takes from another is never sent back")
     func whatComesFromAnotherDeviceIsNeverSentBack() async throws {
-        let ubuntu = try approve(
+        let ubuntu = try newCard(
             card(.concept, front: "ubuntu", back: "Soy porque somos.", tags: ["filosofía"]), in: mac.engine)
         try mac.engine.setColor(.blue, of: "filosofía")
         try mac.engine.meet(ubuntu)
-        try mac.engine.expand(text: "ubuntu", note: "En zulú", source: nil)
+        try mac.engine.olderCapture("ubuntu", note: "En zulú", expanding: ubuntu.id)
         try await mac.syncNow()
         let savesFromTheMac = iCloud.saves
 
@@ -768,7 +777,7 @@ final class SyncTests {
     @Test("what the CLI writes, before the app syncs or while it does, reaches the other device once the app syncs")
     func whatTheCLIWritesSyncs() async throws {
         let cli = try Engine(location: .folder(folder), time: time, calendar: calendar)
-        try approveCard("petricor", in: cli)
+        try newCard("petricor", in: cli)
         let app = try Device(Engine(location: .folder(folder), time: time, calendar: calendar), syncingThrough: iCloud)
         try await app.syncNow()
         try cli.create(card(.concept, front: "ubuntu", back: "Soy porque somos."))
@@ -777,7 +786,7 @@ final class SyncTests {
 
         #expect(try iPhone.engine.cards().map(\.front).sorted() == ["petricor", "ubuntu"])
         #expect(try iPhone.cardsAsSeen() == app.cardsAsSeen())
-        #expect(try iPhone.engine.inbox().captures.isEmpty)
+        #expect(try iPhone.engine.olderCaptures().isEmpty)
     }
 
     @Test("a tag's color and emoji travel, and two tags made with the same name are one")
@@ -818,23 +827,6 @@ extension Card {
         CardAsSeen(
             content: content(of: self), createdAt: createdAt, editedAt: editedAt, flag: flag, buriedAt: buriedAt,
             setAsideBy: setAsideBy, bothWays: bothWays)
-    }
-}
-
-/// What waits in a device's inbox, as the user sees it: each capture's text,
-/// and each expansion's and follow-up's with its card's front.
-struct InboxAsSeen: Equatable {
-    let captures: [String]
-    let expansions: [String]
-    let followUps: [String]
-}
-
-extension Inbox {
-    /// What waits in it, as the user sees it.
-    var asSeen: InboxAsSeen {
-        InboxAsSeen(
-            captures: captures.map(\.text), expansions: expansions.map { "\($0.capture.text) → \($0.card.front)" },
-            followUps: followUps.map { "\($0.capture.text) → \($0.card.front)" })
     }
 }
 

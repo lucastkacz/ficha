@@ -77,7 +77,7 @@ struct NextWayTimelineTests {
 }
 
 /// The card with the id `id`, in Lucas's reviews, one way, in Default,
-/// approved as 1970 began.
+/// made as 1970 began.
 private func card(_ id: Int64) -> (id: Int64, standing: CardStanding, deck: String, bothWays: Bool, createdAt: Date) {
     (id, .inReviews, "", false, Date(timeIntervalSince1970: 0))
 }

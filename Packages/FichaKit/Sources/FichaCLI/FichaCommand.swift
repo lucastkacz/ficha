@@ -5,18 +5,16 @@ import Foundation
 
 /// The `ficha` command: how an agent, such as Claude, reads and writes the
 /// user's cards in a session they start, and adds new ones straight into
-/// their decks (ADR 0001, ADR 0043), and how the user captures from a
-/// terminal. Like the app, it goes through the engine, and it prints JSON for
-/// the agent.
+/// their decks (ADR 0001, ADR 0043). Like the app, it goes through the
+/// engine, and it prints JSON for the agent.
 public struct FichaCommand: ParsableCommand {
     public static let configuration = CommandConfiguration(
         commandName: "ficha",
-        abstract: "Add, capture, read and change your cards and decks from the terminal.",
+        abstract: "Add, read and change your cards and decks from the terminal.",
         discussion: "Every command prints its result as JSON.",
         subcommands: [
-            AddCommand.self, CaptureCommand.self, InboxCommand.self, ApproveCommand.self, ApproveExpansionCommand.self,
-            DiscardCommand.self, FixCommand.self, AttachCommand.self, DetachCommand.self, BuryCommand.self,
-            UnburyCommand.self, CardsCommand.self, ChangeDeckCommand.self, DecksCommand.self, DeckCommand.self,
+            AddCommand.self, FixCommand.self, AttachCommand.self, DetachCommand.self, SetCardAsideCommand.self,
+            CardsCommand.self, ChangeDeckCommand.self, DecksCommand.self, DeckCommand.self,
             TagsCommand.self, TagCommand.self, TypesCommand.self, TypeCommand.self, PaceCommand.self, QueueCommand.self,
             RestoreCommand.self,
         ]
@@ -35,7 +33,7 @@ public struct FichaCommand: ParsableCommand {
     /// belongs to, `appName`, is refused while `appIsRunning` says it runs,
     /// before the database opens.
     public static func main(
-        dataFolder: () throws -> URL, refineFilesOnlyIn downloads: URL?, runsOnDebugTime: Bool, appName: String,
+        dataFolder: () throws -> URL, cardFilesOnlyIn downloads: URL?, runsOnDebugTime: Bool, appName: String,
         appIsRunning: @MainActor () -> Bool
     ) async -> Never {
         do {
@@ -55,7 +53,7 @@ public struct FichaCommand: ParsableCommand {
                 } else {
                     SystemTimeSource()
                 }
-            let engine = try Engine(location: .folder(folder), time: time, refineFilesOnlyIn: downloads)
+            let engine = try Engine(location: .folder(folder), time: time, cardFilesOnlyIn: downloads)
             print(try json(await engineCommand.run(on: engine)))
             Self.exit()
         } catch {

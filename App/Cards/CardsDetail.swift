@@ -2,118 +2,7 @@ import FichaCore
 import FichaData
 import SwiftUI
 
-/// The card's front, after a flag when it's flagged and a mark when it's
-/// buried, as where it stands says, since a buried card keeps its flag,
-/// aligned with them as the front reads. A front without text says "Image"
-/// or "Sound" in gray, as Mail says "No Subject", rather than leave the cell
-/// empty.
-struct FrontCell: View {
-    let card: Card
-    /// Whether a long front goes on over more lines, as below a capture in
-    /// its detail, rather than being cut short, as in a table's row.
-    var wraps = false
-
-    var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 4) {
-            switch card.standing {
-            case .inReviews, .setAside:
-                EmptyView()
-            case .inInbox:
-                FlagIcon()
-            case .buried(_, let flag):
-                if flag != nil {
-                    FlagIcon()
-                }
-                BuriedIcon()
-            }
-            if let media = card.frontWithoutText {
-                mediaText(media)
-                    .foregroundStyle(.secondary)
-            } else {
-                Text(card.front)
-                    .lineLimit(wraps ? nil : 1)
-                    .fixedSize(horizontal: false, vertical: wraps)
-            }
-        }
-        .alignedAsItReads(card.front)
-    }
-
-    /// The word that stands for a front without text, as `media` says.
-    private func mediaText(_ media: SideMedia) -> Text {
-        switch media {
-        case .image:
-            Text("Image", comment: "The Cards window, in place of a card's front that has an image and no text.")
-        case .sound:
-            Text("Sound", comment: "The Cards window, in place of a card's front that has only a sound.")
-        }
-    }
-}
-
-/// What the card holds besides its text, in the table's Media column: a
-/// photo when a side has an image and a speaker when one has a sound, each
-/// saying which sides in its tooltip, and nothing for a card of text alone.
-struct MediaCell: View {
-    let card: Card
-
-    var body: some View {
-        HStack(spacing: 4) {
-            if let sides = card.sidesWithImages {
-                mark("photo", saying: imagesText(sides))
-            }
-            if let sides = card.sidesWithSounds {
-                mark("speaker.wave.2", saying: soundsText(sides))
-            }
-        }
-        .foregroundStyle(.secondary)
-    }
-
-    /// The icon named `systemName`, which says `text` in its tooltip and to
-    /// VoiceOver.
-    private func mark(_ systemName: String, saying text: Text) -> some View {
-        Image(systemName: systemName)
-            .accessibilityLabel(text)
-            .help(text)
-    }
-
-    /// Which sides have an image, as the photo's tooltip says it.
-    private func imagesText(_ sides: WhichSides) -> Text {
-        switch sides {
-        case .front:
-            Text(
-                "The front has an image",
-                comment: "The tooltip of the photo in the Cards window's Media column, when the card's front has one.")
-        case .back:
-            Text(
-                "The back has an image",
-                comment: "The tooltip of the photo in the Cards window's Media column, when the card's back has one.")
-        case .both:
-            Text(
-                "Both sides have an image",
-                comment: "The tooltip of the photo in the Cards window's Media column, when both sides have one.")
-        }
-    }
-
-    /// Which sides have a sound, as the speaker's tooltip says it.
-    private func soundsText(_ sides: WhichSides) -> Text {
-        switch sides {
-        case .front:
-            Text(
-                "The front has a sound",
-                comment: "The tooltip of the speaker in the Cards window's Media column, when the card's front has one."
-            )
-        case .back:
-            Text(
-                "The back has a sound",
-                comment: "The tooltip of the speaker in the Cards window's Media column, when the card's back has one.")
-        case .both:
-            Text(
-                "Both sides have a sound",
-                comment: "The tooltip of the speaker in the Cards window's Media column, when both sides have one.")
-        }
-    }
-}
-
-/// The flag beside a flagged card, in the table and the detail.
+/// The flag beside a flagged card, in the detail.
 private struct FlagIcon: View {
     var body: some View {
         Image(systemName: "flag.fill")
@@ -123,19 +12,19 @@ private struct FlagIcon: View {
     }
 }
 
-/// The mark beside a buried card, in the table and the detail: an eye
-/// crossed out, since the card stays out of the reviews until it's
-/// unburied.
-private struct BuriedIcon: View {
+/// The mark beside a card set aside on its own in the detail: an eye crossed
+/// out, since the card stays out of the reviews until it's put back (#539).
+private struct SetAsideCardIcon: View {
     var body: some View {
         Image(systemName: "eye.slash")
             .foregroundStyle(.secondary)
-            .accessibilityLabel(Text("Buried", comment: "The icon beside a buried card, in the Cards window."))
-            .help(Text("Buried", comment: "The icon beside a buried card, in the Cards window."))
+            .accessibilityLabel(
+                Text("Set aside", comment: "The icon beside a card set aside on its own, in the Cards window."))
+            .help(Text("Set aside", comment: "The icon beside a card set aside on its own, in the Cards window."))
     }
 }
 
-/// The mark beside a set-aside card in the detail.
+/// The mark beside a card set aside with its deck in the detail.
 private struct SetAsideIcon: View {
     var body: some View {
         Image(systemName: "rectangle.portrait.on.rectangle.portrait.slash")
@@ -145,13 +34,20 @@ private struct SetAsideIcon: View {
 }
 
 /// The selected card, whole: Lucas's note on top when it's flagged, when he
-/// buried it when it's buried, and its set-aside decks when it's set aside,
-/// its type and tags and whether it goes both ways, its front and back, each
-/// side's image above its text and its sound below it, and its source, where
-/// it stands, and its review log, in a chart and in full. Its front, back,
-/// source and images show at the card size, and the rest stays its size.
+/// set it aside when it's set aside on its own, and its set-aside decks when
+/// it's set aside with its deck, whether it goes both ways, its front and
+/// back, each side's image above its text and its sound below it, and its
+/// source; then, in words, that it's new, or when it's back and how many
+/// times he saw it (`CardWords`); and under Details, closed until he opens
+/// it, where it stands as Anki's Card Info says it, and its review log, in a
+/// chart and in full (#537). Details is a disclosure triangle, which Tab
+/// reaches while macOS's Keyboard navigation is on and Space opens, and
+/// VoiceOver reads and opens as one. Its front, back, source and images show
+/// at the card size, and the rest stays its size.
 struct CardDetail: View {
     let row: CardRow
+    /// Where the card is, in words, as the window says it.
+    let wording: CardRow.Wording
     /// The images the window shows, the card's among them.
     let images: ShownImages
     /// The engine's time, which the due time counts from.
@@ -159,6 +55,8 @@ struct CardDetail: View {
     /// The card's review log, oldest first, or why it couldn't be read, or
     /// nil until it's read.
     let reviewLog: Result<[ReviewLogRow], EngineError>?
+    /// Whether Details is open, as the window keeps it from card to card.
+    @Binding var isDetailsOpen: Bool
     /// The ▶ and the length of a side's sound, which the window fills.
     let soundControls: (CardSide) -> SoundControls
     @Environment(\.cardSize) private var cardSize
@@ -166,8 +64,8 @@ struct CardDetail: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                FlagAndBurial(standing: row.cardStanding)
-                TypeAndTags(card: row.card)
+                FlagAndSetAside(standing: row.cardStanding)
+                BothWaysMark(card: row.card)
                 if let image = row.card.frontImage {
                     SideImage(image: images[image], maximumHeight: cardSize.scaled(320))
                 }
@@ -201,17 +99,17 @@ struct CardDetail: View {
                         .foregroundStyle(.secondary)
                 }
                 Divider()
-                standing
-                switch reviewLog {
-                case .success(let rows):
-                    Divider()
-                    ReviewLogView(rows: rows)
-                case .failure(let error):
-                    Divider()
-                    Label(error.localizedDescription, systemImage: "exclamationmark.triangle")
-                        .foregroundStyle(.secondary)
-                case nil:
-                    EmptyView()
+                CardWords(wording: wording)
+                DisclosureGroup(isExpanded: $isDetailsOpen) {
+                    details
+                        .padding(.top, 8)
+                } label: {
+                    Text(
+                        "Details",
+                        comment: """
+                            In the Cards window's detail, the disclosure under a card's words that holds its numbers, \
+                            as Anki's Card Info shows them, and its review log, closed until the user opens it.
+                            """)
                 }
             }
             .textSelection(.enabled)
@@ -220,12 +118,31 @@ struct CardDetail: View {
         }
     }
 
+    /// What Details holds: where the card stands, and its review log, or why
+    /// it couldn't be read.
+    private var details: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            standing
+            switch reviewLog {
+            case .success(let rows):
+                Divider()
+                ReviewLogView(rows: rows)
+            case .failure(let error):
+                Divider()
+                Label(error.localizedDescription, systemImage: "exclamationmark.triangle")
+                    .foregroundStyle(.secondary)
+            case nil:
+                EmptyView()
+            }
+        }
+    }
+
     /// Where the card stands, and why it shows up when it does, as Anki's
     /// Card Info says: its interval, when it's due, and its stability,
     /// difficulty and retrievability once it has them, front first, and
-    /// back first too when it goes both ways, as the table's columns name
-    /// them; when Lucas last saw it, how many times he reviewed it and when
-    /// he approved it.
+    /// back first too when it goes both ways; when Lucas last saw it, how
+    /// many times he reviewed it, when it was made, and, once its front
+    /// or back changed since, when they last did.
     private var standing: some View {
         Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: 6) {
             wayRows(
@@ -307,14 +224,26 @@ struct CardDetail: View {
                 reviews
             }
             GridRow {
-                gridLabel(Text("Created", comment: "In the Cards window's detail: when Lucas approved the card."))
+                gridLabel(Text("Created", comment: "In the Cards window's detail: when the card was made."))
                 Text(row.card.createdAt.formatted(date: .abbreviated, time: .shortened))
+            }
+            if let editedAt = row.card.editedAt {
+                GridRow {
+                    gridLabel(
+                        Text(
+                            "Edited",
+                            comment: """
+                                In the Cards window's detail: when the card's front or back last changed, a side's \
+                                image or sound included.
+                                """))
+                    Text(editedAt.formatted(date: .abbreviated, time: .shortened))
+                }
             }
         }
     }
 
-    /// How many times Lucas reviewed the card, as the Reviews column says it,
-    /// and, while it goes both ways, how many of those went each way in
+    /// How many times Lucas reviewed the card, as `ReviewsText` says it, and,
+    /// while it goes both ways, how many of those went each way in
     /// secondary text, which VoiceOver reads after the count with its noun.
     @ViewBuilder
     private var reviews: some View {
@@ -349,7 +278,7 @@ struct CardDetail: View {
     }
 
     /// Where one of the card's ways stands, in rows of the grid labeled as
-    /// `labels` say: its interval, as the Interval column says it, when it's
+    /// `labels` say: its interval, as `WayIntervalText` says it, when it's
     /// due, while it has a due time, and, once FSRS has a memory of it, its
     /// stability, in days, its difficulty, as a percentage, and its
     /// retrievability, the chance of remembering it now, as a percentage
@@ -390,170 +319,121 @@ struct CardDetail: View {
     }
 }
 
-/// A word in a capsule of the window's tint, on top of a detail: a card's
-/// type, or what kind of capture it is.
-private struct Chip: View {
-    let text: String
+/// Where a card is, in words, as FichaData says it (`CardRow.Wording`), as
+/// the desktop mock's card pane says it: that a new card waits its turn in
+/// the queue, as the grid's legend says "New: waits its turn"; and of any
+/// other card, when it's back, "Due now", as the grid's dot says, "Back today
+/// at" a time, "Back on" a day, by its weekday, month and day, and its year
+/// when it isn't this year's, as the Mac's locale writes them, or that it's
+/// out of Lucas's reviews; and under it, how many times he saw it, "Seen 3
+/// times".
+private struct CardWords: View {
+    let wording: CardRow.Wording
 
     var body: some View {
-        Text(text)
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(.tint)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 2)
-            .background(.tint.opacity(0.15), in: .capsule)
-    }
-}
-
-/// A card's type, when it has one, its tags after it when it has any, and
-/// Both ways last when it goes both ways.
-private struct TypeAndTags: View {
-    let card: Card
-
-    var body: some View {
-        HStack(spacing: 8) {
-            if let type = card.type {
-                Chip(text: type.title)
-            }
-            if !card.tags.isEmpty {
-                Label(card.tags.map(TagPath.shown).formatted(.list(type: .and, width: .narrow)), systemImage: "tag")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            if card.bothWays {
-                Label {
-                    Text(
-                        "Both ways",
-                        comment: """
-                            In the Cards window's detail, after a card's type and tags: it's also reviewed back \
-                            first, its back, then its front.
-                            """)
-                } icon: {
-                    // Arrows both ways, the same mirrored, so no backward
-                    // and forward.
-                    Image(systemName: "arrow.left.arrow.right")
-                }
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
-        }
-    }
-}
-
-/// The capture selected in the inbox, whole: what kind it is, its text, its
-/// note and source, when Lucas captured it, and, for an expansion or a
-/// follow-up, the card it's tied to. Its text, note and source show at the card
-/// size, and the rest stays its size.
-struct CaptureDetail: View {
-    /// The card a capture is tied to, which its detail shows below it.
-    enum Tie {
-        /// The card an expansion expands.
-        case expands(Card)
-        /// The card a follow-up was asked about, in the review panel.
-        case followsUp(Card)
-
-        var card: Card {
-            switch self {
-            case .expands(let card), .followsUp(let card): card
-            }
-        }
-    }
-
-    let capture: Capture
-    /// What kind it is, as the inbox's Kind column says it.
-    let kind: String
-    /// The card it's tied to, when it's an expansion or a follow-up.
-    let tie: Tie?
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                Chip(text: kind)
-                TextAsItReads(capture.text)
-                    .cardFont(.title)
-                Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: 6) {
-                    if let note = capture.note {
-                        GridRow {
-                            gridLabel(
-                                Text("Note", comment: "In the Cards window's detail: what Lucas noted with a capture."))
-                            TextAsItReads(note)
-                                .cardFont(.body)
-                        }
-                    }
-                    if let source = capture.source {
-                        GridRow {
-                            gridLabel(
-                                Text(
-                                    "Source",
-                                    comment: "In the Cards window's detail: where Lucas came across a capture's text."))
-                            TextAsItReads(source)
-                                .cardFont(.body)
-                        }
-                    }
-                    GridRow {
-                        gridLabel(Text("Captured", comment: "In the Cards window's detail: when Lucas captured it."))
-                        Text(capture.createdAt.formatted(date: .abbreviated, time: .shortened))
-                    }
-                }
-                if let tie {
-                    Divider()
-                    tied(tie)
-                }
-            }
-            .textSelection(.enabled)
-            .padding(20)
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
-
-    /// The card the capture is tied to, under what ties them.
-    private func tied(_ tie: Tie) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            switch tie {
-            case .expands:
+        VStack(alignment: .leading, spacing: 2) {
+            switch wording {
+            case .new:
                 Text(
-                    "Expands this card",
-                    comment: "In the Cards window's detail of an expansion, above the card it's attached to."
-                )
-                .foregroundStyle(.secondary)
-            case .followsUp:
+                    "New: it waits its turn in the queue.",
+                    comment: """
+                        In the Cards window's detail, of a card the user hasn't met yet, which waits its turn in the \
+                        queue of new cards, as the grid's “New: waits its turn” says.
+                        """)
+            case .seen(let times, let back):
+                backText(back)
                 Text(
-                    "Asked about this card",
-                    comment:
-                        "In the Cards window's detail of a follow-up, above the card it was asked about in the review panel."
+                    "Seen \(times) times",
+                    comment: """
+                        In the Cards window's detail, under when the card is back: how many times the user reviewed \
+                        it, either way, like “Seen 3 times”. None for a new card out of the user's reviews, \
+                        and for a card an import from Anki brought in with its progress, which the user hasn't \
+                        reviewed in Ficha since.
+                        """
                 )
                 .foregroundStyle(.secondary)
             }
-            TiedCard(card: tie.card)
         }
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// When the card is back, as `back` says.
+    private func backText(_ back: CardRow.Wording.Back) -> Text {
+        switch back {
+        case .now:
+            Text(
+                "Due now",
+                comment: """
+                    In the Cards window's detail: the card is due, front first or back first, as the orange dot on \
+                    its tile says.
+                    """)
+        case .today(let time):
+            Text(
+                "Back today at \(time.formatted(date: .omitted, time: .shortened))",
+                comment: """
+                    In the Cards window's detail: the card is due again later today, at this time, like “Back today \
+                    at 3:00 PM”. Today is Ficha's day, which runs until 4:00 the next morning, or the hour the user \
+                    set, so at 11:00 PM a card due at 2:00 AM is back today.
+                    """)
+        case .on(let day, let inThisYear):
+            Text(
+                "Back on \(day.formatted(Self.dayFormat(inThisYear: inThisYear)))",
+                comment: """
+                    In the Cards window's detail: the card is due again on a later day, by its weekday, month and \
+                    day, and its year when it isn't this year, like “Back on Tue, Dec 15” or “Back on Fri, \
+                    Jan 21, 2028”. The day is Ficha's, which starts at 4:00, or the hour the user set, so a card due \
+                    at 2:00 AM on a Friday is back on Thursday.
+                    """)
+        case .outOfReviews:
+            Text(
+                "Out of your reviews",
+                comment: """
+                    In the Cards window's detail, in place of when the card is back: it's out of the user's \
+                    reviews, and the box above the card says why, so it isn't due until it's back in them.
+                    """)
+        }
+    }
+
+    /// How "Back on" writes a later day: by its weekday, month and day, and
+    /// its year too when it isn't this year's.
+    private static func dayFormat(inThisYear: Bool) -> Date.FormatStyle {
+        let format: Date.FormatStyle = .dateTime.weekday(.abbreviated).month(.abbreviated).day()
+        return inThisYear ? format : format.year()
     }
 }
 
-/// The card an expansion or a follow-up is tied to, in its detail: its type,
-/// tags and whether it goes both ways, its front, with the marks the table
-/// gives it, and its back.
-private struct TiedCard: View {
+/// Both ways, above a card's front while it goes both ways. A card shows
+/// neither its type nor its tags, which the database keeps (#538).
+private struct BothWaysMark: View {
     let card: Card
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            TypeAndTags(card: card)
-            FrontCell(card: card, wraps: true)
-                .font(.headline)
-            TextAsItReads(card.back)
+        if card.bothWays {
+            Label {
+                Text(
+                    "Both ways",
+                    comment: """
+                        In the Cards window's detail, above a card's front: it's also reviewed back first, its back, \
+                        then its front.
+                        """)
+            } icon: {
+                // Arrows both ways, the same mirrored, so no backward and
+                // forward.
+                Image(systemName: "arrow.left.arrow.right")
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
         }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.fill.quaternary, in: .rect(cornerRadius: 8))
     }
 }
 
 /// What the detail says on top of a card that's out of Lucas's reviews, as
-/// where it stands says: his note when it's flagged, and when he buried it
-/// when it's buried, after the note it keeps, or which decks set it aside,
-/// its own or decks it sits inside, when it's set aside. While he edits a
+/// where it stands says: his note when it's flagged, and when he set it
+/// aside when it's set aside on its own, which the engine keeps as its
+/// burial, after the note it keeps, or which decks set it aside, its own or
+/// decks it sits inside, when it's set aside with its deck. While he edits a
 /// flagged card, the note also says that saving fixes it.
-struct FlagAndBurial: View {
+struct FlagAndSetAside: View {
     let standing: CardStanding
     /// Whether Lucas is editing the card.
     var isEditing = false
@@ -562,13 +442,13 @@ struct FlagAndBurial: View {
         switch standing {
         case .inReviews:
             EmptyView()
-        case .inInbox(let flag):
+        case .flagged(let flag):
             note(flag)
-        case .buried(let buriedAt, let flag):
+        case .buried(let setAsideAt, let flag):
             if let flag {
                 note(flag)
             }
-            burial(at: buriedAt)
+            setAside(at: setAsideAt)
         case .setAside(let decks):
             setAside(by: decks)
         }
@@ -601,9 +481,9 @@ struct FlagAndBurial: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(flag.note)
                 if isEditing {
-                    // The same whether the card is buried or not: whether it
-                    // goes back to Lucas's reviews is FichaData's to say, and
-                    // the burial shows below.
+                    // The same whether the card is set aside or not: whether
+                    // it goes back to Lucas's reviews is FichaData's to say,
+                    // and when he set it aside shows below.
                     Text(
                         "Saving fixes it, and it keeps its progress.",
                         comment: "In the Cards window, under Lucas's note on a flagged card, while he edits it."
@@ -621,15 +501,19 @@ struct FlagAndBurial: View {
         .background(.orange.opacity(0.12), in: .rect(cornerRadius: 8))
     }
 
-    /// When Lucas buried the card.
-    private func burial(at buriedAt: Date) -> some View {
+    /// When Lucas set the card aside on its own, which he puts back with Put
+    /// Back, below.
+    private func setAside(at setAsideAt: Date) -> some View {
         Label {
             Text(
-                "Buried on \(buriedAt.formatted(date: .abbreviated, time: .shortened))",
-                comment: "In the Cards window's detail: when Lucas buried the card, like Oct 14, 2026 at 9:00 AM."
+                "Set aside on \(setAsideAt.formatted(date: .abbreviated, time: .shortened))",
+                comment: """
+                    In the Cards window's detail: when Lucas set the card aside on its own, like Oct 14, 2026 at \
+                    9:00 AM.
+                    """
             )
         } icon: {
-            BuriedIcon()
+            SetAsideCardIcon()
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -645,8 +529,8 @@ func gridLabel(_ text: Text) -> some View {
         .gridColumnAlignment(.trailing)
 }
 
-/// What one of a card's ways says in the Interval columns and the detail's
-/// Interval rows, as Anki's Browse says it: how long it waits after its last
+/// What one of a card's ways says in the Cards window's detail's Interval
+/// rows, as Anki's Browse says it: how long it waits after its last
 /// review, like "5d", "2h 30m" or "1.5mo", which VoiceOver reads in words;
 /// "New" before its first review; or "Learning" while it's in its learning
 /// steps, whatever the step's interval, as Anki's Browse says "(learning)".
@@ -654,7 +538,7 @@ struct WayIntervalText: View {
     let way: WayProgress
 
     var body: some View {
-        switch way.intervalColumn {
+        switch way.intervalWording {
         case .new:
             Text(Self.new)
         case .learning:
@@ -679,16 +563,16 @@ struct WayIntervalText: View {
         String(
             localized: "Learning",
             comment: """
-                In the Cards window's Interval columns and its detail's Interval rows: a card in its learning \
-                steps, the short intervals before it graduates, whatever the step's interval, as Anki's Browse \
-                says “(learning)”; or a card an import from Anki brought in while Anki was still learning it.
+                In the Cards window's detail's Interval rows: a card in its learning steps, the short intervals \
+                before it graduates, whatever the step's interval, as Anki's Browse says “(learning)”; or a card \
+                an import from Anki brought in while Anki was still learning it.
                 """)
     }
 }
 
 /// How many times a card was reviewed, either way, as the Cards window's
-/// Reviews column and its detail's Reviews row say it: a number, which
-/// VoiceOver reads with its noun, like "14 reviews".
+/// detail's Reviews row says it: a number, which VoiceOver reads with its
+/// noun, like "14 reviews".
 struct ReviewsText: View {
     let count: Int
 
@@ -702,23 +586,22 @@ struct ReviewsText: View {
         String(
             localized: "\(count) reviews",
             comment: """
-                For VoiceOver, in the Cards window's Reviews column and its detail's Reviews row: how many times Lucas \
-                reviewed the card, either way.
+                For VoiceOver, in the Cards window's detail's Reviews row: how many times Lucas reviewed the card, \
+                either way.
                 """)
     }
 }
 
-/// The texts of the Cards window's Due and Back-first due columns, and of
-/// its detail's Due rows, which `of(_:at:)` picks from, and the columns'
-/// widths measure.
+/// The texts of the Cards window's detail's Due and Back-first due rows,
+/// which `of(_:at:)` picks from.
 enum DueText {
     /// When one of a card's ways is due, counted from `now`: "now" once it's
     /// due, however long ago, and before, as the app's locale words it, like
     /// "in 2h", "tomorrow" or "in 5d" in US English. "set aside" while the
-    /// card is set aside by its deck, and nothing while the way is new, or
-    /// the card flagged or buried, since it won't show up then.
+    /// card is set aside, on its own or by its deck, and nothing while the
+    /// way is new, or the card flagged, since it won't show up then.
     static func of(_ way: WayProgress, at now: Date) -> String {
-        switch way.dueColumn {
+        switch way.dueWording {
         case .due(let date): way.isDue(at: now) ? Self.now : until(date, from: now)
         case .setAside: setAside
         case .nothing: ""
@@ -729,33 +612,28 @@ enum DueText {
     static var now: String {
         String(
             localized: "now",
-            comment: "In the Cards window's Due and Back-first due columns: the card is due, front first or back first."
-        )
+            comment: """
+                In the Cards window's detail's Due and Back-first due rows: the card is due, front first or back \
+                first.
+                """)
     }
 
-    /// A way that won't show up, since its card's deck is set aside.
+    /// A way that won't show up, since its card is set aside, on its own or
+    /// by its deck.
     static var setAside: String {
         String(
             localized: "set aside",
             comment: """
-                In the Cards window's Due and Back-first due columns: the card won't show up, since its deck, or a \
-                deck it sits inside, is set aside. Lowercase, like “now”.
+                In the Cards window's detail's Due and Back-first due rows: the card won't show up, since it's set \
+                aside, on its own or with its deck, or a deck it sits inside. Lowercase, like “now”.
                 """)
-    }
-
-    /// What the columns say of ways due at times from `now` as far apart as
-    /// the scheduler sets them, and of the ways due now and set aside: the
-    /// longest texts they show, for their widths.
-    static func samples(from now: Date) -> [String] {
-        let hours: [Double] = [10, 2 * 24, 45 * 24, 300 * 24]
-        return [Self.now, setAside] + hours.map { until(now.addingTimeInterval($0 * 3600), from: now) }
     }
 
     /// How long from `now` until `due`, as the app's locale words it.
     static func until(_ due: Date, from now: Date) -> String {
         // In days, hours and minutes, the units of a step's interval and of a
         // graduated one under a month: "in 8d", never "next week", and "in
-        // 45d" where the Interval column says "1.5mo".
+        // 45d" where the Interval row says "1.5mo".
         var style = Date.AnchoredRelativeFormatStyle(anchor: due, presentation: .named, unitsStyle: .narrow)
         style.allowedFields = [.day, .hour, .minute]
         return style.format(now)

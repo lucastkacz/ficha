@@ -143,7 +143,7 @@ enum SyncedField: String, Sendable, CaseIterable {
     // A capture's fields, besides its source.
     case text
     case note
-    /// When it left the inbox, approved or discarded.
+    /// When it was refined, into cards or discarded.
     case refined
     /// The card it expands.
     case expandedCard
@@ -359,11 +359,12 @@ func fieldTimes(of row: SyncedRow, in db: Database) throws -> [SyncedField: Date
 /// reaches the cards the other devices hold that don't sync, and a device
 /// that heard of one already never applies it again, and so does every change
 /// to a deck. Every deck with a row goes, also one no card lives in. The
-/// deletions that wait still do. The
-/// user's card types go first: iCloud's engine sends in batches, and a
-/// device that fetches a card before its type reads it as one with no type,
-/// which an edit there would then keep. The decks go next, so that a deck's
-/// cards come with what it has of its own.
+/// deletions that wait still do. The user's card types go first: iCloud's
+/// engine sends in batches, and a device that fetches a card before its type
+/// reads it as one with no type, which a fix there, as `ficha fix` makes,
+/// would then keep, though an edit in the Cards window leaves the type alone.
+/// The decks go next, so that a deck's cards come with what it has of its
+/// own.
 func recordEverythingToSend(in db: Database) throws {
     let (card, capture, entry, tag, userType, tagChange, deck, deckChange) = (
         SyncedRow.RecordType.card.rawValue, SyncedRow.RecordType.capture.rawValue,
