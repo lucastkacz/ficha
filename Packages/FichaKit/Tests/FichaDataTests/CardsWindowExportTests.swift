@@ -2,6 +2,7 @@ import FichaCore
 import FichaData
 import Foundation
 import Testing
+import ZIPFoundation
 
 /// Tests on the Cards window's Export sheet: what it offers to export, what
 /// it starts on, and the file it writes, into a folder of the test's own,
@@ -142,12 +143,13 @@ final class CardsWindowExportTests {
 
         var exportedFronts: [[String]] = []
         for choice in [CardsToExport.cards([mayo.id, ubuntu.id]), .deck("Filosofía"), .all] {
-            let file = folder.appending(path: "Tarjetas \(exportedFronts.count).txt")
             window.startExport()
             window.chooseCardsToExport(choice)
+            let file = folder.appending(
+                path: "Tarjetas \(exportedFronts.count).\(window.exporting?.writesZip == true ? "zip" : "txt")")
             window.export(to: file)
             #expect(window.exporting == nil)
-            exportedFronts.append(try await CardsTextFile.read(Data(contentsOf: file)).cards.map(\.content.front))
+            exportedFronts.append(try await CardsTextFile.read(textOfCards(in: file)).cards.map(\.content.front))
         }
 
         #expect(
@@ -178,10 +180,13 @@ final class CardsWindowExportTests {
     }
 
     // The save panel proposes a zip then, and the sheet says the images go.
-    @Test("Export writes a zip when a card it takes has an image, and a text file when none does")
+    // A deck's cards are its file, which is a zip (#554).
+    @Test(
+        "Export writes a zip when a card it takes has an image, and for a deck's cards, and a text file for other cards with none"
+    )
     func exportWritesAZipWhenACardHasAnImage() throws {
         let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))
-        try engine.create(card(nil, front: "hornero", back: "Un pájaro.", frontImage: bird))
+        let hornero = try engine.create(card(nil, front: "hornero", back: "Un pájaro.", frontImage: bird))
         let ubuntu = try approveCard("ubuntu")
         try engine.changeDeck(of: [ubuntu.id], to: "Filosofía")
         var window = openWindow()
@@ -191,9 +196,14 @@ final class CardsWindowExportTests {
         let all = window.exporting?.writesZip
         window.chooseCardsToExport(.deck("Filosofía"))
         let philosophy = window.exporting?.writesZip
+        try engine.delete([hornero.id])
+        var withoutImage = openWindow()
+        withoutImage.startExport()
+        withoutImage.chooseCardsToExport(.all)
 
         #expect(all == true)
-        #expect(philosophy == false)
+        #expect(philosophy == true)
+        #expect(withoutImage.exporting?.writesZip == false)
     }
 
     @Test("a file that can't be saved leaves the Export sheet open, saying why")
@@ -221,4 +231,16 @@ final class CardsWindowExportTests {
         #expect(window.exporting?.canExport == false)
         #expect(!FileManager.default.fileExists(atPath: file.path(percentEncoded: false)))
     }
+}
+
+/// The text file of cards `file` holds, as Export wrote it: the file itself,
+/// or, for a zip, the text file in it.
+private func textOfCards(in file: URL) throws -> Data {
+    guard let archive = try? Archive(url: file, accessMode: .read, pathEncoding: nil) else {
+        return try Data(contentsOf: file)
+    }
+    let entry = try #require(archive.first { $0.path.hasSuffix(".txt") })
+    var text = Data()
+    _ = try archive.extract(entry) { text.append($0) }
+    return text
 }

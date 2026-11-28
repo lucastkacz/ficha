@@ -85,6 +85,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// can open it, or one that came while the Welcome page was open, until a
     /// button closes the page.
     private var pendingLink: WidgetLink?
+    /// The deck's `.ficha` Finder opened Ficha with, while it waits as the
+    /// widget's link does: one that launched the app, until it finished
+    /// launching, or one that came while the Welcome page was open, until a
+    /// button closes the page.
+    private var pendingDeckFile: URL?
 
     /// Opens the capture window with empty fields, or brings it forward
     /// when it's open, with what Lucas typed. Either way it takes the
@@ -189,12 +194,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Opens the links of the app's scheme, which a click on its widget opens:
-    /// a review now that starts with the card the widget showed. One that
-    /// launches the app comes before it finished launching, and opens once it
-    /// has; one that comes while the Welcome page is open opens once a button
-    /// closes the page.
+    /// a review now that starts with the card the widget showed; and the
+    /// files Finder opens Ficha with, as a double-click on a deck's `.ficha`
+    /// does (ADR 0044): the Cards window, which asks How fast? for the deck,
+    /// as its Open Deck… does, and refuses any other file. It opens one file
+    /// at a time, the first, and says in the log it left the others. One
+    /// that launches the app comes before it finished launching, and opens
+    /// once it has; one that comes while the Welcome page is open opens once
+    /// a button closes the page.
     func application(_ application: NSApplication, open urls: [URL]) {
-        for url in urls {
+        let files = urls.filter(\.isFileURL)
+        if let file = files.first {
+            openDeck(file)
+        }
+        if files.count > 1 {
+            launchLogger.info("Opened the first of \(files.count) files and left the others: Ficha opens one at a time")
+        }
+        for url in urls where !url.isFileURL {
             guard let scheme = WidgetHandover.linkScheme, let link = WidgetLink(url, scheme: scheme) else {
                 widgetLogger.error("Ignored a link the app doesn't open: \(url, privacy: .public)")
                 continue
@@ -218,6 +234,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         panel.openReviewNow(startingWith: link.startingWith)
+    }
+
+    /// Opens the Cards window on `file`, which Finder opened Ficha with, for
+    /// its state to read it and ask How fast? for its deck, or to refuse it,
+    /// or keeps it until the app finished launching, and until the user
+    /// answers the Welcome page, which comes forward.
+    private func openDeck(_ file: URL) {
+        if let openWelcomeWindow {
+            pendingDeckFile = file
+            openWelcomeWindow.bringForwardWithTheApp()
+            return
+        }
+        guard panel != nil, let model else {
+            pendingDeckFile = file
+            return
+        }
+        model.deckFileToOpen = file
+        openCards()
     }
 
     /// Opening the app while it runs, as a double click and Spotlight do:
@@ -315,8 +349,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// What follows the Welcome page, or a launch with none: the Cards window
-    /// when it opens, what couldn't be read, and the link that waits, which
-    /// launched the app or came while the page was open.
+    /// when it opens, what couldn't be read, and the link and the deck's file
+    /// that wait, which launched the app or came while the page was open.
     private func finishOpening(opensCardsWindow: Bool) {
         if opensCardsWindow {
             openCards()
@@ -325,11 +359,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         openPendingLink()
     }
 
-    /// Opens the link that waits, if one does.
+    /// Opens the link that waits, and the deck's file, if one does.
     private func openPendingLink() {
         if let pendingLink {
             self.pendingLink = nil
             open(pendingLink)
+        }
+        if let pendingDeckFile {
+            self.pendingDeckFile = nil
+            openDeck(pendingDeckFile)
         }
     }
 

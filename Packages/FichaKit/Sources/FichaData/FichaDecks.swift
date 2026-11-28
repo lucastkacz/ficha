@@ -2,13 +2,14 @@ import FichaCore
 import Foundation
 
 // Ficha's decks (ADR 0040, #458): three small decks that come inside the app,
-// in Spanish for now, each a Ficha package in its resources, a zip of cards
-// as Ficha exports one, which comes in through the same import as any
-// (ADR 0041), and never from the network (ADR 0017). The app gives FichaData
-// each file's URL, from its bundle; the render tool and the tests find them
-// in the repo's `App/FichaDecks/`. Opening the app never imports, updates or
-// touches one: only Add Deck… does, so an update of the app leaves a deck the
-// user added, and its progress, as they were.
+// in Spanish for now, each a deck's `.ficha` in its resources, as Ficha
+// writes one (ADR 0044, `DeckFile.swift`), whose `deck.json` holds its emoji
+// and description, which comes in as any deck's file does, and never from
+// the network (ADR 0017). The app gives FichaData each file's URL, from its
+// bundle; the render tool and the tests find them in the repo's
+// `App/FichaDecks/`. Opening the app never imports, updates or touches one:
+// only Add Deck… does, so an update of the app leaves a deck the user added,
+// and its progress, as they were.
 
 /// One of Ficha's decks, in the order the Cards window offers them.
 public enum FichaDeck: String, Sendable, CaseIterable {
@@ -27,19 +28,9 @@ public enum FichaDeck: String, Sendable, CaseIterable {
     }
 
     /// Its file's name in the app's resources, `App/FichaDecks/` in the repo,
-    /// without `.zip`.
+    /// without `.ficha`.
     public var fileName: String {
         rawValue
-    }
-
-    /// The emoji the deck gets when it comes in new, as `ficha deck emoji`
-    /// gives one: provisional.
-    public var emoji: String {
-        switch self {
-        case .palabrasLindas: "💬"
-        case .arteArgentino: "🖼️"
-        case .floresDeBuenosAires: "💐"
-        }
     }
 
     /// The files of `read`, what the app read of Ficha's decks from its
@@ -74,15 +65,28 @@ public enum FichaDeck: String, Sendable, CaseIterable {
 public struct FichaDeckFile: Sendable, Equatable {
     /// The deck.
     public let deck: FichaDeck
-    /// What importing the file would do, as the import read it, with the
-    /// images its cards refer to, which `Engine.addFichaDeck(_:)` imports.
-    let preview: ImportPreview
+    /// Its file, a deck's `.ficha`, as `Engine.readDeckFile(at:)` read it,
+    /// which `Engine.addFichaDeck(_:)` imports.
+    let file: DeckFile
+
+    /// The emoji its file's `deck.json` holds, which the Cards window and
+    /// the review panel show before its name, and the deck takes when it
+    /// comes in new: nil for none.
+    public var emoji: String? {
+        file.emoji
+    }
+
+    /// The description its file's `deck.json` holds, which the deck takes
+    /// when it comes in new: nil for none.
+    public var description: String? {
+        file.description
+    }
 
     /// How many cards the file holds, the deck's own size, which the Cards
     /// window says of it: "40 cards". How fast? counts those that come in,
     /// fewer when some repeat the user's, which Add Deck… skips.
     public var cardCount: Int {
-        preview.cardCount
+        file.cardCount
     }
 
     /// The card the Cards window shows of the deck, front and back: the
@@ -98,29 +102,24 @@ public struct FichaDeckFile: Sendable, Equatable {
         (firstCard?.images ?? []).sorted { $0.rawValue < $1.rawValue }.compactMap { preview.images[$0] }
     }
 
-    /// What `Engine.addFichaDeck(_:)` chooses as it imports the file: the
-    /// cards that repeat the user's skipped, and the tag an import gives a
-    /// file's cards after the file's name left out.
-    var importChoices: ImportChoices {
-        // The proposed tags, each once, are the file's name alone.
-        ImportChoices(
-            tagNames: Dictionary(uniqueKeysWithValues: preview.proposedTags.map { ($0, "") }), repeatedCards: .skip)
+    /// What importing the file would do, as the import read it.
+    var preview: ImportPreview {
+        file.preview
     }
 }
 
 extension Engine {
     /// Reads the file of `deck` at `file`, the app's own, without importing
-    /// it, as `previewImport(of:)` reads a file of cards: through the
-    /// import's own reader of a zip of cards and its preview, so adding the
-    /// deck is the same import as any Ficha package's. It takes a while, so
+    /// it, as `readDeckFile(at:)` reads any deck's `.ficha`, so adding the
+    /// deck is the same import as any deck's file's. It takes a while, so
     /// the app calls it away from the main actor. A missing file is an error
     /// whose message says to reinstall the app, never a crash.
     public func readFichaDeck(_ deck: FichaDeck, at file: URL) async throws(EngineError) -> FichaDeckFile {
         guard FileManager.default.fileExists(atPath: file.path(percentEncoded: false)) else {
-            logger.error("The file of one of Ficha's decks isn't there: \(deck.fileName, privacy: .public).zip")
+            logger.error("The file of one of Ficha's decks isn't there: \(deck.fileName, privacy: .public).ficha")
             throw .fichaDeckMissing(deck.name)
         }
-        return FichaDeckFile(deck: deck, preview: try await previewImport(of: file))
+        return FichaDeckFile(deck: deck, file: try await readDeckFile(at: file))
     }
 
     /// Whether the user has added the deck `file` holds: once any of its
@@ -151,20 +150,15 @@ extension Engine {
         }
     }
 
-    /// Adds the deck `file` holds, after Add Deck… and How fast?'s Start:
-    /// imports its cards as the Import sheet imports a zip of cards
-    /// (`importCards(_:choosing:)`), skipping those that repeat the user's,
-    /// which stay as they are, with their progress, so that adding it twice
-    /// adds nothing, and without the tag an import gives a file's cards after
-    /// the file's name; and gives the deck its emoji, as `ficha deck emoji`
-    /// gives one, when the import made it: the user had no deck by its name,
-    /// and cards came into it. Returns what the import did.
+    /// Adds the deck `file` holds, after Add Deck… and How fast?'s Start, as
+    /// any deck's file comes in (`addDeck(_:)`): its cards, skipping those
+    /// that repeat the user's, which stay as they are, with their progress,
+    /// so that adding it twice adds nothing, and without the tag an import
+    /// gives a file's cards after the file's name; and the emoji and the
+    /// description its `deck.json` holds, when the user had no deck by its
+    /// name, and cards came into it. Returns what the import did.
     @discardableResult
     public func addFichaDeck(_ file: FichaDeckFile) throws(EngineError) -> ImportOutcome {
-        let imported = try importCardsAndTheirDecks(file.preview, choosing: file.importChoices)
-        if imported.newDecks.contains(file.deck.name) {
-            try setEmoji(try Emoji(file.deck.emoji), ofDeck: file.deck.name)
-        }
-        return imported.outcome
+        try addDeck(file.file)
     }
 }

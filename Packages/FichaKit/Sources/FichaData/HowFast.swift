@@ -10,14 +10,16 @@ import Foundation
 // while Arte wasn't listed, and nothing while it was
 // (`CardsWindowDecks.swift`); after an import that made decks, those its new
 // cards came into that the user didn't have, once its sheet's Done closes
-// it; and after Add Deck… on one of Ficha's decks, before it comes in
-// (`CardsWindowFichaDecks.swift`). Each pace's finish date, where the deck is
-// and with the deck first, is FichaCore's, as the queue counts it
-// (`DeckQueue.swift`), with the settings the window reads the queue with.
-// Start adds one of Ficha's decks, saves the pace as `ficha pace` does, and
-// puts the deck first as `ficha deck queue --first` does, when Put it first
-// is ticked; Cancel changes nothing, so a deck that came in stays last, where
-// it came, and one of Ficha's decks isn't added.
+// it; after Add Deck… on one of Ficha's decks, before it comes in
+// (`CardsWindowFichaDecks.swift`); and after Open Deck… or Finder opened a
+// deck's `.ficha`, before it comes in (`CardsWindowOpenDeck.swift`). Each
+// pace's finish date, where the deck is and with the deck first, is
+// FichaCore's, as the queue counts it (`DeckQueue.swift`), with the settings
+// the window reads the queue with. Start adds one of Ficha's decks, or the
+// deck of a `.ficha`, saves the pace as `ficha pace` does, and puts the deck
+// first as `ficha deck queue --first` does, when Put it first is ticked;
+// Cancel changes nothing, so a deck that came in stays last, where it came,
+// and one of Ficha's decks, or a `.ficha`'s, isn't added.
 
 extension CardsWindowState {
     /// How fast?, while the window asks it: the deck it asks about, the three
@@ -41,6 +43,11 @@ extension CardsWindowState {
             /// name at its place in the queue, or else last, and Start adds
             /// it.
             case fichaDeck(FichaDeck)
+            /// The deck a `.ficha` holds, after Open Deck… or Finder opened
+            /// it, before it comes in (#554): its cards counted as for one
+            /// of Ficha's decks, into the deck at the top of the tree it
+            /// comes into, and Start adds it.
+            case deckFile(DeckFile)
         }
 
         /// What the line under the deck's name says.
@@ -58,6 +65,10 @@ extension CardsWindowState {
             /// under the deck's name in the Cards window, before its Add
             /// Deck…, every card its file holds (`FichaDeckFile.cardCount`).
             case fichaDeck(cardCount: Int)
+            /// "12 cards · from Capitales.ficha": the deck of a `.ficha`,
+            /// with a count of the cards that would come in, as for one of
+            /// Ficha's decks, and the file's name.
+            case deckFile(cardCount: Int, fileName: String)
         }
 
         /// A pace, as How fast? offers it, in its radio group.
@@ -78,8 +89,15 @@ extension CardsWindowState {
         public let subject: Subject
         /// The decks it asks about, as the sidebar lists them, with their
         /// emoji, in the queue's order, which the sheet names at its top:
-        /// none for one of Ficha's decks, which the sheet names as it is.
+        /// none for one of Ficha's decks, or a `.ficha`'s, which the sheet
+        /// names as it is.
         public let decks: [Deck]
+        /// The emoji the sheet shows before the name of one of Ficha's
+        /// decks, or a `.ficha`'s, which `decks` doesn't list: the one its
+        /// file holds, which the deck takes as it comes in new, or the
+        /// user's own deck's, which keeps its own; nil for none, and for the
+        /// decks the user has, whose emoji `decks` holds.
+        public let emoji: String?
         /// What the line under the deck's name says.
         public let line: Line
         /// The pace Start saves, ticked in the radio group: the user's as
@@ -167,14 +185,16 @@ extension CardsWindowState {
         question = .howFast(howFast)
     }
 
-    /// Chooses Start in How fast?: for one of Ficha's decks, adds it first
-    /// (`Engine.addFichaDeck(_:)`), and the sidebar then chooses the deck;
+    /// Chooses Start in How fast?: for one of Ficha's decks, or a `.ficha`'s,
+    /// adds it first (`Engine.addFichaDeck(_:)`, `Engine.addDeck(_:)`), and
+    /// the sidebar then chooses the deck;
     /// saves the pace chosen, when it changed, through
     /// `Engine.saveProgressSettings(_:changedFrom:)`, as `ficha pace` does,
     /// puts the deck first through `Engine.moveInQueue(deck:to:)`, as `ficha
     /// deck queue --first` does, when Put it first is ticked, and reads the
     /// cards again; or records why it couldn't and goes on asking. One of
-    /// Ficha's decks that came in stays in, so Start again adds nothing more.
+    /// Ficha's decks, or a `.ficha`'s, that came in stays in, so Start again
+    /// adds nothing more.
     public mutating func startHowFast() {
         guard case .howFast(let howFast) = question else { return }
         // The deck Put it first puts first, for one deck alone.
@@ -187,6 +207,9 @@ extension CardsWindowState {
         case .fichaDeck(let deck):
             guard addFichaDeck(deck) else { return }
             firstable = deck.name
+        case .deckFile(let file):
+            guard addDeckFile(file) else { return }
+            firstable = TagPath.top(of: file.deck)
         }
         let done = perform(.startHowFast) { engine throws(EngineError) in
             let old = try engine.progressSettings()
@@ -201,7 +224,7 @@ extension CardsWindowState {
             question = nil
             readAgain()
             askForTheFichaDeckAskedToAdd()
-        } else if case .fichaDeck = howFast.subject {
+        } else if howFast.subject.comesFromAFile {
             // It came in all the same, which the window lists.
             readAgain()
         }
@@ -233,20 +256,32 @@ extension CardsWindowState {
     }
 }
 
+extension CardsWindowState.HowFast.Subject {
+    /// Whether it's a deck that comes in from a file once Start adds it: one
+    /// of Ficha's decks, or a `.ficha`'s.
+    var comesFromAFile: Bool {
+        switch self {
+        case .deck, .decks: false
+        case .fichaDeck, .deckFile: true
+        }
+    }
+}
+
 extension CardsWindowState.HowFast {
     /// How fast? as it opens about `names`, decks at the top of the tree
-    /// among `topDecks`, those the sidebar lists, or about `fichaDeck`, one
-    /// of Ficha's decks, by its name alone, before it comes in, with `line`
-    /// under their names, out of `cards`, the cards in the user's reviews,
-    /// with those of `fichaDeck` as they'd come in, at `now`, by `calendar`,
-    /// the engine's, with `settings`' pace and Ficha's other settings: at
-    /// the user's pace, or Steady while it's none, with Put it first
-    /// unticked, and each pace's finish date, of the deck, or of the last of
-    /// the decks in the queue, where it is and with the deck first. Put it
-    /// first is for one deck alone.
+    /// among `topDecks`, those the sidebar lists, or about `file`, one of
+    /// Ficha's decks or a `.ficha`'s, by its name alone, before it comes in,
+    /// as `names`' one deck, with `emoji` before it, with `line` under their
+    /// names, out of `cards`, the cards in the user's reviews, with those of
+    /// `file` as they'd come in, at `now`, by `calendar`, the engine's, with
+    /// `settings`' pace and Ficha's other settings: at the user's pace, or
+    /// Steady while it's none, with Put it first unticked, and each pace's
+    /// finish date, of the deck, or of the last of the decks in the queue,
+    /// where it is and with the deck first. Put it first is for one deck
+    /// alone.
     init(
-        about names: [String], fichaDeck: FichaDeck? = nil, line: Line, amongTopDecks topDecks: [Deck],
-        cards: CardsInReviews, settings: ReviewSettings, now: Date, calendar: Calendar
+        about names: [String], fromFile file: Subject? = nil, emoji: String? = nil, line: Line,
+        amongTopDecks topDecks: [Deck], cards: CardsInReviews, settings: ReviewSettings, now: Date, calendar: Calendar
     ) {
         let queue = settings.queue(of: cards, now: now, calendar: calendar).map(\.deck)
         let inQueueOrder = queue.filter(names.contains) + names.filter { !queue.contains($0) }
@@ -272,12 +307,12 @@ extension CardsWindowState.HowFast {
         }
         var subject = names.count == 1 ? Subject.deck(names[0]) : .decks(inQueueOrder)
         var decks = inQueueOrder.compactMap { name in topDecks.first { $0.name == name } }
-        if let fichaDeck {
-            subject = .fichaDeck(fichaDeck)
+        if let file {
+            subject = file
             decks = []
         }
         self.init(
-            subject: subject, decks: decks, line: line,
+            subject: subject, decks: decks, emoji: file == nil ? nil : emoji, line: line,
             pace: Pace(newCardsPerDay: settings.newCardsPerDay) ?? .steady, decksAhead: decksAhead,
             decksPassed: decksAhead.filter { !decksStillAhead.contains($0) }, decksStillAhead: decksStillAhead,
             putsFirst: false, hasOtherDecks: topDecks.contains { !names.contains($0.name) },

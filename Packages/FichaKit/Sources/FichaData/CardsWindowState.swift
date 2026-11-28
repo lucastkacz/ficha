@@ -210,6 +210,9 @@ public struct CardsWindowState: Sendable {
         /// How fast new cards come, and where a deck goes in the queue, as
         /// it comes in: `HowFast.swift`.
         case howFast(HowFast)
+        /// Which deck's `.ficha` to open, in an open panel, after Open
+        /// Deck…: `CardsWindowOpenDeck.swift`.
+        case deckFileToOpen
     }
 
     /// What OK in the emoji sheet makes of what its field holds.
@@ -325,6 +328,11 @@ public struct CardsWindowState: Sendable {
         /// He opened the window, which reads Ficha's decks from the app, and
         /// the file of this one couldn't be read.
         case readFichaDeck(FichaDeck)
+        /// He opened the file with this name, with Open Deck… or from
+        /// Finder, which isn't a deck's `.ficha`, or couldn't be read, or
+        /// whose How fast? couldn't read the queue; or chose Start in How
+        /// fast? for its deck, which adds it.
+        case openDeck(fileName: String)
     }
 
     /// What the sidebar chose: the deck the window opens on (`deckToOpenOn`),
@@ -465,6 +473,13 @@ public struct CardsWindowState: Sendable {
     /// decks, and until what's open closes
     /// (`askForTheFichaDeckAskedToAdd()`).
     var fichaDeckAskedToAdd: FichaDeck?
+    /// The work reading the `.ficha` Open Deck… or Finder opened last, while
+    /// the window waits for it (`CardsWindowOpenDeck.swift`).
+    var deckFileAwaited: UUID?
+    /// The `.ficha` Open Deck… or Finder opened, once read, while the window
+    /// waits to ask How fast? for it: until what's open closes
+    /// (`askForTheDeckFileOpened()`).
+    var deckFileOpened: DeckFile?
     /// Internal, for the window's parts in files of their own.
     let engine: Engine
 

@@ -334,11 +334,11 @@ struct ReviewPanelView: View {
                         HStack(spacing: 10) {
                             anotherFichaDeck
                             Spacer(minLength: 0)
-                            fichaDeckButton(deck, of: panel)
+                            fichaDeckButton(deck, emoji: met.fichaDeckEmoji, of: panel)
                         }
                         VStack(alignment: .leading, spacing: 6) {
                             anotherFichaDeck
-                            fichaDeckButton(deck, of: panel)
+                            fichaDeckButton(deck, emoji: met.fichaDeckEmoji, of: panel)
                         }
                     }
                 } else {
@@ -372,18 +372,19 @@ struct ReviewPanelView: View {
     }
 
     /// The button for `deck`, one of Ficha's decks the user hasn't added,
-    /// which closes the panel and opens the Cards window on it, with How
+    /// named after it, with `emoji` before its name, its file's, when it has
+    /// one, which closes the panel and opens the Cards window on it, with How
     /// fast?.
-    private func fichaDeckButton(_ deck: FichaDeck, of panel: ReviewPanelModel) -> some View {
+    private func fichaDeckButton(_ deck: FichaDeck, emoji: String?, of panel: ReviewPanelModel) -> some View {
         Button {
             addFichaDeck(deck)
             panel.state.close(.byLucas)
         } label: {
             Text(
-                "\(deck.emoji) \(deck.name)…",
+                "\([emoji, deck.name].compactMap(\.self).joined(separator: " "))…",
                 comment: """
-                    A button in the review panel, once nothing waits in the queue, with the emoji and the \
-                    name of one of Ficha's decks: it opens the Cards window to add it.
+                    A button in the review panel, once nothing waits in the queue, with the emoji, when it has \
+                    one, and the name of one of Ficha's decks: it opens the Cards window to add it.
                     """)
         }
         .fixedSize()
