@@ -266,7 +266,8 @@
    * decks (#458) and the Welcome page that offers them (#467); Settings in
    * five tabs, with where each of today's rows went (#492); the card form,
    * with no tags and no type (#538); Open Deck…, which brings in a deck's
-   * .ficha someone sent, with How fast? for it (#554). And, as before,
+   * .ficha someone sent, with How fast? for it (#554), the one file that
+   * comes in, with no Import or Export (#542). And, as before,
    * the panel over a working day on a fast clock, and what holds it back.
    * New here, not in the app yet: WelcomePage's steps and SettingsWindow's
    * five tabs. Ahead of the app too, in CardsWindow: a deck's bar, with Put
@@ -643,9 +644,9 @@
         <span>${d.emoji}</span><span className="name">${d.name}</span><small>${st.line}</small></button>`;
     };
     const browsing = deck.added && !status.empty;
-    // New Card and the search field sit in the window's toolbar, as the
-    // app's, where its Import… and Export… sit too. New Card opens the card
-    // form (#538).
+    // New Card and the search field sit in the window's toolbar, alone, as
+    // the app's, which offers no Import… or Export… (#542). New Card opens
+    // the card form (#538).
     const toolbar = html`<${Button} title="New Card" onClick=${() => setForm(true)} />
       <span className="toolbar-search" role="search">${Icon.search(12)}Search</span>`;
     return html`<${Window} title="Cards" toolbar=${toolbar} onClose=${win.onClose} ...${win}>
@@ -1032,7 +1033,8 @@
         day has appearances, the latest if five days in seven do. 85% desired retention.</li>
       <li>Ficha's three decks, in Spanish for now, offered at the Welcome page and in the Cards window; the first card
         comes a minute after the Welcome page. In the Cards window, Open Deck… stands for its open panel, on a made-up
-        Capitales.ficha someone sent you: Add Deck… asks How fast? for it, as a double-click on the file does.</li>
+        Capitales.ficha someone sent you: Add Deck… asks How fast? for it, as a double-click on the file does. A deck's
+        .ficha is the one file that comes in: no Import or Export, and no Anki packages, text files or zips.</li>
       <li>The Cards window, ADR 0041's: the decks alone in the sidebar, each with its row, and the chosen deck's cards
         as a grid, each its front's picture or its text, a dot for met or due. Click one for its front and back, in the detail beside the grid,
         with Set Aside, which takes it out of your reviews: it stays in its deck, dimmed, with Put Back.
