@@ -62,8 +62,8 @@ final class OpenDeckTests {
 }
 
 /// Writes a zip to `file`, holding `files`, each a path in the zip and what
-/// the file there holds, compressed: a test's own zip.
-private func makeZip(at file: URL, holding files: [(path: String, data: Data)]) throws {
+/// the file there holds, compressed: a test's own zip, a deck's `.ficha` too.
+func makeZip(at file: URL, holding files: [(path: String, data: Data)]) throws {
     let archive = try Archive(url: file, accessMode: .create, pathEncoding: nil)
     for (path, data) in files {
         try archive.addEntry(

@@ -110,10 +110,10 @@ struct MetThemAllTests {
         #expect(met.nextInQueue == nil)
     }
 
-    // Small files of Ficha's decks, a card each, in a folder of the test's
-    // own: Lenguaje's ubuntu, met already, is Palabras lindas' card, front
-    // and back, so the user has added that deck, and Arte argentino is the
-    // first they haven't.
+    // Small files of Ficha's decks, a .ficha each (ADR 0044) with a card and
+    // a deck.json of nothing, in a folder of the test's own: Lenguaje's
+    // ubuntu, met already, is Palabras lindas' card, front and back, so the
+    // user has added that deck, and Arte argentino is the first they haven't.
     @Test(
         "once nothing waits in the queue, the done panel asks for Ficha's decks, and offers the first the user hasn't added",
         .bug(id: 458))
@@ -128,11 +128,11 @@ struct MetThemAllTests {
         var files: [FichaDeck: Result<FichaDeckFile, EngineError>] = [:]
         for deck in FichaDeck.allCases {
             let front = try #require(fronts[deck])
-            let file = folder.appending(path: "\(deck.fileName).txt")
+            let file = folder.appending(path: "\(deck.fileName).ficha")
             let text =
                 "#separator:tab\n#html:false\n#columns:Front\tBack\tDeck\n#deck column:3\n"
                 + "\(front)\tLo que quiere decir «\(front)».\t\(deck.name)\n"
-            try Data(text.utf8).write(to: file)
+            try makeZip(at: file, holding: [("\(deck.name).txt", Data(text.utf8)), ("deck.json", Data("{}".utf8))])
             files[deck] = .success(try await engine.readFichaDeck(deck, at: file))
         }
         try engine.meet(try approveInDeck("ubuntu", deck: "Lenguaje", in: engine))
