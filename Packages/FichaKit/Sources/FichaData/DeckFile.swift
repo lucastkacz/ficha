@@ -148,7 +148,7 @@ extension Engine {
         do throws(DeckFileProblem) {
             let archive = try deckArchive(at: file)
             held = try emojiAndDescription(in: archive)
-            zipped = try await cards(in: archive, drawingSVGsWith: newSVGDrawer?())
+            zipped = try await cardsInDeckFile(archive, drawingSVGsWith: newSVGDrawer?())
         } catch {
             throw .unreadableFile(name, error)
         }
@@ -224,7 +224,7 @@ private func deckArchive(at file: URL) throws(DeckFileProblem) -> Archive {
 /// its cards' images and sounds, as `readZipOfCards(_:drawingSVGsWith:)`
 /// reads them, its SVGs drawn by `drawer`; or, for a text file or a zip
 /// Ficha can't read, which the engine logs, a damaged deck's file.
-private func cards(in archive: Archive, drawingSVGsWith drawer: (any SVGDrawer)?) async throws(DeckFileProblem)
+private func cardsInDeckFile(_ archive: Archive, drawingSVGsWith drawer: (any SVGDrawer)?) async throws(DeckFileProblem)
     -> (reading: ImportReading, images: [ImageName: CardImage], sounds: [SoundName: CardSound])
 {
     do throws(CardsFileProblem) {
