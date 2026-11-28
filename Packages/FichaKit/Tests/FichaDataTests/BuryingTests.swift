@@ -91,7 +91,8 @@ struct BuryingTests {
         try engine.flag(serendipia.id, note: note("Falta decir de dónde viene"))
 
         let buried = try engine.bury(serendipia.id)
-        #expect(buried.standing == .buried(at: time.now, flag: try #require(buried.flag)))
+        let flag = try #require(buried.flag)
+        #expect(buried.standing == .buried(at: time.now, flag: flag))
         #expect(try engine.flaggedCards().isEmpty)
 
         try engine.unbury(serendipia.id)
