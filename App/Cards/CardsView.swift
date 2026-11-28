@@ -3,57 +3,54 @@ import FichaData
 import SwiftUI
 
 /// The Cards window's content, in three panes as Mail lays out its own: a
-/// sidebar to choose the inbox, a deck or one of Ficha's decks, a grid of
-/// the chosen cards as tiles (`CardGrid.swift`), or a table with one row per
-/// capture and flagged card in the inbox, narrowed by the toolbar's search
-/// field, and the selected card or row whole beside it, with what Lucas can
-/// do with it at its foot. The window opens on the first deck of the queue
-/// new cards come from, the one Lucas is meeting, or else on the first deck
-/// Your Decks lists, and on nothing while it lists none. The sidebar's Your
-/// Decks section lists every deck as a tree, in the order the state lists them
-/// (`CardsWindowDecks.swift`): Default first while it holds cards or has a
-/// switch on, then those at the top of the tree with cards in Lucas's
-/// reviews in the order of the queue new cards come from, a deck listed
-/// first for its priority cards alone first and one met in full at its
-/// place, then the rest alphabetically, and those set aside last; each with
-/// how many of its cards are due, grayed while its cards are out of Lucas's
-/// reviews, and with its emoji and color, and each at the top of the tree
-/// with a line under its title, in up to two lines, of how far it is and when
-/// it's all met (#491); a deck's context menu, and the Actions menu above the
-/// grid while the sidebar chose it (`DeckMenu.swift`), set it aside or
-/// prioritize it, give it a color and an emoji, rename it, in the rename sheet
-/// (`RenameSheet.swift`), which moves it too, and delete it, with its cards,
-/// asking first. A card shows its deck alone: the database keeps its tags and
-/// its type, which the window shows nowhere (#538). Change
-/// Deck… moves the selected cards to the deck Lucas picks in its sheet, or
-/// names there with New Deck… (`ChangeDeckSheet.swift`), and so does dragging
-/// them onto a deck in the sidebar, where a deck dragged onto another goes
-/// inside it, or onto the Your Decks title to the top (`SidebarDrops.swift`).
-/// The card form and the editor have a Deck field, whose New Deck… names a
-/// deck in the New Deck sheet (`NewDeckSheet.swift`), which New Deck… in a
-/// deck's menu or the Your Decks title's opens too, to make the deck. As a
-/// deck comes in, made there or brought by an import, How fast? asks for the
-/// pace and where the deck goes in the queue new cards come from
-/// (`HowFastSheet.swift`). The sidebar's Ficha's Decks section, after Your
+/// sidebar to choose a deck or one of Ficha's decks, a grid of the chosen cards
+/// as tiles (`CardGrid.swift`), flagged ones with their flag, narrowed by the
+/// toolbar's search field, and the selected card whole beside it, with what
+/// Lucas can do with it at its foot. The window opens on the first deck of the
+/// queue new cards come from, the one Lucas is meeting, or else on the first
+/// deck Your Decks lists, and on nothing while it lists none. The sidebar's
+/// Your Decks section lists every deck as a tree, in the order the state lists
+/// them (`CardsWindowDecks.swift`): Default first while it holds cards or has a
+/// switch on, then those at the top of the tree with cards in Lucas's reviews
+/// in the order of the queue new cards come from, a deck listed first for its
+/// priority cards alone first and one met in full at its place, then the rest
+/// alphabetically, and those set aside last; each with how many of its cards
+/// are due, grayed while its cards are out of Lucas's reviews, and with its
+/// emoji and color, and each at the top of the tree with a line under its
+/// title, in up to two lines, of how far it is and when it's all met (#491); a
+/// deck's context menu, and the Actions menu above the grid while the sidebar
+/// chose it (`DeckMenu.swift`), set it aside or prioritize it, give it a color
+/// and an emoji, rename it, in the rename sheet (`RenameSheet.swift`), which
+/// moves it too, and delete it, with its cards, asking first. A card shows its
+/// deck alone: the database keeps its tags and its type, which the window shows
+/// nowhere (#538). Change Deck… moves the selected cards to the deck Lucas
+/// picks in its sheet, or names there with New Deck… (`ChangeDeckSheet.swift`),
+/// and so does dragging them onto a deck in the sidebar, where a deck dragged
+/// onto another goes inside it, or onto the Your Decks title to the top
+/// (`SidebarDrops.swift`). The card form and the editor have a Deck field,
+/// whose New Deck… names a deck in the New Deck sheet (`NewDeckSheet.swift`),
+/// which New Deck… in a deck's menu or the Your Decks title's opens too, to
+/// make the deck. As a deck comes in, made there or brought by an import, How
+/// fast? asks for the pace and where the deck goes in the queue new cards come
+/// from (`HowFastSheet.swift`). The sidebar's Ficha's Decks section, after Your
 /// Decks, lists the decks that come with Ficha that Lucas hasn't added, each
 /// with how many cards it brings, which the window reads from the app as it
-/// opens: one chosen shows in the grid's place, with Add Deck…, which asks
-/// How fast? before Start adds it, and its first card, front and back, in the
+/// opens: one chosen shows in the grid's place, with Add Deck…, which asks How
+/// fast? before Start adds it, and its first card, front and back, in the
 /// detail's (#458). The grid lists the cards in the order they came in. He
-/// edits a card or a capture right there, in fields that take the detail's
-/// place while the sidebar and the grid or the inbox wait. He selects several
-/// tiles with ⌘ or Shift, as in the Finder, or all of them with Select All,
-/// ⌘A, and then the detail says how many, with what he can do with all of
-/// them. New Card in the toolbar, or ⌘N, and Convert to Card on a capture
-/// open the card form, a sheet of its own (`CardFormSheet.swift`), Import…
-/// in the toolbar opens the Import sheet (`ImportSheet.swift`), which imports
-/// a text file of cards, and Export… opens the Export sheet (`ExportSheet.swift`),
-/// which saves cards to one. `CardsWindowState` decides what the window lists,
-/// shows, offers and asks, and what happens when Lucas acts, and the view
-/// draws it. It reads the cards again whenever the engine says they changed,
-/// from the app or the `ficha` CLI, when Lucas changes the scheduling
-/// settings or the active hours, and every minute, since cards come due as
-/// time passes, or at once when Ficha Dev's debug menu moves the time.
+/// edits a card right there, in fields that take the detail's place while the
+/// sidebar and the grid wait. He selects several tiles with ⌘ or Shift, as in
+/// the Finder, or all of them with Select All, ⌘A, and then the detail says how
+/// many, with what he can do with all of them. New Card in the toolbar, or ⌘N,
+/// opens the card form, a sheet of its own (`CardFormSheet.swift`), Import… in
+/// the toolbar opens the Import sheet (`ImportSheet.swift`), which imports a
+/// text file of cards, and Export… opens the Export sheet
+/// (`ExportSheet.swift`), which saves cards to one. `CardsWindowState` decides
+/// what the window lists, shows, offers and asks, and what happens when Lucas
+/// acts, and the view draws it. It reads the cards again whenever the engine
+/// says they changed, from the app or the `ficha` CLI, when Lucas changes the
+/// scheduling settings or the active hours, and every minute, since cards come
+/// due as time passes, or at once when Ficha Dev's debug menu moves the time.
 struct CardsView: View {
     let model: AppModel
     /// What the sidebar chose, what Lucas looks for and selected, and so what
@@ -61,10 +58,7 @@ struct CardsView: View {
     /// edits, what the window asks and what failed.
     @State private var state: CardsWindowState
     @FocusState private var isSearchFocused: Bool
-    /// The inbox's order: the latest added first, until Lucas clicks a
-    /// column's header.
-    @State private var inboxSortOrder = [InboxRowOrder(.added, order: .reverse)]
-    /// Whether the grid, or the inbox's table, has the keyboard, which it
+    /// Whether the grid has the keyboard, which it
     /// gets back once Lucas saves or cancels an edit, for him to go on with
     /// the arrow keys.
     @FocusState private var isListingFocused: Bool
@@ -95,27 +89,6 @@ struct CardsView: View {
             // Each button acts on what its dialog presents, which SwiftUI
             // hands it: closing the dialog may drop the state's question
             // before the button acts.
-            .confirmationDialog(
-                captureToDiscard.map {
-                    Text(
-                        "Discard “\($0.text)”?",
-                        comment: "The title of the Cards window's question before it discards a capture, with its text."
-                    )
-                } ?? Text(verbatim: ""),
-                isPresented: Binding(get: { captureToDiscard != nil }, set: { if !$0 { state.cancelQuestion() } }),
-                titleVisibility: .visible,
-                presenting: captureToDiscard
-            ) { capture in
-                Button(role: .destructive) {
-                    state.discard(capture)
-                } label: {
-                    Text("Discard", comment: "The button that discards the capture the Cards window asks about.")
-                }
-            } message: { _ in
-                Text(
-                    "It leaves the inbox without becoming cards, and you can't bring it back.",
-                    comment: "Under the title of the Cards window's question before it discards a capture.")
-            }
             .confirmationDialog(
                 cardsToDelete.map { deletionTitle(for: $0) } ?? Text(verbatim: ""),
                 isPresented: Binding(get: { cardsToDelete != nil }, set: { if !$0 { state.cancelQuestion() } }),
@@ -187,7 +160,7 @@ struct CardsView: View {
 
     /// The window's three panes, with the toolbar's search field, Import…
     /// and Export…, ⌘F, and the keys that change the card size, which only the
-    /// detail's card or capture shows at. A pane's ideal width counts only as
+    /// detail's card shows at. A pane's ideal width counts only as
     /// the window first opens, and only for a pane whose content is there by
     /// then, which is why the window opens with the cards already read
     /// (`AppModel.openCardsWindow()`): the middle pane opens wide enough for
@@ -354,12 +327,6 @@ struct CardsView: View {
         return deck
     }
 
-    /// The capture the window asks whether to discard, while it asks.
-    private var captureToDiscard: Capture? {
-        guard case .discard(let capture) = state.question else { return nil }
-        return capture
-    }
-
     /// The cards the window asks whether to delete, while it asks.
     private var cardsToDelete: [CardRow]? {
         guard case .delete(let rows) = state.question else { return nil }
@@ -416,62 +383,11 @@ struct CardsView: View {
                 title: LocalizedStringResource(
                     "Couldn't save the card", comment: "An alert's title in the Cards window."),
                 message: error.messageInCardsWindow(actingOn: 1))
-        case .saveCapture:
-            return Failure(
-                title: LocalizedStringResource(
-                    "Couldn't save the capture", comment: "An alert's title in the Cards window."),
-                message: error.messageForCaptureInCardsWindow(
-                    ifItLeft: String(
-                        localized: """
-                            This capture left the inbox outside this window meanwhile, approved or discarded in a \
-                            refine session, so nothing was saved. To keep what you typed, copy it before you cancel.
-                            """,
-                        comment:
-                            "An alert's message in the Cards window, when the capture Lucas saves already left the inbox."
-                    )))
-        case .discard:
-            return Failure(
-                title: LocalizedStringResource(
-                    "Couldn't discard the capture", comment: "An alert's title in the Cards window."),
-                message: error.messageForCaptureInCardsWindow(
-                    ifItLeft: String(
-                        localized: """
-                            This capture left the inbox outside this window meanwhile, approved or discarded in a \
-                            refine session, so there's nothing to discard. The window now shows the inbox as it is.
-                            """,
-                        comment:
-                            "An alert's message in the Cards window, when the capture Lucas discards already left the inbox."
-                    )))
         case .addCard:
             return Failure(
                 title: LocalizedStringResource(
                     "Couldn't add the card", comment: "An alert's title over the Cards window's card form."),
-                message: error.messageForCaptureInCardsWindow(
-                    ifItLeft: String(
-                        localized: """
-                            The capture this form was opened from left the inbox outside this window meanwhile, \
-                            approved or discarded in a refine session, so the card wasn't added. To keep what you \
-                            typed, copy it before you close the form.
-                            """,
-                        comment:
-                            "An alert's message over the Cards window's card form, when its capture already left the inbox."
-                    )))
-        case .approveCapture:
-            return Failure(
-                title: LocalizedStringResource(
-                    "Couldn't take the capture out of the inbox",
-                    comment: "An alert's title in the Cards window, after closing the card form opened from a capture."),
-                message: error.messageForCaptureInCardsWindow(
-                    ifItLeft: String(
-                        localized: """
-                            This capture left the inbox outside this window meanwhile, approved or discarded in a \
-                            refine session. The cards you added from it are saved.
-                            """,
-                        comment: """
-                            An alert's message in the Cards window, after closing the card form, when its capture \
-                            already left the inbox.
-                            """
-                    )))
+                error: error)
         case .putImage:
             return Failure(
                 title: LocalizedStringResource(
@@ -662,24 +578,13 @@ struct CardsView: View {
         .makeDeckSheet($state, failure: failure(overSheet: true))
     }
 
-    /// The sidebar's section `section`: the inbox, with how many things wait
-    /// in it, as the menu counts them; the decks as a tree, each parent open
+    /// The sidebar's section `section`: the decks as a tree, each parent open
     /// or closed as Lucas left it, each deck with how many of its cards are
     /// due; or Ficha's decks he hasn't added, each with how many cards it
     /// brings.
     @ViewBuilder
     private func sidebarSection(_ section: CardsWindowState.SidebarSection) -> some View {
         switch section {
-        case .inbox:
-            Section {
-                Label(
-                    String(
-                        localized: "Inbox", comment: "An item of the Cards window's sidebar: what waits to be refined."),
-                    systemImage: "tray"
-                )
-                .badge(model.progress?.inInbox ?? 0)
-                .tag(SidebarItem.inbox)
-            }
         case .decks(let rows):
             Section {
                 ForEach(rows) { row in
@@ -779,22 +684,6 @@ struct CardsView: View {
         }
     }
 
-    /// What the inbox's table says when the inbox, or the search in it,
-    /// brings nothing.
-    @ViewBuilder
-    private var emptyInbox: some View {
-        if state.hasSearch {
-            ContentUnavailableView.search(text: state.search)
-        } else {
-            ContentUnavailableView(
-                String(localized: "Nothing in the inbox", comment: "In the Cards window, when the inbox is empty."),
-                systemImage: "tray",
-                description: Text(
-                    "What you capture, and the cards you flag, wait here to be refined.",
-                    comment: "In the Cards window, when the inbox is empty."))
-        }
-    }
-
     /// What the middle pane lists: what the state lists, or the one of
     /// Ficha's decks the sidebar chose, in its place.
     @ViewBuilder
@@ -846,8 +735,7 @@ struct CardsView: View {
     }
 
     /// What the middle pane lists, as the state lists it: the cards of the
-    /// deck the sidebar chose, in the grid, under the deck's Actions menu; or
-    /// the inbox.
+    /// deck the sidebar chose, in the grid, under the deck's Actions menu.
     @ViewBuilder
     private var listing: some View {
         switch state.listing {
@@ -866,8 +754,6 @@ struct CardsView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
-        case .success(.inbox(let rows)):
-            inboxTable(rows)
         case .failure(let error):
             ContentUnavailableView {
                 Label("Couldn't load your cards", systemImage: "exclamationmark.triangle")
@@ -876,51 +762,6 @@ struct CardsView: View {
             }
         case nil:
             EmptyView()
-        }
-    }
-
-    /// What waits in the inbox, one row each: the captures, the expansions,
-    /// the follow-ups and the flagged cards, which Lucas selects one at a
-    /// time.
-    private func inboxTable(_ rows: [InboxRow]) -> some View {
-        // Each column's header and widths, fitted to its texts in the app's
-        // language.
-        let fitted = InboxTableColumns(now: state.now)
-        return Table(rows.sorted(using: inboxSortOrder), selection: selectedInInbox, sortOrder: $inboxSortOrder) {
-            TableColumn(Text(fitted.text.header), sortUsing: InboxRowOrder(.text)) { row in
-                if let cardRow = row.flaggedCard {
-                    FrontCell(card: cardRow.card)
-                } else {
-                    TextAsItReads(row.text)
-                        .lineLimit(1)
-                }
-            }
-            // Narrows below its texts, the user's: `InboxTableColumns` says
-            // why.
-            .width(fitting: fitted.text)
-            TableColumn(Text(fitted.kind.header), sortUsing: InboxRowOrder(.kind)) { row in
-                Text(row.kindName)
-            }
-            .width(fitting: fitted.kind)
-            TableColumn(Text(fitted.added.header), sortUsing: InboxRowOrder(.added)) { row in
-                Text(row.addedAt.formatted(.tableDay))
-            }
-            .width(fitting: fitted.added)
-        }
-        .focused($isListingFocused)
-        .overlay {
-            if rows.isEmpty {
-                emptyInbox
-            }
-        }
-    }
-
-    /// The inbox's table's selection: the row Lucas selected, one at a time.
-    private var selectedInInbox: Binding<InboxRow.ID?> {
-        Binding {
-            state.inboxSelection
-        } set: {
-            state.selectInInbox($0)
         }
     }
 
@@ -960,38 +801,9 @@ struct CardsView: View {
                 state.cancelEditing()
                 focusListingOnceEditEnds()
             }
-        case .capture(let capture):
-            CaptureEditor(capture: capture, isSearching: isSearchFocused) { text, note, source in
-                state.saveCapture(text: text, note: note, source: source)
-                focusListingOnceEditEnds()
-            } cancel: {
-                state.cancelEditing()
-                focusListingOnceEditEnds()
-            }
         case nil:
             Group {
                 switch state.detail {
-                case .capture(let capture):
-                    CaptureDetail(capture: capture, kind: InboxRow.Item.capture(capture).kindName, tie: nil)
-                        .safeAreaInset(edge: .bottom, spacing: 0) {
-                            actionBar
-                        }
-                case .expansion(let expansion):
-                    CaptureDetail(
-                        capture: expansion.capture, kind: InboxRow.Item.expansion(expansion).kindName,
-                        tie: .expands(expansion.card)
-                    )
-                    .safeAreaInset(edge: .bottom, spacing: 0) {
-                        actionBar
-                    }
-                case .followUp(let followUp):
-                    CaptureDetail(
-                        capture: followUp.capture, kind: InboxRow.Item.followUp(followUp).kindName,
-                        tie: .followsUp(followUp.card)
-                    )
-                    .safeAreaInset(edge: .bottom, spacing: 0) {
-                        actionBar
-                    }
                 case .cards(let rows):
                     selectionSummary(rows)
                 case .card(let row, let reviewLog):
@@ -1010,12 +822,6 @@ struct CardsView: View {
                     .safeAreaInset(edge: .bottom, spacing: 0) {
                         actionBar
                     }
-                case .nothingSelectedInInbox:
-                    ContentUnavailableView(
-                        String(
-                            localized: "Nothing selected",
-                            comment: "In the Cards window's detail, when nothing in the inbox is selected."),
-                        systemImage: "tray")
                 case .noCardSelected:
                     if let card = state.shownFichaDeck?.firstCard {
                         FichaDeckCard(card: card, images: state.images)
@@ -1028,7 +834,7 @@ struct CardsView: View {
         }
     }
 
-    /// Gives the grid, or the inbox's table, the keyboard back once Lucas's
+    /// Gives the grid the keyboard back once Lucas's
     /// edit ended, saved or not. A save that failed goes on with the edit,
     /// and the keyboard stays in its fields.
     private func focusListingOnceEditEnds() {
@@ -1037,14 +843,13 @@ struct CardsView: View {
         }
     }
 
-    /// Edit, which turns the detail of the selected card or capture into
-    /// fields: ⌘L for either, since only one detail shows at a time.
+    /// Edit, which turns the detail of the selected card into fields: ⌘L.
     private var editButton: some View {
         Button(
             String(
                 localized: "Edit",
                 comment:
-                    "A button of the Cards window that turns the card's or the capture's detail into fields to edit it."
+                    "A button of the Cards window that turns the card's detail into fields to edit it."
             )
         ) {
             state.startEditing()
@@ -1052,10 +857,10 @@ struct CardsView: View {
         .keyboardShortcut("l", modifiers: .command)
         .help(
             Text(
-                "Edit (⌘L)", comment: "The tooltip of the Cards window's button that edits the card or the capture."))
+                "Edit (⌘L)", comment: "The tooltip of the Cards window's button that edits the card."))
     }
 
-    /// What Lucas can do with the capture or the card the detail shows, at
+    /// What Lucas can do with the card the detail shows, at
     /// its foot, always in sight, in a second line when the detail is too
     /// narrow for all of them in one, as in German.
     private var actionBar: some View {
@@ -1085,10 +890,9 @@ struct CardsView: View {
     }
 
     /// A button for each thing Lucas can do with what the detail shows, as
-    /// the state offers them: Edit, Convert to Card, Flag…, Set Aside or Put
-    /// Back, Turn On or Turn Off Both Ways, Change Deck…, Delete… and
-    /// Discard…, in that order.
-    /// Each button calls the state, which reads the
+    /// the state offers them: Edit, Flag…, Set Aside or Put Back, Turn On or
+    /// Turn Off Both Ways, Change Deck… and Delete…, in that order. Each button
+    /// calls the state, which reads the
     /// selection as it is when Lucas acts, never as the button had it: SwiftUI
     /// keeps the action a keyboard shortcut had when its button first showed,
     /// so ⌘E would set aside the cards selected back then.
@@ -1097,11 +901,6 @@ struct CardsView: View {
         let actions = state.actions
         if actions.contains(.edit) {
             editButton
-        }
-        if actions.contains(.convertToCard) {
-            ConvertToCardButton {
-                state.convertToCard()
-            }
         }
         if actions.contains(.flag) {
             flagButton
@@ -1124,9 +923,6 @@ struct CardsView: View {
         if actions.contains(.delete) {
             deleteButton
         }
-        if actions.contains(.discard) {
-            discardButton
-        }
     }
 
     /// Flag…, which asks for Lucas's note on what to fix in the selected
@@ -1144,27 +940,9 @@ struct CardsView: View {
         .help(Text("Flag… (⇧⌘L)", comment: "The tooltip of the Cards window's button that flags the card."))
     }
 
-    /// Discard…, which asks whether to discard the capture selected in the
-    /// inbox: ⌘⌫, as Delete… for cards, since a card's detail and a
-    /// capture's never show together. While Lucas is in the search field, ⌘⌫
-    /// is the field's, as in any text field: it deletes what he typed.
-    private var discardButton: some View {
-        Button(
-            String(
-                localized: "Discard…",
-                comment: "A button of the Cards window that discards the capture, asking first."
-            )
-        ) {
-            state.askToDiscard()
-        }
-        .keyboardShortcut(isSearchFocused ? nil : KeyboardShortcut(.deleteKey, modifiers: .command))
-        .help(Text("Discard… (⌘⌫)", comment: "The tooltip of the Cards window's button that discards the capture."))
-    }
-
     /// Delete…, which asks whether to delete the selected cards for good:
-    /// ⌘⌫, as Discard… for a capture, since a card's detail and a capture's
-    /// never show together. While Lucas is in the search field, ⌘⌫ is the
-    /// field's, as in any text field: it deletes what he typed.
+    /// ⌘⌫. While Lucas is in the search field, ⌘⌫ is the field's, as in any
+    /// text field: it deletes what he typed.
     private var deleteButton: some View {
         Button(
             String(
@@ -1474,14 +1252,14 @@ private struct FichaDeckCard: View {
 extension KeyEquivalent {
     /// The Delete key, ⌫, as macOS says it types: U+007F. A button's shortcut
     /// takes a key only as its event spells it, and SwiftUI's own `.delete` is
-    /// U+0008, so ⌘⌫ never reached Discard with it in `make render`, which
+    /// U+0008, so ⌘⌫ never reached Delete… with it in `make render`, which
     /// makes keys as the keyboard does.
     static let deleteKey = KeyEquivalent("\u{7F}")
 }
 
 extension View {
     /// The view, dimmed and taking no clicks while `isWaiting`: the sidebar
-    /// and the middle pane, while Lucas edits a card or a capture.
+    /// and the middle pane, while Lucas edits a card.
     fileprivate func waiting(while isWaiting: Bool) -> some View {
         disabled(isWaiting)
             .opacity(isWaiting ? 0.5 : 1)

@@ -44,16 +44,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return try AppModel(debugTools: try DebugTools(dataFolder: try variant.dataFolder))
     }
 
-    /// The app's way into Lucas's cards, for the menu, the capture window and
+    /// The app's way into Lucas's cards, for the menu, the Cards window and
     /// the review panel, when the database is open.
     var model: AppModel? {
         try? opening.get()
     }
 
-    /// The shortcut that opens "Capture…" from any app, while one is on.
-    let captureShortcut = CaptureShortcutRegistration()
-    /// The capture window, from the last time it showed.
-    private var captureWindow: CaptureWindow?
     /// The Cards window, once Lucas opened it.
     private var cardsWindow: CardsWindow?
     /// The Diagnostics window, from the last time it showed.
@@ -85,20 +81,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// can open it, or one that came while the Welcome page was open, until a
     /// button closes the page.
     private var pendingLink: WidgetLink?
-
-    /// Opens the capture window with empty fields, or brings it forward
-    /// when it's open, with what Lucas typed. Either way it takes the
-    /// keyboard.
-    func openCapture() {
-        if let captureWindow, captureWindow.isVisible {
-            captureWindow.bringForward()
-            return
-        }
-        guard let model else { return }
-        let window = CaptureWindow(model: model)
-        window.show()
-        captureWindow = window
-    }
 
     /// Opens the Cards window, or brings it forward when it's open: there's
     /// only one.
@@ -164,8 +146,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         open(&settingsWindow) {
             AppWindow(
                 tabs: SettingsTabViewController(
-                    model: model, captureShortcut: captureShortcut,
-                    closeReviewPanel: { [weak self] in self?.panel?.close(.byLucas) },
+                    model: model, closeReviewPanel: { [weak self] in self?.panel?.close(.byLucas) },
                     openDiagnostics: { [weak self] in self?.openDiagnostics() }, openingOn: tab, at: section))
         }
     }
@@ -281,8 +262,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             model.startBackups()
             startSyncing(model)
             widgetReloads.start()
-            captureShortcut.whenPressed = { [weak self] in self?.openCapture() }
-            turnOnCaptureShortcut()
             showWhatOpeningShows(launch)
         case .failure(let error):
             showAlert(
@@ -440,27 +419,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// Turns on the shortcut that opens "Capture…" from launch, as Lucas left
-    /// it in Settings. When another app has it, the menu and Settings show no
-    /// shortcut, and the log says why; when macOS refuses it for another
-    /// reason, an alert says so.
-    private func turnOnCaptureShortcut() {
-        guard let shortcut = Preferences.captureShortcut else { return }
-        do {
-            try captureShortcut.turnOn(shortcut)
-        } catch .taken {
-            // Expected when another app has it: Lucas can pick another in
-            // Settings.
-        } catch {
-            showAlert(
-                String(localized: "\(AppVariant.current.name) couldn't turn on its capture shortcut"),
-                explaining: error, style: .warning, button: String(localized: "OK"))
-        }
-    }
-
     /// Says which stored settings couldn't be read, as when they were edited
     /// by hand, if any: they're at their defaults until Lucas sets them
-    /// again, and a capture shortcut is off.
+    /// again.
     private func sayIfSettingsAreUnreadable() {
         guard !Preferences.unreadable.isEmpty else { return }
         let names = Preferences.unreadable.sorted().formatted(.list(type: .and))
@@ -469,8 +430,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             details: String(
                 localized: """
                     \(AppVariant.current.name) couldn't read these settings, as when they're edited by hand: \
-                    \(names). They're at their defaults, and a capture shortcut is off, until you set them again in \
-                    Settings.
+                    \(names). They're at their defaults until you set them again in Settings.
                     """,
                 comment: "An alert at launch. The names are the settings' names in the app's preferences."),
             style: .warning, button: String(localized: "OK"))

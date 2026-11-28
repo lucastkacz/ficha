@@ -2,54 +2,7 @@ import FichaCore
 import FichaData
 import SwiftUI
 
-/// The card's front, after a flag when it's flagged and a mark when it's set
-/// aside on its own, as where it stands says, since a card set aside keeps
-/// its flag, aligned with them as the front reads. A front without text says "Image"
-/// or "Sound" in gray, as Mail says "No Subject", rather than leave the cell
-/// empty.
-struct FrontCell: View {
-    let card: Card
-    /// Whether a long front goes on over more lines, as below a capture in
-    /// its detail, rather than being cut short, as in the inbox's row.
-    var wraps = false
-
-    var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 4) {
-            switch card.standing {
-            case .inReviews, .setAside:
-                EmptyView()
-            case .inInbox:
-                FlagIcon()
-            case .buried(_, let flag):
-                if flag != nil {
-                    FlagIcon()
-                }
-                SetAsideCardIcon()
-            }
-            if let media = card.frontWithoutText {
-                mediaText(media)
-                    .foregroundStyle(.secondary)
-            } else {
-                Text(card.front)
-                    .lineLimit(wraps ? nil : 1)
-                    .fixedSize(horizontal: false, vertical: wraps)
-            }
-        }
-        .alignedAsItReads(card.front)
-    }
-
-    /// The word that stands for a front without text, as `media` says.
-    private func mediaText(_ media: SideMedia) -> Text {
-        switch media {
-        case .image:
-            Text("Image", comment: "The Cards window, in place of a card's front that has an image and no text.")
-        case .sound:
-            Text("Sound", comment: "The Cards window, in place of a card's front that has only a sound.")
-        }
-    }
-}
-
-/// The flag beside a flagged card, in the inbox and the detail.
+/// The flag beside a flagged card, in the detail.
 private struct FlagIcon: View {
     var body: some View {
         Image(systemName: "flag.fill")
@@ -59,10 +12,8 @@ private struct FlagIcon: View {
     }
 }
 
-/// The mark beside a card set aside on its own in the detail, as beside the
-/// card an expansion or a follow-up is tied to: an eye crossed out, since the
-/// card stays out of the reviews until it's put back (#539). The inbox lists
-/// no card set aside on its own.
+/// The mark beside a card set aside on its own in the detail: an eye crossed
+/// out, since the card stays out of the reviews until it's put back (#539).
 private struct SetAsideCardIcon: View {
     var body: some View {
         Image(systemName: "eye.slash")
@@ -190,7 +141,7 @@ struct CardDetail: View {
     /// Card Info says: its interval, when it's due, and its stability,
     /// difficulty and retrievability once it has them, front first, and
     /// back first too when it goes both ways; when Lucas last saw it, how
-    /// many times he reviewed it, when he approved it, and, once its front
+    /// many times he reviewed it, when it was made, and, once its front
     /// or back changed since, when they last did.
     private var standing: some View {
         Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: 6) {
@@ -273,7 +224,7 @@ struct CardDetail: View {
                 reviews
             }
             GridRow {
-                gridLabel(Text("Created", comment: "In the Cards window's detail: when Lucas approved the card."))
+                gridLabel(Text("Created", comment: "In the Cards window's detail: when the card was made."))
                 Text(row.card.createdAt.formatted(date: .abbreviated, time: .shortened))
             }
             if let editedAt = row.card.editedAt {
@@ -439,21 +390,6 @@ private struct CardWords: View {
     }
 }
 
-/// A word in a capsule of the window's tint, on top of a capture's detail:
-/// what kind of capture it is.
-private struct Chip: View {
-    let text: String
-
-    var body: some View {
-        Text(text)
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(.tint)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 2)
-            .background(.tint.opacity(0.15), in: .capsule)
-    }
-}
-
 /// Both ways, above a card's front while it goes both ways. A card shows
 /// neither its type nor its tags, which the database keeps (#538).
 private struct BothWaysMark: View {
@@ -479,114 +415,6 @@ private struct BothWaysMark: View {
     }
 }
 
-/// The capture selected in the inbox, whole: what kind it is, its text, its
-/// note and source, when Lucas captured it, and, for an expansion or a
-/// follow-up, the card it's tied to. Its text, note and source show at the card
-/// size, and the rest stays its size.
-struct CaptureDetail: View {
-    /// The card a capture is tied to, which its detail shows below it.
-    enum Tie {
-        /// The card an expansion expands.
-        case expands(Card)
-        /// The card a follow-up was asked about, in the review panel.
-        case followsUp(Card)
-
-        var card: Card {
-            switch self {
-            case .expands(let card), .followsUp(let card): card
-            }
-        }
-    }
-
-    let capture: Capture
-    /// What kind it is, as the inbox's Kind column says it.
-    let kind: String
-    /// The card it's tied to, when it's an expansion or a follow-up.
-    let tie: Tie?
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                Chip(text: kind)
-                TextAsItReads(capture.text)
-                    .cardFont(.title)
-                Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: 6) {
-                    if let note = capture.note {
-                        GridRow {
-                            gridLabel(
-                                Text("Note", comment: "In the Cards window's detail: what Lucas noted with a capture."))
-                            TextAsItReads(note)
-                                .cardFont(.body)
-                        }
-                    }
-                    if let source = capture.source {
-                        GridRow {
-                            gridLabel(
-                                Text(
-                                    "Source",
-                                    comment: "In the Cards window's detail: where Lucas came across a capture's text."))
-                            TextAsItReads(source)
-                                .cardFont(.body)
-                        }
-                    }
-                    GridRow {
-                        gridLabel(Text("Captured", comment: "In the Cards window's detail: when Lucas captured it."))
-                        Text(capture.createdAt.formatted(date: .abbreviated, time: .shortened))
-                    }
-                }
-                if let tie {
-                    Divider()
-                    tied(tie)
-                }
-            }
-            .textSelection(.enabled)
-            .padding(20)
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
-
-    /// The card the capture is tied to, under what ties them.
-    private func tied(_ tie: Tie) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            switch tie {
-            case .expands:
-                Text(
-                    "Expands this card",
-                    comment: "In the Cards window's detail of an expansion, above the card it's attached to."
-                )
-                .foregroundStyle(.secondary)
-            case .followsUp:
-                Text(
-                    "Asked about this card",
-                    comment:
-                        "In the Cards window's detail of a follow-up, above the card it was asked about in the review panel."
-                )
-                .foregroundStyle(.secondary)
-            }
-            TiedCard(card: tie.card)
-        }
-    }
-}
-
-/// The card an expansion or a follow-up is tied to, in its detail: whether
-/// it goes both ways, its front, with the marks the inbox gives it, and its
-/// back.
-private struct TiedCard: View {
-    let card: Card
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            BothWaysMark(card: card)
-            FrontCell(card: card, wraps: true)
-                .font(.headline)
-            TextAsItReads(card.back)
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.fill.quaternary, in: .rect(cornerRadius: 8))
-    }
-}
-
 /// What the detail says on top of a card that's out of Lucas's reviews, as
 /// where it stands says: his note when it's flagged, and when he set it
 /// aside when it's set aside on its own, which the engine keeps as its
@@ -602,7 +430,7 @@ struct FlagAndSetAside: View {
         switch standing {
         case .inReviews:
             EmptyView()
-        case .inInbox(let flag):
+        case .flagged(let flag):
             note(flag)
         case .buried(let setAsideAt, let flag):
             if let flag {

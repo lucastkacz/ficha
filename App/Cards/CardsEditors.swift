@@ -2,17 +2,16 @@ import FichaCore
 import FichaData
 import SwiftUI
 
-/// The fields the user edits a card in, in place of its detail: its deck,
-/// which Save moves it to, front and back, each with its text, its image and
-/// its sound, dragged or pasted under it, an image also with ⌘V in its text
-/// while the clipboard holds no text, source and Both ways, under the flag's
-/// note when it's flagged. No type and no tags: Save keeps the card's own,
-/// which the database holds (#538). Return saves, Option-Return starts a new
-/// line, and Escape cancels, as in the capture window, unless the search
-/// field has the focus. Save is off while a sound converts. Saving with a side
-/// that has neither text, an image nor a sound says, under it, what's
-/// missing. When the card can't be saved, the window's alert says why, and
-/// the fields stay as the user left them.
+/// The fields the user edits a card in, in place of its detail: its deck, which
+/// Save moves it to, front and back, each with its text, its image and its
+/// sound, dragged or pasted under it, an image also with ⌘V in its text while
+/// the clipboard holds no text, source and Both ways, under the flag's note
+/// when it's flagged. No type and no tags: Save keeps the card's own, which the
+/// database holds (#538). Return saves, Option-Return starts a new line, and
+/// Escape cancels, unless the search field has the focus. Save is off while a
+/// sound converts. Saving with a side that has neither text, an image nor a
+/// sound says, under it, what's missing. When the card can't be saved, the
+/// window's alert says why, and the fields stay as the user left them.
 struct CardEditor: View {
     /// The card as it was when Lucas started editing it.
     let card: Card
@@ -224,120 +223,7 @@ struct CardEditor: View {
     }
 }
 
-/// The fields Lucas edits a capture in, in place of its detail: its text,
-/// note and source, as the capture window has them. Return saves,
-/// Option-Return starts a new line, and Escape cancels, as in the capture
-/// window, unless he's in the window's search field. Saving with the text
-/// blank says, under it, that it's missing. When the capture can't be saved,
-/// the window's alert says why, and the fields stay as Lucas left them.
-struct CaptureEditor: View {
-    /// The capture as it was when Lucas started editing it.
-    let capture: Capture
-    /// Whether Lucas is in the window's search field, which then keeps Return
-    /// and Escape, as `CardEditor` says.
-    let isSearching: Bool
-    /// Saves the capture with what the fields hold, its text, note and
-    /// source, which ends the edit once it's saved.
-    let save: (String, String, String) -> Void
-    /// Ends the edit without saving it.
-    let cancel: () -> Void
-    @State private var text: String
-    @State private var note: String
-    @State private var source: String
-    /// Whether Lucas tried to save with the text blank, so that it says it's
-    /// missing.
-    @State private var showsMissingText = false
-    @FocusState private var isTextFocused: Bool
-
-    init(
-        capture: Capture,
-        isSearching: Bool,
-        save: @escaping (String, String, String) -> Void,
-        cancel: @escaping () -> Void
-    ) {
-        self.capture = capture
-        self.isSearching = isSearching
-        self.save = save
-        self.cancel = cancel
-        _text = State(initialValue: capture.text)
-        _note = State(initialValue: capture.note ?? "")
-        _source = State(initialValue: capture.source ?? "")
-    }
-
-    var body: some View {
-        ScrollView {
-            fields
-                .padding(20)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            EditorActions(isSearching: isSearching, cancel: cancel, save: submit)
-        }
-        .onAppear {
-            isTextFocused = true
-        }
-    }
-
-    private var fields: some View {
-        Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: 12) {
-            GridRow {
-                gridLabel(
-                    Text("Text", comment: "In the Cards window, the label of a capture's text, while Lucas edits it."))
-                VStack(alignment: .leading, spacing: 4) {
-                    TextField("Text", text: $text, axis: .vertical)
-                        .lineLimit(3...8)
-                        .focused($isTextFocused)
-                    if showsMissingText && !fieldsMakeACapture {
-                        missing(
-                            Text(
-                                "A capture needs a text.",
-                                comment: "In the Cards window, under a capture's text, when Lucas saves it blank."))
-                    }
-                }
-            }
-            GridRow {
-                gridLabel(
-                    Text("Note", comment: "In the Cards window, the label of a capture's note, while Lucas edits it."))
-                TextField("Note", text: $note, axis: .vertical)
-                    .lineLimit(1...4)
-            }
-            GridRow {
-                gridLabel(
-                    Text(
-                        "Source", comment: "In the Cards window, the label of a capture's source, while Lucas edits it."
-                    ))
-                TextField(
-                    "Source", text: $source,
-                    prompt: Text(
-                        "A book, a podcast…",
-                        comment: "In the Cards window, in a capture's empty source, while Lucas edits it."),
-                    axis: .vertical
-                )
-                .lineLimit(1...3)
-            }
-        }
-        .textFieldStyle(.roundedBorder)
-        // A focused text field keeps Return from reaching the default button.
-        .onSubmit(submit)
-    }
-
-    /// Whether the fields hold a capture, by the rule the engine saves it
-    /// with: until there's text, they don't.
-    private var fieldsMakeACapture: Bool {
-        CaptureContent(text: text, note: note, source: source) != nil
-    }
-
-    /// Saves the capture with what the fields hold, unless the text is blank.
-    private func submit() {
-        guard fieldsMakeACapture else {
-            showsMissingText = true
-            return
-        }
-        save(text, note, source)
-    }
-}
-
-/// What's missing, under a field Lucas left blank in one of the editors.
+/// What's missing, under a field Lucas left blank in the editor.
 private func missing(_ text: Text) -> some View {
     text
         .font(.caption)

@@ -39,11 +39,6 @@ private struct PrioritizeDeckItem: View {
 /// The menu under Ficha's icon in the menu bar.
 struct MenuContent: View {
     let model: AppModel
-    /// Opens the capture window.
-    let openCapture: () -> Void
-    /// The shortcut that opens the capture window from any app, which the
-    /// menu shows next to "Capture…" while it's on.
-    let captureShortcut: CaptureShortcutRegistration
     /// Opens the review panel with the cards a review now brings.
     let openReviewPanel: () -> Void
     /// Opens the Cards window.
@@ -100,8 +95,6 @@ struct MenuContent: View {
         if model.backups.lastBackupFailed || saysICloudIsFull {
             Divider()
         }
-        Button("Capture…", action: openCapture)
-            .keyboardShortcut(captureShortcut.shortcut?.keyboardShortcut)
         Button(reviewNowTitle, action: openReviewPanel)
         prioritizeSubmenu
         Divider()
@@ -118,8 +111,7 @@ struct MenuContent: View {
             Divider()
             DebugMenu(
                 tools: debugTools, settings: model.settings, timeMoved: timeMoved,
-                checkAppearance: checkAppearance, captureShortcut: captureShortcut, secondDevice: secondDevice,
-                showWelcomePage: showWelcomePage)
+                checkAppearance: checkAppearance, secondDevice: secondDevice, showWelcomePage: showWelcomePage)
         }
         Divider()
         Button("Quit") {
@@ -201,19 +193,14 @@ struct MenuContent: View {
         }
     }
 
-    /// How many cards Lucas learned and how many captures and flagged cards
-    /// wait in the inbox, in words. The String Catalog words each count for
-    /// zero, one and more.
+    /// How many cards Lucas learned, in words. The String Catalog words it
+    /// for zero, one and more.
     private var progressLine: String {
         guard let progress = model.progress else {
             return String(localized: "Couldn't count your progress")
         }
         return String(
-            localized: "\(progress.learned) cards learned · \(progress.inInbox) in the inbox",
-            comment: """
-                The menu's progress line: how many cards Lucas learned, and how many captures and flagged cards wait \
-                in the inbox.
-                """
-        )
+            localized: "\(progress.learned) cards learned",
+            comment: "The menu's progress line: how many cards Lucas learned.")
     }
 }

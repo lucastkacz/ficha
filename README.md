@@ -14,7 +14,7 @@ You don't sit down to study. When some of your cards are due, or a new one is wa
 
 It doesn't catch what you're typing: it waits until you stop for a moment, or until you click it. If now isn't a good time, press Esc, and the cards wait for the next one. Left alone, it closes after ten minutes.
 
-You can also open it yourself, whenever you like, with "Review now" in Ficha's menu, which says how many cards are due, or from the Shortcuts app, Spotlight or a keyboard shortcut you set there. The menu also shows how many cards you've learned and how many wait in the inbox.
+You can also open it yourself, whenever you like, with "Review now" in Ficha's menu, which says how many cards are due, or from the Shortcuts app, Spotlight or a keyboard shortcut you set there. The menu also shows how many cards you've learned.
 
 <p align="center">
   <img src="docs/images/menu.png" width="364" alt="Ficha's menu, with the items Capture…, Review now (3 due), a line saying 8 cards learned · 2 in the inbox, Diagnostics, Settings… and Quit.">
@@ -71,22 +71,16 @@ Many cards come from what you come across: a word in a book, a line in a podcast
 
 ```mermaid
 flowchart LR
-    capture["You capture<br/>something"] --> inbox["Inbox"]
-    inbox -- "Convert to Card" --> new["New card"]
-    new -- "You meet it" --> reviews["Your reviews"]
-    reviews -- "Flag" --> inbox
-    inbox -- "Fix" --> reviews
+    new["New card"] -- "You meet it" --> reviews["Your reviews"]
+    reviews -- "Flag" --> flagged["Flagged,<br/>in its deck"]
+    flagged -- "Fix" --> reviews
     reviews -- "Set aside" --> aside["Set aside"]
     aside -- "Put back" --> reviews
 ```
 
-**Capture.** When something catches your eye, jot it down with "Capture…" in the menu, or with a keyboard shortcut from any app. Just the text, with a note or where you found it if you like. It waits in the inbox, and you go back to what you were doing. If it repeats a card you already have, Ficha asks whether to add it to that card.
+**New Card.** When you have a moment, open the Cards window and add it with New Card, in the deck you choose: a front, a back, and where you found it if you like. If its front repeats a card you already have, the form says so, and shows you that card.
 
-<p align="center">
-  <img src="docs/images/capture-window.png" width="564" alt="The Capture window, with three fields: “A word, a concept, a quote or a question”, “Note (optional)” and “Source (optional): a book, a podcast…”, and the buttons Cancel and Save.">
-</p>
-
-**Convert to Card.** When you have a moment, pick a capture in the Cards window's inbox and convert it: the card form opens beside what you jotted down, for one card or several, each in the deck you choose there, and the capture leaves the inbox once you close the form. A follow-up, what you asked about a card in the review panel, shows with its card, and its new cards start in that card's deck, so they land beside it.
+**Flag and fix.** A card that needs fixing, flagged in the review panel or in the Cards window, stays in its deck with its flag, and your note in its detail, out of your reviews until you fix it.
 
 ## Your cards stay yours
 

@@ -11,14 +11,14 @@ private let logger = Logger(subsystem: "com.lucastkacz.ficha", category: "settin
 /// added a card to in the Cards window: its preferences, which are its own
 /// for each app (`AppVariant`), so Ficha Dev's never touch the real Ficha's.
 /// Versions before #536 kept the Cards window's table's order and columns
-/// there too, which stay as they were, read no more. Only what
-/// differs from a default is stored, so a setting Lucas never changed follows
-/// its default. A stored value the app can't read, as when it was edited by
-/// hand, goes into `unreadable`, for the app to say so: a setting reads as
-/// its default meanwhile, and a capture shortcut as off. The settings that
-/// decide a card's progress sync, so the engine keeps them in the database
-/// instead (#315): the preferences keep them as they were before, for the
-/// engine to move them in.
+/// there too, and versions before #540 a shortcut of their own, which stay
+/// as they were, read no more. Only what differs from a default is stored, so a
+/// setting Lucas never changed follows its default. A stored value the app
+/// can't read, as when it was edited by hand, goes into `unreadable`, for the
+/// app to say so: a setting reads as its default meanwhile. The settings
+/// that decide a card's progress sync, so the engine keeps them in the
+/// database instead (#315): the preferences keep them as they were before,
+/// for the engine to move them in.
 enum Preferences {
     /// The names of the stored settings that couldn't be read so far.
     private(set) static var unreadable: Set<String> = []
@@ -118,32 +118,6 @@ enum Preferences {
         set { write(newValue.percent, for: .cardSize, unless: CardSize.normal.percent) }
     }
 
-    /// The shortcut that opens "Capture…" from any app, or nil when it's off:
-    /// the app's own (`AppVariant.captureShortcut`) until Lucas picks another
-    /// or turns it off, which an empty one stored says. One that can't be
-    /// read is off, since it isn't known which one he wanted.
-    static var captureShortcut: CaptureShortcut? {
-        get {
-            guard UserDefaults.standard.object(forKey: Key.captureShortcut.rawValue) != nil else {
-                return AppVariant.current.captureShortcut
-            }
-            let stored = read(.captureShortcut, as: [String: Any].self) { stored -> StoredShortcut? in
-                stored.isEmpty ? .off : CaptureShortcut(stored: stored).map(StoredShortcut.on)
-            }
-            return switch stored {
-            case .on(let shortcut): shortcut
-            case .off, nil: nil
-            }
-        }
-        set {
-            if newValue == AppVariant.current.captureShortcut {
-                UserDefaults.standard.removeObject(forKey: Key.captureShortcut.rawValue)
-            } else {
-                UserDefaults.standard.set(newValue?.stored ?? [:], forKey: Key.captureShortcut.rawValue)
-            }
-        }
-    }
-
     /// The tab Settings opens on: the one Lucas left it on last, or, for one
     /// of the seven tabs before the five (#492), the one that took its rows;
     /// and at first General. One that can't be read is only logged, with no
@@ -201,7 +175,6 @@ enum Preferences {
         case backupsKept = "BackupsKept"
         case showsDueCount = "ShowsDueCount"
         case cardSize = "CardSizePercent"
-        case captureShortcut = "CaptureShortcut"
         case startsAtLoginIsSetUp = "StartsAtLoginIsSetUp"
         /// The raw value of the tab Settings opens on.
         case settingsTab = "SettingsTab"
@@ -274,13 +247,6 @@ private func activeHours(_ stored: [Int]) -> ActiveHours? {
 private func suppressions(_ stored: [String]) -> Set<Suppression>? {
     let known = stored.compactMap(Suppression.init(rawValue:))
     return known.count == stored.count ? Set(known) : nil
-}
-
-/// A capture shortcut Lucas picked, or turned off, as the preferences store
-/// it.
-private enum StoredShortcut {
-    case on(CaptureShortcut)
-    case off
 }
 
 /// The offer to flag a card forgotten often, as the preferences stored it

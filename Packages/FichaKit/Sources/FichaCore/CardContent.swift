@@ -86,8 +86,8 @@ public struct CardContent: Sendable, Equatable {
     }
 
     /// This content with the images and sounds given in place of its own,
-    /// where they aren't nil: as a card fixed or expanded with a content
-    /// alone keeps its own images and sounds. Each side keeps its text, so
+    /// where they aren't nil: as a card fixed with a content alone keeps its
+    /// own images and sounds. Each side keeps its text, so
     /// it's never blank.
     public func keepingFiles(
         frontImage: ImageName?, backImage: ImageName?, frontSound: SoundName?, backSound: SoundName?

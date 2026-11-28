@@ -166,7 +166,8 @@ struct CardGrid: View {
 }
 
 /// What the dots on the tiles say, above the grid, as the mock writes it,
-/// and the set-aside mark too while a tile has it, as the state says.
+/// and the flag and the set-aside mark too while a tile has them, as the
+/// state says.
 private struct GridLegend: View {
     let marks: [CardsWindowState.Tile.Mark]
 
@@ -176,6 +177,8 @@ private struct GridLegend: View {
                 HStack(spacing: 4) {
                     if mark == .setAside {
                         SetAsideMark(size: 9)
+                    } else if mark == .flagged {
+                        FlaggedMark(size: 9)
                     } else {
                         Circle()
                             .fill(mark.legendColor)
@@ -193,8 +196,8 @@ private struct GridLegend: View {
 
 /// A card's tile in the grid, four by three: its front's picture, filling
 /// it, or else its front's text, or the word Sound for a front with a sound
-/// alone, as the Cards window says it (`FrontCell`), with its dot at its top
-/// corner, on the trailing side, or the set-aside mark in its place; dimmed
+/// alone, with its dot at its top corner, on the trailing side, or its flag
+/// or the set-aside mark in its place; dimmed
 /// while it's new, and further while it's set aside on its own, and ringed
 /// with the accent color while it's selected. VoiceOver reads it as its front, and
 /// where it stands. A picture's tile reads its image as it appears, away
@@ -390,11 +393,18 @@ private struct CardTile: View {
 
     /// The dot that says where the card stands, ringed with the window's
     /// background so it reads on a picture too: none for a new card, and the
-    /// set-aside mark, on the same ring, for a card set aside on its own.
+    /// flag or the set-aside mark, on the same ring, for a flagged card or
+    /// one set aside on its own.
     @ViewBuilder
     private var dot: some View {
         if isSetAside {
             SetAsideMark(size: 10)
+                .padding(2)
+                .background(.background, in: .circle)
+                .padding(.top, 4)
+                .padding(.trailing, 5)
+        } else if tile.mark == .flagged {
+            FlaggedMark(size: 10)
                 .padding(2)
                 .background(.background, in: .circle)
                 .padding(.top, 4)
@@ -461,16 +471,21 @@ extension CardsWindowState.Tile.Mark {
                     In the Cards window, above the grid of cards, and for VoiceOver, on a card's tile: the user set \
                     the card aside on its own, out of their reviews until they put it back.
                     """)
+        case .flagged:
+            Text(
+                "Flagged",
+                comment: "The flag icon beside a flagged card, in the Cards window.")
         }
     }
 
     /// The color of a tile's dot, or nil for none, as for a new card, and
-    /// for a card set aside on its own, which shows its mark instead.
+    /// for a flagged card or one set aside on its own, which shows its mark
+    /// instead.
     fileprivate var dotColor: Color? {
         switch self {
         case .met: .green
         case .due: .orange
-        case .new, .setAside: nil
+        case .new, .setAside, .flagged: nil
         }
     }
 
@@ -489,6 +504,20 @@ private struct SetAsideMark: View {
         Image(systemName: "eye.slash")
             .font(.system(size: size, weight: .semibold))
             .foregroundStyle(.secondary)
+            .accessibilityHidden(true)
+    }
+}
+
+/// The flag of a flagged card, on its tile and in the legend, as beside the
+/// card in its detail, at `size` points. The tile isn't dimmed: the card waits
+/// for Lucas to fix it (#540).
+private struct FlaggedMark: View {
+    let size: CGFloat
+
+    var body: some View {
+        Image(systemName: "flag.fill")
+            .font(.system(size: size, weight: .semibold))
+            .foregroundStyle(.orange)
             .accessibilityHidden(true)
     }
 }

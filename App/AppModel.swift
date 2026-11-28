@@ -122,7 +122,7 @@ final class AppModel {
                 // So a check can tell, from the log, how soon the menu shows
                 // what the CLI changed.
                 if let progress {
-                    logger.debug("Counted again after a change: \(progress.inInbox) in the inbox")
+                    logger.debug("Counted again after a change: \(progress.due) due")
                 }
             }
         }
@@ -141,20 +141,6 @@ final class AppModel {
                 sync?.read()
             }
         }
-    }
-
-    /// Saves a capture in the inbox, as the capture window's fields hold it,
-    /// unless it repeats a card or a capture: then the result says what it
-    /// repeats, for Lucas to expand or ignore it. The menu counts it when the
-    /// engine says the database changed.
-    func capture(text: String, note: String, source: String) throws(EngineError) -> CaptureResult {
-        try engine.capture(text: text, note: note, source: source)
-    }
-
-    /// Saves a capture that repeats a card or a capture, which Lucas chose to
-    /// expand: attached to the card, or next to the capture.
-    func expand(text: String, note: String, source: String) throws(EngineError) {
-        try engine.expand(text: text, note: note, source: source)
     }
 
     /// Starts a review now: the cards it brings, for the review panel to go

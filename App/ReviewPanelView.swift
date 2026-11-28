@@ -3,35 +3,33 @@ import FichaData
 import SwiftUI
 
 /// What the review panel shows, on Liquid Glass: the cards a review now or an
-/// appearance brought, one at a time, each with its upper side on top and,
-/// once flipped, its lower side under it, the card alone, with no deck, tags
-/// or intervals (ADR 0033). A card shows front first, or, when it goes both
-/// ways, back first too, with the back on top and a "Back first" mark, and a
-/// review ahead is marked "Ahead". Every action on a card has a key: Space
-/// flips a card, and then three buttons answer it, Forgot, on 1, a yellow
-/// Kind of, on 2, and Got it, on Space and 3, named New to me, Kind of and
-/// Knew it on a new way's first review (`AnswerButton`). A ⋯ menu in the
-/// corner offers the rest, each also on its key: A asks a question about the
-/// card, which waits in the inbox as a follow-up, M flags it with a note, E
-/// sets it aside (`CardAction`), ⌘Z undoes the last thing Lucas did, and Esc
-/// closes the panel, which snoozes an appearance. A side with a sound has a ▶
-/// under its text, which plays it and shows ■ while it plays, and R plays or
-/// stops the lower side's sound once it shows, or else the upper side's. When
-/// 1 makes a card forgotten often, the panel offers to flag it, its note
-/// written: Enter flags it, and Esc leaves it in his reviews. Once Lucas went
-/// through every card, the panel stays open until he closes it, says "You've
-/// met them all" for each deck whose last new card he met in it, with the
-/// next deck in the queue, or, while nothing waits there, a button for one of
-/// Ficha's decks, which opens the Cards window to add it, and offers more
-/// cards if there are any, which Enter brings; review now with nothing due
-/// offers to review ahead the same way. A card taller than the panel's
-/// maximum height scrolls between the line at its top and what's under it,
-/// which stay in view. A card's text and images show at the card size, which
-/// ⌘+, ⌘− and ⌘0 change (`ReviewPanelWindow`), and above 100% the panel
-/// widens with them; its buttons, a sound's ▶, the note's and the question's
-/// fields and its messages stay their size, as Anki's bottom bar does.
-/// `ReviewPanelState` decides what the panel shows and what happens when
-/// Lucas acts, and the view draws it.
+/// appearance brought, one at a time, each with its upper side on top and, once
+/// flipped, its lower side under it, the card alone, with no deck, tags or
+/// intervals (ADR 0033). A card shows front first, or, when it goes both ways,
+/// back first too, with the back on top and a "Back first" mark, and a review
+/// ahead is marked "Ahead". Every action on a card has a key: Space flips a
+/// card, and then three buttons answer it, Forgot, on 1, a yellow Kind of, on
+/// 2, and Got it, on Space and 3, named New to me, Kind of and Knew it on a new
+/// way's first review (`AnswerButton`). A ⋯ menu in the corner offers the rest,
+/// each also on its key: M flags the card with a note, E sets it aside
+/// (`CardAction`), ⌘Z undoes the last thing Lucas did, and Esc closes the
+/// panel, which snoozes an appearance. A side with a sound has a ▶ under its
+/// text, which plays it and shows ■ while it plays, and R plays or stops the
+/// lower side's sound once it shows, or else the upper side's. When 1 makes a
+/// card forgotten often, the panel offers to flag it, its note written: Enter
+/// flags it, and Esc leaves it in his reviews. Once Lucas went through every
+/// card, the panel stays open until he closes it, says "You've met them all"
+/// for each deck whose last new card he met in it, with the next deck in the
+/// queue, or, while nothing waits there, a button for one of Ficha's decks,
+/// which opens the Cards window to add it, and offers more cards if there are
+/// any, which Enter brings; review now with nothing due offers to review ahead
+/// the same way. A card taller than the panel's maximum height scrolls between
+/// the line at its top and what's under it, which stay in view. A card's text
+/// and images show at the card size, which ⌘+, ⌘− and ⌘0 change
+/// (`ReviewPanelWindow`), and above 100% the panel widens with them; its
+/// buttons, a sound's ▶, the note's field and its messages stay their size, as
+/// Anki's bottom bar does. `ReviewPanelState` decides what the panel shows and
+/// what happens when Lucas acts, and the view draws it.
 struct ReviewPanelView: View {
     /// The corner radius of the panel's glass, with continuous corners. The
     /// panel's window clips its content to it, which matches the glass while
@@ -97,12 +95,6 @@ struct ReviewPanelView: View {
     /// Whatever shows the note clears it first, in the same action, since a
     /// selection in the last note may lie past the end of the new one.
     @State private var noteSelection: TextSelection?
-    /// Whether the question's field has the keyboard. Whatever shows the
-    /// question sets it, in the same action, as A and the ⋯ menu's Ask… do.
-    @FocusState private var questionIsFocused: Bool
-    /// Where the cursor is in the question, or what's selected, which A and
-    /// Ask… clear as M and Flag… clear the note's.
-    @State private var questionSelection: TextSelection?
     /// Whether the panel reads right to left, which says whether a card's
     /// upper side can sit beside the ⋯ menu.
     @Environment(\.layoutDirection) private var layoutDirection
@@ -201,7 +193,6 @@ struct ReviewPanelView: View {
         case .answer: Failure(title: "Couldn't save your answer", message: error.messageInReviewPanel)
         case .flag: Failure(title: "Couldn't flag the card", message: error.messageInReviewPanel)
         case .setAside: Failure(title: "Couldn't set the card aside", message: error.messageInReviewPanel)
-        case .ask: Failure(title: "Couldn't save your question", message: error.messageInReviewPanel)
         case .undo: Failure(title: "Couldn't undo", message: error.messageInReviewPanel)
         case .lookForMore: Failure(title: "Couldn't look for more cards", error: error)
         }
@@ -256,9 +247,6 @@ struct ReviewPanelView: View {
         case .flagging(let card, let way, let showsLowerSide):
             sides(of: card, way, showingLowerSide: showsLowerSide, buttons: .whileWriting, in: panel) {}
             noteEditor(of: panel)
-        case .asking(let card, let way, let showsLowerSide):
-            sides(of: card, way, showingLowerSide: showsLowerSide, buttons: .whileWriting, in: panel) {}
-            questionEditor(of: panel)
         case .done where panel.state.canSeeMore:
             header {
                 VStack(alignment: .leading, spacing: 6) {
@@ -534,10 +522,10 @@ struct ReviewPanelView: View {
     /// Whether the panel takes the keys of a card's ⋯ menu, as its state says
     /// what the menu holds.
     private enum TopButtons {
-        /// A, M, E, ⌘Z and Esc, and R, while the card shows.
+        /// M, E, ⌘Z and Esc, and R, while the card shows.
         case forTheCard
-        /// None, while Lucas writes a note to flag the card or a question
-        /// about it, where Esc goes back to the card.
+        /// None, while Lucas writes a note to flag the card, where Esc goes
+        /// back to the card.
         case whileWriting
     }
 
@@ -625,13 +613,6 @@ struct ReviewPanelView: View {
     /// What the ⋯ menu calls `action`.
     private func title(of action: CardAction) -> Text {
         switch action {
-        case .ask:
-            Text(
-                "Ask…",
-                comment: """
-                    An item of the review panel's ⋯ menu, whose key is A: it asks a question about the card the \
-                    panel shows, which waits in the inbox tied to the card.
-                    """)
         case .flag:
             Text(
                 "Flag…",
@@ -650,16 +631,13 @@ struct ReviewPanelView: View {
     }
 
     /// Does `action` with the card Lucas is on, from the ⋯ menu or its key.
-    /// The question's or the note's field gets the keyboard in the same
+    /// The note's field gets the keyboard in the same
     /// action that shows it, with no selection left from the last one: asked
     /// from the field's `onAppear` instead, after M, SwiftUI never focused it
     /// while the panel had the keyboard (#61).
     private func perform(_ action: CardAction, in panel: ReviewPanelModel) {
         panel.state.choose(action)
         switch action {
-        case .ask:
-            questionSelection = nil
-            questionIsFocused = true
         case .flag:
             noteSelection = nil
             noteIsFocused = true
@@ -704,35 +682,6 @@ struct ReviewPanelView: View {
                 noteSelection = TextSelection(insertionPoint: note.endIndex)
             }
         }
-    }
-
-    /// Where Lucas writes a question about the card he's on: Enter saves it
-    /// as a follow-up and stays on the card, Option-Enter starts a new line,
-    /// and Esc goes back to the card.
-    private func questionEditor(of panel: ReviewPanelModel) -> some View {
-        writingField(
-            Text(
-                "Question",
-                comment:
-                    "The label of the field where the user writes a question about the card the review panel shows."
-            ),
-            text: Binding(get: { panel.state.question ?? "" }, set: { panel.state.write(question: $0) }),
-            prompt: Text(
-                "What do you want to know?",
-                comment:
-                    "The prompt of the field where the user writes a question about the card the review panel shows."
-            ),
-            selection: $questionSelection,
-            isFocused: $questionIsFocused,
-            cancelTitle: Text("Cancel"),
-            finishTitle: Text(
-                "Ask",
-                comment:
-                    "The button that saves the question written above it, which waits in the inbox tied to the card."),
-            canFinish: panel.state.questionAsksSomething,
-            cancel: { panel.state.cancelAsking() },
-            finish: { panel.state.finishAsking() }
-        )
     }
 
     /// A field under the card where Lucas writes about it, with its cursor or
@@ -854,8 +803,8 @@ struct ReviewPanelView: View {
     /// (`AnswerButton`), in the middle of a wider panel, as Anki's bottom bar.
     /// Their rating keys work through hidden buttons, one each (`RatingKey`),
     /// since a button takes one key, and Got it's is Space. Key 4 has none, so
-    /// it rates nothing (ADR 0039). The note's and the question's fields never
-    /// show with them, so Space in those types a space.
+    /// it rates nothing (ADR 0039). The note's field never shows with them,
+    /// so Space in it types a space.
     private func answerButtons(isNew: Bool, in panel: ReviewPanelModel) -> some View {
         HStack {
             ForEach(AnswerButton.allCases, id: \.self) { button in
@@ -1081,12 +1030,11 @@ extension EngineError {
                     """,
                 comment: "An alert's message in the review panel, when the card it shows was deleted meanwhile."
             )
-        case .migratedByNewerVersion, .emptyCapture, .captureNotInInbox, .notAnExpansion, .noCards,
-            .blankSideOnNewCard, .sideLeftBlank, .noFileOnSide, .cardNotDue,
+        case .migratedByNewerVersion, .blankSideOnNewCard, .sideLeftBlank, .noFileOnSide, .cardNotDue,
             .cardNotInAppearance, .placementIsNotAnAnswer, .cardFlagged, .cardNotFlagged, .cardBuried, .cardNotBuried,
             .cardSetAside, .notOneEmoji, .tagInsideItself, .blankTagName, .tagNotPinned, .deckSetAside, .blankDeckName,
             .defaultDeckName, .deckInsideItself, .deckInsideDefault, .defaultDeckStays, .deckNotFound, .blankTypeName,
-            .builtInTypeName, .typeNameTaken, .userTypeNotFound, .cannotUndo, .cannotUndoFollowUp, .unreadableReviewLog,
+            .builtInTypeName, .typeNameTaken, .userTypeNotFound, .cannotUndo, .unreadableReviewLog,
             .schedulerFailed, .storage,
             .copyNotFound, .copyMigratedByNewerVersion, .backupsFolder, .notAnImage, .notASound, .soundConversion,
             .unreadableFileForSide, .noSuchFile, .fileNotInDownloads, .fileNotAnImage, .fileNotASound,
