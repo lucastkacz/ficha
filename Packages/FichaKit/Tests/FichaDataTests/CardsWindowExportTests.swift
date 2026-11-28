@@ -184,8 +184,8 @@ final class CardsWindowExportTests {
     // The save panel proposes a zip then, and the sheet says the images go.
     // A deck's cards are its file, which is a zip (#554).
     @Test(
-        "Export writes a zip when a card it takes has an image, and for a deck's cards, and a text file for other cards with none"
-    )
+        "Export writes a zip when a card it takes has an image, and for a deck's cards, and a text file for other cards with none",
+        .bug(id: 554))
     func exportWritesAZipWhenACardHasAnImage() throws {
         let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))
         let hornero = try engine.create(card(nil, front: "hornero", back: "Un pájaro.", frontImage: bird))
