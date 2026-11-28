@@ -4,10 +4,6 @@
     "%@ can't read your cards." : {
       "comment" : "In the widget, when it couldn't read the cards. The reason follows, small."
     },
-    "A capture is approved into one or more cards. To take it out of the inbox without cards, discard it." : {
-      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
-      "extractionState" : "manual"
-    },
     "A deck needs a name, so nothing changed. Write one, with “::” between a deck and a deck inside it, as in “Idiomas::Inglés”." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
@@ -35,14 +31,6 @@
     "Back first" : {
       "comment" : "A badge on the card the widget shows, when it shows its back first."
     },
-    "Capture %lld doesn't expand a card. Approve it into cards, or discard it." : {
-      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
-      "extractionState" : "manual"
-    },
-    "Capture %lld isn't in the inbox: it was already approved or discarded, or it doesn't exist. Check what's in the inbox." : {
-      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
-      "extractionState" : "manual"
-    },
     "Card %lld can't be placed as an answer: only an import places a card. Nothing was recorded. Report it." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
@@ -67,7 +55,7 @@
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },
-    "Card %lld is flagged: it waits in the inbox to be fixed. Close the review panel and open “Review now” again." : {
+    "Card %lld is flagged: it waits in its deck to be fixed. Close the review panel and open “Review now” again." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },
@@ -87,7 +75,7 @@
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },
-    "Card %lld isn't flagged, so there's nothing to fix: it was already fixed, or it was never flagged. Check what's in the inbox." : {
+    "Card %lld isn't flagged, so there's nothing to fix: it was already fixed, or it was never flagged. Check the card's id." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },
@@ -248,10 +236,6 @@
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },
-    "The capture is empty: write what you want to remember." : {
-      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
-      "extractionState" : "manual"
-    },
     "The deck “%@” isn't there any more, maybe since another of your devices renamed or deleted it, so nothing changed. Look for it among your decks under its new name, or pick another." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
@@ -279,10 +263,6 @@
       "extractionState" : "manual"
     },
     "You already have a type named “%@”, so nothing changed. Pick that type, or write another name." : {
-      "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
-      "extractionState" : "manual"
-    },
-    "Your question about card %lld was approved or discarded outside the review panel, so ⌘Z can't take it back. If it became cards you don't want, delete them in the Cards window." : {
       "comment" : "A message of an error of Ficha's engine, EngineError, which the app and the widget show. Added by hand, since Xcode doesn't extract FichaKit's texts: EngineMessagesTests checks every message is here.",
       "extractionState" : "manual"
     },

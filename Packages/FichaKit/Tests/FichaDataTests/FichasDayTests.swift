@@ -30,9 +30,9 @@ struct FichasDayTests {
     func aNewCardAnsweredAfterMidnightCountsTowardTheNight() throws {
         var settings = ReviewSettings.defaults
         settings.activeHours = try #require(ActiveHours(from: 0, to: 24))
-        let ubuntu = try approveCard("ubuntu", in: engine)
-        let petricor = try approveCard("petricor", in: engine)
-        try approveCard("serendipia", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
+        let petricor = try newCard("petricor", in: engine)
+        try newCard("serendipia", in: engine)
         time.move(to: try at(21, 0))
         try meetEasily(ubuntu)
 
@@ -105,7 +105,7 @@ struct FichasDayTests {
         .bug(id: 562))
     func aFinishDateCountsDaysFromFour() throws {
         let arte = try ["La Gioconda", "Las Meninas", "El Grito", "La noche estrellada"].map {
-            try approveInDeck($0, deck: "Arte", in: engine)
+            try newCardInDeck($0, deck: "Arte", in: engine)
         }
         time.move(to: try at(21, 0))
         try meetEasily(arte[0])
@@ -139,12 +139,12 @@ struct FichasDayTests {
         #expect(next == UpcomingAppearance(time: try at(20, 0, day: 15), cards: [.new(serendipia)]))
     }
 
-    /// Approves ubuntu, petricor and serendipia, and meets the first two at
+    /// Makes ubuntu, petricor and serendipia, and meets the first two at
     /// `time`, answered easy, so they're the day's two new cards at Steady,
     /// due again days later; and returns serendipia, still new.
     private func meetTheDaysTwo(at time: Date) throws -> Card {
-        let met = try ["ubuntu", "petricor"].map { try approveCard($0, in: engine) }
-        let serendipia = try approveCard("serendipia", in: engine)
+        let met = try ["ubuntu", "petricor"].map { try newCard($0, in: engine) }
+        let serendipia = try newCard("serendipia", in: engine)
         self.time.move(to: time)
         for card in met {
             try meetEasily(card)

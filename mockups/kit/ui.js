@@ -141,9 +141,6 @@
       svg(html`<path d="M4.6 1.9h7.3a.9.9 0 0 1 .9.9v9.6a.9.9 0 0 1-.9.9H4.6A1.6 1.6 0 0 1 3 11.7V3.5a1.6 1.6 0 0 1 1.6-1.6z" />
         <path d="M3 11.7a1.6 1.6 0 0 1 1.6-1.6h8.2" /><path d="M6.4 8.4 8 4.3l1.6 4.1M6.9 7.1h2.2" />`, s),
     undo: (s) => svg(html`<path d="M6 3.8 3 6.8l3 3" /><path d="M3 6.8h7a3.3 3.3 0 0 1 0 6.6H8.2" />`, s),
-    ask: (s) =>
-      svg(html`<path d="M3.5 2.4h9A1.6 1.6 0 0 1 14.1 4v6a1.6 1.6 0 0 1-1.6 1.6H8.3l-3 2.4v-2.4H3.5A1.6 1.6 0 0 1 1.9 10V4a1.6 1.6 0 0 1 1.6-1.6z" />
-        <path d="M6.7 5.3a1.4 1.4 0 1 1 2 1.3c-.5.2-.7.6-.7 1v.2" /><circle cx="8" cy="9.4" r=".55" fill="currentColor" stroke="none" />`, s),
     flag: (s) => svg(html`<path d="M3.8 14.2V2.4" /><path d="M3.8 2.8h8.6l-2 3 2 3H3.8" />`, s),
     // eye.slash: Set Aside, and a card set aside, as the app marks it.
     setAside: (s) =>
@@ -431,17 +428,16 @@
   // ---------------------------------------------------------------------
   // MenuContent: Ficha's menu in the menu bar.
   // ---------------------------------------------------------------------
-  function MenuContent({ app, state, onCapture, onReviewNow, onCards, onSettings, dismiss }) {
+  function MenuContent({ app, onReviewNow, onCards, onSettings, dismiss }) {
     const due = app.dueCount();
     const run = (fn) => () => {
       dismiss();
       fn && fn();
     };
     return html`
-      <${MenuRow} title="Capture…" shortcut="⌃⌥⌘C" onClick=${run(onCapture)} />
       <${MenuRow} title=${due ? `Review now (${due} due)` : 'Review now'} onClick=${run(onReviewNow)} />
       <${MenuSeparator} />
-      <${MenuNote}>${app.learnedCount()} cards learned · ${state.inbox} in the inbox</${MenuNote}>
+      <${MenuNote}>${app.learnedCount()} cards learned</${MenuNote}>
       <${MenuRow} title="Cards…" disabled=${!onCards} onClick=${run(onCards)} />
       <${MenuRow} title="Diagnostics" disabled=${true} />
       <${MenuRow} title="Settings…" shortcut="⌘ ," disabled=${!onSettings} onClick=${run(onSettings)} />
@@ -516,19 +512,18 @@
   /**
    * The ⋯ menu in the panel's corner, as the app's (`moreMenu(of:)` in
    * `App/ReviewPanelView.swift`, with `ReviewPanelState`'s `cardActions` and
-   * `menuOffersUndo`): Ask…, Flag… and Set Aside, then Undo and Close. While a
-   * note or a question is being written, Close alone; once the cards are
-   * done, Undo and Close. Its items show no keys, as the app's don't: A, M,
-   * E, ⌘Z and Esc work with the menu closed.
+   * `menuOffersUndo`): Flag… and Set Aside, then Undo and Close. While a
+   * note is being written, Close alone; once the cards are done, Undo and
+   * Close. Its items show no keys, as the app's don't: M, E, ⌘Z and Esc work
+   * with the menu closed.
    */
-  function MoreMenu({ app, panel, onAsk, onFlag, onClose }) {
+  function MoreMenu({ app, panel, onFlag, onClose }) {
     const item = (title, fn, disabled) => html`<button type="button" role="menuitem" className="row" disabled=${disabled}
       onClick=${() => (onClose(), fn())}><span className="title">${title}</span></button>`;
     const onACard = !panel.done && !panel.mode;
     return html`<div className="more-cover" onPointerDown=${onClose} />
       <div className="menu more-menu glass" role="menu">
-        ${onACard && html`${item('Ask…', onAsk)}
-          ${item('Flag…', onFlag)}
+        ${onACard && html`${item('Flag…', onFlag)}
           ${item('Set Aside', () => app.setCurrentCardAside())}
           <div className="sep" />`}
         ${!panel.mode && item('Undo', () => app.undo(), !panel.undo.length)}
@@ -592,7 +587,6 @@
         const rated = p.flipped && faceButtons.current.find((b) => (b.digit || b.key) === e.key);
         if (rated) return handled(), app.rate(rated.g);
         const k = e.key.toLowerCase();
-        if (k === 'a') return handled(), setMore(false), setText(''), app.setMode('ask');
         if (k === 'm') return handled(), setMore(false), setText(''), app.setMode('flag');
         if (k === 'e') return handled(), setMore(false), app.setCurrentCardAside();
       };
@@ -620,10 +614,9 @@
     const close = html`<${IconButton} icon=${Icon.close} label="Close (esc)" onClick=${() => app.close()} />`;
     const undo = html`<${IconButton} icon=${Icon.undo} label="Undo (⌘Z)" disabled=${!panel.undo.length}
       onClick=${() => app.undo()} />`;
-    const ask = () => (setText(''), app.setMode('ask'));
     const flag = () => (setText(''), app.setMode('flag'));
     const moreButton = html`<${IconButton} icon=${Icon.more} label="More" onClick=${() => setMore(!more)} />`;
-    const moreMenu = more && html`<${MoreMenu} app=${app} panel=${panel} onAsk=${ask} onFlag=${flag} onClose=${() => setMore(false)} />`;
+    const moreMenu = more && html`<${MoreMenu} app=${app} panel=${panel} onFlag=${flag} onClose=${() => setMore(false)} />`;
 
     if (panel.kind === 'empty') {
       return html`<div className=${cls} style=${style} role="dialog" aria-label="Review">
@@ -644,13 +637,12 @@
     const isNew = card.state === 'new';
     const writing = panel.mode;
     const submit = () => {
-      app.saveToInbox(writing);
+      app.flag(text.trim());
       setText('');
     };
     const icons = face === 'new'
       ? moreButton
       : html`${!writing && html`${undo}
-            <${IconButton} icon=${Icon.ask} label="Ask… (a)" onClick=${ask} />
             <${IconButton} icon=${Icon.flag} label="Flag… (m)" onClick=${flag} />
             <${IconButton} icon=${Icon.setAside} label="Set Aside (e)" onClick=${() => app.setCurrentCardAside()} />`}
           ${close}`;
@@ -658,12 +650,12 @@
     if (writing) {
       controls = html`<form className="writing controls" onSubmit=${(e) => (e.preventDefault(), text.trim() && submit())}>
         <textarea ref=${field} id="panel-writing" className="field" rows="2" value=${text}
-          placeholder=${writing === 'ask' ? 'What do you want to know?' : 'What needs fixing?'}
+          placeholder="What needs fixing?"
           onInput=${(e) => setText(e.target.value)}
           onKeyDown=${(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), text.trim() && submit())} />
         <div className="actions">
           <${Button} title="Cancel" k="esc" onClick=${() => app.setMode(null)} />
-          <${Button} prominent title=${writing === 'ask' ? 'Ask' : 'Flag'} k="↩" disabled=${!text.trim()}
+          <${Button} prominent title="Flag" k="↩" disabled=${!text.trim()}
             onClick=${submit} />
         </div>
       </form>`;
@@ -706,34 +698,6 @@
       ${controls}
       ${moreMenu}${toast}
     </div>`;
-  }
-
-  // ---------------------------------------------------------------------
-  // CaptureView, in its window.
-  // ---------------------------------------------------------------------
-  function CaptureView({ onSave, onCancel, ...win }) {
-    const [text, setText] = useState('');
-    const [note, setNote] = useState('');
-    const [source, setSource] = useState('');
-    const first = useRef(null);
-    useEffect(() => first.current && first.current.focus(), []);
-    const save = () => text.trim() && onSave({ text, note, source });
-    return html`<${Window} title="Capture" width=${420} height=${248} onClose=${onCancel} ...${win}>
-      <form style=${{ padding: '4px 16px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}
-        onSubmit=${(e) => (e.preventDefault(), save())}
-        onKeyDown=${(e) => e.key === 'Escape' && (e.stopPropagation(), onCancel())}>
-        <textarea ref=${first} id="capture-text" className="field" rows="3" placeholder="A word, a concept, a quote or a question"
-          value=${text} onInput=${(e) => setText(e.target.value)} />
-        <input id="capture-note" className="field" placeholder="Note (optional)" value=${note}
-          onInput=${(e) => setNote(e.target.value)} />
-        <input id="capture-source" className="field" placeholder="Source (optional): a book, a podcast…" value=${source}
-          onInput=${(e) => setSource(e.target.value)} />
-        <div style=${{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 2 }}>
-          <${Button} title="Cancel" onClick=${onCancel} />
-          <${Button} prominent title="Save" disabled=${!text.trim()} onClick=${save} />
-        </div>
-      </form>
-    </${Window}>`;
   }
 
   /** A note on the desktop, under the menu bar, when no panel is open. */
@@ -927,7 +891,6 @@
     DOCK,
     MenuContent,
     ReviewPanelView,
-    CaptureView,
     DeskToast,
     MockControls,
     HudGroup,

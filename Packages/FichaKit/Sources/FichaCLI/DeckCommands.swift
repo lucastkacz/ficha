@@ -7,7 +7,8 @@ import Foundation
 // deck, as the Sync tab lists them to choose from, Default included, and
 // each of `ficha deck`'s commands, and `ficha change-deck`, makes one change
 // through the engine's actions, as the Cards window does, so it syncs, and
-// prints what it changed. None asks first: the refine session asks Lucas.
+// prints what it changed. None asks first: an agent runs it only in a session
+// where Lucas asked for it (`CLAUDE.md`).
 
 /// `ficha decks`: lists every deck.
 struct DecksCommand: EngineCommand {
@@ -109,12 +110,12 @@ struct DeleteDeckCommand: EngineCommand {
         abstract: "Delete a deck, with every deck inside it and every card in them, and print what it did.",
         discussion: """
             Every card in it, or in a deck inside it, set-aside ones too, is deleted with its review log, on every \
-            device, whether or not it syncs, as in Anki; its expansions and follow-ups stay in the inbox. A card \
-            another device holds in it that wasn't in it here, and that doesn't sync, moves to Default there. The \
-            decks' switches, colors, emoji, descriptions, choices to sync and places in the queue go too. Nothing \
-            undoes it, but the daily backups keep what it deleted, and `ficha restore` brings one back. Default is \
-            never deleted: to keep a deck's cards, move them first with `ficha change-deck`. It prints the deck in \
-            "deck", the decks inside it that went with it in "decksInside", and how many cards it deleted in "cards".
+            device, whether or not it syncs, as in Anki. A card another device holds in it that wasn't in it here, \
+            and that doesn't sync, moves to Default there. The decks' switches, colors, emoji, descriptions, choices \
+            to sync and places in the queue go too. Nothing undoes it, but the daily backups keep what it deleted, \
+            and `ficha restore` brings one back. Default is never deleted: to keep a deck's cards, move them first \
+            with `ficha change-deck`. It prints the deck in "deck", the decks inside it that went with it in \
+            "decksInside", and how many cards it deleted in "cards".
             """
     )
 

@@ -506,8 +506,8 @@ extension Engine {
                         let deck = try decks.deck(of: card)
                         let cardID = try insertCard(
                             try card.content(as: type, adding: addedTags(card)), deck: deck,
-                            bothWays: card.goesBothWays(bringingProgress: choices.bringsProgress), capturedAs: nil,
-                            at: importedAt, in: db)
+                            bothWays: card.goesBothWays(bringingProgress: choices.bringsProgress), at: importedAt,
+                            in: db)
                         if choices.bringsProgress {
                             try bring(card, to: cardID, at: importedAt, with: scheduler, in: db)
                         }

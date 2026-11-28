@@ -159,8 +159,8 @@ func save(madeType type: UserType, in db: Database) throws {
         arguments: [type.id.uuidString, type.name, type.emoji])
 }
 
-/// The card types the names a text file of cards or a refine session gives
-/// stand for, as an import and the `ficha` CLI read them, in the write that
+/// The card types the names a text file of cards or `ficha add` gives stand
+/// for, as an import and the `ficha` CLI read them, in the write that
 /// saves their cards: one of the four Ficha comes with
 /// (`CardType.init(builtInNamed:)`); or the user type with that name,
 /// ignoring case and accents; or else a new user type with that name and no
@@ -206,8 +206,8 @@ extension CardType {
     /// The type Ficha comes with that `name` names, by its raw value or its
     /// name as the app showed it (`builtInNames`), as
     /// `UserType.isSameName(_:as:)` compares them, or nil when none does:
-    /// the one lookup of the four by name, as a file, a refine session, a
-    /// new user type's name or the `ficha` CLI's type commands give it.
+    /// the one lookup of the four by name, as a file, `ficha add`, a new user
+    /// type's name or the `ficha` CLI's type commands give it.
     public init?(builtInNamed name: String) {
         guard
             let type = CardType.builtIn.first(where: {

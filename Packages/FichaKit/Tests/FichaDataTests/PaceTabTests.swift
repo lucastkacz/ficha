@@ -29,8 +29,8 @@ struct PaceTabTests {
     func itSaysWhenTheQueueIsMetAtEachPace() throws {
         try meetArte(in: engine)
         time.advance(by: minutes(1))
-        try approveInDeck("Coliseo", deck: "Historia", in: engine)
-        try approveInDeck("Partenón", deck: "Historia", in: engine)
+        try newCardInDeck("Coliseo", deck: "Historia", in: engine)
+        try newCardInDeck("Partenón", deck: "Historia", in: engine)
         let finishes = try Pace.allCases.map { try lastFinish(at: $0) }
 
         let tab = engine.openPaceTab(settings)
@@ -52,13 +52,13 @@ struct PaceTabTests {
         "the Pace tab lists the queue's decks in its order, each with its emoji, its new cards and when they're all met, the first now, and offers Put it first only for a deck it would move ahead of another",
         .bug(id: 492))
     func itListsTheQueue() throws {
-        try approveInDeck("Bach", deck: "Música", in: engine)
+        try newCardInDeck("Bach", deck: "Música", in: engine)
         try engine.setPriority(true, ofDeck: "Música")
         time.advance(by: minutes(1))
         try meetArte(in: engine)
         try engine.setEmoji(try Emoji("🎨"), ofDeck: "Arte")
         time.advance(by: minutes(1))
-        try approveInDeck("Coliseo", deck: "Historia", in: engine)
+        try newCardInDeck("Coliseo", deck: "Historia", in: engine)
         let queue = try engine.queue(settings)
 
         let tab = engine.openPaceTab(settings)
@@ -83,8 +83,8 @@ struct PaceTabTests {
         try meetArte(in: engine)
         try meetArte(in: ficha)
         time.advance(by: minutes(1))
-        try approveInDeck("Coliseo", deck: "Historia", in: engine)
-        try approveInDeck("Coliseo", deck: "Historia", in: ficha)
+        try newCardInDeck("Coliseo", deck: "Historia", in: engine)
+        try newCardInDeck("Coliseo", deck: "Historia", in: ficha)
         var tab = engine.openPaceTab(settings)
 
         let offered = tab.queue.map(\.offersPutItFirst)
@@ -136,9 +136,9 @@ struct PaceTabTests {
     /// Arte's three cards, in `engine`, with La Gioconda met now: the deck
     /// the user is meeting.
     private func meetArte(in engine: Engine) throws {
-        let gioconda = try approveInDeck("La Gioconda", deck: "Arte", in: engine)
-        try approveInDeck("Las Meninas", deck: "Arte", in: engine)
-        try approveInDeck("El Grito", deck: "Arte", in: engine)
+        let gioconda = try newCardInDeck("La Gioconda", deck: "Arte", in: engine)
+        try newCardInDeck("Las Meninas", deck: "Arte", in: engine)
+        try newCardInDeck("El Grito", deck: "Arte", in: engine)
         try engine.meet(gioconda)
     }
 

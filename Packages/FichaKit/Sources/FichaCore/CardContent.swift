@@ -1,7 +1,7 @@
 import Foundation
 
 /// What a card holds, and the one check of what a valid card is, wherever it
-/// comes from: approving a capture or an expansion, fixing or editing a card,
+/// comes from: adding cards with `ficha add`, fixing or editing a card,
 /// creating one, and the sample cards. A new way in, such as a form or an
 /// import, builds one too, and never writes a card's content around it, so
 /// that no way in lets in a card another refuses. Each side, the front and
@@ -86,8 +86,8 @@ public struct CardContent: Sendable, Equatable {
     }
 
     /// This content with the images and sounds given in place of its own,
-    /// where they aren't nil: as a card fixed or expanded with a content
-    /// alone keeps its own images and sounds. Each side keeps its text, so
+    /// where they aren't nil: as a card fixed with a content alone keeps its
+    /// own images and sounds. Each side keeps its text, so
     /// it's never blank.
     public func keepingFiles(
         frontImage: ImageName?, backImage: ImageName?, frontSound: SoundName?, backSound: SoundName?

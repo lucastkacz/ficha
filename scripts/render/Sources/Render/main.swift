@@ -11,14 +11,14 @@ import SwiftUI
 // without showing anything on screen: `make render ARGS="cards --dark"`. The
 // window goes below the desktop picture, where macOS still draws it but nobody
 // sees it and nothing takes the mouse or the keyboard; the tool clicks, presses
-// keys and types in it where it's told, as Lucas would, and captures it with
-// `screencapture`. `docs/development.md` explains how to use it.
+// keys and types in it where it's told, as Lucas would, and takes its picture
+// with `screencapture`. `docs/development.md` explains how to use it.
 //
 // This file shares its module with `App/`'s files, which the target compiles
 // through `Sources/Render/App`, so a top-level name here that `App/` also uses
 // breaks the build, even when `App/`'s is `private`: in #116, a `modifierNames`
-// table here broke `CaptureShortcut.swift`. Give what you add at the top level
-// a name of its own.
+// table here broke the file of a shortcut #540 removed. Give what you add at
+// the top level a name of its own.
 
 /// A window the tool can draw, by the name its arguments give it, which the
 /// usage lists.
@@ -175,8 +175,6 @@ enum Window: String, CaseIterable {
     /// Settings, on its General tab, in Ficha Dev, which never starts at
     /// login, with About at its foot.
     case general
-    /// The capture window, empty.
-    case capture
     /// The Welcome page the real Ficha shows the first time it opens on a
     /// Mac, which asks whether it opens at login.
     case welcome
@@ -225,19 +223,24 @@ enum Window: String, CaseIterable {
     /// in its dot's place, the legend above the grid naming it, and its
     /// detail saying when it was set aside, with Put Back (#539).
     case cardsSetAside = "cards-set-aside"
+    /// The Cards window on the deck of the sample's flagged card, with that
+    /// card selected: its tile not dimmed, with its flag in its dot's place,
+    /// the legend above the grid naming it, and its detail with Lucas's note
+    /// on top and "Out of your reviews" (#540).
+    case cardsFlagged = "cards-flagged"
 }
 
 /// What the tool was asked to draw.
 struct Request {
     var window: Window?
     var isDark = false
-    /// What to do in the window before the capture, in order.
+    /// What to do in the window before its picture, in order.
     var actions: [Action] = []
     /// Where the PNG goes.
     var output: URL?
 }
 
-/// Something the tool does in the window before the capture, as Lucas would.
+/// Something the tool does in the window before its picture, as Lucas would.
 enum Action: CustomStringConvertible {
     /// A click, with its modifier keys held down.
     case click(MouseClick)
@@ -590,9 +593,9 @@ func request(from arguments: [String]) throws(RenderError) -> Request {
 /// the first day, rated Good, Again or Hard, sixteen of them graduated since
 /// at different paces, two rated Easy and two after a lapse, and four still in
 /// their learning steps, one flagged with a note and one set aside on its
-/// own, and the rest new, with a capture waiting in the inbox; and then a new card with a
-/// flag on its front and the Sun of May and a sound on its back, and two new
-/// cards made by hand, with no type and no capture. The time it's on stays
+/// own, and the rest new; and then a new card with a flag on its front and
+/// the Sun of May and a sound on its back, and two new cards made by hand,
+/// with no type. The time it's on stays
 /// where the twelve days left it. FSRS fuzzes each interval by the review
 /// log's IDs, which count up from the same first on every run, so every
 /// run's graduated intervals and due times are the same.
@@ -641,14 +644,6 @@ func sampleEngine(at location: DatabaseLocation) throws -> (engine: Engine, time
     try review(12..<14, .again)
     time.advance(by: hours(5 * 24))
     try review(0..<16, .good)
-    // A capture that waits in the inbox, for Convert to Card: the inbox lists
-    // it after the flagged card, which comes later.
-    let capture = try engine.capture(
-        text: "La paradoja de Teseo: si le cambiás todas las tablas a un barco, ¿sigue siendo el mismo barco?",
-        note: "Una tarjeta para la paradoja y otra para la pregunta", source: "Un video de filosofía")
-    guard case .saved = capture else {
-        throw RenderError(description: "The sample's capture repeats a sample card.")
-    }
     time.advance(by: hours(4 * 24 + 3))
     guard let note = FlagNote("El ejemplo no se entiende: cambiarlo por uno más cotidiano.") else {
         throw RenderError(description: "The sample's flag note is blank.")
@@ -667,8 +662,8 @@ func sampleEngine(at location: DatabaseLocation) throws -> (engine: Engine, time
         throw RenderError(description: "The sample's card with images has a blank side.")
     }
     try engine.create(withImages)
-    // The sample cards all have a type, and cards from a capture: these two
-    // are as someone who doesn't refine with Claude makes them.
+    // The sample cards all have a type: these two are as someone makes them
+    // by hand.
     let madeByHand = [
         ("¿Cuál es la capital de Mongolia?", "Ulán Bator."),
         ("mitocondria", "La parte de la célula que produce su energía."),
@@ -1422,7 +1417,7 @@ func model(for name: Window) throws -> AppModel {
     case .cards, .cardsCard, .cardsCardDetails, .cardsNewCard, .cardsNewDeck, .cardsImport, .cardsImportAnki,
         .cardsHowFast, .cardsHowFastNewDeck, .cardsHowFastDeckFile, .cardsDeckMenu, .cardsFichaDeckWords,
         .cardsFichaDeckPicture, .cardsFichaDeckFlower,
-        .general, .pace, .interruptions, .capture, .welcome, .welcomeOneButton, .panelCard, .panelMetThemAll:
+        .general, .pace, .interruptions, .welcome, .welcomeOneButton, .panelCard, .panelMetThemAll:
         return try AppModel(engine: try sampleEngine(at: .inMemory).engine)
     case .cardsEmpty, .panelMetThemAllOffer:
         return try AppModel(engine: try Engine(location: .inMemory, time: SystemTimeSource()))
@@ -1444,7 +1439,7 @@ func model(for name: Window) throws -> AppModel {
         try engine.addFichaDeck(arte)
         return try AppModel(engine: engine)
     case .cardsBothWays: return try bothWaysModel()
-    case .cardsSetAside: return try AppModel(engine: try sampleEngine(at: .inMemory).engine)
+    case .cardsSetAside, .cardsFlagged: return try AppModel(engine: try sampleEngine(at: .inMemory).engine)
     case .panelArabic, .cardsArabic:
         let engine = try sampleEngine(at: .inMemory).engine
         try addSampleArabicCard(in: engine)
@@ -1660,12 +1655,6 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
     case .interruptions: return settingsTabWindow(model: model, openingOn: .interruptions)
     case .advanced: return settingsTabWindow(model: model, openingOn: .advanced)
     case .advancedFoot: return settingsTabWindow(model: model, openingOn: .advanced, at: .diagnostics)
-    case .capture:
-        let window = CaptureWindow(model: model)
-        if let view = window.contentView {
-            window.setContentSize(view.fittingSize)
-        }
-        return window
     // For the real Ficha, the only one that shows it on its own. A button's
     // keyboard shortcut prints what it answered, as the app would take it.
     case .welcome: return WelcomeWindow(app: .real, asks: true) { print("The Welcome page answered \($0).") }
@@ -1690,27 +1679,33 @@ func window(_ name: Window, model: AppModel) throws -> NSWindow {
         return try cardsWindow(
             of: model, selectingFirst: { $0.card.front == sampleArabicFront },
             orElse: "The Cards window doesn't list the card in Arabic: fix addSampleArabicCard(in:).")
-    case .cardsSetAside: return try setAsideCardWindow(of: model)
+    case .cardsSetAside:
+        return try markedCardWindow(
+            of: model, .setAside, choosing: { $0.buriedAt != nil }, named: "card set aside on its own")
+    case .cardsFlagged:
+        return try markedCardWindow(
+            of: model, .flagged, choosing: { $0.flag != nil && $0.buriedAt == nil }, named: "flagged card")
     }
 }
 
 /// The Cards window of `model`, its cards read, on the deck of its first
-/// card set aside on its own, with that card's tile selected, as
-/// `cards-set-aside` opens it. All Cards leaves such a card out, so it finds
-/// it among the cards, and its tile in its deck's grid.
-func setAsideCardWindow(of model: AppModel) throws -> NSWindow {
+/// card `isWanted` picks, set aside on its own or flagged, with the first
+/// tile marked `mark` selected, as `cards-set-aside` and `cards-flagged` open
+/// it; `name` names the card in the failure that says what to fix. All Cards
+/// leaves such a card out, so it finds it among the cards, and its tile in
+/// its deck's grid.
+func markedCardWindow(
+    of model: AppModel, _ mark: CardsWindowState.Tile.Mark, choosing isWanted: (Card) -> Bool, named name: String
+) throws -> NSWindow {
     var state = model.openCardsWindow()
     state.read(with: state.scheduler)
-    guard let deck = try model.engine.cards().first(where: { $0.buriedAt != nil })?.deck else {
-        throw RenderError(description: "No sample card is set aside on its own: fix sampleEngine(at:).")
+    guard let deck = try model.engine.cards().first(where: isWanted)?.deck else {
+        throw RenderError(description: "No sample card is a \(name): fix sampleEngine(at:).")
     }
     state.choose(.cards(.deck(deck)))
-    guard let tile = state.tiles.first(where: { $0.mark == .setAside }) else {
+    guard let tile = state.tiles.first(where: { $0.mark == mark }) else {
         throw RenderError(
-            description: """
-                The Cards window's grid doesn't mark the sample's card set aside on its own: fix \
-                CardsWindowState.Tile.
-                """)
+            description: "The Cards window's grid doesn't mark the sample's \(name): fix CardsWindowState.Tile.")
     }
     state.select([tile.id])
     let window = CardsWindow(model: model)
@@ -1907,9 +1902,8 @@ func metThemAllPanelWindow(model: AppModel, offersFichaDeck: Bool = false) throw
 func menuWindow(model: AppModel) -> NSWindow {
     let content = VStack(alignment: .leading) {
         MenuContent(
-            model: model, openCapture: {}, captureShortcut: CaptureShortcutRegistration(), openReviewPanel: {},
-            openCards: {}, openDiagnostics: {}, openSettings: {}, openBackupSettings: {},
-            openSyncSettings: {},
+            model: model, openReviewPanel: {}, openCards: {}, openDiagnostics: {}, openSettings: {},
+            openBackupSettings: {}, openSyncSettings: {},
             checkAppearance: { nil }, timeMoved: {},
             secondDevice: SecondDeviceActions(openCards: {}, reviewNow: {}, syncNow: {}), showWelcomePage: {})
     }
@@ -1932,8 +1926,7 @@ func settingsTabWindow(model: AppModel, openingOn tab: SettingsTab, at section: 
     }
     let window = AppWindow(
         tabs: SettingsTabViewController(
-            model: model, captureShortcut: CaptureShortcutRegistration(), closeReviewPanel: {}, openDiagnostics: {},
-            openingOn: tab, at: section))
+            model: model, closeReviewPanel: {}, openDiagnostics: {}, openingOn: tab, at: section))
     if let content = window.contentView {
         window.setContentSize(content.fittingSize)
     }
@@ -2221,9 +2214,9 @@ func wait(_ seconds: TimeInterval) throws(RenderError) {
 }
 
 /// Saves the window as a PNG at `output`, as the screen draws it, without
-/// its shadow. On macOS 26, `screencapture -l` captures a window with the
+/// its shadow. On macOS 26, `screencapture -l` takes a window with the
 /// sheet it has open, over it where macOS puts it.
-func capture(_ window: NSWindow, to output: URL) throws {
+func savePicture(of window: NSWindow, to output: URL) throws {
     try FileManager.default.createDirectory(at: output.deletingLastPathComponent(), withIntermediateDirectories: true)
     let screencapture = Process()
     screencapture.executableURL = URL(filePath: "/usr/sbin/screencapture")
@@ -2233,8 +2226,9 @@ func capture(_ window: NSWindow, to output: URL) throws {
     guard screencapture.terminationStatus == 0 else {
         throw RenderError(
             description: """
-                screencapture couldn't capture the window (exit \(screencapture.terminationStatus)). Check that the \
-                terminal running the tool has Screen & System Audio Recording in System Settings › Privacy & Security.
+                screencapture couldn't take the window's picture (exit \(screencapture.terminationStatus)). Check \
+                that the terminal running the tool has Screen & System Audio Recording in System Settings › Privacy \
+                & Security.
                 """)
     }
 }
@@ -2376,7 +2370,7 @@ do {
     }
     let output =
         request.output ?? URL(filePath: ".build/render/\(name.rawValue)-\(request.isDark ? "dark" : "light").png")
-    try capture(window, to: output)
+    try savePicture(of: window, to: output)
     print(
         "\(output.path(percentEncoded: false)): a \(Int(window.frame.width)) × \(Int(window.frame.height)) pt window"
     )

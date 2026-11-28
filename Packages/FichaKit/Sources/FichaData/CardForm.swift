@@ -3,12 +3,9 @@ import Foundation
 
 extension CardsWindowState {
     /// The form that creates cards in the Cards window, a sheet over it,
-    /// opened by New Card, or by Convert to Card on a capture or a follow-up
-    /// in the inbox, and open until the user closes it. It stays open after
-    /// each card, as Anki's Add window does.
+    /// opened by New Card, and open until the user closes it. It stays open
+    /// after each card, as Anki's Add window does.
     public struct CardForm: Sendable, Equatable {
-        /// What opened the form.
-        let openedBy: Opener
         /// What the form's fields hold.
         public internal(set) var draft = Draft()
         /// The cards added since the form opened, oldest first.
@@ -18,25 +15,6 @@ extension CardsWindowState {
         /// The work converting a sound dropped or pasted on a side, by side,
         /// while it converts: `CardsWindowSounds.swift`.
         var soundsComingIn: [CardSide: UUID] = [:]
-
-        /// The capture the form was opened from, a follow-up's included,
-        /// which it shows beside its fields, or nil for a new card.
-        public var capture: Capture? {
-            switch openedBy {
-            case .newCard: nil
-            case .capture(let capture): capture
-            case .followUp(let followUp): followUp.capture
-            }
-        }
-
-        /// The follow-up the form was opened from, with its card as it was
-        /// then, which the form shows below the capture, or nil when it was
-        /// opened from a plain capture or for a new card. The cards the form
-        /// adds sit beside that card, which stays as it is.
-        public var followUp: FollowUp? {
-            guard case .followUp(let followUp) = openedBy else { return nil }
-            return followUp
-        }
 
         /// What Add saves, checked as every card is, or nil while a side is
         /// blank: it has neither text, an image nor a sound. A card the form
@@ -54,26 +32,10 @@ extension CardsWindowState {
         public var canAdd: Bool {
             content != nil && soundsComingIn.isEmpty
         }
-
-        /// Whether closing the form approves the capture it was opened from,
-        /// which then leaves the inbox: once a card was added from it.
-        public var approvesCaptureOnClose: Bool {
-            capture != nil && !addedCards.isEmpty
-        }
     }
 }
 
 extension CardsWindowState.CardForm {
-    /// What opened the form.
-    enum Opener: Sendable, Equatable {
-        /// New Card.
-        case newCard
-        /// Convert to Card on this capture.
-        case capture(Capture)
-        /// Convert to Card on this follow-up, with its card as it was then.
-        case followUp(FollowUp)
-    }
-
     /// What the form says under the front.
     public enum FrontWarning: Sendable, Equatable {
         /// That it repeats this card's front, by the duplicate rule, which
@@ -132,53 +94,17 @@ extension CardsWindowState.CardForm {
 
 extension CardsWindowState {
     /// Opens the form on a new card: every field empty, Both ways off, and
-    /// the deck a new card starts in
-    /// (`CardsWindowDeckField.swift`); or brings back the new card's form
-    /// Show Card set aside, as it was.
+    /// the deck a new card starts in (`CardsWindowDeckField.swift`); or
+    /// brings back the form Show Card set aside, as it was, with what its
+    /// front repeats checked again.
     public mutating func openNewCardForm() {
         guard cardForm == nil else { return }
-        var form = CardForm(openedBy: .newCard)
-        form.draft.deck = deckANewCardStartsIn
-        openCardForm(form)
-    }
-
-    /// Convert to Card: opens the form from the capture the detail shows,
-    /// while it's offered, with the capture's source filled in, in the deck a
-    /// new card starts in, or from the follow-up it shows, with its card
-    /// beside it and the card's deck filled in, so the new cards land next to
-    /// it; or brings back the form from that capture or follow-up Show Card
-    /// set aside, as it was.
-    public mutating func convertToCard() {
-        guard cardForm == nil, actions.contains(.convertToCard) else { return }
-        var form: CardForm
-        switch detail {
-        case .capture(let capture):
-            form = CardForm(openedBy: .capture(capture))
-            form.draft.deck = deckANewCardStartsIn
-        case .followUp(let followUp):
-            form = CardForm(openedBy: .followUp(followUp))
-            form.draft.deck = followUp.card.deck
-        case .expansion, .card, .cards, .nothingSelectedInInbox, .noCardSelected:
-            return
-        }
-        form.draft.source = form.capture?.source ?? ""
-        openCardForm(form)
-    }
-
-    /// Opens `form`, or the form Show Card set aside when it was opened the
-    /// same way, from the same capture or from none, with what its front
-    /// repeats checked again. A form set aside that was opened another way
-    /// closes for good first.
-    private mutating func openCardForm(_ form: CardForm) {
         if let setAside = setAsideCardForm {
             setAsideCardForm = nil
-            if setAside.capture?.id == form.capture?.id {
-                cardForm = setAside
-            } else {
-                finishClosing(setAside)
-                cardForm = form
-            }
+            cardForm = setAside
         } else {
+            var form = CardForm()
+            form.draft.deck = deckANewCardStartsIn
             cardForm = form
         }
         readFrontsInUse()
@@ -226,9 +152,8 @@ extension CardsWindowState {
     /// into the user's reviews as new, with the images and sounds on its
     /// sides, which Ficha keeps from then on, going both ways when the form
     /// says so, in the deck the Deck field holds, made if it isn't there,
-    /// which becomes the deck the last card was added to. A card added from a
-    /// capture keeps it as its capture, and the capture stays in the inbox
-    /// until the form closes. Then it clears the front and the back, their
+    /// which becomes the deck the last card was added to. Then it clears the
+    /// front and the back, their
     /// images and sounds too, and keeps the deck, the source and Both ways,
     /// for the next card. While the grid lists the card, at its end, as it
     /// lists cards in the order they came in, the window selects it and
@@ -241,8 +166,7 @@ extension CardsWindowState {
         var added: Card?
         let files = heldFiles(of: content)
         perform(.addCard) { engine throws(EngineError) in
-            added = try engine.create(
-                keeping: files, content, deck: form.draft.deck, bothWays: form.draft.bothWays, from: form.capture?.id)
+            added = try engine.create(keeping: files, content, deck: form.draft.deck, bothWays: form.draft.bothWays)
         }
         guard let added else { return }
         lastDeckAddedTo = added.deck
@@ -263,8 +187,7 @@ extension CardsWindowState {
     /// sides, until it's opened the same way again, and the window chooses
     /// the card's deck, with no search, selects the card and scrolls to it,
     /// since the deck lists every card of its own, one the user set aside
-    /// included (#539). A capture the form came from stays in the inbox
-    /// meanwhile, and one of Ficha's decks the review panel asked for
+    /// included (#539). One of Ficha's decks the review panel asked for
     /// meanwhile waits for the window's next read (`read(with:)`), so the
     /// window stays on the card.
     public mutating func showRepeatedCard() {
@@ -282,26 +205,13 @@ extension CardsWindowState {
         cardToReveal = nil
     }
 
-    /// Close: closes the form. Opened from a capture, once a card was added
-    /// from it, it approves the capture, which leaves the inbox, as approving
-    /// it in a refine session does; with none, the capture stays there. When
-    /// the capture can't be approved, it records why, and the form closes all
-    /// the same, since its cards are saved.
+    /// Close: closes the form, and the images and sounds put on its last
+    /// card, which Add never saved, go.
     public mutating func closeCardForm() {
-        guard let form = cardForm else { return }
+        guard cardForm != nil else { return }
         cardForm = nil
         frontsInUse = nil
-        finishClosing(form)
-        askForTheFichaDeckAskedToAdd()
-    }
-
-    /// Closes `form` for good, once it's no longer open, as Close does.
-    private mutating func finishClosing(_ form: CardForm) {
-        // Images and sounds put on the last card, which Add never saved, go.
         showFiles()
-        if form.approvesCaptureOnClose, let capture = form.capture {
-            perform(.approveCapture) { engine throws(EngineError) in try engine.approve(capture.id) }
-            readAgain()
-        }
+        askForTheFichaDeckAskedToAdd()
     }
 }

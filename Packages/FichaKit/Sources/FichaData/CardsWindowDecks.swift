@@ -1,8 +1,8 @@
 import FichaCore
 import Foundation
 
-// The Cards window's decks (ADR 0024): the sidebar's Your Decks section,
-// after Inbox, lists every deck as a tree, Default first while it holds cards
+// The Cards window's decks (ADR 0024): the sidebar's Your Decks section
+// lists every deck as a tree, Default first while it holds cards
 // or has a switch on, where it always was, then the decks at the top of the
 // tree with cards in the user's reviews, in the order of the queue new cards
 // come from, a deck listed first for its priority cards alone first, and a

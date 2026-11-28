@@ -42,9 +42,8 @@ enum ColumnWidth {
     /// which its style decides, and, if it has a `scroller`, a legacy
     /// scroller's width, which the scroller takes beside the columns with a
     /// mouse. Our own sum, as `make render`'s pictures and AppKit's frames
-    /// measure it: 16.5 at each edge in the inset style the Cards window's
-    /// inbox has, and 6 in the full-width one SwiftUI gives a table in a
-    /// grouped form.
+    /// measure it: 16.5 at each edge in the inset style, and 6 in the
+    /// full-width one SwiftUI gives a table in a grouped form.
     static func tableSpacing(columns count: Int, edges: CGFloat, scroller: Bool) -> CGFloat {
         let scrollerWidth = scroller ? NSScroller.scrollerWidth(for: .regular, scrollerStyle: .legacy) : 0
         return 17 * CGFloat(count - 1) + 2 * edges + scrollerWidth
@@ -83,11 +82,4 @@ extension TableColumn {
     func width(fitting column: FittedColumn) -> TableColumn<RowValue, Sort, Content, Label> {
         width(min: column.min, ideal: column.ideal, max: column.max)
     }
-}
-
-extension FormatStyle where Self == Date.FormatStyle {
-    /// How the Cards window's inbox's Added column shows a day: without the
-    /// time, to leave the user's texts, a capture's or a flagged card's
-    /// front, their room.
-    static var tableDay: Date.FormatStyle { Date.FormatStyle(date: .abbreviated, time: .omitted) }
 }

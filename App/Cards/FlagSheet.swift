@@ -26,7 +26,7 @@ struct FlagSheet: View {
                 )
                 .font(.headline)
                 Text(
-                    "It waits in the inbox, out of your reviews, until it's fixed.",
+                    "It waits in its deck, out of your reviews, until it's fixed.",
                     comment: "Under the title of the Cards window's sheet that flags a card."
                 )
                 .foregroundStyle(.secondary)

@@ -196,7 +196,7 @@ final class SyncEventsTests {
     @Test("turning sync off keeps the deletions that waited, and turning it on sends them, with those made while off")
     func deletionsWaitWhileSyncIsOff() async throws {
         for front in ["ubuntu", "petricor", "saudade"] {
-            try approveCard(front, in: mac.engine)
+            try newCard(front, in: mac.engine)
         }
         try await mac.syncNow()
         try await iPhone.syncNow()

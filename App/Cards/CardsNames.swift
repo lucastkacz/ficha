@@ -3,12 +3,12 @@ import FichaData
 import SwiftUI
 
 extension CardGroup {
-    /// The group's name in the sidebar. Every card and the flagged ones,
-    /// which the engine counts, are groups the sidebar never offers (#536),
-    /// so the app names neither.
+    /// The group's name in the sidebar. Every card, which the engine counts,
+    /// is a group the sidebar never offers (#536), so the app doesn't name
+    /// it.
     var title: String {
         switch self {
-        case .all, .flagged:
+        case .all:
             ""
         case .deck(let deck):
             Deck.shownName(deck)
@@ -19,16 +19,15 @@ extension CardGroup {
     var symbol: String {
         switch self {
         case .all: "rectangle.stack"
-        case .flagged: "flag"
         case .deck: "rectangle.portrait.on.rectangle.portrait"
         }
     }
 
     /// What the grid's place says when the group has no cards: nothing for
-    /// the groups the sidebar never offers.
+    /// every card, which the sidebar never offers.
     var emptyTitle: String {
         switch self {
-        case .all, .flagged:
+        case .all:
             ""
         case .deck(Deck.defaultName):
             String(
@@ -117,52 +116,5 @@ extension DeckInTree {
     /// level, or before Default's name as the app shows it.
     var shownTitle: String {
         deck.title(shown: deck.isDefault ? Deck.shownName(deck.name) : title)
-    }
-}
-
-extension InboxRow.Item {
-    /// What kind it is, as the inbox's Kind column and the capture's detail
-    /// say it.
-    nonisolated var kindName: String {
-        switch self {
-        case .capture: InboxKind.capture.name
-        case .expansion: InboxKind.expansion.name
-        case .followUp: InboxKind.followUp.name
-        case .flaggedCard: InboxKind.flagged.name
-        }
-    }
-}
-
-/// The kinds of the inbox's rows, whose names the Kind column's width fits.
-nonisolated enum InboxKind: CaseIterable {
-    case capture
-    case expansion
-    case followUp
-    case flagged
-
-    /// The kind's name. Each has a key of its own, since "Capture" is also
-    /// the capture window's title, and "Flagged" the flag icon's label beside
-    /// a flagged card, which a translation may word apart.
-    var name: String {
-        switch self {
-        case .capture:
-            String(
-                localized: "inbox-kind.capture", defaultValue: "Capture",
-                comment: "In the Cards window's inbox, the kind of a row: a capture.")
-        case .expansion:
-            String(
-                localized: "inbox-kind.expansion", defaultValue: "Expansion",
-                comment: "In the Cards window's inbox, the kind of a row: a capture attached to the card it repeats.")
-        case .followUp:
-            String(
-                localized: "inbox-kind.follow-up", defaultValue: "Follow-up",
-                comment:
-                    "In the Cards window's inbox, the kind of a row: a capture asked about a card in the review panel, tied to it."
-            )
-        case .flagged:
-            String(
-                localized: "inbox-kind.flagged", defaultValue: "Flagged",
-                comment: "In the Cards window's inbox, the kind of a row: a flagged card.")
-        }
     }
 }

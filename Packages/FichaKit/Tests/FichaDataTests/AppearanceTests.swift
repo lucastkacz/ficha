@@ -30,7 +30,7 @@ struct AppearanceTests {
 
     @Test("with nothing due, a single new card is enough for an appearance")
     func aNewCardIsEnoughWithNothingDue() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
 
         #expect(try appearance() == .show([.new(serendipia)]))
     }
@@ -168,8 +168,8 @@ struct AppearanceTests {
     // snoozed comes back in the next appearance.
     @Test("a snoozed new card doesn't count toward the day's 2 new cards")
     func aSnoozedNewCardDoesNotCount() throws {
-        let ubuntu = try approveCard("ubuntu", in: engine)
-        let ockham = try approveCard("navaja de Ockham", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
+        let ockham = try newCard("navaja de Ockham", in: engine)
         try engine.meet(ubuntu)
         var panel = try openAppearance()
         #expect(panel.cards == [.new(ockham)])
@@ -191,9 +191,9 @@ struct AppearanceTests {
         var allDay = settings
         allDay.activeHours = try #require(ActiveHours(from: 0, to: 24))
         let met = try ["ubuntu", "petricor", "serendipia", "Schadenfreude", "navaja de Ockham"].map {
-            try approveCard($0, in: engine)
+            try newCard($0, in: engine)
         }
-        let sunkCost = try approveCard("costo hundido", in: engine)
+        let sunkCost = try newCard("costo hundido", in: engine)
         time.move(to: try at(0, 30, day: 15))
         for card in met {
             try engine.meet(card)
@@ -215,7 +215,7 @@ struct AppearanceTests {
 
     @Test("every appearance and review now goes into the appearance log, with its trigger, times and outcome")
     func appearancesAndReviewNowsGoIntoTheAppearanceLog() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         time.move(to: try at(10, 0))
         var snoozed = try engine.openPanel(.appearance, with: [.new(serendipia)], settings: settings)
         time.move(to: try at(10, 3))
@@ -256,12 +256,12 @@ struct AppearanceTests {
         return try engine.openPanel(.appearance, with: cards, settings: settings)
     }
 
-    /// Approves a card with this front and meets it, an hour before `due`, so
+    /// Makes a card with this front and meets it, an hour before `due`, so
     /// that it's due then, after the first step's wait. Each card is met after
     /// the ones before it, so they come due in order.
     @discardableResult
     private func meetCard(_ front: String, dueAt due: Date) throws -> Card {
-        let card = try approveCard(front, in: engine)
+        let card = try newCard(front, in: engine)
         time.move(to: due - hours(1))
         try engine.meet(card)
         return card

@@ -99,15 +99,12 @@ extension Engine {
     }
 
     /// What the menu shows of Lucas's progress: how many ways of the cards in
-    /// his reviews are due, how many of the cards he learned, and how many
-    /// captures and flagged cards wait in the inbox.
+    /// his reviews are due, and how many of the cards he learned.
     public func progress(_ settings: ReviewSettings) throws(EngineError) -> ProgressCounts {
         let now = time.now
         return try read { db in
             let counts = try settings.scheduler.counts(of: cardsThatShowUp(in: db).inReviews, at: now)
-            return ProgressCounts(
-                due: counts.due, learned: counts.learned,
-                inInbox: try capturesInInbox.fetchCount(db) + flaggedCardsWaiting(in: db).count)
+            return ProgressCounts(due: counts.due, learned: counts.learned)
         }
     }
 

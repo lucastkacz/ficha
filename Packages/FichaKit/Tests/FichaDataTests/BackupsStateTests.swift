@@ -82,10 +82,10 @@ final class BackupsStateTests {
     @Test("Restore asks first, then saves a copy before a restore, which the list shows, and brings the copy back")
     func restoreAsksFirst() throws {
         var backups = engine.openBackups()
-        try approveCard("serendipia", in: engine)
+        try newCard("serendipia", in: engine)
         backups.backUpNow(.defaults)
         let backup = try #require(try backups.copies?.get().first)
-        try approveCard("ubicuo", in: engine)
+        try newCard("ubicuo", in: engine)
         backups.select([backup.id])
 
         backups.askToRestore()

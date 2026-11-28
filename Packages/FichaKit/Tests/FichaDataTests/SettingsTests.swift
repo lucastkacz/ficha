@@ -26,7 +26,7 @@ struct SettingsTests {
             Scheduler(
                 learningSteps: [.seconds(minutes(30)), .seconds(hours(3))], relearningSteps: [.seconds(hours(1))],
                 desiredRetention: 0.9, longestIntervalInDays: 36_500, parameters: []))
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         // With the default steps, so due an hour later.
         try engine.meet(serendipia)
         let dueAfterItsFirstReview = try engine.standing(of: serendipia.id, with: settings.scheduler).due
@@ -47,7 +47,7 @@ struct SettingsTests {
     func aSuppressionTurnedOffDoesNotApply() throws {
         var settings = ReviewSettings.defaults
         settings.suppressionsThatApply = [.meeting, .fullScreen]
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
 
         let duringAVideo = try engine.checkAppearance(settings, mac: FakeMac(suppressions: [.video]))
         let afterAVideo = try engine.checkAppearance(settings, mac: FakeMac(suppressionEnds: [.video: time.now]))
@@ -65,7 +65,7 @@ struct SettingsTests {
         settings.cardsPerAppearance = 2
         let ubuntu = try meetCard("ubuntu", dueAt: try at(10, 0))
         let serendipia = try meetCard("serendipia", dueAt: try at(10, 0))
-        try approveCard("petricor", in: engine)
+        try newCard("petricor", in: engine)
 
         time.move(to: try at(10, 0))
 
@@ -89,8 +89,8 @@ struct SettingsTests {
     func newCardsPerDayComeFromTheSettings() throws {
         var settings = ReviewSettings.defaults
         settings.newCardsPerDay = 1
-        try engine.meet(try approveCard("ubuntu", in: engine))
-        try approveCard("petricor", in: engine)
+        try engine.meet(try newCard("ubuntu", in: engine))
+        try newCard("petricor", in: engine)
 
         #expect(try engine.checkAppearance(settings, mac: FakeMac()) == .notNow(.nothingDue))
         #expect(try engine.reviewNow(settings) == [])
@@ -100,8 +100,8 @@ struct SettingsTests {
     func backFirstFirstReviewsCountTowardNewCardsPerDay() throws {
         var settings = ReviewSettings.defaults
         settings.newCardsPerDay = 2
-        let serendipia = try approveCard("serendipia", in: engine)
-        try approveCard("ubuntu", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
+        try newCard("ubuntu", in: engine)
         let bothWays = try engine.setBothWays(true, of: [serendipia.id])
         try engine.meet(serendipia)
 
@@ -116,7 +116,7 @@ struct SettingsTests {
         var settings = ReviewSettings.defaults
         settings.activeHours = try #require(ActiveHours(from: 10, to: 23))
         settings.separation = .seconds(minutes(10))
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
 
         #expect(try engine.checkAppearance(settings, mac: FakeMac()) == .notNow(.outsideActiveHours))
         time.move(to: try at(22, 0))
@@ -135,7 +135,7 @@ struct SettingsTests {
         var settings = ReviewSettings.defaults
         settings.waitAfterSuppression = .seconds(minutes(5))
         settings.waitAfterWaking = .seconds(minutes(10))
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         let afterTheMeeting = FakeMac(suppressionEnds: [.meeting: time.now])
         let afterWaking = FakeMac(lastWake: time.now)
 
@@ -155,7 +155,7 @@ struct SettingsTests {
         var settings = ReviewSettings.defaults
         settings.autoClose = .seconds(minutes(3))
         settings.focusMode = .always
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         var panel = try engine.openPanel(.appearance, with: [.new(serendipia)], settings: settings)
 
         let takesItWhileLucasTypes = panel.takesKeyboard(on: FakeMac(idleTime: .zero))
@@ -170,7 +170,7 @@ struct SettingsTests {
     func theIdleTimeComesFromTheSettings() throws {
         var settings = ReviewSettings.defaults
         settings.idleBeforeTakingKeyboard = .seconds(2)
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         var panel = try engine.openPanel(.appearance, with: [.new(serendipia)], settings: settings)
 
         let takesItAfterASecond = panel.takesKeyboard(on: FakeMac(idleTime: .seconds(1)))
@@ -186,7 +186,7 @@ struct SettingsTests {
     func forgottenOftenComesFromTheSettings() throws {
         var settings = ReviewSettings.defaults
         settings.forgottenOftenAfter = 5
-        let ubuntu = try approveCard("ubuntu", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
         try engine.climb(ubuntu, goods: 2, movingForward: time)
 
         let saidSo = try (1...10).map { _ in try forget(ubuntu, with: settings)?.times }
@@ -198,7 +198,7 @@ struct SettingsTests {
     func forgottenOftenCanBeTurnedOff() throws {
         var settings = ReviewSettings.defaults
         settings.forgottenOftenAfter = nil
-        let ubuntu = try approveCard("ubuntu", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
         try engine.climb(ubuntu, goods: 2, movingForward: time)
 
         let saidSo = try (1...16).map { _ in try forget(ubuntu, with: settings) }
@@ -220,12 +220,12 @@ struct SettingsTests {
         return forgotten
     }
 
-    /// Approves a card with this front and meets it, an hour before `due`, so
+    /// Makes a card with this front and meets it, an hour before `due`, so
     /// that it's due then, after the first step's wait. Each card is met after
     /// the ones before it, so they come due in order.
     @discardableResult
     private func meetCard(_ front: String, dueAt due: Date) throws -> Card {
-        let card = try approveCard(front, in: engine)
+        let card = try newCard(front, in: engine)
         time.move(to: due - hours(1))
         try engine.meet(card)
         return card

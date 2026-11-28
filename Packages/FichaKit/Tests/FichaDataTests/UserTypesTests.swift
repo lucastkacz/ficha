@@ -8,9 +8,9 @@ import Testing
 
 /// Tests on card types of the user's own (#365), beside the four Ficha comes
 /// with: each with a name and an optional emoji, made, renamed and deleted,
-/// given to cards, and named in files and by a refine session, from an engine
-/// in memory on a Mac in Buenos Aires, with files in a folder of the test's
-/// own.
+/// given to cards, and named in files and by `ficha add` and `ficha fix`, from
+/// an engine in memory on a Mac in Buenos Aires, with files in a folder of the
+/// test's own.
 final class UserTypesTests {
     let calendar: Calendar
     let time: ManualTimeSource
@@ -243,67 +243,50 @@ final class UserTypesTests {
     }
 
     @Test(
-        "a refine session's drafts name a type as the CLI reads them: one of the four, a user type ignoring case and accents, or a new one, made once"
-    )
+        "`ficha add`'s and `ficha fix`'s drafts name a type as the CLI reads them: one of the four, a user type ignoring case and accents, or a new one, made once",
+        .bug(id: 540))
     func draftsNameTypes() async throws {
         let formula = try engine.makeUserType(named: "Fórmula", emoji: Emoji("🧪"))
-        let capture = try engine.newCapture("química")
 
-        let approved = try await engine.approve(
-            capture.id,
-            into: [
-                namedDraft("formula", front: "agua", back: "H₂O"),
-                namedDraft("Elemento", front: "oxígeno", back: "O"),
-                namedDraft("elemento", front: "hierro", back: "Fe"),
-                namedDraft("word", front: "alquimia", back: "La química de antes."),
-                namedDraft(nil, front: "Lavoisier", back: "Nada se pierde."),
-            ])
+        let result = try await engine.add([
+            namedDraft("formula", front: "agua", back: "H₂O"),
+            namedDraft("Elemento", front: "oxígeno", back: "O"),
+            namedDraft("elemento", front: "hierro", back: "Fe"),
+            namedDraft("word", front: "alquimia", back: "La química de antes."),
+            namedDraft(nil, front: "Lavoisier", back: "Nada se pierde."),
+        ])
 
+        let added = try engine.cards()
+        #expect(result == .added(added))
         let element = try #require(try engine.userTypes().first { $0.name == "Elemento" })
         #expect(try engine.userTypes() == [UserType(id: element.id, name: "Elemento", emoji: nil), formula])
-        #expect(approved.map(\.type) == [.user(formula), .user(element), .user(element), .word, nil])
+        #expect(added.map(\.type) == [.user(formula), .user(element), .user(element), .word, nil])
 
-        try engine.flag(approved[4].id, note: note("Es una cita"))
+        try engine.flag(added[4].id, note: note("Es una cita"))
         let fixed = try await engine.fix(
-            approved[4].id, with: namedDraft("Cita célebre", front: "Lavoisier", back: "Nada se pierde."))
+            added[4].id, with: namedDraft("Cita célebre", front: "Lavoisier", back: "Nada se pierde."))
         let quote = try #require(try engine.userTypes().first { $0.name == "Cita célebre" })
         #expect(fixed.type == .user(quote))
         #expect(try engine.userTypes().count == 3)
     }
 
-    // The capture left the inbox, as when the app discards it while the
-    // refine session drafts its cards: the approval fails in the write that
-    // would save the type with them.
-    @Test("a refine session's draft whose approval fails makes no type")
+    // A draft after it leaves its back blank: adding fails in the write that
+    // would save the type with the cards.
+    @Test("a draft of `ficha add` whose cards can't be added makes no type", .bug(id: 540))
     func aFailedDraftMakesNoType() async throws {
-        let capture = try engine.newCapture("química")
-        try engine.discard(capture.id)
-
-        await #expect(throws: EngineError.captureNotInInbox(capture.id)) {
-            try await self.engine.approve(capture.id, into: [namedDraft("Elemento", front: "oxígeno", back: "O")])
+        await #expect(throws: EngineError.blankSideOnNewCard(position: 1)) {
+            try await self.engine.add([
+                namedDraft("Elemento", front: "oxígeno", back: "O"), namedDraft(nil, front: "hierro", back: " "),
+            ])
         }
 
         #expect(try engine.userTypes().isEmpty)
         #expect(try engine.cards().isEmpty)
     }
-
-    @Test("an approved expansion's draft can name a type the user doesn't have, which it makes")
-    func anExpansionMakesAType() async throws {
-        let water = try engine.create(card(nil, front: "agua", back: "H₂O"))
-        let expansion = try engine.expand(text: "agua", note: "Es una fórmula", source: nil)
-
-        let approved = try await engine.approveExpansion(
-            expansion.id, into: namedDraft("Fórmula", front: "agua", back: "H₂O, dos de hidrógeno y uno de oxígeno."))
-
-        let formula = try #require(try engine.userTypes().first)
-        #expect(try engine.userTypes() == [UserType(id: formula.id, name: "Fórmula", emoji: nil)])
-        #expect(approved.id == water.id)
-        #expect(approved.type == .user(formula))
-    }
 }
 
-/// A draft from a refine session whose type is `typeName`, as the `ficha` CLI
-/// reads it, or none when it's nil.
+/// A draft for `ficha add` or `ficha fix` whose type is `typeName`, as the
+/// `ficha` CLI reads it, or none when it's nil.
 private func namedDraft(_ typeName: String?, front: String, back: String) -> CardDraft {
     CardDraft(
         type: typeName, front: front, back: back, tags: [], source: nil, frontImage: .keep, backImage: .keep,

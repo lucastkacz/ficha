@@ -18,13 +18,12 @@ struct CardsThatShowUp {
     /// Every card, by id.
     private let cards: [Int64: Card]
 
-    /// The cards that show up out of `cards`, every card in the order Lucas
-    /// approved them, and `coming`, after them, as if they had come in, each
-    /// in his reviews unless one of `setAsideDecks` sets it aside, those that
-    /// live in one of `priorityDecks`, or in a deck inside one, as priority
-    /// cards, the decks a move put in the queue new cards come from at
-    /// `queuePlaces`, and `log`, the whole review log, in the order it was
-    /// written.
+    /// The cards that show up out of `cards`, every card in the order they came
+    /// in, and `coming`, after them, as if they had come in, each in his
+    /// reviews unless one of `setAsideDecks` sets it aside, those that live in
+    /// one of `priorityDecks`, or in a deck inside one, as priority cards, the
+    /// decks a move put in the queue new cards come from at `queuePlaces`, and
+    /// `log`, the whole review log, in the order it was written.
     fileprivate init(
         _ cards: [Card], adding coming: [CardComingIn], setAsideDecks: Set<String>, priorityDecks: Set<String>,
         queuePlaces: [String: Date], log: [ReviewLogEntry]
@@ -123,7 +122,7 @@ func cardInReviews(_ cardID: Int64, in db: Database) throws -> Card {
     let card = try existingCard(cardID, in: db)
     switch card.standing {
     case .inReviews: return card
-    case .inInbox: throw EngineError.cardFlagged(cardID)
+    case .flagged: throw EngineError.cardFlagged(cardID)
     case .buried: throw EngineError.cardBuried(cardID)
     case .setAside(let decks): throw EngineError.cardSetAside(cardID, decks: decks)
     }

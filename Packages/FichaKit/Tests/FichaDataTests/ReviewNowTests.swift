@@ -18,14 +18,14 @@ struct ReviewNowTests {
 
     @Test("a new card comes in review now as a new card, front first, for its first review")
     func newCardComesAsANewCard() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
 
         #expect(try engine.reviewNow(settings) == [.new(serendipia, .frontFirst)])
     }
 
     @Test("a card comes back in review now as a review once it's due, and not before")
     func aCardComesBackOnceItsDue() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         try engine.meet(serendipia)
 
         time.advance(by: hours(1) - 1)
@@ -38,12 +38,12 @@ struct ReviewNowTests {
     func dueCardsComeShortestIntervalFirstThenLongestOverdue() throws {
         // Six cards come due by the evening, each with an interval, and
         // overdue by then by:
-        let ubuntu = try approveCard("ubuntu", in: engine)  // graduated, days, 5 hours
-        let petricor = try approveCard("petricor", in: engine)  // second learning step, 4 hours, 3 hours
-        let serendipia = try approveCard("serendipia", in: engine)  // second learning step, 4 hours, 1 hour
-        let schadenfreude = try approveCard("Schadenfreude", in: engine)  // first learning step, 1 hour, 2 hours
-        let ockham = try approveCard("navaja de Ockham", in: engine)  // first learning step, 1 hour, 30 minutes
-        let sunkCost = try approveCard("costo hundido", in: engine)  // first learning step, 1 hour, 10 minutes
+        let ubuntu = try newCard("ubuntu", in: engine)  // graduated, days, 5 hours
+        let petricor = try newCard("petricor", in: engine)  // second learning step, 4 hours, 3 hours
+        let serendipia = try newCard("serendipia", in: engine)  // second learning step, 4 hours, 1 hour
+        let schadenfreude = try newCard("Schadenfreude", in: engine)  // first learning step, 1 hour, 2 hours
+        let ockham = try newCard("navaja de Ockham", in: engine)  // first learning step, 1 hour, 30 minutes
+        let sunkCost = try newCard("costo hundido", in: engine)  // first learning step, 1 hour, 10 minutes
         try engine.climb(ubuntu, goods: 2, movingForward: time)
         let evening = try #require(try engine.standing(of: ubuntu.id, with: settings.scheduler).due) + hours(5)
         time.move(to: evening - hours(8))
@@ -70,11 +70,12 @@ struct ReviewNowTests {
         )
     }
 
-    @Test("with room left, review now brings one new card after the due ones: the first one Lucas approved")
+    @Test(
+        "with room left, review now brings one new card after the due ones: the first one that came in", .bug(id: 540))
     func oneNewCardComesAfterTheDueOnes() throws {
-        let met = try ["ubuntu", "petricor", "serendipia", "Schadenfreude"].map { try approveCard($0, in: engine) }
-        let ockham = try approveCard("navaja de Ockham", in: engine)
-        try approveCard("costo hundido", in: engine)
+        let met = try ["ubuntu", "petricor", "serendipia", "Schadenfreude"].map { try newCard($0, in: engine) }
+        let ockham = try newCard("navaja de Ockham", in: engine)
+        try newCard("costo hundido", in: engine)
         for card in met {
             try engine.meet(card)
             time.advance(by: minutes(1))
@@ -88,9 +89,9 @@ struct ReviewNowTests {
     @Test("a new card waits while due cards fill review now")
     func newCardsWaitWhileDueCardsFillReviewNow() throws {
         let met = try ["ubuntu", "petricor", "serendipia", "Schadenfreude", "navaja de Ockham"].map {
-            try approveCard($0, in: engine)
+            try newCard($0, in: engine)
         }
-        try approveCard("costo hundido", in: engine)
+        try newCard("costo hundido", in: engine)
         for card in met {
             try engine.meet(card)
             time.advance(by: minutes(1))
@@ -105,7 +106,7 @@ struct ReviewNowTests {
         "new cards stop at Steady's 2 a day, and start again when Ficha's day does, at 4:00 by the Mac's clock",
         .bug(id: 562))
     func newCardsStopAtTheDaysLimit() throws {
-        let cards = try ["ubuntu", "petricor", "serendipia"].map { try approveCard($0, in: engine) }
+        let cards = try ["ubuntu", "petricor", "serendipia"].map { try newCard($0, in: engine) }
         // At 23:10 in Buenos Aires, 2:10 in the morning in UTC. The cards met
         // are due again an hour later, after midnight, still on that day.
         time.advance(by: hours(14) + minutes(10))
@@ -127,7 +128,7 @@ struct ReviewNowTests {
         "a card that goes both ways comes back first, new, for that way's first review, once Lucas had its first review front first, and not before"
     )
     func aCardThatGoesBothWaysComesBackFirstOnceMet() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         let bothWays = try #require(try engine.setBothWays(true, of: [serendipia.id]).first)
 
         let beforeMeetingIt = try engine.reviewNow(settings)
@@ -139,8 +140,8 @@ struct ReviewNowTests {
 
     @Test("new cards and new back-first ways take turns, a new card first each day, back first in the cards' order")
     func newCardsAndBackFirstWaysTakeTurns() throws {
-        let met = try ["serendipia", "ubuntu"].map { try approveCard($0, in: engine) }
-        let new = try ["petricor", "Schadenfreude"].map { try approveCard($0, in: engine) }
+        let met = try ["serendipia", "ubuntu"].map { try newCard($0, in: engine) }
+        let new = try ["petricor", "Schadenfreude"].map { try newCard($0, in: engine) }
         for card in met {
             try engine.meet(card)
         }
@@ -163,8 +164,8 @@ struct ReviewNowTests {
 
     @Test("a new back-first way comes after another when no new card waits")
     func backFirstWaysComeOneAfterAnotherWhenNoNewCardWaits() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
-        let ubuntu = try approveCard("ubuntu", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
         let bothWays = try engine.setBothWays(true, of: [serendipia.id, ubuntu.id])
         try engine.meet(serendipia)
         try engine.meet(ubuntu)
@@ -176,8 +177,8 @@ struct ReviewNowTests {
 
     @Test("due ways with the same interval and due at the same time come by card, each card's front-first way first")
     func tiedDueWaysComeByCardFrontFirstFirst() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
-        let ubuntu = try approveCard("ubuntu", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
         let bothWays = try engine.setBothWays(true, of: [serendipia.id, ubuntu.id])
         try engine.meet(serendipia)
         try engine.meet(ubuntu)

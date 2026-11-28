@@ -25,8 +25,8 @@ struct BothWaysTests {
         "a new card goes one way, and Both ways turns on and off for one card or several at once, keeping their progress"
     )
     func bothWaysTurnsOnAndOffForOneCardOrSeveral() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
-        let ubuntu = try approveCard("ubuntu", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
         let petricor = try engine.create(card(nil, front: "petricor", back: "El olor de la lluvia."))
         try engine.climb(serendipia, goods: 2, movingForward: time)
         let standing = try engine.standing(of: serendipia.id, with: settings.scheduler)
@@ -50,35 +50,31 @@ struct BothWaysTests {
         #expect(try engine.standing(of: serendipia.id, with: settings.scheduler) == standing)
     }
 
-    // Changing what a card holds, in the Cards window or in a refine session,
-    // leaves the switch alone unless it's given, as RefiningTests checks for
+    // Changing what a card holds, in the Cards window or with `ficha`, leaves
+    // the switch alone unless it's given, as SavingCardsTests checks for
     // `ficha fix`.
-    @Test("editing, fixing, approving an expansion and putting a sound on a side keep a card's Both ways")
+    @Test("editing, fixing and putting a sound on a side keep a card's Both ways", .bug(id: 540))
     func changingTheContentKeepsBothWays() async throws {
         let la = try await addTone(440, to: engine)
-        let serendipia = try approveCard("serendipia", in: engine)
-        let ubuntu = try approveCard("ubuntu", in: engine)
-        let petricor = try approveCard("petricor", in: engine)
-        let coloratura = try approveCard("coloratura", in: engine)
-        try engine.setBothWays(true, of: [serendipia.id, ubuntu.id, petricor.id, coloratura.id])
+        let serendipia = try newCard("serendipia", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
+        let coloratura = try newCard("coloratura", in: engine)
+        try engine.setBothWays(true, of: [serendipia.id, ubuntu.id, coloratura.id])
         try engine.flag(ubuntu.id, note: note("Falta un ejemplo"))
-        let expansion = try engine.expand(text: "Petricor", note: "Viene del griego", source: nil)
 
         let edited = try engine.edit(
             serendipia.id, with: card(.word, front: "serendipia", back: "Un hallazgo por casualidad."))
         let fixed = try engine.fix(ubuntu.id, with: card(.concept, front: "ubuntu", back: "Soy porque somos."))
-        let expanded = try engine.approveExpansion(
-            expansion.id, into: card(.word, front: "petricor", back: "El olor de la lluvia, del griego."))
         let withSound = try await engine.attach(.sound(la), to: .front, of: coloratura.id)
 
-        #expect([edited, fixed, expanded, withSound].map(\.bothWays) == [true, true, true, true])
-        #expect(try engine.cards().map(\.bothWays) == [true, true, true, true])
+        #expect([edited, fixed, withSound].map(\.bothWays) == [true, true, true])
+        #expect(try engine.cards().map(\.bothWays) == [true, true, true])
     }
 
     @Test(
         "switching Both ways off takes the back-first way out of reviews, and switching it on picks it up where it was")
     func switchingBothWaysOffAndOnKeepsTheBackFirstWay() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         try engine.setBothWays(true, of: [serendipia.id])
         try engine.meet(serendipia)
         time.advance(by: minutes(10))
@@ -97,8 +93,8 @@ struct BothWaysTests {
 
     @Test("Both ways turns on for none of the cards when one of them doesn't exist")
     func bothWaysTurnsOnForNoneWhenACardIsMissing() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
-        let ubuntu = try approveCard("ubuntu", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
         try engine.delete([ubuntu.id])
 
         #expect(throws: EngineError.cardNotFound(ubuntu.id)) {

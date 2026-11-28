@@ -3,10 +3,10 @@ import Foundation
 internal import GRDB
 
 /// One small thing Lucas wants to remember, with a front and a back, as the
-/// engine saved it when he approved it, an agent added it or the user created
-/// it. Each side holds text, an image, a sound, or any of them together. The
-/// `ficha` CLI prints it as JSON, without the type, images, sounds, source,
-/// edited time, capture, flag, time it was set aside on its own
+/// engine saved it when an agent added it, the user created it or an import
+/// brought it. Each side holds text, an image, a sound, or any of them
+/// together. The `ficha` CLI prints it as JSON, without the type, images,
+/// sounds, source, edited time, flag, time it was set aside on its own
 /// (`buriedAt`) or set-aside decks it doesn't have.
 public struct Card: Sendable, Equatable, Encodable {
     public let id: Int64
@@ -33,16 +33,13 @@ public struct Card: Sendable, Equatable, Encodable {
     public let deck: String
     public let tags: [String]
     public let source: String?
-    /// When it came in: when it was approved from a capture or added with
-    /// `ficha add`, or the user created it.
+    /// When it came in: when it was added with `ficha add`, the user created
+    /// it or an import brought it.
     public let createdAt: Date
     /// When its front or back last changed, a side's image or sound included,
     /// or nil when neither changed since it came in, or since before Ficha
     /// kept it.
     public let editedAt: Date?
-    /// The capture it was refined from, or nil when it came in another way,
-    /// such as `ficha add`, the Cards window's form or an import.
-    public let captureID: Int64?
     /// Lucas's flag, while the card waits to be fixed, set aside or not.
     /// Where the card stands is read from `standing`, never from this.
     public let flag: Flag?
@@ -62,9 +59,9 @@ public struct Card: Sendable, Equatable, Encodable {
     /// it holds: changing its content keeps it.
     public let bothWays: Bool
 
-    /// Where the card stands: in Lucas's reviews, waiting in the inbox to be
-    /// fixed, or set aside, on its own or with its deck, or a deck its deck
-    /// sits inside.
+    /// Where the card stands: in Lucas's reviews, flagged and waiting in its
+    /// deck to be fixed, or set aside, on its own or with its deck, or a deck
+    /// its deck sits inside.
     public var standing: CardStanding {
         CardStanding(flag: flag, buriedAt: buriedAt, setAsideBy: setAsideBy ?? [])
     }
@@ -90,7 +87,6 @@ extension Card {
         source = try row.decode(forColumn: "source")
         createdAt = try row.decode(forColumn: "createdAt")
         editedAt = try row.decode(forColumn: "editedAt")
-        captureID = try row.decode(forColumn: "captureId")
         switch (try row.decode(forColumn: "flagNote") as String?, try row.decode(forColumn: "flaggedAt") as Date?) {
         case (nil, nil):
             flag = nil
@@ -181,8 +177,8 @@ private func fileName<Name: NameOfFileOnCard>(in row: Row, column: String, ofCar
 
 extension CardContent {
     /// This content with the images and sounds of `card` where the card has
-    /// them, as a card fixed or expanded with a content alone keeps its own,
-    /// as with a refine session's draft that leaves them out.
+    /// them, as a card fixed with a content alone keeps its own, as with a
+    /// draft that leaves them out.
     func keepingFiles(of card: Card) -> CardContent {
         keepingFiles(
             frontImage: card.frontImage, backImage: card.backImage, frontSound: card.frontSound,
@@ -283,18 +279,6 @@ extension Card {
                 content.backSound
             )
     }
-}
-
-/// The flagged cards that wait in the inbox to be fixed, as their standing
-/// says, the first flagged first, and then in the order Lucas approved them.
-func flaggedCardsWaiting(in db: Database) throws -> [Card] {
-    let flagged: [(card: Card, flag: Flag)] = try allCards(in: db).compactMap { card in
-        guard case .inInbox(let flag) = card.standing else {
-            return nil
-        }
-        return (card, flag)
-    }
-    return flagged.sorted { ($0.flag.flaggedAt, $0.card.id) < ($1.flag.flaggedAt, $1.card.id) }.map(\.card)
 }
 
 /// A card's tags as the `card` table keeps them: a JSON array, which

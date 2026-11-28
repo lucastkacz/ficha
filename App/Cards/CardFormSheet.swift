@@ -5,8 +5,7 @@ import SwiftUI
 extension View {
     /// The Cards window's way to create cards: New Card in its toolbar, and
     /// ⌘N, which open the card form on a new card, and the form itself, a
-    /// sheet over the window while `state` has it open, from New Card or from
-    /// Convert to Card on a capture or a follow-up. `failure` is the alert
+    /// sheet over the window while `state` has it open. `failure` is the alert
     /// over the sheet.
     func creatingCards(_ state: Binding<CardsWindowState>, failure: Binding<Failure?>) -> some View {
         modifier(CreatingCards(state: state, failure: failure))
@@ -56,46 +55,21 @@ private struct CreatingCards: ViewModifier {
     }
 }
 
-/// Convert to Card, at the foot of a capture's or a follow-up's detail beside
-/// Edit and Discard…, which opens the card form from it: ⇧⌘N, as New Card's
-/// ⌘N with Shift.
-struct ConvertToCardButton: View {
-    let convert: () -> Void
-
-    var body: some View {
-        Button(
-            String(
-                localized: "Convert to Card",
-                comment: "A button of the Cards window that opens the card form from the capture in the detail.")
-        ) {
-            convert()
-        }
-        .keyboardShortcut("n", modifiers: [.command, .shift])
-        .help(
-            Text(
-                "Convert to Card (⇧⌘N)",
-                comment: "The tooltip of the Cards window's button that opens the card form from the capture."))
-    }
-}
-
 /// The card form, a sheet over the Cards window: the deck the card goes to,
 /// which starts as `CardsWindowState` says, with New Deck… to name one in the
 /// New Deck sheet (`NewDeckSheet.swift`), a front and a back, each with its
 /// text, an image and a sound, dragged or pasted under it, an image also with
-/// ⌘V in its text while the clipboard holds no text, a source and Both ways,
-/// and, when it was opened from a capture, the capture beside them, whole,
-/// with the card it follows up below it when it's a follow-up. No type and no
-/// tags: the card it adds has neither (#538). Add saves the card and keeps the
-/// form open, with the front and the back cleared for the next one, as Anki's
-/// Add window does; Return adds too, Option-Return starts a new line, and Escape
-/// closes, as Close does. While the front repeats another card's, the form
-/// says so under it, with Show Card (⌘R), which sets the form aside, as it
-/// is, until it's opened the same way again, and selects that card in the
-/// window. A form taller than the window scrolls above Close and Add, and so
-/// does the capture beside it. `CardsWindowState` decides what the form holds
-/// after each change, whether Add is on, what it warns about, and what
-/// closing does to the capture; the sheet draws it, and keeps which field has
-/// the focus. When a card can't be added, an alert says why, and the fields
+/// ⌘V in its text while the clipboard holds no text, a source and Both ways. No
+/// type and no tags: the card it adds has neither (#538). Add saves the card
+/// and keeps the form open, with the front and the back cleared for the next
+/// one, as Anki's Add window does; Return adds too, Option-Return starts a new
+/// line, and Escape closes, as Close does. While the front repeats another
+/// card's, the form says so under it, with Show Card (⌘R), which sets the form
+/// aside, as it is, until it's opened the same way again, and selects that card
+/// in the window. A form taller than the window scrolls above Close and Add.
+/// `CardsWindowState` decides what the form holds after each change, whether
+/// Add is on and what it warns about; the sheet draws it, and keeps which field
+/// has the focus. When a card can't be added, an alert says why, and the fields
 /// stay as the user left them.
 private struct CardFormSheet: View {
     @Binding var state: CardsWindowState
@@ -115,12 +89,6 @@ private struct CardFormSheet: View {
     var body: some View {
         if let form = state.cardForm {
             HStack(alignment: .top, spacing: 0) {
-                if let capture = form.capture {
-                    captureColumn(capture, followUp: form.followUp, approvedOnClose: form.approvesCaptureOnClose)
-                        .frame(width: 260)
-                        .frame(maxHeight: maximumHeight)
-                    Divider()
-                }
                 VStack(alignment: .leading, spacing: 0) {
                     ScrollViewReader { proxy in
                         ScrollView {
@@ -160,39 +128,6 @@ private struct CardFormSheet: View {
             .failureAlert(failure)
             .newDeckSheet(for: .form, $state)
         }
-    }
-
-    /// The capture the form was opened from, whole, as the inbox's detail
-    /// shows it, with its card below it when it's a follow-up, and what
-    /// closing the form does to it.
-    private func captureColumn(_ capture: Capture, followUp: FollowUp?, approvedOnClose: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            if let followUp {
-                CaptureDetail(
-                    capture: capture, kind: InboxRow.Item.followUp(followUp).kindName, tie: .followsUp(followUp.card))
-            } else {
-                CaptureDetail(capture: capture, kind: InboxRow.Item.capture(capture).kindName, tie: nil)
-            }
-            Group {
-                if approvedOnClose {
-                    Text(
-                        "Once you close the form, the capture leaves the inbox.",
-                        comment: "In the Cards window's card form opened from a capture, once a card was added from it."
-                    )
-                } else {
-                    Text(
-                        "The capture stays in the inbox until you add a card from it.",
-                        comment: "In the Cards window's card form opened from a capture, before any card was added.")
-                }
-            }
-            .font(.callout)
-            .foregroundStyle(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
-            .padding(.horizontal, 20)
-            .padding(.bottom, 20)
-        }
-        .frame(maxHeight: .infinity, alignment: .top)
-        .background(.fill.quinary)
     }
 
     private func fields(_ form: CardsWindowState.CardForm) -> some View {

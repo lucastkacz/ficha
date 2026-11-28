@@ -2,8 +2,8 @@ import FichaCore
 import Foundation
 internal import GRDB
 
-/// A card an agent drafted, as the `ficha` CLI reads it for `ficha add`,
-/// `ficha approve`, `ficha approve-expansion` or `ficha fix`: what it holds,
+/// A card an agent drafted, as the `ficha` CLI reads it for `ficha add` or
+/// `ficha fix`: what it holds,
 /// what becomes of each side's image and sound, the deck it lives in, and
 /// whether it goes both ways. The engine checks it as `CardContent` does once
 /// its files are in.
@@ -22,14 +22,12 @@ public struct CardDraft: Sendable, Equatable {
     public let frontSound: FileChange
     public let backSound: FileChange
     /// Whether it goes both ways (ADR 0016), or nil when the draft leaves it
-    /// out: a new card then goes one way, and a fixed card keeps its own. An
-    /// approved expansion's card keeps its own whatever this says.
+    /// out: a new card then goes one way, and a fixed card keeps its own.
     public let bothWays: Bool?
     /// The deck it lives in, by its whole name, as `makeDeck(named:)` takes
     /// it, which is made if it isn't there, or Default, by
     /// `Deck.defaultName`; or nil when the draft leaves it out: a new card
-    /// then lives in Default, and a fixed card, or an expansion's, stays in
-    /// its own.
+    /// then lives in Default, and a fixed card stays in its own.
     public let deck: String?
 
     public init(
@@ -123,29 +121,11 @@ public enum RepeatedFront: Sendable, Equatable {
 }
 
 extension Engine {
-    /// Approves a capture into the cards `drafts`, as
-    /// `approve(_:into:deck:)` does, each in the deck its draft names, made
-    /// if it isn't there, or in Default when it names none, with the images
-    /// and sounds they put on their sides: files come in shrunk or
-    /// converted, as from the Cards window's form. A side whose image or
-    /// sound is left out or removed has none. Each card goes both ways when
-    /// its draft says so, and one way otherwise. A user type a draft names
-    /// that the user doesn't have comes in with its cards.
-    @discardableResult
-    public func approve(_ captureID: Int64, into drafts: [CardDraft]) async throws(EngineError) -> [Card] {
-        var held = FilesComingIn()
-        let files = try await held.bringIn(drafts, with: self)
-        return try keeping(held.files) { () throws(EngineError) in
-            try approve(captureID) { db in try newCards(drafts, with: files, in: db) }
-        }
-    }
-
-    /// Adds the cards `drafts` straight into their decks, with no capture
-    /// (ADR 0043), made as `approve(_:into:)` makes them from one: saves them
-    /// as new cards, in the order given, each in the deck its draft names,
-    /// made if it isn't there, or in Default when it names none, going both
-    /// ways when its draft says so, with the images and sounds they put on
-    /// their sides, and returns them. A user type a draft names that the user
+    /// Adds the cards `drafts` straight into their decks (ADR 0043): saves
+    /// them as new cards, in the order given, each in the deck its draft
+    /// names, made if it isn't there, or in Default when it names none, going
+    /// both ways when its draft says so, with the images and sounds they put
+    /// on their sides, and returns them. A user type a draft names that the user
     /// doesn't have comes in with its cards. When a draft's front repeats a
     /// card's, by the duplicate rule, or the front of a draft before it in
     /// the list, it adds none of them, and the result says which card it
@@ -160,9 +140,7 @@ extension Engine {
                     return duplicate
                 }
                 let cardIDs = try newCards(drafts, with: files, in: db).map { card in
-                    try insertCard(
-                        card.content, deck: card.deck, bothWays: card.bothWays, capturedAs: nil, at: createdAt,
-                        in: db)
+                    try insertCard(card.content, deck: card.deck, bothWays: card.bothWays, at: createdAt, in: db)
                 }
                 return .added(try cardIDs.map { try existingCard($0, in: db) })
             }
@@ -194,24 +172,6 @@ extension Engine {
         }
         removeFilesNoCardUses(before: before, after: fixed)
         return fixed
-    }
-
-    /// Approves an expansion with `draft`, as `approveExpansion(_:into:)`
-    /// does with a card's content, with the images and sounds it puts on its
-    /// card's sides or takes off, and its deck, as `fix(_:with:)` does with
-    /// a draft, and its type. The card keeps its Both ways, whatever the
-    /// draft says.
-    @discardableResult
-    public func approveExpansion(_ captureID: Int64, into draft: CardDraft) async throws(EngineError) -> Card {
-        var held = FilesComingIn()
-        let files = try await held.bringIn(draft, with: self)
-        let (before, approved) = try keeping(held.files) { () throws(EngineError) in
-            try approveExpansion(captureID, deck: draft.deck) { card, db in
-                try draft.content(in: db, with: files.applied(to: card), orIfBlank: .sideLeftBlank(card.id))
-            }
-        }
-        removeFilesNoCardUses(before: before, after: approved)
-        return approved
     }
 
     /// Puts `file` on `side` of the card with this id, an image or a sound,
@@ -311,11 +271,11 @@ extension CardDraft {
 /// deck its draft names, or in Default when it names none, and going both
 /// ways when its draft says so, and one way otherwise. A draft that leaves a
 /// side with neither text, an image nor a sound is refused by its position.
-private func newCards(_ drafts: [CardDraft], with files: [DraftFiles], in db: Database) throws -> [ApprovedCard] {
+private func newCards(_ drafts: [CardDraft], with files: [DraftFiles], in db: Database) throws -> [CardToAdd] {
     try drafts.indices.map { position in
         let content = try drafts[position].content(
             in: db, with: files[position].applied(to: nil), orIfBlank: .blankSideOnNewCard(position: position))
-        return ApprovedCard(
+        return CardToAdd(
             content: content, deck: drafts[position].deck ?? Deck.defaultName,
             bothWays: drafts[position].bothWays ?? false)
     }
@@ -529,7 +489,7 @@ private struct FilesComingIn {
 /// Checks that there's a file at `url` Ficha can read, in the Downloads
 /// folder when the engine takes files from there alone, or says why not.
 private func checkFile(at url: URL, with engine: Engine) throws(EngineError) {
-    if let downloads = engine.refineFilesOnlyIn, !url.isInside(downloads) {
+    if let downloads = engine.cardFilesOnlyIn, !url.isInside(downloads) {
         throw .fileNotInDownloads(url.lastPathComponent)
     }
     let path = url.path(percentEncoded: false)

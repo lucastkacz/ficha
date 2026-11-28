@@ -450,22 +450,26 @@ final class SelectiveSyncTests {
         #expect(records(ofType: .card).allSatisfy { !$0.hasLeft && $0.value(of: "front") == .string("ubuntu") })
     }
 
-    @Test("an expansion or a follow-up of a card that doesn't sync stays on its device, and every other capture syncs")
+    // As an older version wrote them: the database keeps them, unread
+    // (#540).
+    @Test(
+        "an expansion or a follow-up of a card that doesn't sync stays on its device, and every other capture syncs",
+        .bug(id: 540))
     func capturesFollowTheirCards() async throws {
-        let ubuntu = try approveInDeck("ubuntu", deck: "Filosofía", in: mac.engine)
-        let petricor = try approveInDeck("petricor", in: mac.engine)
+        let ubuntu = try newCardInDeck("ubuntu", deck: "Filosofía", in: mac.engine)
+        let petricor = try newCardInDeck("petricor", in: mac.engine)
         try mac.engine.syncOnlyChosenDecks(true)
         try mac.engine.setChosenToSync(true, ofDeck: "Filosofía")
-        try mac.engine.newCapture("saudade")
-        try mac.engine.followUp(ubuntu.id, text: "¿Quién lo dijo primero?")
-        try mac.engine.followUp(petricor.id, text: "¿De qué idioma viene?")
-        try mac.engine.expand(text: "petricor", note: "Del griego", source: nil)
+        try mac.engine.olderCapture("saudade")
+        try mac.engine.olderCapture("¿Quién lo dijo primero?", followingUp: ubuntu.id)
+        try mac.engine.olderCapture("¿De qué idioma viene?", followingUp: petricor.id)
+        try mac.engine.olderCapture("petricor", note: "Del griego", expanding: petricor.id)
 
         try await syncBoth()
 
         #expect(
-            try iPhone.engine.inbox().asSeen
-                == InboxAsSeen(captures: ["saudade"], expansions: [], followUps: ["¿Quién lo dijo primero? → ubuntu"]))
+            try iPhone.engine.capturesAsSeen()
+                == CapturesAsSeen(waiting: ["saudade", "¿Quién lo dijo primero?, following up ubuntu"], refined: []))
         #expect(try mac.engine.changesToSend().isEmpty)
     }
 

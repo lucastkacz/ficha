@@ -21,8 +21,8 @@ struct CardsWindowDeckLooksTests {
         "a deck's Color submenu, Default's too, offers None and Finder's seven colors, ticks the deck's own, and gives it to the deck, whose decks inside take it"
     )
     func aDecksColorSubmenu() throws {
-        try approveInDeck("petricor", in: engine)
-        try approveInDeck("La Gioconda", deck: "Arte::Pintura", in: engine)
+        try newCardInDeck("petricor", in: engine)
+        try newCardInDeck("La Gioconda", deck: "Arte::Pintura", in: engine)
         var window = openWindow()
         let colors: [TagColor?] = [nil, .red, .orange, .yellow, .green, .blue, .purple, .gray]
         #expect(window.menu(forDeck: "Arte")?.colorItems.map(\.color) == colors)
@@ -48,7 +48,7 @@ struct CardsWindowDeckLooksTests {
         "Emoji… on a deck asks in the emoji sheet, which starts with the deck's own, refuses what isn't one emoji, two flags too, and takes an empty field, or one of spaces, as none"
     )
     func emojiOnADeck() throws {
-        try approveInDeck("La Gioconda", deck: "Arte::Pintura", in: engine)
+        try newCardInDeck("La Gioconda", deck: "Arte::Pintura", in: engine)
         var window = openWindow()
         window.askForEmoji(onDeck: "Arte")
         #expect(window.question == .deckEmoji(Deck(name: "Arte")))
@@ -76,7 +76,7 @@ struct CardsWindowDeckLooksTests {
     // so it offers the same Color submenu.
     @Test("the deck the sidebar chose offers the same menu above the grid, with its color ticked")
     func theChosenDecksMenuHasItsColor() throws {
-        try approveInDeck("La Gioconda", deck: "Arte", in: engine)
+        try newCardInDeck("La Gioconda", deck: "Arte", in: engine)
         try engine.setColor(.purple, ofDeck: "Arte")
         var window = openWindow()
 

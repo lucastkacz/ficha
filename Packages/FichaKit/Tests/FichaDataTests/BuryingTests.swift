@@ -6,8 +6,8 @@ import Testing
 /// Tests on setting cards aside on their own, which takes them out of
 /// Lucas's reviews until he puts them back, without deleting them, one in the
 /// review panel or several at once in the Cards window, and on putting them
-/// back, there or in a refine session. The engine keeps a card set aside on
-/// its own as its burial, under that name, so these tests call its
+/// back, there or with `ficha set-aside --off`. The engine keeps a card set
+/// aside on its own as its burial, under that name, so these tests call its
 /// `bury(_:)` and `unbury(_:)` (#539).
 struct BuryingTests {
     let calendar: Calendar
@@ -27,7 +27,7 @@ struct BuryingTests {
     func aCardSetAsideShowsUpNoMore() throws {
         // serendipia gets learned, graduated to wait 21 days or more, and
         // comes due.
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         try engine.climbUntilLearned(serendipia, movingForward: time)
         time.move(to: try #require(try engine.standing(of: serendipia.id, with: settings.scheduler).due))
         let log = try engine.reviewLog()
@@ -42,13 +42,12 @@ struct BuryingTests {
         let progress = try engine.progress(settings)
         #expect(progress.due == 0)
         #expect(progress.learned == 0)
-        #expect(progress.inInbox == 0)
         #expect(try engine.reviewLog() == log)
     }
 
     @Test("burying a card from its back-first way buries it both ways, and unburying brings both back where they were")
     func buryingFromTheBackFirstWayBuriesBothWays() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         let bothWays = try engine.setBothWays(true, of: [serendipia.id])
         try engine.meet(serendipia)
         try engine.meet(serendipia, way: .backFirst)
@@ -66,7 +65,7 @@ struct BuryingTests {
     @Test("an unburied card goes back to where it stood in Lucas's reviews, and counts again")
     func anUnburiedCardGoesBackToWhereItStood() throws {
         // serendipia gets learned: graduated, to wait 21 days or more.
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         try engine.climbUntilLearned(serendipia, movingForward: time)
         let standing = try engine.standing(of: serendipia.id, with: settings.scheduler)
         try engine.bury(serendipia.id)
@@ -82,28 +81,30 @@ struct BuryingTests {
         #expect(progress.learned == 1)
     }
 
-    // A refine session can bury a flagged card instead of fixing it, and
-    // burying is never a loss (#4).
-    @Test("burying a flagged card takes it out of the inbox, and unburying puts it back there with its note")
-    func anUnburiedFlaggedCardGoesBackToTheInbox() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
+    // `ficha set-aside` can set a flagged card aside instead of fixing it, and
+    // setting aside is never a loss (#4).
+    @Test(
+        "burying a flagged card sets it aside with its flag, and unburying leaves it waiting in its deck with its note",
+        .bug(id: 540))
+    func anUnburiedFlaggedCardWaitsInItsDeckAgain() throws {
+        let serendipia = try newCard("serendipia", in: engine)
         try engine.flag(serendipia.id, note: note("Falta decir de dónde viene"))
 
-        try engine.bury(serendipia.id)
-        #expect(try engine.inbox().flaggedCards.isEmpty)
-        #expect(try engine.progress(settings).inInbox == 0)
+        let buried = try engine.bury(serendipia.id)
+        #expect(buried.standing == .buried(at: time.now, flag: try #require(buried.flag)))
+        #expect(try engine.flaggedCards().isEmpty)
 
         try engine.unbury(serendipia.id)
-        #expect(try engine.inbox().flaggedCards.map(\.flag?.note) == ["Falta decir de dónde viene"])
+        #expect(try engine.flaggedCards().map(\.flag?.note) == ["Falta decir de dónde viene"])
         #expect(try engine.reviewNow(settings).isEmpty)
     }
 
-    // A refine session can repeat a command, and a buried card keeps when it
+    // An agent can repeat a `ficha` command, and a buried card keeps when it
     // was buried.
     @Test("a buried card can't be buried again, and only a buried card can be unburied")
     func onlyABuriedCardCanBeUnburied() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
-        let ubuntu = try approveCard("ubuntu", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
         let buried = try engine.bury(serendipia.id)
         time.advance(by: hours(1))
 
@@ -123,13 +124,15 @@ struct BuryingTests {
     }
 
     // The Cards window buries the cards Lucas selected, at once.
-    @Test("burying several cards takes each out of Lucas's reviews, or out of the inbox when it's flagged")
+    @Test(
+        "burying several cards takes each out of Lucas's reviews, and a flagged one stands set aside, with its flag",
+        .bug(id: 540))
     func buryingSeveralCardsTakesThemAllOut() throws {
         // serendipia and ojalá come due on the first step, and ubuntu is
         // flagged.
-        let serendipia = try approveCard("serendipia", in: engine)
-        let ubuntu = try approveCard("ubuntu", in: engine)
-        let ojala = try approveCard("ojalá", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
+        let ojala = try newCard("ojalá", in: engine)
         try engine.meet(serendipia)
         try engine.meet(ojala)
         try engine.flag(ubuntu.id, note: note("Falta un ejemplo"))
@@ -138,19 +141,19 @@ struct BuryingTests {
         let buried = try engine.bury([serendipia.id, ubuntu.id])
 
         #expect(buried.map(\.front) == ["serendipia", "ubuntu"])
+        #expect(buried.map(\.flag?.note) == [nil, "Falta un ejemplo"])
         #expect(try engine.cards().map(\.buriedAt) == [time.now, time.now, nil])
         #expect(try engine.reviewNow(settings).map(\.card.id) == [ojala.id])
-        let progress = try engine.progress(settings)
-        #expect(progress.due == 1)
-        #expect(progress.inInbox == 0)
+        #expect(try engine.flaggedCards().isEmpty)
+        #expect(try engine.progress(settings).due == 1)
     }
 
     // The Cards window offers Set Aside only when no selected card is set
-    // aside on its own, but a refine session can bury one of them meanwhile.
+    // aside on its own, but `ficha set-aside` can set one aside meanwhile.
     @Test("burying several cards buries none of them when one is already buried, or doesn't exist")
     func buryingSeveralCardsIsAllOrNothing() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
-        let ubuntu = try approveCard("ubuntu", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
         let buried = try engine.bury(ubuntu.id)
         time.advance(by: hours(1))
 
@@ -164,14 +167,15 @@ struct BuryingTests {
     }
 
     @Test(
-        "unburying several cards puts each back where it was: in Lucas's reviews where it stood, or in the inbox")
+        "unburying several cards puts each back where it was: in Lucas's reviews where it stood, or waiting in its deck to be fixed",
+        .bug(id: 540))
     func unburyingSeveralCardsPutsEachBack() throws {
         // serendipia gets learned, graduated to wait 21 days or more, and
         // ubuntu is flagged.
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         try engine.climbUntilLearned(serendipia, movingForward: time)
         let standing = try engine.standing(of: serendipia.id, with: settings.scheduler)
-        let ubuntu = try approveCard("ubuntu", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
         try engine.flag(ubuntu.id, note: note("Falta un ejemplo"))
         try engine.bury([serendipia.id, ubuntu.id])
         time.move(to: try #require(standing.due))
@@ -181,20 +185,19 @@ struct BuryingTests {
         #expect(unburied.map(\.buriedAt) == [nil, nil])
         #expect(try engine.standing(of: serendipia.id, with: settings.scheduler) == standing)
         #expect(try engine.reviewNow(settings).map(\.card.id) == [serendipia.id])
-        #expect(try engine.inbox().flaggedCards.map(\.flag?.note) == ["Falta un ejemplo"])
+        #expect(try engine.flaggedCards().map(\.flag?.note) == ["Falta un ejemplo"])
         let progress = try engine.progress(settings)
         #expect(progress.due == 1)
         #expect(progress.learned == 1)
-        #expect(progress.inInbox == 1)
     }
 
     // The Cards window offers Put Back only when every selected card is set
-    // aside on its own, but a refine session can unbury one of them
+    // aside on its own, but `ficha set-aside --off` can put one of them back
     // meanwhile.
     @Test("unburying several cards unburies none of them when one isn't buried, or doesn't exist")
     func unburyingSeveralCardsIsAllOrNothing() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
-        let ubuntu = try approveCard("ubuntu", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
         let buried = try engine.bury(serendipia.id)
 
         #expect(throws: EngineError.cardNotBuried(ubuntu.id)) {

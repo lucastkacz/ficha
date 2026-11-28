@@ -67,11 +67,11 @@ final class ExportingTests {
 
     @Test("an export holds no progress, flag or burial, only what each card says")
     func anExportHoldsNoProgressFlagOrBurial() async throws {
-        let climbed = try approve(
+        let climbed = try newCard(
             card(.word, front: "serendipia", back: "Un hallazgo por casualidad.", tags: ["vocabulario"]), in: engine)
-        let flagged = try approve(
+        let flagged = try newCard(
             card(.concept, front: "ubuntu", back: "Soy porque somos.", source: "Desmond Tutu"), in: engine)
-        let buried = try approve(card(.word, front: "petricor", back: "El olor de la lluvia."), in: engine)
+        let buried = try newCard(card(.word, front: "petricor", back: "El olor de la lluvia."), in: engine)
         try engine.climb(climbed, goods: 3, movingForward: time)
         try engine.meet(flagged)
         try engine.flag(flagged.id, note: note("Falta de qué idioma es."))
@@ -160,11 +160,11 @@ final class ExportingTests {
     // and a burial is where a card stands, which it leaves out.
     @Test("exporting a tag's cards holds every card with that tag, and all cards every card, buried ones too")
     func exportingATagsCardsHoldsEveryCardWithThatTag() async throws {
-        try approveCard("Revolución de Mayo", tags: ["historia"])
-        try approveCard("Sócrates", tags: ["filosofía", "historia"])
-        try approveCard("ubuntu", tags: ["filosofía"])
-        let buried = try approveCard("Cabildo abierto", tags: ["historia"])
-        let flagged = try approveCard("Independencia", tags: ["historia"])
+        try addCard("Revolución de Mayo", tags: ["historia"])
+        try addCard("Sócrates", tags: ["filosofía", "historia"])
+        try addCard("ubuntu", tags: ["filosofía"])
+        let buried = try addCard("Cabildo abierto", tags: ["historia"])
+        let flagged = try addCard("Independencia", tags: ["historia"])
         try engine.bury(buried.id)
         try engine.meet(flagged)
         try engine.flag(flagged.id, note: note("Falta el año."))
@@ -193,9 +193,9 @@ final class ExportingTests {
         "an export writes a Deck column, with Anki's #deck column header, only when a card lives in a deck other than Default, whose cards have it blank, and another Ficha puts the cards back in their decks"
     )
     func anExportWritesADeckColumnWhenACardLivesInADeck() async throws {
-        let serendipia = try approveCard("serendipia", tags: ["vocabulario"])
-        try approveCard("petricor", tags: [])
-        let ubuntu = try approveCard("ubuntu", tags: ["filosofía"])
+        let serendipia = try addCard("serendipia", tags: ["vocabulario"])
+        try addCard("petricor", tags: [])
+        let ubuntu = try addCard("ubuntu", tags: ["filosofía"])
         try engine.changeDeck(of: [serendipia.id], to: "Idiomas::Español")
         try engine.changeDeck(of: [ubuntu.id], to: "Filosofía")
         let all = folder.appending(path: "Todas.txt")
@@ -224,10 +224,10 @@ final class ExportingTests {
     // As the sidebar lists a parent deck's cards (ADR 0024).
     @Test("exporting a deck's cards holds those of the decks inside it, buried ones too, and Default's its own")
     func exportingADecksCardsHoldsThoseOfTheDecksInsideIt() async throws {
-        let inflation = try approveCard("inflación", tags: [])
-        let peso = try approveCard("cepo", tags: [])
-        let economist = try approveCard("economista", tags: [])
-        try approveCard("petricor", tags: [])
+        let inflation = try addCard("inflación", tags: [])
+        let peso = try addCard("cepo", tags: [])
+        let economist = try addCard("economista", tags: [])
+        try addCard("petricor", tags: [])
         try engine.changeDeck(of: [inflation.id], to: "Economía")
         try engine.changeDeck(of: [peso.id], to: "Economía::Argentina")
         try engine.changeDeck(of: [economist.id], to: "EconomíaX")
@@ -248,9 +248,9 @@ final class ExportingTests {
     // As the sidebar lists a parent's cards (ADR 0021).
     @Test("exporting a tag's cards holds those of the tags inside it, with their whole names")
     func exportingATagsCardsHoldsThoseOfTheTagsInsideIt() async throws {
-        try approveCard("inflación", tags: ["economía"])
-        try approveCard("cepo", tags: ["economía::Argentina"])
-        try approveCard("economista", tags: ["economíaX"])
+        try addCard("inflación", tags: ["economía"])
+        try addCard("cepo", tags: ["economía::Argentina"])
+        try addCard("economista", tags: ["economíaX"])
         let file = folder.appending(path: "economía.txt")
 
         let count = try engine.export(.tag("economía"), to: file)
@@ -259,10 +259,9 @@ final class ExportingTests {
         #expect(try await anotherFicha(importing: file).cards().map(\.tags) == [["economía"], ["economía::Argentina"]])
     }
 
-    /// Approves a capture into one word card with this front and `tags`, and
-    /// returns the card.
+    /// Makes one word card with this front and `tags`, and returns the card.
     @discardableResult
-    private func approveCard(_ front: String, tags: [String]) throws -> Card {
-        try approve(card(.word, front: front, back: "Lo que hay que saber de «\(front)».", tags: tags), in: engine)
+    private func addCard(_ front: String, tags: [String]) throws -> Card {
+        try newCard(card(.word, front: front, back: "Lo que hay que saber de «\(front)».", tags: tags), in: engine)
     }
 }

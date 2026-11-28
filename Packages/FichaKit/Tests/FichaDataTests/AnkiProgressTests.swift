@@ -291,7 +291,7 @@ final class AnkiProgressTests {
     @Test(
         "a repeated card that the import updates keeps its own progress and review log, not Anki's", arguments: schemas)
     func anUpdatedCardKeepsItsOwnProgress(format: AnkiPackage.Format) async throws {
-        let heart = try approve(card(.word, front: "Corazón", back: "Un órgano."), in: engine)
+        let heart = try newCard(card(.word, front: "Corazón", back: "Un órgano."), in: engine)
         try engine.climb(heart, goods: 2, movingForward: time)
         let standingBefore = try engine.standing(of: heart.id, with: scheduler)
         let logBefore = try engine.reviewLog()
@@ -347,7 +347,7 @@ final class AnkiProgressTests {
                 AnkiNote(type: .basic, fields: ["tres", "three"]),
                 AnkiNote(type: .basic, fields: ["serendipia", "luck"], progress: .review(due: 30, interval: 10)),
             ])
-        try approveCard("serendipia", in: engine)
+        try newCard("serendipia", in: engine)
         let packageFile = folder.appending(path: "Números.apkg")
         try package.write(to: packageFile)
         let textFile = folder.appending(path: "Números.txt")
@@ -381,7 +381,7 @@ final class AnkiProgressTests {
         "the Import sheet counts the reversed notes that come in as one card that goes both ways, but one that repeats a card of the user's, and one whose reversed card alone Anki suspended while Bring progress is ticked",
         arguments: schemas)
     func theImportSheetCountsReversedNotes(format: AnkiPackage.Format) async throws {
-        try approveCard("gato", in: engine)
+        try newCard("gato", in: engine)
         let file = folder.appending(path: "Mazo.apkg")
         try AnkiPackage(
             format: format,

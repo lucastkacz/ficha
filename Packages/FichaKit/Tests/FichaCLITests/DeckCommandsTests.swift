@@ -10,7 +10,7 @@ import Testing
 
 /// Tests on the `ficha` CLI's control of decks (ADR 0024), and on its
 /// conversion of tags into decks: each command parsed from its arguments, as
-/// a refine session types them, run on an engine in memory, and the JSON it
+/// an agent types them, run on an engine in memory, and the JSON it
 /// prints.
 struct DeckCommandsTests {
     let engine: Engine
@@ -25,9 +25,9 @@ struct DeckCommandsTests {
         "`ficha decks` prints every deck in tree order, Default first by its empty name, with its counts and what it has of its own"
     )
     func decksPrintsEveryDeck() async throws {
-        try approveCard("Martín Fierro", deck: "Libros::Argentina")
-        try approveCard("Facundo", deck: "Libros")
-        try approveCard("Rosas", deck: Deck.defaultName)
+        try addCard("Martín Fierro", deck: "Libros::Argentina")
+        try addCard("Facundo", deck: "Libros")
+        try addCard("Rosas", deck: Deck.defaultName)
         try engine.setColor(.purple, ofDeck: "Libros")
         try engine.setEmoji(Emoji("📚"), ofDeck: "Libros::Argentina")
         try engine.setAside(deck: "Historia")
@@ -89,7 +89,7 @@ struct DeckCommandsTests {
     )
     func makingRenamingAndDeletingADeck() async throws {
         let made = try await deck(from: ficha("deck", "make", " Historia "))
-        try approveCard("La Gioconda", deck: "Arte::Pintura")
+        try addCard("La Gioconda", deck: "Arte::Pintura")
         try engine.setColor(.blue, ofDeck: "Arte")
 
         let renamed = try await decks(from: ficha("deck", "rename", "Arte", "Historia::Arte"))
@@ -118,7 +118,7 @@ struct DeckCommandsTests {
         "`ficha deck set-aside`, `prioritize`, `color`, `emoji` and `choose-to-sync` change a deck's own, Default's too, take it away with --off or none, and print it"
     )
     func changingWhatADeckHasOfItsOwn() async throws {
-        try approveCard("Martín Fierro", deck: "Libros")
+        try addCard("Martín Fierro", deck: "Libros")
 
         let setAside = try await deck(from: ficha("deck", "set-aside", "Libros"))
         let notSetAside = try await deck(from: ficha("deck", "set-aside", "Libros", "--off"))
@@ -150,7 +150,7 @@ struct DeckCommandsTests {
         "a deck command refuses what the app refuses: a blank name, Default's name, a deck inside itself, Default renamed or deleted, a set-aside deck prioritized, and a deck that isn't there"
     )
     func aDeckCommandRefuses() async throws {
-        try approveCard("La Gioconda", deck: "Arte::Pintura")
+        try addCard("La Gioconda", deck: "Arte::Pintura")
         try engine.setAside(deck: "Arte")
 
         await #expect(throws: EngineError.blankDeckName) { try await ficha("deck", "make", " :: ") }
@@ -171,8 +171,8 @@ struct DeckCommandsTests {
 
     @Test("`ficha change-deck` moves cards to a deck, made if it isn't there, or to Default, and prints them")
     func changingCardsDeck() async throws {
-        let fierro = try approveCard("Martín Fierro", deck: Deck.defaultName)
-        let facundo = try approveCard("Facundo", deck: "Libros")
+        let fierro = try addCard("Martín Fierro", deck: Deck.defaultName)
+        let facundo = try addCard("Facundo", deck: "Libros")
 
         let moved = try await cards(
             from: ficha("change-deck", "\(fierro.id)", "\(facundo.id)", "--to", "Libros::Argentina"))
@@ -189,8 +189,8 @@ struct DeckCommandsTests {
         "`ficha tag convert-to-decks --preview` prints what turning tags into decks would do, changing nothing, and without it the tags become decks"
     )
     func convertingTagsToDecks() async throws {
-        let fierro = try approveCard("Martín Fierro", deck: Deck.defaultName, tags: ["literatura::poesía", "historia"])
-        try approveCard("Rosas", deck: Deck.defaultName, tags: ["historia"])
+        let fierro = try addCard("Martín Fierro", deck: Deck.defaultName, tags: ["literatura::poesía", "historia"])
+        try addCard("Rosas", deck: Deck.defaultName, tags: ["historia"])
         try engine.setChosenToSync(true, ofDeck: "historia")
 
         let preview = try await ficha("tag", "convert-to-decks", "literatura", "historia", "--preview")
@@ -262,16 +262,12 @@ struct DeckCommandsTests {
         try JSONDecoder().decode([CardAsPrinted].self, from: Data(printed.utf8))
     }
 
-    /// Approves a card with `front` and `tags` into `deck` from a capture of
-    /// its own, as a refine session does, and returns it.
+    /// Makes a word card with `front` and `tags` in `deck`, and returns it.
     @discardableResult
-    private func approveCard(_ front: String, deck: String, tags: [String] = []) throws -> Card {
-        guard case .saved(let capture) = try engine.capture(text: front, note: nil, source: nil) else {
-            throw EngineError.emptyCapture
-        }
+    private func addCard(_ front: String, deck: String, tags: [String] = []) throws -> Card {
         let content = try #require(
             CardContent(type: .word, front: front, back: "Lo que quiere decir «\(front)».", tags: tags, source: nil))
-        return try #require(try engine.approve(capture.id, into: [content], deck: deck).first)
+        return try engine.create(content, deck: deck)
     }
 }
 

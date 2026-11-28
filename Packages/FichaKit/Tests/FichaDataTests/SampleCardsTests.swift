@@ -6,10 +6,9 @@ import Testing
 struct SampleCardsTests {
     let time = ManualTimeSource(now: Date(timeIntervalSince1970: 1_760_000_000))
 
-    @Test("Ficha Dev's sample cards load as fifty new cards, and the inbox stays as it was")
+    @Test("Ficha Dev's sample cards load as fifty new cards, none from a capture", .bug(id: 540))
     func sampleCardsLoadAsNewCards() throws {
         let engine = try Engine(location: .inMemory, time: time)
-        try engine.newCapture("algo que anoté")
 
         try SampleCards.load(into: engine)
 
@@ -17,7 +16,7 @@ struct SampleCardsTests {
         #expect(cards.count == 50)
         #expect(
             try cards.allSatisfy { try engine.standing(of: $0.id, with: ReviewSettings.defaults.scheduler) == .new })
-        #expect(try engine.inbox().captures.map(\.text) == ["algo que anoté"])
+        #expect(try engine.capturesCardsCameFrom() == Array(repeating: nil, count: 50))
     }
 
     // Chamuyo sits three levels down, in Idiomas › Español › Rioplatense, and

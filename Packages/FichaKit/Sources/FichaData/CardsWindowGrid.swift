@@ -6,9 +6,11 @@ import Foundation
 // cards wait their turn in, each its front's picture, or else its front's
 // text, with a dot for where it stands, as the desktop mock draws it (ADR
 // 0041): green once the user met the card, orange while it's due, and none
-// while it's new, whose tile is dimmed; and a card set aside on its own, out
-// of the reviews until it's put back, dimmed with a mark of its own in the
-// dot's place (#539). What a tile shows is the window's
+// while it's new, whose tile is dimmed; a card set aside on its own, out of
+// the reviews until it's put back, dimmed with a mark of its own in the
+// dot's place (#539); and a flagged card, out of the reviews until it's
+// fixed, with its flag in the dot's place (#540). What a tile shows is the
+// window's
 // decision, so FichaData works it out here, and the app's grid
 // (`App/Cards/CardGrid.swift`) draws it, reading each tile's picture as the
 // tile appears (`TileImages`). Lucas selects tiles as in Photos and the
@@ -49,6 +51,12 @@ extension CardsWindowState {
             /// deck is set aside, the card not on its own, keeps its dot,
             /// never due, since the deck's row says the deck is set aside.
             case setAside
+            /// The card is flagged, out of the user's reviews until it's
+            /// fixed, whether or not they met it: its flag in the dot's place,
+            /// and the tile not dimmed, since it waits for them to fix it
+            /// (#540). Its note is in the detail. A flagged card set aside on
+            /// its own is marked set aside, as it stands.
+            case flagged
         }
 
         /// The card's.
@@ -61,12 +69,13 @@ extension CardsWindowState {
         /// for VoiceOver, a picture's too.
         public let front: String
 
-        /// The tile of the card in `row`, which stands at `now`. A card set
+        /// The tile of the card in `row`, which stands at `now`, marked in the
+        /// order the card's standing is decided (`CardStanding`): a card set
         /// aside on its own, which the engine keeps as its burial, is marked
-        /// so, first. Else a card is met once its front-first way has an
-        /// entry, as a deck's row counts the cards met
-        /// (`CardsInReviews.metCards(in:)`), whether or not it goes back
-        /// first too.
+        /// so, first, flagged or not; then a flagged card, also in a deck set
+        /// aside. Else a card is met once its front-first way has an entry,
+        /// as a deck's row counts the cards met (`CardsInReviews.metCards(in:)`),
+        /// whether or not it goes back first too.
         init(_ row: CardRow, at now: Date) {
             id = row.id
             let card = row.card
@@ -78,14 +87,19 @@ extension CardsWindowState {
             } else {
                 face = .text(card.front)
             }
-            if case .buried = row.cardStanding {
+            switch row.cardStanding {
+            case .buried:
                 mark = .setAside
-            } else if row.isDue(at: now) {
-                mark = .due
-            } else if case .new = row.frontFirst.standing {
-                mark = .new
-            } else {
-                mark = .met
+            case .flagged:
+                mark = .flagged
+            case .inReviews, .setAside:
+                if row.isDue(at: now) {
+                    mark = .due
+                } else if case .new = row.frontFirst.standing {
+                    mark = .new
+                } else {
+                    mark = .met
+                }
             }
         }
     }
@@ -134,7 +148,7 @@ extension CardsWindowState {
     }
 
     /// The tiles of the cards the grid lists, in its order: none while the
-    /// window lists something else, such as the inbox.
+    /// window lists no deck's cards.
     public var tiles: [Tile] {
         guard case .success(.cards(let rows))? = listing else {
             return []
@@ -143,10 +157,12 @@ extension CardsWindowState {
     }
 
     /// The marks the legend above the grid names, in its order: met, due
-    /// and new, always, as the desktop mock's legend has them, and set aside
-    /// while the grid lists a card set aside on its own.
+    /// and new, always, as the desktop mock's legend has them, then flagged
+    /// while the grid lists a flagged card, and set aside while it lists a
+    /// card set aside on its own.
     public var legendMarks: [Tile.Mark] {
-        [.met, .due, .new] + (tiles.contains { $0.mark == .setAside } ? [.setAside] : [])
+        let marks = Set(tiles.map(\.mark))
+        return [.met, .due, .new] + [Tile.Mark.flagged, .setAside].filter(marks.contains)
     }
 
     /// What reads the pictures of the grid's tiles.

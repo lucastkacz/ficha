@@ -36,11 +36,10 @@ final class CardsWindowExportTests {
         return window
     }
 
-    /// Approves a capture into one word card with this front and `tags`, and
-    /// returns the card.
+    /// Makes one word card with this front and `tags`, and returns the card.
     @discardableResult
-    private func approveCard(_ front: String, tags: [String] = []) throws -> Card {
-        try approve(card(.word, front: front, back: "Lo que hay que saber de «\(front)».", tags: tags), in: engine)
+    private func addCard(_ front: String, tags: [String] = []) throws -> Card {
+        try newCard(card(.word, front: front, back: "Lo que hay que saber de «\(front)».", tags: tags), in: engine)
     }
 
     // The window shows no tags (#538), so it offers no tag's cards either.
@@ -48,10 +47,10 @@ final class CardsWindowExportTests {
         "the Export sheet offers the selected cards only while some are selected, then all cards and each deck with cards, each with how many it takes, buried ones too, and no tag's cards",
         .bug(id: 538))
     func theExportSheetOffersEachChoiceWithItsCount() throws {
-        let mayo = try approveCard("Revolución de Mayo", tags: ["historia"])
-        let socrates = try approveCard("Sócrates", tags: ["historia", "filosofía"])
-        let ubuntu = try approveCard("ubuntu")
-        let cabildo = try approveCard("Cabildo abierto", tags: ["historia"])
+        let mayo = try addCard("Revolución de Mayo", tags: ["historia"])
+        let socrates = try addCard("Sócrates", tags: ["historia", "filosofía"])
+        let ubuntu = try addCard("ubuntu")
+        let cabildo = try addCard("Cabildo abierto", tags: ["historia"])
         try engine.bury(cabildo.id)
         try engine.changeDeck(of: [mayo.id], to: "Historia::Argentina")
         // The sidebar lists a deck made with no cards, which Export doesn't
@@ -82,9 +81,9 @@ final class CardsWindowExportTests {
         "the save panel proposes the deck's name for its cards, and a name for the selected cards or all of them",
         .bug(id: 538))
     func theSavePanelProposesTheDecksName() throws {
-        let mayo = try approveCard("Revolución de Mayo")
-        let ubuntu = try approveCard("ubuntu")
-        let socrates = try approveCard("Sócrates")
+        let mayo = try addCard("Revolución de Mayo")
+        let ubuntu = try addCard("ubuntu")
+        let socrates = try addCard("Sócrates")
         try engine.changeDeck(of: [socrates.id], to: "Historia::Argentina")
         var window = openWindow()
         // The window opens on Default, which lists them both.
@@ -101,14 +100,15 @@ final class CardsWindowExportTests {
         #expect(window.exporting?.fileName == .allCards)
     }
 
-    // One selected card is often just the one the detail shows.
+    // One selected card is often just the one the detail shows. The sidebar
+    // chooses no deck of the user's while one of Ficha's decks shows.
     @Test(
         "the Export sheet starts on the selected cards when several are selected, else on the deck the sidebar chose, else on all cards",
-        .bug(id: 538))
-    func theExportSheetStartsOnWhatTheWindowPointsAt() throws {
-        let mayo = try approveCard("Revolución de Mayo")
-        let socrates = try approveCard("Sócrates")
-        try approveCard("ubuntu")
+        .bug(id: 540))
+    func theExportSheetStartsOnWhatTheWindowPointsAt() async throws {
+        let mayo = try addCard("Revolución de Mayo")
+        let socrates = try addCard("Sócrates")
+        try addCard("ubuntu")
         try engine.changeDeck(of: [mayo.id, socrates.id], to: "Historia")
         var several = openWindow()
         several.choose(.cards(.deck("Historia")))
@@ -116,28 +116,32 @@ final class CardsWindowExportTests {
         var deck = openWindow()
         deck.choose(.cards(.deck("Historia")))
         deck.select([socrates.id])
-        var inbox = openWindow()
-        inbox.choose(.inbox)
+        let words = try await engine.readFichaDeck(
+            .palabrasLindas, at: try fichaDeckFileInTheRepo(of: .palabrasLindas))
+        var fichaDeck = openWindow()
+        fichaDeck.offerFichaDecks([.palabrasLindas: .success(words)])
+        fichaDeck.choose(.fichaDeck(.palabrasLindas))
 
         several.startExport()
         deck.startExport()
-        inbox.startExport()
+        fichaDeck.startExport()
 
         #expect(several.exporting?.chosen == .cards([mayo.id, socrates.id]))
         #expect(several.exporting?.cardCount == 2)
         #expect(deck.exporting?.chosen == .deck("Historia"))
         #expect(deck.exporting?.cardCount == 2)
-        #expect(inbox.exporting?.chosen == .all)
-        #expect(inbox.exporting?.cardCount == 3)
+        #expect(fichaDeck.sidebarItem == .fichaDeck(.palabrasLindas))
+        #expect(fichaDeck.exporting?.chosen == .all)
+        #expect(fichaDeck.exporting?.cardCount == 3)
     }
 
     @Test(
         "Export writes what the user chose to the file they picked, the selected cards, a deck's or all, and closes the sheet",
         .bug(id: 538))
     func exportWritesWhatTheUserChose() async throws {
-        let mayo = try approveCard("Revolución de Mayo")
-        let socrates = try approveCard("Sócrates")
-        let ubuntu = try approveCard("ubuntu")
+        let mayo = try addCard("Revolución de Mayo")
+        let socrates = try addCard("Sócrates")
+        let ubuntu = try addCard("ubuntu")
         try engine.changeDeck(of: [socrates.id], to: "Filosofía")
         var window = openWindow()
         // The window opens on Default, which lists them both.
@@ -164,9 +168,9 @@ final class CardsWindowExportTests {
 
     @Test("Export writes which cards go both ways, as the selection's Both ways button left them")
     func exportWritesWhichCardsGoBothWays() async throws {
-        let mayo = try approveCard("Revolución de Mayo", tags: ["historia"])
-        let socrates = try approveCard("Sócrates", tags: ["historia"])
-        try approveCard("ubuntu")
+        let mayo = try addCard("Revolución de Mayo", tags: ["historia"])
+        let socrates = try addCard("Sócrates", tags: ["historia"])
+        try addCard("ubuntu")
         var window = openWindow()
         window.select([mayo.id, socrates.id])
         window.turnOnBothWays()
@@ -189,7 +193,7 @@ final class CardsWindowExportTests {
     func exportWritesAZipWhenACardHasAnImage() throws {
         let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))
         let hornero = try engine.create(card(nil, front: "hornero", back: "Un pájaro.", frontImage: bird))
-        let ubuntu = try approveCard("ubuntu")
+        let ubuntu = try addCard("ubuntu")
         try engine.changeDeck(of: [ubuntu.id], to: "Filosofía")
         var window = openWindow()
 
@@ -210,7 +214,7 @@ final class CardsWindowExportTests {
 
     @Test("a file that can't be saved leaves the Export sheet open, saying why")
     func aFileThatCantBeSavedSaysWhy() throws {
-        try approveCard("ubuntu")
+        try addCard("ubuntu")
         var window = openWindow()
         window.startExport()
 

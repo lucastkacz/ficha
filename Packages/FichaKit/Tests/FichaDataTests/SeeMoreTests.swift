@@ -20,7 +20,7 @@ struct SeeMoreTests {
 
     @Test("review now with nothing due offers to review ahead, and again there makes the card lapse, to relearn it")
     func againAheadMakesTheCardLapse() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         try engine.climb(serendipia, goods: 2, movingForward: time)
         time.advance(by: hours(1))
         var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
@@ -41,7 +41,7 @@ struct SeeMoreTests {
         "in a review ahead, hard and good count as any review: the card waits the interval they set from then",
         arguments: [Rating.hard, .good])
     func hardAndGoodAheadCount(rating: Rating) throws {
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         try engine.climb(serendipia, goods: 2, movingForward: time)
         time.advance(by: hours(1))
         var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
@@ -60,7 +60,7 @@ struct SeeMoreTests {
 
     @Test("a card's back-first way comes to review ahead as its front-first way does, and \"Again\" moves only it")
     func backFirstWaysComeToReviewAhead() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         let bothWays = try engine.setBothWays(true, of: [serendipia.id])
         try engine.climb(serendipia, goods: 2, movingForward: time)
         try engine.meet(serendipia, way: .backFirst)
@@ -83,11 +83,11 @@ struct SeeMoreTests {
 
     @Test("\"See more\" brings the due cards that didn't fit first, then the closest to being due, and no new card")
     func seeMoreBringsTheLeftoversFirst() throws {
-        let due = try ["uno", "dos", "tres", "cuatro", "cinco", "seis", "siete"].map { try approveCard($0, in: engine) }
-        // Approved in the opposite order to when they come due.
-        let muchLater = try approveCard("mucho más tarde", in: engine)
-        let later = try approveCard("más tarde", in: engine)
-        try approveCard("nueva", in: engine)
+        let due = try ["uno", "dos", "tres", "cuatro", "cinco", "seis", "siete"].map { try newCard($0, in: engine) }
+        // Made in the opposite order to when they come due.
+        let muchLater = try newCard("mucho más tarde", in: engine)
+        let later = try newCard("más tarde", in: engine)
+        try newCard("nueva", in: engine)
         for card in due {
             try engine.meet(card)
         }
@@ -117,8 +117,8 @@ struct SeeMoreTests {
 
     @Test("in an appearance, \"See more\" counts a card due within the look-ahead as due, not ahead")
     func anAppearanceLooksAhead() throws {
-        let ubuntu = try approveCard("ubuntu", in: engine)
-        let petricor = try approveCard("petricor", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
+        let petricor = try newCard("petricor", in: engine)
         try engine.meet(ubuntu)
         time.advance(by: minutes(50))
         try engine.meet(petricor)
@@ -140,8 +140,8 @@ struct SeeMoreTests {
 
     @Test("with no other card met, there's nothing more to see")
     func nothingMoreWithoutOtherCards() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
-        try approveCard("ubuntu", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
+        try newCard("ubuntu", in: engine)
         var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
         #expect(panel.cards == [.new(serendipia)])
 
@@ -153,9 +153,9 @@ struct SeeMoreTests {
 
     @Test("\"See more\" leaves out a flagged card and a buried card that are due")
     func seeMoreLeavesOutFlaggedAndBuriedCards() throws {
-        let ubuntu = try approveCard("ubuntu", in: engine)
-        let petricor = try approveCard("petricor", in: engine)
-        let serendipia = try approveCard("serendipia", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
+        let petricor = try newCard("petricor", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         for card in [ubuntu, petricor, serendipia] {
             try engine.meet(card)
         }
@@ -172,13 +172,13 @@ struct SeeMoreTests {
     // last card can be undone.
     @Test("⌘Z at the end undoes what Lucas did with the last card, a first review too, and goes back to it")
     func undoAtTheEndGoesBackToTheLastCard() throws {
-        let ubuntu = try approveCard("ubuntu", in: engine)
-        let petricor = try approveCard("petricor", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
+        let petricor = try newCard("petricor", in: engine)
         try engine.meet(ubuntu)
         time.advance(by: minutes(30))
         try engine.meet(petricor)
         time.advance(by: minutes(30))
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         // At Faster, 4 new cards a day, so that serendipia, the day's third,
         // still comes.
         var faster = settings
@@ -203,7 +203,7 @@ struct SeeMoreTests {
     // Lucas asked for it, and it's due by the time he answers.
     @Test("a card brought as a review ahead that comes due before Lucas answers is reviewed on time")
     func aCardThatCameDueIsOnTime() throws {
-        let serendipia = try approveCard("serendipia", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         try engine.meet(serendipia)
         time.advance(by: minutes(30))
         var panel = try engine.openPanel(.reviewNow, with: engine.reviewNow(settings), settings: settings)
@@ -223,9 +223,9 @@ struct SeeMoreTests {
     // or were left over.
     @Test("closing the panel partway through the cards \"See more\" added still finishes it")
     func stoppingPartwayThroughMoreFinishes() throws {
-        let ubuntu = try approveCard("ubuntu", in: engine)
-        let petricor = try approveCard("petricor", in: engine)
-        let serendipia = try approveCard("serendipia", in: engine)
+        let ubuntu = try newCard("ubuntu", in: engine)
+        let petricor = try newCard("petricor", in: engine)
+        let serendipia = try newCard("serendipia", in: engine)
         try engine.meet(ubuntu)
         time.advance(by: minutes(30))
         try engine.meet(petricor)

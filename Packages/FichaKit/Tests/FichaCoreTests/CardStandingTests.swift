@@ -8,9 +8,9 @@ struct CardStandingTests {
         #expect(CardStanding(flag: nil, buriedAt: nil, setAsideBy: []) == .inReviews)
     }
 
-    @Test("a flagged card waits in the inbox, with its flag")
-    func flaggedWaitsInInbox() {
-        #expect(CardStanding(flag: flag, buriedAt: nil, setAsideBy: []) == .inInbox(flag))
+    @Test("a flagged card is flagged, with its flag", .bug(id: 540))
+    func flaggedIsFlagged() {
+        #expect(CardStanding(flag: flag, buriedAt: nil, setAsideBy: []) == .flagged(flag))
     }
 
     @Test("a buried card is buried, and a flagged buried card is buried and keeps its flag")
@@ -24,9 +24,9 @@ struct CardStandingTests {
         #expect(CardStanding(flag: nil, buriedAt: nil, setAsideBy: ["filosofía"]) == .setAside(by: ["filosofía"]))
     }
 
-    @Test("a flagged card in a set-aside deck waits in the inbox")
-    func theInboxWinsOverSetAside() {
-        #expect(CardStanding(flag: flag, buriedAt: nil, setAsideBy: ["filosofía"]) == .inInbox(flag))
+    @Test("a flagged card in a set-aside deck is flagged", .bug(id: 540))
+    func aFlagWinsOverSetAside() {
+        #expect(CardStanding(flag: flag, buriedAt: nil, setAsideBy: ["filosofía"]) == .flagged(flag))
     }
 
     @Test("a buried card in a set-aside deck is buried, and keeps its flag")
@@ -60,7 +60,7 @@ struct CardStandingTests {
 
         #expect(CardStanding.inReviews.due(given: started) == start)
         #expect(CardStanding.inReviews.isDue(at: later, given: started))
-        for outOfReviews in [CardStanding.inInbox(flag), .buried(at: buriedAt, flag: nil), .setAside(by: ["historia"])]
+        for outOfReviews in [CardStanding.flagged(flag), .buried(at: buriedAt, flag: nil), .setAside(by: ["historia"])]
         {
             #expect(outOfReviews.due(given: started) == nil)
             #expect(!outOfReviews.isDue(at: later, given: started))
@@ -74,7 +74,7 @@ struct CardStandingTests {
         #expect(CardStanding.inReviews.isNew(given: .new))
         #expect(CardStanding.inReviews.isLearned(given: learned))
         for outOfReviews in [
-            CardStanding.inInbox(flag), .buried(at: buriedAt, flag: flag), .setAside(by: ["historia"]),
+            CardStanding.flagged(flag), .buried(at: buriedAt, flag: flag), .setAside(by: ["historia"]),
         ] {
             #expect(!outOfReviews.isNew(given: .new))
             #expect(!outOfReviews.isLearned(given: learned))

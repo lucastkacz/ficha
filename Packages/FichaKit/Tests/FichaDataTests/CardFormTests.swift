@@ -3,8 +3,8 @@ import FichaData
 import Foundation
 import Testing
 
-/// Tests on the Cards window's form, which creates cards: from New Card, or
-/// from a capture in the inbox with Convert to Card, on the default scheduler.
+/// Tests on the Cards window's form, which creates cards from New Card, on
+/// the default scheduler.
 struct CardFormTests {
     let time = ManualTimeSource(now: Date(timeIntervalSince1970: 1_760_000_000))
     let engine: Engine
@@ -60,7 +60,6 @@ struct CardFormTests {
         #expect(added.front == "petricor")
         #expect(added.tags == [])
         #expect(added.source == "Un podcast")
-        #expect(added.captureID == nil)
         #expect(try engine.reviewNow(.defaults) == [.new(added)])
         let draft = try #require(window.cardForm?.draft)
         #expect(draft.front.text == "")
@@ -75,7 +74,7 @@ struct CardFormTests {
     // another meaning.
     @Test("the warning names the card a front repeats and goes when the front changes")
     func theWarningNamesTheCardAFrontRepeats() throws {
-        try approveCard("serendipia", in: engine)
+        try newCard("serendipia", in: engine)
         let anio = try engine.create(card(nil, front: "Año", back: "Doce meses."))
         var window = openWindow()
         window.openNewCardForm()
@@ -131,141 +130,6 @@ struct CardFormTests {
         #expect(window.cardForm?.draft.bothWays == true)
     }
 
-    @Test("the form from a capture starts with Both ways off, and a card added with it on goes both ways")
-    func theFormFromACaptureStartsWithBothWaysOff() throws {
-        let capture = try engine.newCapture("coloratura", source: "Una ópera de Mozart")
-        var window = openWindow()
-        window.openNewCardForm()
-        window.switchBothWays(true)
-        window.closeCardForm()
-        window.choose(.inbox)
-        window.selectInInbox(.capture(capture.id))
-
-        window.convertToCard()
-        let opened = try #require(window.cardForm)
-        window.type(front: "coloratura", back: "Los adornos rápidos del canto.")
-        window.switchBothWays(true)
-        window.addCard()
-
-        #expect(!opened.draft.bothWays)
-        let added = try #require(try engine.cards().first)
-        #expect(added.bothWays)
-        #expect(added.captureID == capture.id)
-    }
-
-    @Test("the form from a capture shows its text, note and source, with the source filled in")
-    func theFormFromACaptureShowsIt() throws {
-        let capture = try engine.newCapture(
-            "Ubuntu: soy porque somos", note: "Buscar de dónde viene", source: "Un discurso de Mandela")
-        var window = openWindow()
-        window.choose(.inbox)
-        window.selectInInbox(.capture(capture.id))
-        #expect(window.actions == [.edit, .convertToCard, .discard])
-
-        window.convertToCard()
-
-        let form = try #require(window.cardForm)
-        #expect(form.capture == capture)
-        #expect(form.draft.source == "Un discurso de Mandela")
-        #expect(form.draft.front.text == "")
-        #expect(form.draft.back.text == "")
-    }
-
-    @Test(
-        "closing the form from a capture after adding cards takes it out of the inbox, and closing with none leaves it")
-    func closingTheFormFromACaptureApprovesItOnlyAfterCards() throws {
-        let ubuntu = try engine.newCapture("Ubuntu: soy porque somos")
-        let bostezo = try engine.newCapture("¿Por qué bostezamos?")
-        var window = openWindow()
-        window.choose(.inbox)
-        window.selectInInbox(.capture(ubuntu.id))
-        window.convertToCard()
-        window.type(front: "ubuntu", back: "Soy porque somos.")
-        window.addCard()
-        window.type(front: "¿Qué quiere decir «ubuntu»?", back: "Soy porque somos.")
-        window.addCard()
-        let inboxWhileOpen = try engine.inbox().captures
-
-        window.closeCardForm()
-        window.selectInInbox(.capture(bostezo.id))
-        window.convertToCard()
-        window.closeCardForm()
-
-        #expect(inboxWhileOpen == [ubuntu, bostezo])
-        #expect(window.cardForm == nil)
-        #expect(window.failure == nil)
-        #expect(try engine.cards().map(\.captureID) == [ubuntu.id, ubuntu.id])
-        #expect(try engine.inbox().captures == [bostezo])
-    }
-
-    @Test(
-        "Convert to Card on a follow-up opens the form beside the follow-up and its card, in the card's deck",
-        .bug(id: 538))
-    func theFormFromAFollowUpShowsItsCard() throws {
-        let poderes = try approve(
-            card(
-                .concept, front: "La división de poderes en la Argentina",
-                back: "Ejecutivo, Legislativo y Judicial.", tags: ["política", "argentina"],
-                source: "La Constitución Nacional"),
-            in: engine)
-        let followUp = try engine.followUp(poderes.id, text: "¿Cómo se eligen los jueces?")
-        var window = openWindow()
-        window.choose(.inbox)
-        window.selectInInbox(.capture(followUp.id))
-
-        window.convertToCard()
-
-        let form = try #require(window.cardForm)
-        #expect(form.capture == followUp)
-        #expect(form.followUp?.capture == followUp)
-        #expect(form.followUp?.card == poderes)
-        #expect(form.draft.deck == poderes.deck)
-        #expect(form.draft.front.text == "")
-        #expect(form.draft.back.text == "")
-        #expect(form.draft.source == "")
-    }
-
-    @Test(
-        "adding cards from a follow-up leaves its card as it is, and closing the form after them takes the follow-up out of the inbox",
-        .bug(id: 538))
-    func closingTheFormFromAFollowUpLeavesItsCard() throws {
-        let poderes = try approve(
-            card(
-                .concept, front: "La división de poderes en la Argentina",
-                back: "Ejecutivo, Legislativo y Judicial.", tags: ["política", "argentina"]),
-            in: engine)
-        try engine.climb(poderes, goods: 2, movingForward: time)
-        let standing = try engine.standing(of: poderes.id, with: scheduler)
-        let followUp = try engine.followUp(poderes.id, text: "¿Cómo se eligen los jueces?")
-        var window = openWindow()
-        window.choose(.inbox)
-        window.selectInInbox(.capture(followUp.id))
-        window.convertToCard()
-        window.type(front: "¿Quién propone a los jueces de la Corte Suprema?", back: "El presidente.")
-        window.addCard()
-        window.type(front: "¿Quién aprueba a los jueces de la Corte Suprema?", back: "El Senado, con dos tercios.")
-        window.addCard()
-        let followUpsWhileOpen = try engine.inbox().followUps
-
-        window.closeCardForm()
-
-        let cards = try engine.cards()
-        #expect(followUpsWhileOpen.map(\.capture) == [followUp])
-        #expect(window.cardForm == nil)
-        #expect(window.failure == nil)
-        #expect(cards.first == poderes)
-        #expect(try engine.standing(of: poderes.id, with: scheduler) == standing)
-        #expect(
-            cards.dropFirst().map(\.front) == [
-                "¿Quién propone a los jueces de la Corte Suprema?", "¿Quién aprueba a los jueces de la Corte Suprema?",
-            ])
-        // The form shows no tags, so they don't take the card's (#538).
-        #expect(cards.dropFirst().map(\.tags) == [[], []])
-        #expect(cards.dropFirst().map(\.captureID) == [followUp.id, followUp.id])
-        #expect(try engine.inbox().followUps.isEmpty)
-        #expect(try engine.inbox().captures.isEmpty)
-    }
-
     // A deck's grid lists a card just added at its end, which may be far
     // down it.
     @Test(
@@ -305,8 +169,8 @@ struct CardFormTests {
         "showing the card a front repeats sets the form aside and selects the card in its deck, scrolled to, and New Card brings the form back as it was",
         .bug(id: 536))
     func showingTheRepeatedCardSelectsIt() throws {
-        let serendipia = try approveInDeck("serendipia", deck: "Palabras", in: engine)
-        let ataraxia = try approveCard("ataraxia", in: engine)
+        let serendipia = try newCardInDeck("serendipia", deck: "Palabras", in: engine)
+        let ataraxia = try newCard("ataraxia", in: engine)
         var window = openWindow()
         window.search(for: "algo")
 
@@ -344,9 +208,9 @@ struct CardFormTests {
         "showing the card a front repeats selects it in its deck while it's set aside on its own, with Put Back",
         .bug(id: 539))
     func showingARepeatedCardSetAsideSelectsIt() throws {
-        let serendipia = try approveInDeck("serendipia", deck: "Palabras", in: engine)
+        let serendipia = try newCardInDeck("serendipia", deck: "Palabras", in: engine)
         let setAside = try engine.bury(serendipia.id)
-        try approveCard("ataraxia", in: engine)
+        try newCard("ataraxia", in: engine)
         var window = openWindow()
 
         window.openNewCardForm()
@@ -361,59 +225,6 @@ struct CardFormTests {
         #expect(window.cardToReveal == serendipia.id)
         #expect(window.tiles.map(\.mark) == [.setAside])
         #expect(window.actions == [.edit, .putBack, .changeDeck, .delete])
-    }
-
-    @Test(
-        "a form from a capture that Show Card set aside comes back with Convert to Card, and approves the capture only once it closes"
-    )
-    func aFormFromACaptureSetAsideApprovesItOnlyOnceItCloses() throws {
-        try approveCard("serendipia", in: engine)
-        let capture = try engine.newCapture("Serendipia: un hallazgo por casualidad")
-        var window = openWindow()
-        window.choose(.inbox)
-        window.selectInInbox(.capture(capture.id))
-        window.convertToCard()
-        window.type(front: "hallazgo", back: "Lo que se encuentra.")
-        window.addCard()
-        window.type(front: "serendipia", back: "Un hallazgo por casualidad.")
-
-        window.showRepeatedCard()
-        let inboxWhileSetAside = try engine.inbox().captures
-        window.choose(.inbox)
-        window.selectInInbox(.capture(capture.id))
-        window.convertToCard()
-        let broughtBack = window.cardForm
-        window.showRepeatedCard()
-        // A new card's form: the one set aside closes first.
-        window.openNewCardForm()
-
-        #expect(inboxWhileSetAside == [capture])
-        #expect(broughtBack?.capture == capture)
-        #expect(broughtBack?.addedCards.map(\.front) == ["hallazgo"])
-        #expect(broughtBack?.draft.front.text == "serendipia")
-        #expect(window.cardForm?.capture == nil)
-        #expect(window.cardForm?.draft.front.text == "")
-        #expect(try engine.inbox().captures == [])
-    }
-
-    @Test("Add from a capture that left the inbox meanwhile saves nothing, records why and keeps the fields")
-    func addFromACaptureThatLeftTheInboxSavesNothing() throws {
-        let capture = try engine.newCapture("Ubuntu: soy porque somos")
-        var window = openWindow()
-        window.choose(.inbox)
-        window.selectInInbox(.capture(capture.id))
-        window.convertToCard()
-        window.type(front: "ubuntu", back: "Soy porque somos.")
-        // Discarded in a refine session, while the form is open.
-        try engine.discard(capture.id)
-
-        window.addCard()
-
-        #expect(window.failure?.action == .addCard)
-        #expect(window.failure?.error == .captureNotInInbox(capture.id))
-        #expect(window.cardForm?.draft.front.text == "ubuntu")
-        #expect(window.cardForm?.addedCards == [])
-        #expect(try engine.cards().isEmpty)
     }
 }
 
@@ -435,8 +246,8 @@ extension CardsWindowState {
         changeDraft(draft)
     }
 
-    /// The ids of the cards the grid lists, or nil when it lists the inbox
-    /// or couldn't read them.
+    /// The ids of the cards the grid lists, or nil when it couldn't read
+    /// them.
     fileprivate var listedCardIDs: [Int64]? {
         guard case .success(.cards(let rows)) = listing else {
             return nil

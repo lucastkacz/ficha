@@ -13,8 +13,8 @@ enum SyncSection {
     static var footer: some View {
         Text(
             """
-            Your cards, their progress and the inbox stay the same on each of your devices, through your own \
-            iCloud. Each device keeps its own backups.
+            Your cards and their progress stay the same on each of your devices, through your own iCloud. Each \
+            device keeps its own backups.
             """,
             comment: "Settings, under Sync, below the switch: what sync does.")
     }
