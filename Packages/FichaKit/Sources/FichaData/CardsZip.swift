@@ -7,13 +7,13 @@ import ImageIO
 import UniformTypeIdentifiers
 internal import ZIPFoundation
 
-// A zip of cards, as Ficha exports cards with images or sounds and imports
-// them: a text file of cards, as `CardsTextFile` reads and writes it, with
-// the image and sound files its lines name beside it. ZIPFoundation reads and
-// writes the zip (ADR 0014).
+// A zip of cards, as a deck's `.ficha` is one (`DeckFile.swift`): a text
+// file of cards, as `CardsTextFile` reads and writes it, with the image and
+// sound files its lines name beside it. ZIPFoundation reads and writes the
+// zip (ADR 0014).
 
-/// The extensions of the text file of cards a zip of cards holds, as the
-/// Import sheet opens one: plain text, or a spreadsheet's CSV or TSV.
+/// The extensions of the text file of cards a zip of cards holds: plain
+/// text, or a spreadsheet's CSV or TSV, as a `.ficha` made by hand may hold.
 private let textFileExtensions: Set = ["txt", "csv", "tsv"]
 
 /// Whether `data` is a zip: it starts as every zip does, with an entry's
@@ -31,7 +31,7 @@ func zipArchive(at file: URL) throws(CardsFileProblem) -> Archive? {
     do {
         return try Archive(url: file, accessMode: .read, pathEncoding: nil)
     } catch {
-        logger.error("Couldn't open a zip to import: \(String(describing: error), privacy: .public)")
+        logger.error("Couldn't open a deck's file as a zip: \(String(describing: error), privacy: .public)")
         throw .unreadableZip
     }
 }

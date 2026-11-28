@@ -2,51 +2,40 @@ import FichaCore
 import Foundation
 internal import GRDB
 
-/// Which of the user's cards an export takes.
+/// Which of the user's cards an export takes: a deck's, as its `.ficha`
+/// (ADR 0044), the one file Ficha writes, which Share Deck… sends (#557).
 public enum CardsToExport: Sendable, Hashable {
-    /// The cards with these ids: those the user selected.
-    case cards(Set<Int64>)
     /// Every card in this deck, by its whole name, or in a deck inside it;
     /// for Default, by `Deck.defaultName`, the cards in Default.
     case deck(String)
-    /// Every card with this tag, or a tag inside it.
-    case tag(String)
-    /// Every card.
-    case all
 
-    /// Whether the export takes `card`, whatever its standing: buried cards
-    /// too, which the Cards window lists apart, since an export holds what
-    /// cards say and never where they stand.
+    /// Whether the export takes `card`, whatever its standing: set-aside
+    /// cards too, since an export holds what cards say and never where they
+    /// stand.
     fileprivate func takes(_ card: Card) -> Bool {
         switch self {
-        case .cards(let ids): ids.contains(card.id)
         case .deck(let deck): TagPath.isTag(card.deck, within: deck)
-        case .tag(let tag): card.hasTag(within: tag)
-        case .all: true
         }
     }
 }
 
 extension Engine {
-    /// Writes the cards `cards` takes to `file`, in the order they came in,
-    /// as the text file the import reads: what each card says, its front,
-    /// back, tags, type and source, its deck, and whether it goes both ways,
-    /// and never where it stands, its review log, its flag or its burial.
-    /// When a card it takes has an image or a sound, the file is a zip
-    /// instead, with that text file, named after `file`, and the cards'
-    /// images and sounds beside it, each once, which its lines name. A
-    /// deck's cards are always a zip, the deck's `.ficha` (`DeckFile.swift`),
-    /// with `deck.json` beside the text file, holding the deck's own emoji
-    /// and description. Returns how many cards it wrote.
+    /// Writes the cards `cards` takes to `file` as the deck's `.ficha`
+    /// (`DeckFile.swift`), in the order they came in: a zip with the text
+    /// file the import reads, named after `file`, holding what each card
+    /// says, its front, back, tags, type and source, its deck, and whether it
+    /// goes both ways, and never where it stands, its review log, its flag or
+    /// its burial; the cards' images and sounds beside it, each once, which
+    /// its lines name; and `deck.json`, holding the deck's own emoji and
+    /// description. Returns how many cards it wrote.
     @discardableResult
     public func export(_ cards: CardsToExport, to file: URL) throws(EngineError) -> Int {
-        // The deck, with its own emoji and description, for a deck's cards.
+        // The deck, with its own emoji and description.
         let (exported, deck) = try read { db -> ([CardsTextFile.ExportedCard], Deck?) in
             let exported = try allCards(in: db).filter(cards.takes).map(exportedCard(of:))
-            guard case .deck(let name) = cards else {
-                return (exported, nil)
+            switch cards {
+            case .deck(let name): return (exported, try OwnDecks(in: db).deck(name))
             }
-            return (exported, try OwnDecks(in: db).deck(name))
         }
         var images: [CardImage] = []
         for name in Set(exported.flatMap(\.content.images)).sorted(by: { $0.rawValue < $1.rawValue }) {
@@ -66,32 +55,15 @@ extension Engine {
                     file.stopAccessingSecurityScopedResource()
                 }
             }
-            let data =
-                images.isEmpty && sounds.isEmpty && deck == nil
-                ? Data(text.utf8)
-                : try zipOfCards(
-                    text: text, named: file.deletingPathExtension().lastPathComponent + ".txt",
-                    beside: try deck.map { [try deckJSON(of: $0)] } ?? [], images: images, sounds: sounds,
-                    at: time.now)
+            let data = try zipOfCards(
+                text: text, named: file.deletingPathExtension().lastPathComponent + ".txt",
+                beside: try deck.map { [try deckJSON(of: $0)] } ?? [], images: images, sounds: sounds, at: time.now)
             try data.write(to: file, options: .atomic)
         } catch {
             logger.error("Couldn't write the exported cards: \(String(describing: error))")
             throw .unwritableFile(file.lastPathComponent)
         }
         return exported.count
-    }
-
-    /// How many cards each of `choices` takes, in its order, as the cards
-    /// are now, read once for all of them, and whether one of them has an
-    /// image or a sound, which makes the export a zip.
-    func cardCounts(toExport choices: [CardsToExport]) throws(EngineError) -> [(count: Int, holdsFiles: Bool)] {
-        try read { db in
-            let cards = try allCards(in: db)
-            return choices.map { choice in
-                let taken = cards.filter(choice.takes)
-                return (taken.count, taken.contains { !$0.images.isEmpty || !$0.sounds.isEmpty })
-            }
-        }
     }
 }
 

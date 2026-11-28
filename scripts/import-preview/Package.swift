@@ -2,7 +2,7 @@
 
 import PackageDescription
 
-// Runs the engine's preview of a file of cards in an engine in memory, and
+// Reads a deck's `.ficha` as Open Deck… does, in an engine in memory, and
 // says what it took, or writes down the cards it brings in (`make
 // preview-import`). It reaches FichaKit by path, so `scripts/preview-import.sh`
 // can build it against FichaKit as it is at another commit, in a scratch folder

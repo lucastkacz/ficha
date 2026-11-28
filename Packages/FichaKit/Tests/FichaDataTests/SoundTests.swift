@@ -158,26 +158,19 @@ final class SoundTests {
 
     // A content alone, as from `ficha fix`'s draft that leaves the sounds
     // out. Drafts that put or take them off are in DraftedCardsTests.
-    @Test("fixing a card with a content alone, or updating it from an import, keeps its sounds", .bug(id: 540))
-    func fixingAndImportingKeepACardsSounds() async throws {
+    @Test("fixing a card with a content alone keeps its sounds", .bug(id: 540))
+    func fixingKeepsACardsSounds() async throws {
         let engine = try Engine(location: .inMemory, time: time)
         let la = try await addTone(440, to: engine)
         let mi = try await addTone(330, to: engine)
-        let flagged = try engine.create(card(.word, front: "coloratura", back: "Un ornamento.", backSound: la))
-        let imported = try engine.create(card(.word, front: "tenor", back: "Una voz.", frontSound: la, backSound: mi))
+        let flagged = try engine.create(
+            card(.word, front: "coloratura", back: "Un ornamento.", frontSound: mi, backSound: la))
         try engine.flag(flagged.id, note: note("Decir que es de la ópera"))
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let file = folder.appending(path: "ópera.txt")
-        try Data("tenor\tLa voz masculina más aguda.\n".utf8).write(to: file)
 
         let fixed = try engine.fix(
             flagged.id, with: card(.word, front: "coloratura", back: "Los ornamentos rápidos del canto de ópera."))
-        try await engine.importCards(engine.previewImport(of: file), choosing: ImportChoices())
 
-        #expect(fixed.backSound == la)
-        let updated = try #require(try engine.cards().first { $0.id == imported.id })
-        #expect(updated.back == "La voz masculina más aguda.")
-        #expect(updated.frontSound == la && updated.backSound == mi)
+        #expect(fixed.frontSound == mi && fixed.backSound == la)
         #expect(try engine.keptSounds() == [la, mi])
     }
 

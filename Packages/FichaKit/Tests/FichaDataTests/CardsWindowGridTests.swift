@@ -76,10 +76,11 @@ struct CardsWindowGridTests {
     }
 
     // A deck's row counts a card met once its front-first way is, so a
-    // tile's dot goes by that way too, unless the card is due either way.
+    // tile's dot goes by that way too, unless the card is due either way. A
+    // flagged card has its flag in its dot's place (#540).
     @Test(
-        "a tile's dot says its card is due when either of its ways is, and else met or new by its front-first way alone",
-        .bug(id: 536))
+        "a tile's dot says its card is due when either of its ways is, and else met or new by its front-first way alone, and a flagged card's flag takes its place",
+        .bug(id: 536), .bug(id: 540))
     func aTilesDotSaysWhereItsCardStands() throws {
         let ubuntu = try engine.create(card(nil, front: "ubuntu", back: "Soy porque somos."), bothWays: true)
         let ojala = try engine.create(card(nil, front: "ojalá", back: "Ojalá que llueva café."))
@@ -88,7 +89,8 @@ struct CardsWindowGridTests {
         // ubuntu is learned front first, and due back first only.
         try engine.climbUntilLearned(ubuntu, movingForward: time)
         try engine.meet(ubuntu, way: .backFirst)
-        // acaso is met and due, but flagged, so it won't show up.
+        // acaso is met and due, but flagged, so it won't show up, and its
+        // tile has its flag.
         try engine.meet(acaso)
         try engine.flag(acaso.id, note: note("Falta un ejemplo"))
         time.advance(by: hours(1))
@@ -98,7 +100,7 @@ struct CardsWindowGridTests {
         let window = openWindow()
 
         #expect(window.tiles.map(\.id) == [ubuntu.id, ojala.id, efimero.id, acaso.id])
-        #expect(window.tiles.map(\.mark) == [.due, .new, .met, .met])
+        #expect(window.tiles.map(\.mark) == [.due, .new, .met, .flagged])
     }
 
     // A card set aside on its own won't show up until it's put back, so its

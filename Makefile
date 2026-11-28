@@ -238,7 +238,7 @@ preview-import-build: fsrs ## Build the import-preview tool, so a change to the 
 	swift build --package-path $(IMPORT_PREVIEW) --quiet -Xswiftc -warnings-as-errors
 
 .PHONY: preview-import
-preview-import: fsrs ## Time the engine's preview of files of cards, or dump a file's cards, in an engine in memory: make preview-import ARGS="[--at <commit>] [--dump <output>] <file>...".
+preview-import: fsrs ## Time the engine's reading of decks' .ficha files, or dump one's cards, in an engine in memory: make preview-import ARGS="[--at <commit>] [--dump <output>] <file>...".
 	@scripts/preview-import.sh $(ARGS)
 
 .PHONY: run

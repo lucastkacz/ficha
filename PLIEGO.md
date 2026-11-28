@@ -15,7 +15,7 @@ What the method's commands read about Ficha (`.claude/method/method.md`), approv
 - `Mac` (blue): the Mac app.
   - `Mac › Review`: the review panel, appearances and what holds them back, Review now.
   - `Mac › Cards`: the Cards window: decks, with their descriptions, and their cards, shown as cards, the card form, flagged cards in their decks, with their flags, and cards set aside, on their own or with their decks; a card's tags and type stay in the database, and show nowhere (#538).
-    - `Mac › Cards › Import`: a deck's `.ficha` file, coming in and going out: Ficha's own decks, Open Deck…, a double-click in Finder, and the file Share Deck… sends (ADR 0044); the Import and Export sheets, with text files, zips and Anki's packages, until ADR 0041's node takes them out.
+    - `Mac › Cards › Import`: a deck's `.ficha` file, coming in and going out: Ficha's own decks, Open Deck…, a double-click in Finder, and the file Share Deck… sends (ADR 0044). Text files, zips and Anki's packages neither come in nor go out (ADR 0041).
   - `Mac › Menu`: the menu bar item and its menu, the Welcome page; Diagnostics until ADR 0041's node moves it to Settings' Advanced tab.
   - `Mac › Settings`: the Settings window's tabs.
   - `Mac › Widget`: the Next Card widget.
@@ -132,14 +132,14 @@ SVGDrawer ───> FichaSVG
 iPhone ──────> FichaData, FichaCore
 FichaICloud ─> FichaData                     CloudKit
 FichaCLI ────> FichaData, FichaCore          swift-argument-parser
-FichaData ───> FichaSVG, FichaCore           GRDB, ZIPFoundation, zstd
+FichaData ───> FichaSVG, FichaCore           GRDB, ZIPFoundation
 FichaCore ───> FichaFSRS ─> CFichaFSRS       fsrs-rs, from Rust/
 FichaSVG                                     WebKit
 ```
 
 The executables:
 
-- ✓ **Ficha** (`App/`): the Mac app, thin, built as the real Ficha or as Ficha Dev, which alone has the Debug menu. It declares the `.ficha` file type, which the real Ficha owns and Ficha Dev opens as an alternate, through a build setting of each configuration in `project.yml`, opens it from Finder and Open Deck…, and hands a deck's to macOS's Share menu with Share Deck… (ADR 0044). It bundles `docs/instructions-for-an-ai.md`, which the Import sheet copies, until ADR 0041's node takes both out.
+- ✓ **Ficha** (`App/`): the Mac app, thin, built as the real Ficha or as Ficha Dev, which alone has the Debug menu. It declares the `.ficha` file type, which the real Ficha owns and Ficha Dev opens as an alternate, through a build setting of each configuration in `project.yml`, opens it from Finder and Open Deck…, and hands a deck's to macOS's Share menu with Share Deck… (ADR 0044).
 - ✓ **ficha** (`CLI/`): runs FichaCLI's commands in a sandbox of its own, inside the app.
 - ✓ **FichaWidget** (`Widget/`): the Next Card widget, inside the app.
 - ✓ **SVGDrawer** (`SVGDrawer/`): an XPC service inside the app, the only part with the network entitlement WebKit needs in the sandbox (ADR 0018).
@@ -148,9 +148,9 @@ The executables:
 
 The libraries, in `Packages/FichaKit/`, a Swift package for macOS and iOS:
 
-- ✓ **FichaCore**: the rules, as pure functions: scheduling, the planners, where a card stands, and reading Anki, until ADR 0041's node takes it out.
+- ✓ **FichaCore**: the rules, as pure functions: scheduling, the planners, where a card stands, and reading a deck's text file of cards.
 - ✓ **FichaFSRS**: fsrs-rs's arithmetic for FichaCore, from our crate in `Rust/`, which `make fsrs` builds into an XCFramework (ADR 0026).
-- ✓ **FichaData**: the engine: SQLite through GRDB, import and export (ADR 0041 takes zstd out with Anki's packages, and ADR 0044 keeps a deck's `.ficha` alone, in and out, provisional: it writes a deck as one, reads one, and brings one in), sync's logic behind `ICloudSyncEngine`, backups, the windows' states, Ficha Dev's sample cards.
+- ✓ **FichaData**: the engine: SQLite through GRDB, a deck's `.ficha` alone, in and out (ADR 0041, ADR 0044, provisional: it writes a deck as one, reads one, and brings one in), sync's logic behind `ICloudSyncEngine`, backups, the windows' states, Ficha Dev's sample cards.
 - ✓ **FichaSVG**: draws an import's SVGs with WebKit: in the app, through the SVGDrawer service; in `swift test`, in the process.
 - ✓ **FichaICloud**: the thin adapter that puts CloudKit's `CKSyncEngine` behind FichaData's `ICloudSyncEngine`; the only part that loads CloudKit, and the Mac app alone links it.
 - ✓ **FichaCLI**: the `ficha` command's commands, with swift-argument-parser (ADR 0008).
@@ -159,7 +159,7 @@ The rest:
 
 - ✓ Ficha's decks: a deck's `.ficha` each, in `App/FichaDecks/`, which the app bundles, with each image's license, and their emoji and description in its `deck.json`, which come in as any deck's file does; #458 brought them, and #554 made them `.ficha` files (ADR 0035, ADR 0040, ADR 0044).
 - ✓ `scripts/`: the render tools and the import-preview tool, which reach FichaKit by path (the render tool compiles `App/`'s files too); the hook tests; the watchdog for hung runs, with its tests; the build of fsrs-rs's XCFramework; the wrapper `make` runs `xcodebuild` through; what unregisters an app's other copies from LaunchServices; the reader of Ficha Dev's last crash, with its tests; the runner of its `ficha` on a scratch folder; the cleanup after a merge, with its tests; the list of what changed the cards' data since the last upload, with its tests; the check that an upload's app holds English alone, with its tests; and the check that the clock and the review log's IDs come from their sources.
-- ✓ `docs/`: `development.md`, how to build, draw, test and publish; `agents/`, what agents read about the issues and the domain; `adr/`; `app-review-notes.md`, what App Review is told; `instructions-for-an-ai.md`; `research/`; `prototypes/`; and `images/`, the README's pictures.
+- ✓ `docs/`: `development.md`, how to build, draw, test and publish; `agents/`, what agents read about the issues and the domain; `adr/`; `app-review-notes.md`, what App Review is told; `research/`; `prototypes/`; and `images/`, the README's pictures.
 - ✓ `.claude/`: the permissions, the hooks, the rules, the method's seven skills and what they share (`method/`), with its page kit (`method/kit/`) and its map, and the subagents' types.
 - ✓ `.github/`: CI, the workflow that publishes `site/` on GitHub Pages, Dependabot and the issue forms.
 - ✓ `mockups/`: the web mock kit, the desktop mock and the Ficha Lab, with their tools in Node (its README).

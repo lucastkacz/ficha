@@ -173,28 +173,6 @@ final class ImageTests {
         #expect(try engine.keptImages() == [bird, nest])
     }
 
-    // A text file without image columns gives a card text alone. A zip's
-    // back images are in ImagesInZipsTests.
-    @Test("an import that updates a card keeps its images")
-    func anImportThatUpdatesACardKeepsItsImages() async throws {
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let engine = try Engine(location: .inMemory, time: time)
-        let bird = try engine.addImage(picture(width: 800, height: 600, red: 0.8))
-        let nest = try engine.addImage(picture(width: 800, height: 600, red: 0.3))
-        let hornero = try engine.create(
-            card(.word, front: "hornero", back: "Un pájaro.", frontImage: bird, backImage: nest))
-        let file = folder.appending(path: "pájaros.txt")
-        try Data("hornero\tUn pájaro que hace su nido de barro.\n".utf8).write(to: file)
-
-        let outcome = try await engine.importCards(engine.previewImport(of: file), choosing: ImportChoices())
-
-        #expect(outcome.updated == 1)
-        let updated = try #require(try engine.cards().first { $0.id == hornero.id })
-        #expect(updated.back == "Un pájaro que hace su nido de barro.")
-        #expect(updated.frontImage == bird && updated.backImage == nest)
-        #expect(try engine.keptImages() == [bird, nest])
-    }
-
     // As `ficha cards` prints a card, so an agent knows it has one.
     @Test("a card's encoding has frontImage and backImage only when set, by name")
     func aCardsEncodingNamesItsImages() throws {

@@ -253,59 +253,30 @@ final class ChangesToSyncTests {
     }
 
     // The file's name proposes the tag "Vocabulario", which serendipia has.
-    @Test("an import's new cards wait to be sent, and a card it updates records only what the file changed")
+    @Test("a deck's .ficha's new cards wait to be sent, and a card it repeats records nothing", .bug(id: 542))
     func importedCardsWaitToBeSent() async throws {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let file = folder.appending(path: "Vocabulario.txt")
-        try Data(
-            """
-            #columns:Front\tBack\tBoth ways
-            serendipia\tUn hallazgo valioso por casualidad.\ty
-            petricor\tEl olor de la lluvia.\t
+        let file = folder.appending(path: "Vocabulario.ficha")
+        try writeDeckFile(
+            at: file,
+            text: """
+                #columns:Front\tBack\tBoth ways
+                serendipia\tUn hallazgo valioso por casualidad.\ty
+                petricor\tEl olor de la lluvia.\t
 
-            """.utf8
-        ).write(to: file)
-        let (_, serendipiaRow) = try engine.synced(.card) {
-            try engine.create(card(.word, front: "serendipia", back: "Un hallazgo.", tags: ["Vocabulario"]))
-        }
+                """)
+        try engine.create(card(.word, front: "serendipia", back: "Un hallazgo."))
         let imported = time.now + minutes(1)
 
         time.move(to: imported)
         let afterImport = try await engine.recordedAsync {
-            try await engine.importCards(engine.previewImport(of: file), choosing: ImportChoices())
+            try await engine.addDeck(at: file)
         }
 
-        #expect(afterImport.map(\.row.recordType) == [.card, .card])
-        #expect(
-            afterImport.first
-                == Waiting(row: serendipiaRow, kind: .saved, fieldTimes: [.back: imported, .bothWays: imported]))
-        #expect(afterImport.last?.row != serendipiaRow)
-        #expect(afterImport.last?.kind == .saved)
-        #expect(afterImport.last?.fieldTimes == [:])
-    }
-
-    @Test("an import that brings a card's progress from Anki leaves each way's placement waiting to be sent")
-    func importedProgressWaitsToBeSent() async throws {
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let file = folder.appending(path: "Mazo.apkg")
-        try AnkiPackage(
-            notes: [
-                AnkiNote(
-                    type: .basicAndReversed, fields: ["corazón", "heart"], progress: .review(due: 30, interval: 10),
-                    reversedCard: (.review(due: 26, interval: 3), .asItsTypeSays))
-            ]
-        ).write(to: file)
-
-        let afterImport = try await engine.recordedAsync {
-            try await engine.importCards(
-                engine.previewImport(of: file), choosing: ImportChoices(progress: .brought))
-        }
-
-        let log = try engine.reviewLog()
-        #expect(log.map(\.way) == [.frontFirst, .backFirst])
-        #expect(afterImport.map(\.row.recordType) == [.card, .reviewLogEntry, .reviewLogEntry])
-        #expect(afterImport.allSatisfy { $0.kind == .saved && $0.fieldTimes.isEmpty })
-        #expect(afterImport.dropFirst().map(\.row) == log.compactMap(\.uuid).map(SyncedRow.reviewLogEntry))
+        #expect(try engine.cards().map(\.front) == ["serendipia", "petricor"])
+        #expect(afterImport.map(\.row.recordType) == [.card])
+        #expect(afterImport.first?.kind == .saved)
+        #expect(afterImport.first?.fieldTimes == [:])
     }
 
     @Test("what the CLI writes waits to be sent for the app, which shares its database and syncs alone")

@@ -8,11 +8,10 @@ import Foundation
 // alone, when the sidebar didn't list the deck at the top of the tree it
 // made, the deck or one it sits inside: so "Arte::Barroco" asks about Arte
 // while Arte wasn't listed, and nothing while it was
-// (`CardsWindowDecks.swift`); after an import that made decks, those its new
-// cards came into that the user didn't have, once its sheet's Done closes
-// it; after Add Deck… on one of Ficha's decks, before it comes in
-// (`CardsWindowFichaDecks.swift`); and after Open Deck… or Finder opened a
-// deck's `.ficha`, before it comes in (`CardsWindowOpenDeck.swift`). Each
+// (`CardsWindowDecks.swift`); after Add Deck… on one of Ficha's decks,
+// before it comes in (`CardsWindowFichaDecks.swift`); and after Open Deck…
+// or Finder opened a deck's `.ficha`, before it comes in
+// (`CardsWindowOpenDeck.swift`). Each
 // pace's finish date, where the deck is and with the deck first, is
 // FichaCore's, as the queue counts it (`DeckQueue.swift`), with the settings
 // the window reads the queue with. Start adds one of Ficha's decks, or the
@@ -29,14 +28,8 @@ extension CardsWindowState {
         /// What How fast? asks about.
         public enum Subject: Sendable, Equatable {
             /// The deck at the top of the tree, by its whole name, or Default
-            /// by `Deck.defaultName`, that New Deck…'s OK just made, or that
-            /// an import made, the one its new cards came into that the user
-            /// didn't have.
+            /// by `Deck.defaultName`, that New Deck…'s OK just made.
             case deck(String)
-            /// The decks at the top of the tree an import made, when they're
-            /// several, in the queue's order: the paces then say when the
-            /// last of them is all met.
-            case decks([String])
             /// One of Ficha's decks, after its Add Deck…, before it comes in
             /// (#458): its cards counted as they'd come in now, those that
             /// repeat none of the user's, into the deck of theirs by its
@@ -54,11 +47,6 @@ extension CardsWindowState {
         public enum Line: Sendable, Equatable {
             /// "No cards yet": the deck New Deck…'s OK just made.
             case noCards
-            /// "14 cards · imported from Arte.apkg": the deck an import made,
-            /// with its cards and those of the decks inside it, whatever
-            /// their standing, or those of all the decks it made, and the
-            /// name of the file it came from.
-            case imported(cardCount: Int, fileName: String)
             /// "40 cards · one of Ficha's decks": one of Ficha's decks, with a
             /// count of its cards: in How fast?, those that would come in,
             /// those of its file that repeat none of the user's (#458); and
@@ -155,14 +143,6 @@ extension CardsWindowState {
         }
     }
 
-    /// How a deck How fast? asks about came in.
-    enum ComingIn {
-        /// New Deck…'s OK made it, with no card.
-        case newDeck
-        /// An import from the file named `fileName` made it.
-        case anImport(fileName: String)
-    }
-
     /// How fast?, while the window asks it.
     public var howFast: HowFast? {
         guard case .howFast(let howFast) = question else { return nil }
@@ -202,8 +182,6 @@ extension CardsWindowState {
         switch howFast.subject {
         case .deck(let deck):
             firstable = deck
-        case .decks:
-            firstable = nil
         case .fichaDeck(let deck):
             guard addFichaDeck(deck) else { return }
             firstable = deck.name
@@ -230,25 +208,18 @@ extension CardsWindowState {
         }
     }
 
-    /// Asks How fast? about `names`, decks at the top of the tree that came
-    /// in as `comingIn` says, by their whole names, or Default by
-    /// `Deck.defaultName`, once the window read them again: nothing for no
-    /// deck. When the queue can't be read, it asks nothing, and says why in
-    /// the log, so the decks stay where they came in, at the pace there was,
-    /// as after Cancel.
-    mutating func askHowFast(about names: [String], cameInFrom comingIn: ComingIn) {
-        guard !names.isEmpty else { return }
+    /// Asks How fast? about `name`, the deck at the top of the tree New
+    /// Deck…'s OK just made, with no card, by its whole name, or Default by
+    /// `Deck.defaultName`, once the window read it again. When the queue
+    /// can't be read, it asks nothing, and says why in the log, so the deck
+    /// stays where it came in, at the pace there was, as after Cancel.
+    mutating func askHowFast(about name: String) {
         do throws(EngineError) {
-            let cards = try engine.cardsForHowFast(countingIn: names)
+            let cards = try engine.cardsForHowFast()
             let settings = try engine.cardsWindowQueueSettings(activeHours: activeHours)
-            let line: HowFast.Line =
-                switch comingIn {
-                case .newDeck: .noCards
-                case .anImport(let fileName): .imported(cardCount: cards.cardCount, fileName: fileName)
-                }
             question = .howFast(
                 HowFast(
-                    about: names, line: line, amongTopDecks: listedTopDecks, cards: cards.inReviews,
+                    about: [name], line: .noCards, amongTopDecks: listedTopDecks, cards: cards,
                     settings: settings, now: engine.now, calendar: engine.calendar))
         } catch {
             logger.error("Couldn't read the queue for How fast?: \(String(describing: error), privacy: .public)")
@@ -261,7 +232,7 @@ extension CardsWindowState.HowFast.Subject {
     /// of Ficha's decks, or a `.ficha`'s.
     var comesFromAFile: Bool {
         switch self {
-        case .deck, .decks: false
+        case .deck: false
         case .fichaDeck, .deckFile: true
         }
     }
@@ -306,7 +277,7 @@ extension CardsWindowState.HowFast {
             let withItFirst = cards.decksInQueue(putting: names[0], at: .first, now: now)
             decksStillAhead = Array(withItFirst.prefix { $0 != names[0] })
         }
-        var subject = names.count == 1 ? Subject.deck(names[0]) : .decks(inQueueOrder)
+        var subject = Subject.deck(names[0])
         var decks = inQueueOrder.compactMap { name in topDecks.first { $0.name == name } }
         if let file {
             subject = file
@@ -322,17 +293,9 @@ extension CardsWindowState.HowFast {
 }
 
 extension Engine {
-    /// What How fast? reads of the cards, in one read: those in the user's
-    /// reviews, as the planners take them, and how many cards the decks
-    /// `names`, decks at the top of the tree, hold, with the decks inside
-    /// them, whatever their standing.
-    fileprivate func cardsForHowFast(countingIn names: [String]) throws(EngineError)
-        -> (inReviews: CardsInReviews, cardCount: Int)
-    {
-        try read { db in
-            let cardCount = try allCards(in: db).count { names.contains(TagPath.top(of: $0.deck)) }
-            let inReviews = try cardsThatShowUp(in: db).inReviews
-            return (inReviews: inReviews, cardCount: cardCount)
-        }
+    /// What How fast? reads of the cards: those in the user's reviews, as
+    /// the planners take them.
+    fileprivate func cardsForHowFast() throws(EngineError) -> CardsInReviews {
+        try read { db in try cardsThatShowUp(in: db).inReviews }
     }
 }
