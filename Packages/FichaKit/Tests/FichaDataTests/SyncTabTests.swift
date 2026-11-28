@@ -331,3 +331,9 @@ func heavyImage(weighing bytes: Int, named digit: Character, in engine: Engine) 
     try engine.images.keep(Data(count: bytes), as: name)
     return name
 }
+
+/// A JPEG's name, as Ficha names an image by its content: `digit`, a
+/// hexadecimal digit, 64 times, which tells it from the test's other images.
+func imageName(of digit: Character) throws -> ImageName {
+    try #require(ImageName(rawValue: String(repeating: digit, count: 64) + ".jpg"))
+}
