@@ -165,6 +165,26 @@
   .cards .side small { display: block; color: var(--secondary-label); font-size: var(--text-footnote); }
   .cards .side .card-picture { margin-top: 4px; width: 128px; }
   .cards .side .card-picture.real { width: auto; max-width: 100%; max-height: 88px; }
+  /* A deck's description (#557): above its cards, and in Ficha's Decks; Description… edits it in place. */
+  .cards .description { color: var(--label); font-size: var(--text-callout); max-width: 470px; text-wrap: pretty; }
+  .cards .description-edit { display: flex; flex-direction: column; gap: 6px; max-width: 470px; }
+  .cards .description-edit textarea {
+    font: inherit; font-size: var(--text-callout); padding: 6px 8px; border-radius: 6px; border: 0; resize: none;
+    box-shadow: 0 0 0 1px var(--separator), 0 0 0 3px var(--selection); background: var(--window-bg); color: var(--label);
+  }
+  .cards .description-edit .refusal { color: var(--red); font-size: var(--text-callout); }
+  .cards .description-edit .row-actions { justify-content: flex-end; }
+  /* Share Deck…'s menu, macOS's Share menu, ending in the app's own Save to File… (#557). */
+  .cards .share-anchor { position: relative; }
+  .share-menu {
+    position: absolute; top: calc(100% + 4px); left: 0; z-index: 6; display: flex; flex-direction: column; gap: 2px;
+    width: 240px; padding: 6px; border-radius: 10px; background: var(--window-bg); box-shadow: var(--window-shadow);
+  }
+  .share-menu .file { padding: 4px 8px 6px; border-bottom: 1px solid var(--separator); font-weight: 600; overflow-wrap: anywhere; }
+  .share-menu .file small { display: block; font-weight: 400; color: var(--secondary-label); }
+  .share-menu button { text-align: left; padding: 4px 8px; border: 0; border-radius: 6px; background: transparent; color: var(--label); cursor: default; }
+  .share-menu button:hover { background: var(--selection); }
+  .share-menu button.save { border-top: 1px solid var(--separator); border-radius: 0 0 6px 6px; margin-top: 2px; padding-top: 6px; }
   .cards .one-card { display: flex; flex-direction: column; gap: 8px; max-width: 420px; padding: 14px 16px; border-radius: 12px; background: var(--fill); }
   .cards .one-card .front { font-size: var(--text-title3); font-weight: 600; }
   .cards .one-card .back { color: var(--secondary-label); white-space: pre-line; }
@@ -266,7 +286,8 @@
    * decks (#458) and the Welcome page that offers them (#467); Settings in
    * five tabs, with where each of today's rows went (#492); the card form,
    * with no tags and no type (#538); Open Deck…, which brings in a deck's
-   * .ficha someone sent, with How fast? for it (#554). And, as before,
+   * .ficha someone sent, with How fast? for it (#554); a deck's
+   * description, Description… and Share Deck…'s menu (#557). And, as before,
    * the panel over a working day on a fast clock, and what holds it back.
    * New here, not in the app yet: WelcomePage's steps and SettingsWindow's
    * five tabs. Ahead of the app too, in CardsWindow: a deck's bar, with Put
@@ -440,6 +461,9 @@
   // Open Deck… shows the deck a made-up .ficha someone sent holds, as the
   // app's open panel would choose it, with Add Deck…, which asks How fast?
   // for it, "12 cards · from Capitales.ficha" (#554).
+  // A deck's description shows above its cards, and in Ficha's Decks;
+  // Description… edits it in place, and Share Deck… opens macOS's Share
+  // menu, which ends in Save to File… (#557).
   // ---------------------------------------------------------------------
   /** A deck's line, as its row says it (#491). */
   function deckStatus(app, state, d) {
@@ -601,6 +625,14 @@
     const [detailsOpen, setDetailsOpen] = useState(false);
     const [pace, setPace] = useState(state.pace);
     const [first, setFirst] = useState(false);
+    // Description… edits a deck's description in place, one or two lines,
+    // whose Done keeps it trimmed, or none when blank, and refuses past 160
+    // characters (#557); the mock keeps each deck's on the deck.
+    const [describing, setDescribing] = useState(null);
+    const [descriptionText, setDescriptionText] = useState('');
+    // Share Deck…'s menu, open on this deck (#557).
+    const [sharing, setSharing] = useState(null);
+    useEffect(() => (setDescribing(null), setSharing(null)), [selected]);
     const openSheet = (id) => (setSheet(id), setPace(app.state.pace), setFirst(false));
     const NEW = 'new-deck';
     useEffect(() => {
@@ -663,6 +695,14 @@
           <div className="deck-head"><span className="deck-emoji">${deck.emoji}</span>
             <div><h2>${deck.name}</h2>
               <p className="sub">${deck.added ? status.line : making ? 'No cards yet' : `${cards.length} cards · ${deck.ficha ? "one of Ficha's decks" : `from ${deck.file}`}`}</p></div></div>
+          ${describing === deck.id
+            ? html`<div className="description-edit"><textarea rows="2" aria-label="Description" value=${descriptionText}
+                onInput=${(e) => setDescriptionText(e.target.value)} />
+                ${descriptionText.trim().length > 160 && html`<p className="refusal">A deck's description can't be longer than 160 characters, so nothing changed. Shorten it.</p>`}
+                <div className="row-actions"><${Button} title="Cancel" k="esc" onClick=${() => setDescribing(null)} />
+                  <${Button} prominent title="Done" k="↩" disabled=${descriptionText.trim().length > 160}
+                    onClick=${() => { deck.description = descriptionText.trim() || undefined; setDescribing(null); }} /></div></div>`
+            : (deck.added || deck.ficha) && deck.description && html`<p className="description">${deck.description}</p>`}
           ${deck.added
             ? html`${!status.empty && html`<div className=${status.done ? 'bar done' : 'bar'}><i style=${{ width: `${Math.round(status.share * 100)}%` }} /></div>`}
               <div className="row-actions">
@@ -670,6 +710,15 @@
                 html`<${Button} title="Put it first" onClick=${() => app.putFirst(deck.id)} />`}
                 ${!status.done && !status.empty && html`<${Button} title=${deck.setAside ? 'Put back' : 'Set aside'}
                   onClick=${() => app.setAside(deck.id, !deck.setAside)} />`}
+                ${describing !== deck.id && html`<${Button} title="Description…"
+                  onClick=${() => (setDescriptionText(deck.description || ''), setDescribing(deck.id), setSharing(null))} />`}
+                ${!status.empty && html`<span className="share-anchor"><${Button} title="Share Deck…"
+                  onClick=${() => setSharing(sharing === deck.id ? null : deck.id)} />
+                  ${sharing === deck.id && html`<div className="share-menu" role="menu" aria-label="Share">
+                    <div className="file">${deck.name}.ficha<small>${cards.length} cards, with their pictures, emoji and description; not your progress</small></div>
+                    ${['AirDrop', 'Messages', 'Mail', 'Save to File…'].map((s) => html`<button type="button" role="menuitem" key=${s}
+                      className=${s === 'Save to File…' ? 'save' : ''} onClick=${() => setSharing(null)}>${s}</button>`)}
+                  </div>`}</span>`}
               </div>
               ${status.empty ? html`<p className="sub">Add cards with Capture, from the menu bar. Each new card waits its turn in the queue.</p>` : html`
               <div className="legend"><span><i className="met" />Met</span><span><i className="due" />Due</span>
