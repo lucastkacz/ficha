@@ -34,7 +34,10 @@ import Foundation
 /// (`HowFast.swift`), and each deck at the top of the tree says under its
 /// title how far it is and when it's all met (`CardsWindowDecks.swift`). It
 /// offers Ficha's decks the user hasn't added, each with its first card, which
-/// Add Deck… adds after How fast? (`CardsWindowFichaDecks.swift`).
+/// Add Deck… adds after How fast? (`CardsWindowFichaDecks.swift`). A deck's
+/// description shows above its cards, and Description… edits it in place
+/// (`CardsWindowDeckDescription.swift`); Share Deck… writes its `.ficha` for
+/// macOS's Share menu (`CardsWindowShareDeck.swift`).
 public struct CardsWindowState: Sendable {
     /// What the sidebar offers, one at a time: a deck's cards, the inbox, or
     /// one of Ficha's decks.
@@ -333,6 +336,15 @@ public struct CardsWindowState: Sendable {
         /// whose How fast? couldn't read the queue; or chose Start in How
         /// fast? for its deck, which adds it.
         case openDeck(fileName: String)
+        /// He chose Done in the field of this deck's description, after
+        /// Description… in its menu.
+        case setDeckDescription(deck: String)
+        /// He chose Share Deck… in this deck's menu, which writes its
+        /// `.ficha` for the Share menu.
+        case shareDeck(deck: String)
+        /// He chose Save in Save to File…'s save panel, after Share Deck…,
+        /// to save the deck's `.ficha` with this name.
+        case saveSharedDeck(fileName: String)
     }
 
     /// What the sidebar chose: the deck the window opens on (`deckToOpenOn`),
@@ -485,6 +497,14 @@ public struct CardsWindowState: Sendable {
     /// waits to ask How fast? for it: until what's open closes
     /// (`askForTheDeckFileOpened()`).
     var deckFileOpened: DeckFile?
+    /// The deck Description… edits in place, by its whole name, until Done
+    /// or Cancel (`CardsWindowDeckDescription.swift`).
+    var describedDeckName: String?
+    /// The deck's `.ficha` Share Deck… last wrote, in a temporary folder of
+    /// its own, until nothing needs it (`CardsWindowShareDeck.swift`).
+    var sharedDeckFile: URL?
+    /// Whether macOS's Share menu offers `sharedDeckFile`, while it's open.
+    var isShareMenuOpen = false
     /// Internal, for the window's parts in files of their own.
     let engine: Engine
 
@@ -645,10 +665,13 @@ public struct CardsWindowState: Sendable {
         rows.allSatisfy(\.card.bothWays) ? .turnOffBothWays : .turnOnBothWays
     }
 
-    /// Lists what Lucas chose in the sidebar.
+    /// Lists what Lucas chose in the sidebar, ending Description…'s edit
+    /// without saving it.
     public mutating func choose(_ item: SidebarItem) {
         guard item != sidebarItem else { return }
         sidebarItem = item
+        // Description…'s field shows above the chosen deck's cards alone.
+        describedDeckName = nil
         readAgain()
     }
 

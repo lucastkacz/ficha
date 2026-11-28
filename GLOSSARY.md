@@ -50,7 +50,7 @@ The three small decks Ficha comes with, in Spanish for now, which the user picks
 _Avoid_: sample cards, starter deck, preset
 
 **Description**:
-One or two lines a deck has on what it holds, such as which years Arte argentino spans, which the user sees as they choose a deck and above its cards. Any deck can have one, Ficha's or the user's, and the user writes or changes it as they give a deck its emoji.
+One or two lines a deck has on what it holds, such as which years Arte argentino spans, which the user sees as they choose a deck and above its cards. Any deck can have one, Ficha's or the user's, and the user writes or changes it in place, with Description… among the deck's actions, as they give a deck its emoji with Emoji….
 _Avoid_: blurb, about, summary, subtitle
 
 **Deck's file**:
@@ -176,6 +176,10 @@ _Avoid_: load, refine
 **Export**:
 Saving cards to a text file with one card per line, zipped with their images and sounds if they have any, which another Ficha can import, and Anki too when it's text alone. It holds what the cards say, their decks and tags, and which go both ways, never the user's progress.
 _Avoid_: backup, share
+
+**Share**:
+Passing a deck on to someone as its deck's file, with Share Deck… among the deck's actions, which opens macOS's Share menu, such as AirDrop, Messages or Mail, and ends in Save to File…, which saves the file where the user picks. Any deck the user has added can be shared, Ficha's too, and the file never holds their progress.
+_Avoid_: export, send, publish
 
 ### Spacing
 

@@ -19,7 +19,8 @@ import Foundation
 // the sidebar chose it, which is its keyboard path, sets it aside or
 // prioritizes it (`DeckSwitches.swift`), and gives it a color or an emoji
 // (`DeckColorAndEmoji.swift`), which its row shows, as the decks inside it
-// that have none do; a set-aside deck is grayed, with the decks inside it,
+// that have none do, edits its description (`CardsWindowDeckDescription.swift`)
+// and shares its `.ficha` (`CardsWindowShareDeck.swift`); a set-aside deck is grayed, with the decks inside it,
 // last when it's at the top of the tree and in its place inside another.
 // Every deck's but Default's also renames it and deletes it, and in the
 // sidebar cards and decks dropped on a deck move there
@@ -135,9 +136,10 @@ extension CardsWindowState {
     /// context menu, and above the grid while the sidebar chose it, as the
     /// Actions menu, which is how the keyboard reaches it. The same menu
     /// in both places, which acts on the one deck: Set Aside, Prioritize,
-    /// Color and Emoji…, and Rename… and Delete… while it offers them
-    /// (`offersRenameAndDelete`). New Deck…, always above them, acts on no
-    /// deck (`askToMakeDeck()`).
+    /// Color, Emoji… and Description… (`CardsWindowDeckDescription.swift`),
+    /// Share Deck… (`CardsWindowShareDeck.swift`), and Rename… and Delete…
+    /// while it offers them (`offersRenameAndDelete`). New Deck…, always
+    /// above them, acts on no deck (`askToMakeDeck()`).
     public struct DeckMenu: Sendable, Equatable {
         /// The deck it acts on, with what it has of its own and takes from
         /// the decks it sits inside.
@@ -151,6 +153,10 @@ extension CardsWindowState {
         /// has none of its own, whatever it takes from the decks it sits
         /// inside.
         public let colorItems: [ColorItem]
+        /// Whether Share Deck… is on: while the deck, with the decks inside
+        /// it, holds a card, set-aside ones too, since a deck's file with no
+        /// card is no deck another Ficha opens.
+        public let canShare: Bool
 
         /// Whether Set Aside is ticked: the deck is set aside on its own, and
         /// choosing it again undoes it.
@@ -253,10 +259,11 @@ extension CardsWindowState {
     /// Default's by `Deck.defaultName`, while the sidebar lists it; nil
     /// otherwise.
     public func menu(forDeck deck: String) -> DeckMenu? {
-        guard let listed = listedDeck(deck) else { return nil }
+        guard let counted = decks.first(where: { $0.deck.name == deck }) else { return nil }
+        let listed = counted.deck
         return DeckMenu(
             deck: listed, canPrioritize: listed.canBePrioritized(amongSetAside: decks.map(\.deck).setAsideNames),
-            colorItems: ColorItem.items(forOwn: [listed.color]))
+            colorItems: ColorItem.items(forOwn: [listed.color]), canShare: counted.counts.cards > 0)
     }
 
     /// The deck `deck`, by its whole name, or Default by
